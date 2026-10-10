@@ -52,6 +52,8 @@ This release is an early proof of concept:
 speeding up fuz_app's tests makes pglet plausibly-real software,
 so it's public despite being full of holes that your workloads may fail on.
 
+AI disclosure: Claude did the coding, and there is a human that cares, but it's not _not_ slop.
+
 ## What it's for
 
 pglet is for the places you wouldn't run a real Postgres server: test suites,
