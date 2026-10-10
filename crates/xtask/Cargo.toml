@@ -12,7 +12,8 @@ publish.workspace = true
 # corrupt each other's spawned servers and scratch schema. Released by the
 # kernel on process exit (SIGKILL included), so a killed run leaves no stale
 # lock. The workspace's one lock rule — `pglet_server` takes the same one for
-# the `--data-dir` guard.
+# the `--data-dir` guard. `cargo xtask measure` also reads the benches' results JSON
+# through its parser (`parse_jsonb`) rather than a JSON crate.
 pglet_core = { workspace = true, features = ["file_lock"] }
 
 [lints]

@@ -23,7 +23,8 @@
  * already warm — memory grown, code compiled — which favours it on the one-shot
  * bulk insert. The package must be current: a missing one, or
  * one older than any file under `crates/`, `scripts/` or the workspace manifests,
- * stops the run before anything is measured.
+ * stops the run before anything is measured — as does a pglite other than the one
+ * `benches/package-lock.json` pins (`lib/pglite_install.ts`).
  *
  * Phases, per engine:
  *   - cold init    : fresh module load → ready DB → first `SELECT 1` (one-shot;
@@ -51,10 +52,12 @@
  *   add --update to merge this runtime's slice into wasm_compare_results.json
  *   (any runtime; a run with a failed engine row exits 1 and writes nothing)
  */
-import {readdirSync, statSync} from 'node:fs';
 import {readFile} from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
 import {summarize, type Summary} from './lib/bench_stats.ts';
-import {git_commit, write_json} from './lib/results.ts';
+import {assert_pglet_package_current, PGLET_PKG} from './lib/pglet_package.ts';
+import {assert_pglite_matches_lockfile} from './lib/pglite_install.ts';
+import {git_commit, package_version, write_json} from './lib/results.ts';
 
 // --- knobs ----------------------------------------------------------------
 const ROWS = num_env('PGLET_BENCH_ROWS', 10_000);
@@ -86,74 +89,7 @@ const {RUNTIME_NAME, RUNTIME_VERSION} = (() => {
 const RUNTIME = `${RUNTIME_NAME}-${RUNTIME_VERSION}`;
 
 // --- the pglet package ----------------------------------------------------
-const REPO = new URL('../', import.meta.url);
-const PGLET_PKG = new URL('crates/pglet_wasm/pkg-npm/', REPO);
 const PGLET_ENTRY = new URL('index.js', PGLET_PKG);
-/** The package files a `create_pglet_db()` consumer loads; the oldest of them dates the build. */
-const PGLET_PKG_LOADED = ['index.js', 'db.js', 'coerce.js', 'pglet_wasm.js', 'pglet_wasm_bg.wasm'];
-/** Directories under `crates/` that hold build output rather than build input: every wasm-pack
- * out-dir (`pkg`, `pkg-npm`, `pkg-opfs`, …) by its prefix, and these. */
-const NOT_INPUT_DIRS = new Set(['node_modules', 'target']);
-const is_not_input_dir = (name: string): boolean =>
-	NOT_INPUT_DIRS.has(name) || name === 'pkg' || name.startsWith('pkg-');
-
-/**
- * The newest file under `dir`, by mtime. Every file counts — a source the package
- * does not depend on only makes the check stricter, which costs a rebuild; a list
- * of the inputs that do count is what would go stale.
- */
-function newest_file(dir: URL, newest: {path: string; mtime: number}): void {
-	for (const entry of readdirSync(dir, {withFileTypes: true})) {
-		if (entry.isDirectory()) {
-			if (!is_not_input_dir(entry.name) && !entry.name.startsWith('.')) {
-				newest_file(new URL(`${entry.name}/`, dir), newest);
-			}
-			continue;
-		}
-		const url = new URL(entry.name, dir);
-		const mtime = statSync(url).mtimeMs;
-		if (mtime > newest.mtime) {
-			newest.path = url.pathname;
-			newest.mtime = mtime;
-		}
-	}
-}
-
-/**
- * Refuse a missing or stale npm package rather than measure an old build. Stale is
- * any file under `crates/` or `scripts/`, or a workspace manifest, newer than the
- * oldest package file the bench loads — `deno task build:npm` rebuilds all of them.
- */
-function assert_pglet_package_current(): void {
-	const rebuild = 'run `deno task build:npm` (the bench:wasm-compare tasks chain it)';
-	let built = Infinity;
-	for (const name of PGLET_PKG_LOADED) {
-		const url = new URL(name, PGLET_PKG);
-		let mtime: number;
-		try {
-			mtime = statSync(url).mtimeMs;
-		} catch {
-			throw new Error(`the pglet npm package is missing ${url.pathname} — ${rebuild}`);
-		}
-		built = Math.min(built, mtime);
-	}
-	const newest = {path: '', mtime: 0};
-	newest_file(new URL('crates/', REPO), newest);
-	newest_file(new URL('scripts/', REPO), newest);
-	for (const name of ['Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml']) {
-		const url = new URL(name, REPO);
-		const mtime = statSync(url).mtimeMs;
-		if (mtime > newest.mtime) {
-			newest.path = url.pathname;
-			newest.mtime = mtime;
-		}
-	}
-	if (newest.mtime > built) {
-		throw new Error(
-			`the pglet npm package in ${PGLET_PKG.pathname} is older than ${newest.path} — ${rebuild}`,
-		);
-	}
-}
 
 // --- engine adapters ------------------------------------------------------
 // Uniform shape: `exec` runs one statement, `query` returns the row array.
@@ -358,10 +294,9 @@ function print_summary_table(title: string, results: EngineResult[], pick: (r: E
 	}
 }
 
-async function dep_version(pkg: string): Promise<string> {
+function dep_version(pkg: string): string {
 	try {
-		const url = new URL(`./node_modules/${pkg}/package.json`, import.meta.url);
-		return JSON.parse(new TextDecoder().decode(await readFile(url))).version ?? 'unknown';
+		return package_version(fileURLToPath(new URL(`./node_modules/${pkg}/`, import.meta.url)));
 	} catch {
 		return 'unknown';
 	}
@@ -370,7 +305,26 @@ async function dep_version(pkg: string): Promise<string> {
 // --- main -----------------------------------------------------------------
 const update = (globalThis as any).Deno?.args?.includes('--update') ?? process.argv.includes('--update');
 
-assert_pglet_package_current();
+/**
+ * Run a check that refuses the run before anything is measured. Deno and Bun report an
+ * uncaught throw as an `error:` line themselves; Node prints a bare stack trace, so under
+ * Node the refusal is printed as that line and the run exits 1.
+ */
+const refuse_unless = <T>(check: () => T): T => {
+	if (RUNTIME_NAME !== 'node') return check();
+	try {
+		return check();
+	} catch (e) {
+		console.error(`error: ${e instanceof Error ? e.message : String(e)}`);
+		// nothing is on stdout yet, so the truncation the end of the run avoids cannot happen
+		return process.exit(1);
+	}
+};
+
+refuse_unless(() => assert_pglet_package_current('the bench:wasm-compare tasks'));
+// The pglite this run loads is the one the lockfile pins, or nothing is measured: a run
+// against another install would record its version beside figures quoted for the pinned one.
+const PGLITE_VERSION = refuse_unless(assert_pglite_matches_lockfile).version;
 
 console.log(`\npglet WASM comparison — in-memory, headless  ·  runtime: ${RUNTIME}`);
 console.log(`rows=${ROWS}  ·  row=(id INT, a INT, b TEXT[${TEXT_B.length}])  ·  no indexes (scan-based filters)`);
@@ -428,8 +382,8 @@ if (failed.length > 0) {
 		timestamp: new Date().toISOString(),
 		git_commit: git_commit(),
 		engine_versions: {
-			pglite: await dep_version('@electric-sql/pglite'),
-			'sqlite-wasm': await dep_version('@sqlite.org/sqlite-wasm'),
+			pglite: PGLITE_VERSION,
+			'sqlite-wasm': dep_version('@sqlite.org/sqlite-wasm'),
 		},
 		rows: ROWS,
 		samples: SAMPLES,

@@ -3,7 +3,7 @@
 	"version": "0.0.0",
 	"private": true,
 	"type": "module",
-	"description": "Cross-runtime (Deno/Node/Bun) WASM comparison benches: pglet vs pglite vs sqlite-wasm. Dev tooling only — never published.",
+	"description": "Dev-only npm deps for the WASM comparison benches (wasm_compare, size_compare): pglet vs pglite vs sqlite-wasm. Never published.",
 	"devDependencies": {
 		"@electric-sql/pglite": "^0.5.3",
 		"@sqlite.org/sqlite-wasm": "^3.53.0-build1"

@@ -24,6 +24,22 @@ longitudinal** metric — "did this change raise peak?" — spanning *both* surf
 a cross-engine ratio (pglite is whole-Postgres and WASM linear memory only grows,
 so a pglet/pglite memory comparison is meaningless). See `bench:memory` below.
 
+This directory's `package.json` takes over bare-specifier resolution for the files under it unless
+`deno run` is given `--config deno.json`, and each resolution is the only one that works for some script:
+
+- **Needs `--config deno.json`** — `startup.ts`, `wasm_init.ts` and `exit_proof.ts`, which import the root
+  import map's `@fuzdev/fuz_util`. Without the flag they fail before running
+  (`Import "@fuzdev/fuz_util/stats.ts" not a dependency`) in any checkout without a root `node_modules`.
+- **Must not have it** — `wasm_compare.ts`, whose pglite and sqlite-wasm imports resolve only through that
+  `package.json`. Under the flag both engine rows fail
+  (`Import "@electric-sql/pglite" not a dependency and not in import map`) and the run exits 1. Node and Bun
+  resolve it through `benches/node_modules` and take no flag.
+- **Either** — `size.ts`, `size_compare.ts`, `index_accel.ts` and `memory.ts` import no bare specifier
+  (`size_compare.ts` reads pglite's files by path rather than importing it); their tasks pass the flag.
+
+A hand-run takes the flag its task does: `deno run --config deno.json -A benches/startup.ts`, but
+`deno run -A benches/wasm_compare.ts`.
+
 ## Files
 
 | File | What |
@@ -31,15 +47,20 @@ so a pglet/pglite memory comparison is meaningless). See `bench:memory` below.
 | `wasm_compare.ts` | cross-runtime in-memory WASM compare (pglet / pglite / sqlite-wasm) |
 | `wasm_init.ts` | pglet's own WASM init phases (compile / construct / first query) |
 | `memory.ts` | memory footprint — native peak RSS + WASM linear-memory high-water (orchestrates the `pglet_bench memory` mode; single writer of `memory_results.json`) |
-| `exit_proof.ts` | fuz_app `db`-suite wall-time per engine leg — four legs: pglite / pglet-wasm (L1, in-process) and pglet-server / pg (L2, out-of-process), never compared across the line (`bench:exit-proof`; single writer of `exit_proof_results.json`) |
+| `exit_proof.ts` | fuz_app `db`-suite wall-time per engine leg — four legs: pglite / pglet-wasm (L1, in-process) and pglet-server / pg (L2, out-of-process), never compared across the line but by the one `ratios` entry marked `crosses_tiers`; records the README's multiples under `ratios`, `null` with a `null_reason` over a failed or unselected leg or two legs that passed different test counts, and under `engines` what the legs ran — the pglite fuz_app's install resolves (not `benches/`'), the npm package's version, fuz_app's commit (`bench:exit-proof`; single writer of `exit_proof_results.json`) |
 | `startup.ts` | native server spawn→ready latency |
 | `index_accel.ts` | index-acceleration ON vs OFF (wasm): size delta + read-latency ratio across table sizes (`bench:index-accel`; builds both profiles) |
 | `size.ts` | raw WASM size gate (`size:check` / `size:update`; gzip reported as the wire size, not gated) |
+| `size_compare.ts` | pglet-vs-pglite runtime payload, raw and gzip — the npm package's shipped wasm against pglite's wasm + data + initdb wasm at the lockfile's version; refuses a stale package or a pglite off the lockfile (`bench:size-compare`; single writer of `pglite_size_comparison.json`) |
 | `lib/bench_stats.ts` | zero-dependency median/p95/CV stats, shared by the cross-runtime benches |
-| `lib/results.ts` | `git_commit` + `write_json` — the envelope every recorded `*_results.json` carries |
-| `package.json` | `private`, dev-only npm deps for `wasm_compare.ts` (pglite, sqlite-wasm) |
+| `lib/results.ts` | `git_commit` + `write_json` — the envelope every recorded `*_results.json` carries — and `package_version`, an engine's; the stamp is `<commit>-dirty` when a tracked file is modified or an untracked one sits under `benches/`, `crates/` or `scripts/` (the recorded results files themselves excluded), `<commit>-dirty?` when that could not be read, and for another checkout (`git_commit(dir)`, fuz_app's) `-dirty` on any change. A `size:update` run before the change it measures is committed stamps `size_baseline.json` `<parent>-dirty` |
+| `lib/exit_proof_ratios.ts` | the ratios `exit_proof.ts` records — which legs, which bucket, and the keys `cargo xtask measure`'s figures list reads |
+| `lib/gzip_size.ts` | the one gzip measurement (`gzip -c`, default level) behind `size.ts`, `size_compare.ts` and `wasm_init.ts` |
+| `lib/pglet_package.ts` | the npm package's location and the one rule for whether it is current, shared by `wasm_compare.ts` and `size_compare.ts` |
+| `lib/pglite_install.ts` | which pglite a bench loads (resolved as Node resolves the import) and the one rule for whether `benches/` holds the lockfile's — applied by `wasm_compare.ts` and `size_compare.ts`, and asked by `cargo xtask measure`'s preflight before any timed step |
+| `package.json` | `private`, dev-only npm deps for `wasm_compare.ts` (pglite, sqlite-wasm) and `size_compare.ts` (pglite) |
 | `*_results.json` | committed evidence per bench |
-| `pglite_size_comparison.json` | hand-recorded pglite-vs-pglet payload sizes (no bench writes it; pglet's half is copied from `size_baseline.json` — re-copy it when that baseline moves, re-measure pglite's when pglite is upgraded) — the evidence behind the README's size ratio |
+| `pglite_size_comparison.json` | pglite-vs-pglet payload sizes and their ratios, written by `size_compare.ts` — the evidence behind the README's size ratio |
 | `package-lock.json` | the lockfile for `package.json`'s npm deps |
 
 ## `wasm_compare.ts` — cross-runtime WASM compare
@@ -68,7 +89,8 @@ pglet has two rows, both over the npm package the task chain builds
   `null`), and its one-shot bulk insert runs on an instance already warm.
 
 A missing `pkg-npm`, or one older than any file under `crates/`, `scripts/` or
-the workspace manifests, stops the run before anything is measured. A failed
+the workspace manifests, stops the run before anything is measured, as does a pglite
+other than the one `package-lock.json` pins (`lib/pglite_install.ts`). A failed
 engine row is printed, and the run then exits 1 without writing.
 
 > **Caveat (also printed by the bench).** pglet's WASM is built `opt-level = "z"`

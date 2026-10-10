@@ -14,6 +14,7 @@
  * (`gzip -c`) for the reported wire-size figure, matching the ecosystem convention.
  */
 
+import {gzip_size} from './lib/gzip_size.ts';
 import {git_commit, write_json} from './lib/results.ts';
 
 // Default gates the plain `wasm:build` output (`pkg`); `--wasm <path>` overrides it so the
@@ -44,17 +45,6 @@ interface Artifact {
 }
 
 const kb = (n: number): string => `${(n / 1024).toFixed(1)} KB`;
-
-const gzip_size = async (path: string): Promise<number> => {
-	const {success, stdout, stderr} = await new Deno.Command('gzip', {
-		args: ['-c', path],
-		stdout: 'piped',
-		stderr: 'piped',
-	}).output();
-	if (!success) throw new Error(`gzip failed: ${new TextDecoder().decode(stderr)}`);
-	return stdout.length;
-};
-
 
 const measure = async (label: string, kind: Artifact['kind'], path: string): Promise<Artifact> => ({
 	label,

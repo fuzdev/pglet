@@ -34,6 +34,11 @@
  *     `PGLET_EXITPROOF_PG_URL` is set, real Postgres — production ceiling
  *     references, reported separately, never as an L1 peer to pglite.
  *
+ * The run ends by computing the ratios the README quotes (`lib/exit_proof_ratios.ts`),
+ * printed and recorded under `ratios`. One of them, pg over pglet-wasm, crosses the line on
+ * purpose — the README's "faster than a real PostgreSQL server" is in-process pglet against
+ * Postgres over TCP — and is marked `crosses_tiers` so it is never read as a same-tier pair.
+ *
  * Watch-tier: prints by default; `--update` refreshes `exit_proof_results.json`.
  * Ratios (same run, same box) are the durable signal; absolute ms flap with the
  * box. Each leg runs `REPS` timed passes (+`WARMUP` discarded) interleaved so
@@ -71,7 +76,9 @@ import {
 	stats_percentile,
 	stats_std_dev,
 } from '@fuzdev/fuz_util/stats.ts';
-import {git_commit, write_json} from './lib/results.ts';
+import {exit_proof_ratios} from './lib/exit_proof_ratios.ts';
+import {PGLITE, resolve_package_dir} from './lib/pglite_install.ts';
+import {git_commit, package_version, write_json} from './lib/results.ts';
 
 // --- knobs ----------------------------------------------------------------
 const num_env = (name: string, fallback: number): number => {
@@ -242,6 +249,35 @@ if (runs_leg('pglet-wasm')) {
 	require_path(`${WASM_PKG}/index.js`, 'run `deno task build:npm` — the wasm leg needs the npm adapter, not the raw wasm-pack pkg');
 }
 
+// --- engine provenance ----------------------------------------------------
+// What each leg ran, recorded under `engines`: the pglite leg runs fuz_app's own pglite —
+// resolved from the fuz_app checkout as its suite's `@electric-sql/pglite` import is, a
+// different install from `benches/`' — so the exit-proof multiples' pglite version is read
+// there, never assumed to be the one the size comparison weighs and the head-to-head cold
+// inits run. Read before the run, so an unresolvable one refuses now rather than after it;
+// `null` for a leg not run.
+const fail = (message: string): never => {
+	console.error(`error: ${message}`);
+	Deno.exit(1);
+};
+const engine_version = (dir: string): string => {
+	try {
+		return package_version(dir);
+	} catch (e) {
+		return fail(e instanceof Error ? e.message : String(e));
+	}
+};
+const FUZ_APP_PGLITE = runs_leg('pglite') ? resolve_package_dir(FUZ_APP_DIR, PGLITE) : null;
+if (runs_leg('pglite') && FUZ_APP_PGLITE === null) {
+	fail(`no ${PGLITE} resolves from ${FUZ_APP_DIR} — install fuz_app's dependencies`);
+}
+/** The pglite the pglite leg loads: fuz_app's install. */
+const PGLITE_VERSION = FUZ_APP_PGLITE === null ? null : engine_version(FUZ_APP_PGLITE);
+/** The npm package the pglet-wasm leg loads. */
+const PGLET_WASM_VERSION = runs_leg('pglet-wasm') ? engine_version(WASM_PKG) : null;
+/** The fuz_app checkout every leg runs, `-dirty` by `git_commit`'s rule for another checkout. */
+const FUZ_APP_COMMIT = git_commit(FUZ_APP_DIR);
+
 // --- one vitest run -------------------------------------------------------
 interface RunResult {
 	/** The run's wall time, vitest's Duration line. */
@@ -383,7 +419,11 @@ console.log(
 		`  ·  reps=${REPS} (+${WARMUP} warmup)  ·  legs: ${active_legs.map((l) => l.name).join(', ')}` +
 		(skipped_legs.length ? `  ·  skipped: ${skipped_legs.map((l) => `${l.name} (${l.skip})`).join(', ')}` : ''),
 );
-console.log(`server=${SERVER_BIN}\nwasm=${WASM_PKG}\nfuz_app=${FUZ_APP_DIR}\n`);
+console.log(`server=${SERVER_BIN}\nwasm=${WASM_PKG}\nfuz_app=${FUZ_APP_DIR}`);
+console.log(
+	`engines: pglite ${PGLITE_VERSION ?? '—'} (fuz_app's)  ·  pglet-wasm ${PGLET_WASM_VERSION ?? '—'}` +
+		`  ·  fuz_app ${FUZ_APP_COMMIT}\n`,
+);
 
 // rep-major, leg-minor: interleave so drift hits every leg evenly.
 const enc = new TextEncoder();
@@ -472,24 +512,21 @@ for (const r of summaries) {
 	);
 }
 
-const pglite = summaries.find((r) => r.name === 'pglite');
-if (pglite && !pglite.leg_failed) {
-	console.log(`\nratios vs pglite  (× ; <1 = pglet faster) — tests-bucket, then total wall`);
-	console.log(`${pad('leg', 14)}${pad('tier', 6)}${padl('tests ×', 10)}${padl('total ×', 10)}  note`);
-	console.log('-'.repeat(64));
-	for (const r of summaries) {
-		if (r.name === 'pglite') continue;
-		if (r.leg_failed) {
-			console.log(`${pad(r.name, 14)}${pad(r.tier, 6)}${padl('n/a', 10)}${padl('n/a', 10)}  leg failed — not comparable (see ⚠ below)`);
-			continue;
-		}
-		const note =
-			r.tier === 'L1' ? 'in-process — apples-to-apples vs pglite' : 'out-of-process (IPC) — L2, not an L1 peer';
-		console.log(
-			`${pad(r.name, 14)}${pad(r.tier, 6)}${padl((r.tests.p50 / pglite.tests.p50).toFixed(2), 10)}` +
-				`${padl((r.total.p50 / pglite.total.p50).toFixed(2), 10)}  ${note}`,
-		);
-	}
+// The figures the README quotes, computed once and both printed and recorded — never a
+// second, separately-divided set. A ratio over a leg that failed or was not run, or over two
+// legs that passed different test counts, is `null` with its reason.
+const ratios = exit_proof_ratios(summaries);
+console.log(`\nratios  (× ; numerator p50 / denominator p50 — >1 = the denominator is faster)`);
+console.log(`${pad('key', 31)}${pad('bucket', 8)}${padl('×', 7)}  pair`);
+console.log('-'.repeat(86));
+for (const [key, ratio] of Object.entries(ratios)) {
+	const pair = `${ratio.numerator} / ${ratio.denominator}`;
+	const value =
+		ratio.value === null
+			? `${padl('n/a', 7)}  ${pair} — ${ratio.null_reason}`
+			: `${padl(ratio.value.toFixed(3), 7)}  ${pair}`;
+	const note = ratio.crosses_tiers ? ' — crosses tiers: in-process vs over TCP, quote it labelled' : '';
+	console.log(`${pad(key, 31)}${pad(ratio.bucket, 8)}${value}${note}`);
 }
 
 console.log(
@@ -509,7 +546,8 @@ console.log(
 if (counts.size > 1) {
 	console.log(
 		`\n⚠ FAIRNESS: green legs ran different passed-counts (${green.map((r) => `${r.name}:${r.passed}`).join(', ')})` +
-			` — the comparison is only valid on an identical test set, so this run is FATAL (exit 1 below).` +
+			` — the comparison is only valid on an identical test set, so each ratio over two of them is` +
+			` recorded null and this run is FATAL (exit 1 below).` +
 			`\n  A leg running extra tests is the discovery predicate letting a single-driver file into the` +
 			`\n  shared set (see \`binds_four_legs\`); fix that rather than the ratio.`,
 	);
@@ -531,7 +569,13 @@ if (update) {
 		note:
 			'fuz_app `db` suite wall-time per engine leg, isolated by testNamePattern over the ' +
 			'shared four-leg files. L1 (pglite, pglet-wasm) in-process; L2 (pglet-server, pg) ' +
-			'out-of-process — never compared across the line. Ratios are the durable signal; ' +
+			'out-of-process — never compared across the line but by a `ratios` entry marked ' +
+			'`crosses_tiers`, which is quoted only labelled as in-process vs over TCP. `ratios` holds ' +
+			'the figures the README quotes, each a numerator leg p50 over a denominator leg p50 in one ' +
+			'bucket, `null` with a `null_reason` where either leg failed or was not run or the two ' +
+			'passed different test counts. `engines` records what the legs ran: `pglite` is the ' +
+			"pglite fuz_app's install resolves (not benches/'), `pglet_wasm` the npm package's " +
+			'version, `fuz_app` the checkout\'s commit. Ratios are the durable signal; ' +
 			'absolute seconds flap with the box. Engine boot is amortized over the file set (see ' +
 			'wasm_compare_results.json for the cold-start number).',
 		timestamp: new Date().toISOString(),
@@ -540,6 +584,12 @@ if (update) {
 		warmup: WARMUP,
 		shared_files: shared_files.length,
 		results: summaries,
+		ratios,
+		engines: {
+			pglite: PGLITE_VERSION,
+			pglet_wasm: PGLET_WASM_VERSION,
+			fuz_app: FUZ_APP_COMMIT,
+		},
 	};
 	await write_json('benches/exit_proof_results.json', doc);
 	console.error(`\nwrote benches/exit_proof_results.json`);
@@ -556,7 +606,7 @@ const fatal: string[] = [];
 if (counts.size > 1) {
 	fatal.push(
 		`green legs ran different passed-counts (${green.map((r) => `${r.name}:${r.passed}`).join(', ')})` +
-			` — the ratios above are not comparable`,
+			` — the ratios over two of them are recorded null`,
 	);
 }
 const failed_legs = summaries.filter((r) => r.leg_failed).map((r) => r.name);

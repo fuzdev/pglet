@@ -594,6 +594,8 @@ deno task bench:memory            # peak RSS (native embed, /proc VmHWM) + WASM 
 deno task bench:wasm-compare      # in-memory wasm startup+query: pglet vs pglite vs sqlite-wasm (Deno/Node/Bun;
 #                                   :deno / :node / :bun run one runtime, :install populates benches/node_modules
 #                                   once — benches/README.md)
+deno task bench:size-compare      # pglet-vs-pglite payload bytes, raw + gzip: the shipped npm wasm vs pglite's wasm + data
+#                                   (:update rewrites benches/pglite_size_comparison.json)
 deno task bench:exit-proof        # the four-leg fuz_app `db` suite macro (pglite, pglet-wasm, pglet-server, pg)
 deno task bench:startup           # native server spawn→ready latency
 deno task bench:wasm-init         # wasm init phases (compile / construct / first query)
@@ -608,8 +610,11 @@ deno task measure:release         # the whole quiet-box measurement set behind t
 box with a live Postgres. Only its exit-proof step needs a fuz_app checkout
 (`PGLET_FUZ_APP_DIR`, default `../fuz_app`, as `deno task bench:exit-proof` reads it);
 `--skip exit-proof` runs the rest without one. Every bench step overwrites a recorded
-results JSON, so probe it with `--dry-run`. The rest: `crates/xtask/src/measure.rs`'s
-module doc.
+results JSON, so probe it with `--dry-run`. It ends by printing every figure the README, the
+npm README and `TRADEOFFS.md` quote from a file its steps write, as the run just wrote it —
+the multiples and size ratios are computed by the benches, never divided by hand. Every file
+it writes is stamped `-dirty` when the tree differs from its commit (`-dirty?` when that could
+not be read). The rest: `crates/xtask/src/measure.rs`'s module doc.
 
 Benches print by default; `--update` (or the `:update` task) refreshes the recorded JSON
 (`benches/README.md`). Run them with `--release` (the tasks do). `benches/lib/bench_stats.ts`

@@ -27,6 +27,8 @@ import {
 	stats_percentile,
 	stats_std_dev,
 } from '@fuzdev/fuz_util/stats.ts';
+import {fileURLToPath} from 'node:url';
+import {gzip_size} from './lib/gzip_size.ts';
 import {git_commit, write_json} from './lib/results.ts';
 
 const PKG = new URL('../crates/pglet_wasm/pkg/', import.meta.url);
@@ -138,19 +140,6 @@ for (const r of summaries) {
 }
 console.log(`\n(all values in ms; target = ${TARGET_MS}ms for full cold load)`);
 
-const gzip_size = async (path: URL): Promise<number> => {
-	try {
-		const {success, stdout} = await new Deno.Command('gzip', {
-			args: ['-c', path.pathname],
-			stdout: 'piped',
-		}).output();
-		return success ? stdout.length : -1;
-	} catch {
-		return -1;
-	}
-};
-
-
 // Print by default; `--update` refreshes the recorded JSON — the idiom every
 // other bench here follows, and which this one did not: it wrote on every run,
 // so looking at the numbers overwrote them with whatever the box was doing.
@@ -164,7 +153,9 @@ if (Deno.args.includes('--update')) {
 		note: 'per-iteration fresh module; cold-init compile trends warm after sample 1 (V8 code cache)',
 		compile_cold_one_shot_ms: cold_compile_ms,
 		wasm_bytes: bytes.length,
-		wasm_gzip_bytes: await gzip_size(WASM_PATH),
+		// reported beside the timings, never their gate: a gzip failure records -1 rather than
+		// losing the run
+		wasm_gzip_bytes: await gzip_size(fileURLToPath(WASM_PATH)).catch(() => -1),
 		results: summaries,
 	});
 	console.error(`\nwrote benches/wasm_init_results.json`);
