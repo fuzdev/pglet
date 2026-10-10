@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "2BP01",
+    "message": "cannot drop table p_dep because other objects depend on it"
+  }
+}

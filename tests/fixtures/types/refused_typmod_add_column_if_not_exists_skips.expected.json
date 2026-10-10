@@ -1,0 +1,9 @@
+{
+  "rows": [
+    {
+      "column_name": "a",
+      "data_type": "integer"
+    }
+  ],
+  "rowCount": 1
+}

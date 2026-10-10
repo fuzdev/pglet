@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "eq": false,
+      "mul": -1,
+      "ne": true,
+      "signs": 2
+    }
+  ],
+  "rowCount": 1
+}

@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "flag": true,
+      "grp": 7,
+      "n": "2",
+      "top": 2.5
+    },
+    {
+      "flag": false,
+      "grp": 8,
+      "n": "1",
+      "top": 4.0
+    }
+  ],
+  "rowCount": 2
+}

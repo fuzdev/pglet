@@ -1,0 +1,32 @@
+{
+  "rows": [
+    {
+      "correlated_is_cte": true,
+      "cte_is_outer": true,
+      "derived_is_cte": true,
+      "id": 1,
+      "statement_cte_is_outer": true,
+      "statement_subquery_is_derived": true,
+      "subquery_is_outer": true
+    },
+    {
+      "correlated_is_cte": true,
+      "cte_is_outer": true,
+      "derived_is_cte": true,
+      "id": 2,
+      "statement_cte_is_outer": true,
+      "statement_subquery_is_derived": true,
+      "subquery_is_outer": true
+    },
+    {
+      "correlated_is_cte": true,
+      "cte_is_outer": true,
+      "derived_is_cte": true,
+      "id": 3,
+      "statement_cte_is_outer": true,
+      "statement_subquery_is_derived": true,
+      "subquery_is_outer": true
+    }
+  ],
+  "rowCount": 3
+}

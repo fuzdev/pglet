@@ -1,0 +1,7 @@
+-- A derived table's integer column is an integer argument: `avg` is `numeric`, and `sum`
+-- over its `bigint` column is `numeric`.
+-- @setup
+CREATE TABLE t (i INT, b BIGINT);
+INSERT INTO t VALUES (3, 9223372036854775807), (4, 9223372036854775807), (6, 1);
+-- @test
+SELECT avg(x) AS a, sum(y) AS s, avg(y) AS ay FROM (SELECT i AS x, b AS y FROM t) s;

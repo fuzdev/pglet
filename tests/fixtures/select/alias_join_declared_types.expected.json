@@ -1,0 +1,10 @@
+{
+  "rows": [
+    {
+      "join_mixed": "5000030000",
+      "join_same_width": 120000,
+      "join_wide_left": "5000060000"
+    }
+  ],
+  "rowCount": 1
+}

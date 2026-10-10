@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "character_maximum_length": null,
+      "column_name": "a",
+      "data_type": "ARRAY",
+      "numeric_precision": null,
+      "numeric_scale": null,
+      "udt_name": "_varchar"
+    },
+    {
+      "character_maximum_length": null,
+      "column_name": "b",
+      "data_type": "ARRAY",
+      "numeric_precision": null,
+      "numeric_scale": null,
+      "udt_name": "_numeric"
+    }
+  ],
+  "rowCount": 2
+}

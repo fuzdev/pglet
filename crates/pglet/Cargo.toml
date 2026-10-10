@@ -1,0 +1,71 @@
+[package]
+name = "pglet"
+description = "In-process embed API for the pglet database engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+# One test binary per crate (`tests/integration.rs`): see its module doc.
+autotests = false
+
+[dependencies]
+pglet_core = { workspace = true }
+pglet_sql = { workspace = true }
+# `file_store` (this crate's default feature) forwards to `pglet_storage/file_store`,
+# enabling the native file-backed `Database::open`/`open_existing` constructors
+# (std::fs + `FileBlockIo`). The workspace table pins this crate
+# `default-features = false`, so no dependency edge in the repo starts with it — the wasm
+# bindings simply inherit that (their persistent store, behind their `opfs` feature, is
+# OPFS, not the filesystem) and the native
+# ones re-add `features = ["file_store"]` on their own dependency lines. See `[features]`
+# below for what a root-package selection does instead.
+pglet_storage = { workspace = true }
+
+[features]
+# The workspace table pins this crate `default-features = false`, so no dependency
+# **edge** in the repo carries this list; each consumer re-adds what it needs (or,
+# for `pglet_wasm`, nothing). That is a statement about edges, not about builds:
+# selecting the package as a **root** takes this default, so `cargo build/test -p pglet`
+# and `cargo test --workspace` — the `test:rust` gate — build with all three features on
+# (`cargo tree -p pglet -f "{p} [{f}]"` →
+# `pglet [default,file_store,index_acceleration,memory_storage]`).
+default = ["file_store", "index_acceleration", "memory_storage"]
+# Forwards the native std::fs `FileBlockIo` store; gated out of the wasm build.
+file_store = ["pglet_storage/file_store"]
+# The plain `MemoryStorage` backend (`StorageBackend::Memory`, `Database::in_memory`).
+# Native consumers re-add it on their dependency lines; the wasm bindings, which run the
+# B+tree only, do not, and dropping the variant drops every arm that dispatches to it.
+memory_storage = []
+# Forwards query-time index acceleration; dropped in the stripped "testing" profile.
+# The workspace pins `pglet_sql` `default-features = false`, so this (or a consumer's
+# own forward) is what turns it back on.
+index_acceleration = ["pglet_sql/index_acceleration"]
+
+[dev-dependencies]
+# Test-support doubles + engine assembly. `embed` implies `block-io`, so the
+# integration tests get both `MemBlockIo` and `open_database` from one dep.
+pglet_testing = { workspace = true, features = ["embed"] }
+# `time`'s `datetime!` builds the non-UTC `OffsetDateTime` a caller of `execute_bound`
+# can bind (`tests/temporal_domain.rs`); already a workspace dependency.
+time = { workspace = true }
+
+[lints]
+workspace = true
+
+[[test]]
+name = "integration"
+path = "tests/integration.rs"
+
+[[test]]
+name = "catalog_depth"
+path = "tests/catalog_depth.rs"
+
+[[test]]
+name = "crash"
+path = "tests/crash.rs"
+
+[[test]]
+name = "stack_depth"
+path = "tests/stack_depth.rs"

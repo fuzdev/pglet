@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "22P05",
+    "message": "unsupported Unicode escape sequence"
+  }
+}

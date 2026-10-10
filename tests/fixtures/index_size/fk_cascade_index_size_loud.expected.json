@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "54000",
+    "message": "index row size 2720 exceeds btree version 4 maximum 2704 for index \"c_i\""
+  }
+}

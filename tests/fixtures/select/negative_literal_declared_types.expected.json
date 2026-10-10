@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "below_int4_min": "-2147483649",
+      "coalesced": 1,
+      "double_negated": 1,
+      "int4_min": -2147483648,
+      "neg_decimal": "-1.5",
+      "neg_one": -1
+    }
+  ],
+  "rowCount": 1
+}

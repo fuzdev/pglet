@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "23505",
+    "message": "could not create unique index \"ckb_i_u\""
+  }
+}

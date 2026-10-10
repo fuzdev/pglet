@@ -1,0 +1,9 @@
+{
+  "rows": [
+    {
+      "current_catalog": "postgres",
+      "current_database": "postgres"
+    }
+  ],
+  "rowCount": 1
+}

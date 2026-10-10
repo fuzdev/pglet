@@ -1,0 +1,59 @@
+{
+  "rows": [
+    {
+      "a": false,
+      "l": false,
+      "o": false,
+      "r": false
+    },
+    {
+      "a": false,
+      "l": false,
+      "o": true,
+      "r": true
+    },
+    {
+      "a": false,
+      "l": false,
+      "o": null,
+      "r": null
+    },
+    {
+      "a": false,
+      "l": true,
+      "o": true,
+      "r": false
+    },
+    {
+      "a": true,
+      "l": true,
+      "o": true,
+      "r": true
+    },
+    {
+      "a": null,
+      "l": true,
+      "o": true,
+      "r": null
+    },
+    {
+      "a": false,
+      "l": null,
+      "o": null,
+      "r": false
+    },
+    {
+      "a": null,
+      "l": null,
+      "o": true,
+      "r": true
+    },
+    {
+      "a": null,
+      "l": null,
+      "o": null,
+      "r": null
+    }
+  ],
+  "rowCount": 9
+}

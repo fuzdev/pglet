@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "constraint_name": "afvd_b_fkey",
+      "constraint_type": "FOREIGN KEY"
+    },
+    {
+      "constraint_name": "afvd_b_fkey1",
+      "constraint_type": "FOREIGN KEY"
+    }
+  ],
+  "rowCount": 2
+}

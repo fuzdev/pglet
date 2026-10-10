@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "25001",
+    "message": "DISCARD ALL cannot run inside a transaction block"
+  }
+}

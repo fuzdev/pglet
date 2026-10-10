@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "column_name": "bar",
+      "table_name": "catfold"
+    },
+    {
+      "column_name": "Baz",
+      "table_name": "catfold"
+    }
+  ],
+  "rowCount": 2
+}

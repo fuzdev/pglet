@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "constraint_name": "cac9_ttttttttttttttttttttttt_cooooooooooooooooooooooooooo_check",
+      "constraint_type": "CHECK"
+    },
+    {
+      "constraint_name": "cac9_tttttttttttttttttttttttt_cooooooooooooooooooooooooooo_fkey",
+      "constraint_type": "FOREIGN KEY"
+    },
+    {
+      "constraint_name": "cac9_ttttttttttttttttttttttttttttttttttttttttttttttttttttt_pkey",
+      "constraint_type": "PRIMARY KEY"
+    },
+    {
+      "constraint_name": "cac9_tttttttttttttttttttttttt_coooooooooooooooooooooooooooo_key",
+      "constraint_type": "UNIQUE"
+    }
+  ],
+  "rowCount": 4
+}

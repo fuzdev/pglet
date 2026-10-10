@@ -1,0 +1,27 @@
+-- An output-column name **nested** inside an `ORDER BY` expression, over a FROM-clause
+-- `unnest(…)`. 18.6 is `42703`; pglet answered the rows, sorted.
+--
+-- `findTargetlistEntrySQL92` takes its target-list branch for a **bare single-field** key
+-- and nothing else, so `q+0` is not an output-alias reference at all — the leaf `q` is an
+-- ordinary column reference judged against the FROM namespace, where no relation carries
+-- it. The bare-key spelling of this shape —
+-- `select/unnest_output_alias_sort_key_answers.sql`, an output alias named directly —
+-- answers on both engines, which is what puts this divergence on the nesting rather than
+-- on the name.
+--
+-- This is the one member of the class recorded in `docs/compatibility.md` that
+-- filling the unnest's *column map* did **not** move — measured then and re-measured
+-- since — because the map is not what `check_binding` reads for a name no relation
+-- carries. `level_columns_uncertain` reads the exhaustive bit, and flipping that bit is
+-- what closes it. The class was already closed for `Plan::Project`, `Plan::Aggregate` and
+-- `Plan::Window`; this shape reached none of them, since a non-exhaustive relation left
+-- the scope declining rather than judging.
+--
+-- The array carries elements deliberately, against the rest of this family: the divergence
+-- here is a *silent* one — rows against a refusal — so it needs rows to be visible at all,
+-- and an empty array would answer `(0 rows)` on both engines with the defect in place.
+--
+-- No `@setup` at all, so nothing but the `@test` can raise the asserted code.
+-- @test
+-- @expect-error: `q` is an output name and a nested key may not name one (42703)
+SELECT lbl AS q FROM unnest(ARRAY[3, 1, 2]) AS u(lbl) ORDER BY q + 0;

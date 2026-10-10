@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "indexdef": "CREATE INDEX ciu12_a_idx ON public.ciu12 USING btree (a)",
+      "indexname": "ciu12_a_idx"
+    },
+    {
+      "indexdef": "CREATE INDEX ciu12_a_idx1 ON public.ciu12 USING btree (b)",
+      "indexname": "ciu12_a_idx1"
+    },
+    {
+      "indexdef": "CREATE INDEX ciu12_a_idx2 ON public.ciu12 USING btree (a)",
+      "indexname": "ciu12_a_idx2"
+    },
+    {
+      "indexdef": "CREATE INDEX ciu12_a_idx3 ON public.ciu12 USING btree (a)",
+      "indexname": "ciu12_a_idx3"
+    }
+  ],
+  "rowCount": 4
+}

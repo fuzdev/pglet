@@ -1,0 +1,17 @@
+-- A `DISTINCT ON` key over a **bare `*`** projection is judged against the columns the
+-- level's scope enumerates, so a FROM-clause `unnest(…)` registered under its alias with
+-- an *empty* column map made the qualified spelling `0A000 … must be an output column of
+-- the select list` where 18.6 answers rows. `build_column_scope` registers the unnest's
+-- own columns now — the same widening that lets `COALESCE` unify a branch against one
+-- (`select/unnest_coalesce_declared_type.sql`) — and both spellings answer here.
+--
+-- This closes one of the three members of that recorded rule, not the rule. A catalog
+-- view (whose columns pglet models a strict subset of) and a relation the catalog lacks
+-- are still registered non-exhaustively and still reach the `0A000`; see
+-- `EDGES.md`. Every member is loud, so none was ever a wrong answer.
+--
+-- The bare `DISTINCT ON (u)` and the non-star `DISTINCT ON (u.u) u.u` are the controls:
+-- both answered on both engines before and after, which is what identifies the star +
+-- qualified-key pair as the shape that moved.
+-- @test
+SELECT DISTINCT ON (u.u) * FROM unnest(ARRAY[1, 2, 2]) AS u ORDER BY u.u;

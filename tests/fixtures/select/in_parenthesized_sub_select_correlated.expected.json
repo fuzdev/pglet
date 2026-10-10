@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "k": 1,
+      "nin": true
+    },
+    {
+      "k": 2,
+      "nin": true
+    },
+    {
+      "k": 3,
+      "nin": false
+    }
+  ],
+  "rowCount": 3
+}

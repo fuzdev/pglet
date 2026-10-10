@@ -1,0 +1,8 @@
+{
+  "rows": [
+    {
+      "pg_get_serial_sequence": "public.t2_d_seq"
+    }
+  ],
+  "rowCount": 1
+}

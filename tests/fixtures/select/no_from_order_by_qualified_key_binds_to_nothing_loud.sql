@@ -1,0 +1,11 @@
+-- The **qualified** spelling of the no-FROM sort-key hole, refused by a different arm of
+-- the same gate: a qualifier never reaches `findTargetlistEntrySQL92`, so it is judged
+-- against the FROM relations, of which a no-FROM select has none. `42P01` on both engines
+-- — where the bare spelling
+-- (`select/no_from_order_by_key_binds_to_nothing_loud.sql`) is `42703`.
+--
+-- Before the routing this answered a row at **either** array length, unlike the bare
+-- spelling, because no eval-time resolver reports a relation error for it.
+-- @expect-error: missing FROM-clause entry for table "bogusrel" (42P01)
+-- @test
+SELECT unnest(ARRAY[]::int[]) AS q ORDER BY bogusrel.a;

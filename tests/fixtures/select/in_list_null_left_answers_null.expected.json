@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "i": null,
+      "k": 1,
+      "match_first": null,
+      "ni": null
+    },
+    {
+      "i": true,
+      "k": 2,
+      "match_first": true,
+      "ni": false
+    }
+  ],
+  "rowCount": 2
+}

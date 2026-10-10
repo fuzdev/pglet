@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42809",
+    "message": "sequence cannot be owned by relation \"aobwk_idx\""
+  }
+}

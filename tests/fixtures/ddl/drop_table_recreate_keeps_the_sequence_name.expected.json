@@ -1,0 +1,8 @@
+{
+  "rows": [
+    {
+      "column_default": "nextval('dtr_t_a_seq'::regclass)"
+    }
+  ],
+  "rowCount": 1
+}

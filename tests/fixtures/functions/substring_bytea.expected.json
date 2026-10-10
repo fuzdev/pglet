@@ -1,0 +1,105 @@
+{
+  "rows": [
+    {
+      "c1": {
+        "data": [
+          98,
+          99
+        ],
+        "type": "Buffer"
+      },
+      "clip": {
+        "data": [
+          97
+        ],
+        "type": "Buffer"
+      },
+      "f1": {
+        "data": [
+          98
+        ],
+        "type": "Buffer"
+      },
+      "f2": {
+        "data": [
+          98,
+          99
+        ],
+        "type": "Buffer"
+      },
+      "f3": {
+        "data": [
+          97,
+          98
+        ],
+        "type": "Buffer"
+      },
+      "id": 1,
+      "lit": {
+        "data": [
+          99
+        ],
+        "type": "Buffer"
+      }
+    },
+    {
+      "c1": {
+        "data": [
+          1,
+          2
+        ],
+        "type": "Buffer"
+      },
+      "clip": {
+        "data": [
+          0
+        ],
+        "type": "Buffer"
+      },
+      "f1": {
+        "data": [
+          1
+        ],
+        "type": "Buffer"
+      },
+      "f2": {
+        "data": [
+          1,
+          2,
+          3,
+          255
+        ],
+        "type": "Buffer"
+      },
+      "f3": {
+        "data": [
+          0,
+          1
+        ],
+        "type": "Buffer"
+      },
+      "id": 2,
+      "lit": {
+        "data": [
+          99
+        ],
+        "type": "Buffer"
+      }
+    },
+    {
+      "c1": null,
+      "clip": null,
+      "f1": null,
+      "f2": null,
+      "f3": null,
+      "id": 3,
+      "lit": {
+        "data": [
+          99
+        ],
+        "type": "Buffer"
+      }
+    }
+  ],
+  "rowCount": 3
+}

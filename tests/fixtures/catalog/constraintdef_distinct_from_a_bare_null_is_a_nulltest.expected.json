@@ -1,0 +1,69 @@
+{
+  "rows": [
+    {
+      "conname": "d01",
+      "definition": "CHECK ((a IS NULL))"
+    },
+    {
+      "conname": "d02",
+      "definition": "CHECK ((a IS NOT NULL))"
+    },
+    {
+      "conname": "d03",
+      "definition": "CHECK ((NOT (a IS DISTINCT FROM NULL::integer)))"
+    },
+    {
+      "conname": "d04",
+      "definition": "CHECK ((a IS DISTINCT FROM NULL::integer))"
+    },
+    {
+      "conname": "d05",
+      "definition": "CHECK ((a IS NULL))"
+    },
+    {
+      "conname": "d06",
+      "definition": "CHECK ((a IS NOT NULL))"
+    },
+    {
+      "conname": "d07",
+      "definition": "CHECK (('x' IS NULL))"
+    },
+    {
+      "conname": "d08",
+      "definition": "CHECK (('x' IS NULL))"
+    },
+    {
+      "conname": "d09",
+      "definition": "CHECK ((NOT (a IS DISTINCT FROM 1)))"
+    },
+    {
+      "conname": "d10",
+      "definition": "CHECK ((s IS NULL))"
+    },
+    {
+      "conname": "d11",
+      "definition": "CHECK ((v IS NULL))"
+    },
+    {
+      "conname": "d12",
+      "definition": "CHECK (((a + 1) IS NULL))"
+    },
+    {
+      "conname": "d13",
+      "definition": "CHECK ((lower(s) IS NOT NULL))"
+    },
+    {
+      "conname": "d14",
+      "definition": "CHECK ((a IS NULL))"
+    },
+    {
+      "conname": "d15",
+      "definition": "CHECK ((5 IS NULL))"
+    },
+    {
+      "conname": "d16",
+      "definition": "CHECK ((NULL::text IS NULL))"
+    }
+  ],
+  "rowCount": 16
+}

@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "indexname": "ctru1_a_key",
+      "tablename": "ctru1"
+    },
+    {
+      "indexname": "ctru2_a_key",
+      "tablename": "ctru2"
+    },
+    {
+      "indexname": "ctru3_pkey",
+      "tablename": "ctru3"
+    }
+  ],
+  "rowCount": 3
+}

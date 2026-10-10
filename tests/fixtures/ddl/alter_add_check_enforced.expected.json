@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "23514",
+    "message": "new row for relation \"isc_enf\" violates check constraint \"isc_enf_ck\""
+  }
+}

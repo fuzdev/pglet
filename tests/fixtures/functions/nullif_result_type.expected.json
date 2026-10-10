@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "greatest_i4_i8": "20",
+      "i2_i8": 1,
+      "i4_i8": 10,
+      "i8_i4": "20",
+      "id": 1,
+      "int_numeric": "10",
+      "int_real": 10.0,
+      "interval_time": "1 day",
+      "numeric_int": "2.5",
+      "real_int": 1.5,
+      "text_varchar": "c",
+      "time_interval": "10:00:00",
+      "varchar_text": "a",
+      "varchar_varchar": "a"
+    }
+  ],
+  "rowCount": 1
+}

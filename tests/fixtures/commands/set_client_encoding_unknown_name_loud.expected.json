@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "22023",
+    "message": "invalid value for parameter \"client_encoding\": \"NOSUCH\""
+  }
+}

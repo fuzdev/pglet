@@ -1,0 +1,8 @@
+{
+  "rows": [
+    {
+      "indexdef": "CREATE INDEX cikr_ix ON public.cikr USING btree (a, a)"
+    }
+  ],
+  "rowCount": 1
+}

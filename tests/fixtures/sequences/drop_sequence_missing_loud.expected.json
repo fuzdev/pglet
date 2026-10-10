@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P01",
+    "message": "sequence \"dsm_nope\" does not exist"
+  }
+}

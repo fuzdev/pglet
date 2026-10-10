@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "54000",
+    "message": "index row requires 8192 bytes, maximum size is 8191"
+  }
+}

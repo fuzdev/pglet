@@ -1,0 +1,12 @@
+{
+  "rows": [
+    {
+      "absolute": "5",
+      "bare": "-5",
+      "negated": "5",
+      "plus": "-5",
+      "plus_one": "-4"
+    }
+  ],
+  "rowCount": 1
+}

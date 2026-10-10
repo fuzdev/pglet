@@ -1,0 +1,19 @@
+{
+  "rows": [
+    {
+      "constraint_name": "rc_child_a_fkey",
+      "delete_rule": "CASCADE",
+      "match_option": "NONE",
+      "unique_constraint_name": "rc_parent_pkey",
+      "update_rule": "NO ACTION"
+    },
+    {
+      "constraint_name": "rc_child_b_fkey",
+      "delete_rule": "SET NULL",
+      "match_option": "NONE",
+      "unique_constraint_name": "rc_parent_pkey",
+      "update_rule": "NO ACTION"
+    }
+  ],
+  "rowCount": 2
+}

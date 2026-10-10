@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42601",
+    "message": "column \"id\" of relation \"sdikg_t\" is an identity column"
+  }
+}

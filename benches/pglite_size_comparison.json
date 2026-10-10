@@ -1,0 +1,28 @@
+{
+	"schema": "pglite_size_comparison",
+	"note": "Hand-recorded; no bench script produces this file. pglet's half is copied from benches/size_baseline.json (its wasm artifact's raw and gzip bytes, the `size:check` build, wasm-opt -Oz; git_commit and timestamp are that baseline's) — re-copy it, and the ratios, whenever that baseline moves. pglite's half is hand-measured (stat + `gzip -c | wc -c`) over pglite.wasm + pglite.data + initdb.wasm from benches/node_modules/@electric-sql/pglite/dist (the version the wasm-compare bench runs) — re-measure it when pglite is upgraded. Compares the runtime payload a browser/Node consumer downloads; JS glue chunks (~100 KB) are excluded from both sides.",
+	"timestamp": "2026-10-10",
+	"git_commit": "2c92931b",
+	"pglet": {
+		"version": "0.1.0",
+		"wasm_raw_bytes": 1652191,
+		"wasm_gzip_bytes": 662048
+	},
+	"pglite": {
+		"version": "0.5.4",
+		"main_wasm_raw_bytes": 10087563,
+		"main_wasm_gzip_bytes": 3403103,
+		"data_raw_bytes": 6293225,
+		"data_gzip_bytes": 1861046,
+		"initdb_wasm_raw_bytes": 395059,
+		"initdb_wasm_gzip_bytes": 145710,
+		"total_raw_bytes": 16775847,
+		"total_gzip_bytes": 5409859
+	},
+	"ratios_pglite_over_pglet": {
+		"raw_total": 10.2,
+		"gzip_total": 8.2,
+		"raw_main_wasm_only": 6.1,
+		"gzip_main_wasm_only": 5.1
+	}
+}

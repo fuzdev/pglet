@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "23001",
+    "message": "update or delete on table \"p_r\" violates RESTRICT setting of foreign key constraint \"c_r_a_fkey\" on table \"c_r\""
+  }
+}

@@ -1,0 +1,16 @@
+-- The **read** polarity of the no-FROM `DISTINCT ON` binding hole. A no-FROM select's ON
+-- keys were resolved against a fresh, empty *and open* scope, so nothing judged them at
+-- plan time; the key was judged only where a row reached the dedup, and a projection
+-- `unnest` over an **empty** array produces none. So this answered `(0 rows)` where 18.6
+-- refuses in parse analysis.
+--
+-- Emptiness is what identifies the site rather than the rule:
+-- `select/distinct_on_no_from_key_binds_to_nothing_over_a_nonempty_unnest_loud.sql` is the
+-- same statement over `unnest(ARRAY[1,2])` and was already `42703` here, from the
+-- eval-time resolver — a statement about *this* spelling only. The write polarities
+-- (`select/distinct_on_no_from_bogus_key_in_a_cte_delete_loud.sql` and its `UPDATE` twin),
+-- which are what made this a data-loss class rather than a wrong answer, are row-count
+-- **independent**: an unreferenced CTE's body never executes, so no row count saves them.
+-- @expect-error: column "bogusdon" does not exist (42703)
+-- @test
+SELECT DISTINCT ON (bogusdon) unnest(ARRAY[]::int[]) AS q;

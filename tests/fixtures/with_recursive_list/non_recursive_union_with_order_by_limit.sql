@@ -1,0 +1,4 @@
+-- An ordinary `UNION` CTE under `RECURSIVE` may carry `ORDER BY` / `LIMIT`.
+-- @test
+WITH RECURSIVE q AS (SELECT 2 AS z UNION SELECT 1 ORDER BY 1 LIMIT 1)
+SELECT z FROM q;

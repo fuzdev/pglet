@@ -1,0 +1,11 @@
+-- 18.6 answers a backend pid; pglet does not model `pg_backend_pid()`. A pid is a
+-- native-process fact the embed and wasm hosts have none of, and no differential
+-- fixture could compare one anyway, so it stays a loud refusal rather than a
+-- fabricated number.
+--
+-- The `> 0` is not decoration: **the pid itself is what this fixture never looks
+-- at**, and a bare `pg_backend_pid()` records a different number on every 18.6
+-- connection, so the recorded expectation would be stale the moment it is written.
+-- @expect-error: pglet-stricter — pg_backend_pid() is unmodelled and fails loud
+-- @test
+SELECT pg_backend_pid() > 0 AS has_a_pid;

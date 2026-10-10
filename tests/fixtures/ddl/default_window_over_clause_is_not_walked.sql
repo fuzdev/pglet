@@ -1,0 +1,14 @@
+-- A window function's `OVER` clause is **not** walked. `transformWindowFuncCall`
+-- raises before the `WindowDef` is resolved, so `PARTITION BY a` — a column
+-- reference, which anywhere else in a DEFAULT is `0A000` — never gets a verdict and
+-- 18.6 answers `42P20`.
+--
+-- This is the discriminating fixture for that rule: pglet's shared child visitor
+-- `Expr::for_each_child` *does* descend into a window's `partition_by`/`order_by`,
+-- so a walk that delegates to it here answers `0A000` and this fixture reddens.
+-- (Postgres does walk a window function's **arguments** — `sum(a) OVER ()` is
+-- `0A000` there — but pglet's `Expr::Window` carries no argument expression, so
+-- that half of the rule has no reproduction and no fixture can pin it.)
+-- @expect-error: the OVER clause is not walked, so the window verdict stands (42P20)
+-- @test
+CREATE TABLE dfi (a INT, b INT DEFAULT (row_number() OVER (PARTITION BY a)));

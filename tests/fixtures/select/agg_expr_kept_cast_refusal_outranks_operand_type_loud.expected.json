@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42846",
+    "message": "cannot cast type integer to jsonb"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42601",
+    "message": "multiple LIMIT clauses not allowed"
+  }
+}

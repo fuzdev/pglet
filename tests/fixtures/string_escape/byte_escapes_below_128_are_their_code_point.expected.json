@@ -1,0 +1,15 @@
+{
+  "rows": [
+    {
+      "hex_a": true,
+      "hex_del": true,
+      "octal_a": true,
+      "octal_del": true,
+      "one_hex_digit": true,
+      "one_octal_digit": true,
+      "two_hex_escapes": true,
+      "two_octal_digits": true
+    }
+  ],
+  "rowCount": 1
+}

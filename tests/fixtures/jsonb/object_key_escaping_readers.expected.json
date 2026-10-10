@@ -1,0 +1,15 @@
+{
+  "rows": [
+    {
+      "arrow2_container": "{\"a\\tb\": 1}",
+      "arrow2_scalar": "a\tb",
+      "at_the_wire": {
+        "a\tb": 1
+      },
+      "cast_text": "{\"a\\tb\": 1}",
+      "cast_varchar": "{\"a\\tb\": 1}",
+      "hash_container": "{\"a\\tb\": 1}"
+    }
+  ],
+  "rowCount": 1
+}

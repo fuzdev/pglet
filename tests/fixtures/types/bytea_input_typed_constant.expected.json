@@ -1,0 +1,47 @@
+{
+  "rows": [
+    {
+      "escapes": {
+        "data": [
+          97,
+          92
+        ],
+        "type": "Buffer"
+      },
+      "even_hex_digits": {
+        "data": [
+          97,
+          98,
+          99,
+          100
+        ],
+        "type": "Buffer"
+      },
+      "hex": {
+        "data": [
+          97,
+          98,
+          99
+        ],
+        "type": "Buffer"
+      },
+      "one_space": {
+        "data": [
+          32
+        ],
+        "type": "Buffer"
+      },
+      "plain": {
+        "data": [
+          104,
+          101,
+          108,
+          108,
+          111
+        ],
+        "type": "Buffer"
+      }
+    }
+  ],
+  "rowCount": 1
+}

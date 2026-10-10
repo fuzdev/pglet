@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "id": 1,
+      "visibility": "private"
+    },
+    {
+      "id": 2,
+      "visibility": "public"
+    }
+  ],
+  "rowCount": 2
+}

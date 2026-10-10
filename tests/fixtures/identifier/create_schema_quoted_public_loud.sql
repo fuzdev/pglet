@@ -1,0 +1,12 @@
+-- `CREATE SCHEMA "PUBLIC"` used to be a silent no-op reporting success: the name test
+-- was case-insensitive, so the quoted spelling matched the implicit schema and the
+-- statement "succeeded" without creating anything. 18.6 creates a real second schema
+-- (a repeat is `42P06`).
+-- pglet models one implicit namespace, so it now answers the same loud `0A000` it
+-- gives any other non-`public` schema name — a **divergence**, and the documented one,
+-- but the difference between a refusal and a lie. Postgres accepts this statement, so
+-- the harness accepts any pglet error here; what the fixture pins is that pglet does
+-- not silently succeed.
+-- @test
+CREATE SCHEMA "PUBLIC";
+-- @expect-error: pglet models only the implicit `public` schema (0A000; 18.6 creates a second schema)

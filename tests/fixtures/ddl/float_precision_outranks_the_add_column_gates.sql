@@ -1,0 +1,21 @@
+-- **The refusal is the grammar's, so it outranks a gate that decides a Postgres
+-- *success*.** `ADD COLUMN IF NOT EXISTS b` over an existing `b` is a skip on both
+-- engines — and with a `float(0)` type it is this `22023` on both instead, because
+-- 18.6 reduces `opt_float` before parse analysis reaches either the column-existence
+-- check or the skip.
+--
+-- The contrast that makes it the *placement*'s doing and not the type's: at the same
+-- position, `ALTER TABLE … ADD COLUMN b int4(3)` over an existing `b` is
+-- `42701 column "b" of relation "zex" already exists` on both engines — a modifier
+-- refusal 18.6 raises in `typenameTypeMod`, after the column check; spelled with
+-- `IF NOT EXISTS`, that same `int4(3)` **succeeds** on both — the skip this `float(0)`
+-- outranks. Same shape, opposite winner at each spelling, because the two refusals live
+-- in different phases.
+-- `CREATE TABLE IF NOT EXISTS zex (a float(0))` over an existing `zex` reads the same
+-- way, measured.
+-- @setup
+CREATE TABLE zex (b int);
+-- @expect-error: a float precision below 1 bit, ahead of the ADD COLUMN gates
+-- @expect-message
+-- @test
+ALTER TABLE zex ADD COLUMN IF NOT EXISTS b float(0);

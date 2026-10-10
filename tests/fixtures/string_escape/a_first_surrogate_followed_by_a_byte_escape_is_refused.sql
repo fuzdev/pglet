@@ -1,0 +1,11 @@
+-- In the `xeu` state the only token that completes a pair is another Unicode escape, so
+-- a byte escape after a pending first half is the pairing error and not a byte. The
+-- completing `\uDCA9` is what makes this discriminating: without it the literal errors
+-- at its own end whatever the guard does, and a guard that defers the refusal decodes
+-- this one to the two-character `A💩` -- a value 18.6 refuses.
+-- @test
+-- @expect-error: a byte escape cannot complete a pair
+-- @no-error-fields: pglet's `P` is the string literal's own start where 18.6's is the
+-- offending escape inside it (and, for an unpaired first half, the token the `xeu`
+-- state fails at). That granularity is the lexer's everywhere, not this rule's.
+SELECT E'\uD83D\x41\uDCA9';

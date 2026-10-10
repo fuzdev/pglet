@@ -1,0 +1,14 @@
+{
+  "rows": [
+    {
+      "col_named_like_hex": 7,
+      "exp": "10000000000",
+      "grouped": 1000,
+      "leading_dot": "0.5",
+      "sci": "0.0015",
+      "signed_exp": "900",
+      "trailing_dot": "5"
+    }
+  ],
+  "rowCount": 1
+}

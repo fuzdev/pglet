@@ -1,0 +1,16 @@
+-- A **stored** expression is type-checked as parsed, without the planner's
+-- literal-coercion pass, so a bare containment literal inside a CHECK stays `text`
+-- and the operand gate rejects it. Postgres resolves the same literal from the
+-- operator signature and accepts the constraint.
+--
+-- A deliberate pglet-stricter case (the harness accepts any pglet error when
+-- Postgres succeeds), locked so the strictness is a recorded decision rather than a
+-- surprise. It is shared with every other gated family — `CHECK (n = '5')` is
+-- rejected here for the same reason — and the workaround is the explicit cast, which
+-- `check_containment_cast_literal_ok.sql` covers. Loosening the rule to treat a
+-- literal as `unknown` would also stop rejecting `CHECK (data->'k' LIKE 'x%')`, the
+-- NULL-intermediate shape the representative-row probe cannot see, so the real fix
+-- is to resolve a stored expression against its table's scope before recording it.
+-- @test
+-- @expect-error: uncast containment literal in a stored CHECK
+CREATE TABLE ck_uncast (d JSONB, CHECK (d @> '{"ok":true}'));

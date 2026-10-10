@@ -1,0 +1,13 @@
+-- The **error order** of the no-FROM `DISTINCT ON` binding gate, first half.
+-- `transformDistinctOnClause` resolves the ON keys one at a time, so the positionally
+-- first wrong one is reported: with a bogus name at key 1 and an out-of-range ordinal at
+-- key 2, 18.6 answers `42703` and not `42P10`. pglet answered `42P10`, because the
+-- positional range check ran over the whole list before anything judged a binding.
+--
+-- This fixture is only half a guard on its own — a binding pass placed *before* the whole
+-- positional pass answers `42703` here too. Its twin
+-- (`select/distinct_on_no_from_bad_position_before_a_bogus_key_loud.sql`) is what rules
+-- that out, and no arrangement of two whole-list passes satisfies both.
+-- @expect-error: column "bogusdon" does not exist (42703)
+-- @test
+SELECT DISTINCT ON (bogusdon, 5) 1 AS q;

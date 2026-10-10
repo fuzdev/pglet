@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "arrow_left": true,
+      "build_object_left": true,
+      "cast_left": true,
+      "cast_right": true,
+      "column_left": true,
+      "path_left": true
+    }
+  ],
+  "rowCount": 1
+}

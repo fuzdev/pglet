@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "indexname": "idx_pgi_name",
+      "schemaname": "public",
+      "tablename": "pgi_t"
+    },
+    {
+      "indexname": "pgi_t_email_key",
+      "schemaname": "public",
+      "tablename": "pgi_t"
+    },
+    {
+      "indexname": "pgi_t_pkey",
+      "schemaname": "public",
+      "tablename": "pgi_t"
+    }
+  ],
+  "rowCount": 3
+}

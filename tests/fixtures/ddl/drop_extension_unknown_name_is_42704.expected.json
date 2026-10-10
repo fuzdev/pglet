@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42704",
+    "message": "extension \"nosuch\" does not exist"
+  }
+}

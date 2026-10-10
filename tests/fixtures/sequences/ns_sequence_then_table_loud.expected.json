@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P07",
+    "message": "relation \"ns_seq_first\" already exists"
+  }
+}

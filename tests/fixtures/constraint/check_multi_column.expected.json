@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "23514",
+    "message": "new row for relation \"factlike\" violates check constraint \"factlike_check\""
+  }
+}

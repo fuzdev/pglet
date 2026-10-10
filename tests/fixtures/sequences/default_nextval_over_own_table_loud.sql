@@ -1,0 +1,13 @@
+-- The user-default twin of the declared-name shape, through the gate that reads the
+-- catalog: `nextval('dnown')` inside `CREATE TABLE dnown` names the table this very
+-- statement is creating, which is not in the catalog yet. Accepting it put one name in
+-- `tables` and `sequences` at once — `nextval` then answered 42809 while an
+-- `INSERT … VALUES (DEFAULT)` resolved the sequence and returned 1 — and the dump lost
+-- the table and all its rows in both engines.
+--
+-- pglet is deliberately stricter here, exactly as it is for a `DEFAULT nextval('<an
+-- existing table>')`: Postgres cooks the default once the heap exists, so `'dnown'`
+-- binds the *table*, the statement is accepted, and every write is 42809.
+-- @test
+CREATE TABLE dnown (b INT DEFAULT nextval('dnown'), c INT);
+-- @expect-error: pglet-stricter; PG defers this to the first INSERT (42809)

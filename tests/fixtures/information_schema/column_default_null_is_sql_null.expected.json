@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "column_default": null,
+      "column_name": "id",
+      "default_is_sql_null": true
+    },
+    {
+      "column_default": null,
+      "column_name": "c",
+      "default_is_sql_null": true
+    },
+    {
+      "column_default": "1",
+      "column_name": "n",
+      "default_is_sql_null": false
+    }
+  ],
+  "rowCount": 3
+}

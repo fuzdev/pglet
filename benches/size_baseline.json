@@ -1,0 +1,20 @@
+{
+	"timestamp": "2026-10-10T18:55:18.213Z",
+	"git_commit": "2c92931b",
+	"hard_cap_bytes": 1689600,
+	"tolerance_pct": 2,
+	"artifacts": [
+		{
+			"label": "pglet_wasm_bg.wasm",
+			"kind": "wasm",
+			"bytes": 1652191,
+			"gzip_bytes": 662048
+		},
+		{
+			"label": "pglet_server",
+			"kind": "native",
+			"bytes": 2770160,
+			"gzip_bytes": 1319928
+		}
+	]
+}

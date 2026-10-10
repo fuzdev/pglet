@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "constraint_name": "aacan_a_check",
+      "constraint_type": "CHECK"
+    },
+    {
+      "constraint_name": "aacan_a_check1",
+      "constraint_type": "CHECK"
+    }
+  ],
+  "rowCount": 2
+}

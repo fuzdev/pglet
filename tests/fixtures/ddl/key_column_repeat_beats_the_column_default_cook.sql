@@ -1,0 +1,11 @@
+-- The key-list pass runs in parse analysis, above the cook at
+-- `AddRelationNewConstraints`, so a repeated key column outranks a bad `DEFAULT` on the
+-- same statement — cross-code, `42701` against the `22P02` that default answers alone
+-- (`default_unknown_literal_runs_its_input_function_at_ddl.sql`). The pair is what says
+-- the block the cook beats is the constraint *naming* block and not every constraint
+-- gate: this gate is a constraint's own and sits above the cook.
+-- @expect-error: the repeated key column outranks the column default cook
+-- @expect-message
+-- @no-profile-lock: the @test is DDL and its setup builds nothing — the refusal lands before any plan, so index acceleration cannot reach it
+-- @test
+CREATE TABLE kcrdc (a INT DEFAULT 'zz', PRIMARY KEY (a, a));

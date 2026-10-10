@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42601",
+    "message": "each UNION query must have the same number of columns"
+  }
+}

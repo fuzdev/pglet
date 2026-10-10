@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P10",
+    "message": "for SELECT DISTINCT, ORDER BY expressions must appear in select list"
+  }
+}

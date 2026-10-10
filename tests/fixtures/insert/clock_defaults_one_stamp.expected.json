@@ -1,0 +1,19 @@
+{
+  "rows": [
+    {
+      "casts_differing": "0",
+      "columns_differing": "0",
+      "created_values": "1",
+      "day_values": "1",
+      "local_values": "1",
+      "not_this_transaction": "0",
+      "out_of_order": "0",
+      "statement_values": "3",
+      "transaction_values": "1",
+      "updated_values": "1",
+      "written_rows": "516",
+      "written_values": "1"
+    }
+  ],
+  "rowCount": 1
+}

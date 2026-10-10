@@ -1,0 +1,14 @@
+{
+  "rows": [
+    {
+      "built": "public.ss_id_seq",
+      "folded": "public.ss_id_seq",
+      "keyword_unquoted": "public.select_id_seq",
+      "qualified": "public.ss_id_seq",
+      "quoted": "public.ss_id_seq",
+      "spaced": "public.ss_id_seq",
+      "three_part": "public.ss_id_seq"
+    }
+  ],
+  "rowCount": 1
+}

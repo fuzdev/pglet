@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P01",
+    "message": "relation \"PG_CLASS\" does not exist"
+  }
+}

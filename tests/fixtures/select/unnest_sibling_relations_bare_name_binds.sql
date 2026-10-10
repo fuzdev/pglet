@@ -1,0 +1,17 @@
+-- Two FROM-clause `unnest(…)` items at one level, both columns-exhaustive, and a bare
+-- name exactly **one** of them carries.
+--
+-- `binding_bare` counts exact claimants at a level and tests `claimants >= 2` before it
+-- consults `level_columns_uncertain`, so the count arm was already live while the unnest
+-- registered non-exhaustively (`select/unnest_ambiguous_bare_name.sql` pins its `42702`
+-- half). What the exhaustive flip changes is the *zero*-claimant arm — and a mis-flip
+-- that made a level with an unnest on it refuse, or that counted one relation's column
+-- twice, lands here as a `42703` or a `42702` on a statement both engines answer.
+--
+-- The arrays are **empty**, which is the point rather than an accident: 18.6 raises a
+-- binding error in parse analysis whatever the row count, while every judgement pglet
+-- makes below the plan-time gate needs a row to reach it. So a refusal here could only
+-- be the gate's, which is the code under test. Both qualified spellings and the bare one
+-- share the projection because they take different arms of the same walk.
+-- @test
+SELECT a.x AS ax, b.y AS qy, y AS bare_y FROM unnest(ARRAY[]::int[]) a(x), unnest(ARRAY[]::int[]) b(y);

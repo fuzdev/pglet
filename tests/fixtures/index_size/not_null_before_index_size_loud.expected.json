@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "23502",
+    "message": "null value in column \"b\" of relation \"t\" violates not-null constraint"
+  }
+}

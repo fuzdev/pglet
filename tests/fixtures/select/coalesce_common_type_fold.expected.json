@@ -1,0 +1,29 @@
+{
+  "rows": [
+    {
+      "a_then_b": "7",
+      "b_then_a": "7",
+      "id": 1,
+      "int_then_numeric": "7",
+      "int_then_numeric_literal": "7",
+      "int_then_real": 7.0
+    },
+    {
+      "a_then_b": "9",
+      "b_then_a": "9",
+      "id": 2,
+      "int_then_numeric": "3.5",
+      "int_then_numeric_literal": "1.5",
+      "int_then_real": 2.5
+    },
+    {
+      "a_then_b": "4",
+      "b_then_a": "5",
+      "id": 3,
+      "int_then_numeric": "4",
+      "int_then_numeric_literal": "4",
+      "int_then_real": 4.0
+    }
+  ],
+  "rowCount": 3
+}

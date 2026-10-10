@@ -1,0 +1,24 @@
+-- The accept polarity of the columns-**exhaustive** registration a FROM-clause
+-- `unnest(…)` now gets in `build_column_scope`: a column the relation really carries
+-- must still bind, in both spellings, at the statement's **own** level.
+--
+-- This is the control the flip needs and the reject fixtures beside it cannot supply.
+-- Making the arm exhaustive turns `check_binding`'s answer for a name the relation lacks
+-- from `Uncertain` into `42703` — `binding_qualified` reads `ScopeRelation::exhaustive`
+-- directly, `binding_bare` reads it through `level_columns_uncertain` — and the same two
+-- arms decide a name the relation *has*. A flip that got the polarity backwards (or a
+-- column map that went empty again) refuses this ordinary query.
+--
+-- The **empty** array is load-bearing, and it is what separates this from
+-- `select/unnest_column_compared_with_literal.sql` and the rest of the accept family,
+-- which all carry elements. Every judgement below the plan-time gate is eval-time and
+-- needs a row: with no row, a false `42703` here can only have come from the gate, which
+-- is the code the flip changes. With elements, the eval-time resolver would answer for
+-- the gate and the fixture would pin the wrong layer.
+--
+-- Both spellings are in the one projection on purpose — bare and qualified reach the
+-- scope through different arms (`binding_bare` counts claimants at the level,
+-- `binding_qualified` resolves the relation first and then asks it alone), and each was a
+-- separate `Uncertain` before.
+-- @test
+SELECT x, u.x AS qx FROM unnest(ARRAY[]::int[]) AS u(x);

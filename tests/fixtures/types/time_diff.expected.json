@@ -1,0 +1,10 @@
+{
+  "rows": [
+    {
+      "neg": true,
+      "pos": true,
+      "zero": true
+    }
+  ],
+  "rowCount": 1
+}

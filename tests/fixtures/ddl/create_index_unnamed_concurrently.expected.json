@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "indexdef": "CREATE INDEX ciu20_a_idx ON public.ciu20 USING btree (a)",
+      "indexname": "ciu20_a_idx"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX ciu20_b_idx ON public.ciu20 USING btree (b)",
+      "indexname": "ciu20_b_idx"
+    }
+  ],
+  "rowCount": 2
+}

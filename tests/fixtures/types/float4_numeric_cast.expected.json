@@ -1,0 +1,16 @@
+{
+  "rows": [
+    {
+      "big": "100000000000000000000",
+      "exact_01": "0.1",
+      "exact_03": "0.3",
+      "exact_15": "1.5",
+      "exact_314": "3.14",
+      "nan": "NaN",
+      "six_sig_drop": "2",
+      "six_sig_int": "8388610",
+      "six_sig_round": "123457"
+    }
+  ],
+  "rowCount": 1
+}

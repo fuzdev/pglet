@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42601",
+    "message": "INSERT has more target columns than expressions"
+  }
+}

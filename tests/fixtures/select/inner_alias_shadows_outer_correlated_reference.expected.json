@@ -1,0 +1,35 @@
+{
+  "rows": [
+    {
+      "arg": 13,
+      "behind_derived": 13,
+      "don_key": 1,
+      "grouped_list": 13,
+      "grouped_sort_key": 1,
+      "hv": null,
+      "key": "3",
+      "sort_behind_derived": 1,
+      "sort_below": 1,
+      "sort_key": 1,
+      "win_key": "1",
+      "windowed_list": true,
+      "y": 1
+    },
+    {
+      "arg": 23,
+      "behind_derived": 23,
+      "don_key": 3,
+      "grouped_list": 23,
+      "grouped_sort_key": 3,
+      "hv": "3",
+      "key": "3",
+      "sort_behind_derived": 3,
+      "sort_below": 3,
+      "sort_key": 3,
+      "win_key": "1",
+      "windowed_list": true,
+      "y": 2
+    }
+  ],
+  "rowCount": 2
+}

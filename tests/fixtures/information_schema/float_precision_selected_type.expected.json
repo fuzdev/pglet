@@ -1,0 +1,53 @@
+{
+  "rows": [
+    {
+      "column_name": "a",
+      "data_type": "real",
+      "numeric_precision": 24,
+      "udt_name": "float4"
+    },
+    {
+      "column_name": "b",
+      "data_type": "real",
+      "numeric_precision": 24,
+      "udt_name": "float4"
+    },
+    {
+      "column_name": "c",
+      "data_type": "double precision",
+      "numeric_precision": 53,
+      "udt_name": "float8"
+    },
+    {
+      "column_name": "d",
+      "data_type": "double precision",
+      "numeric_precision": 53,
+      "udt_name": "float8"
+    },
+    {
+      "column_name": "e",
+      "data_type": "double precision",
+      "numeric_precision": 53,
+      "udt_name": "float8"
+    },
+    {
+      "column_name": "f",
+      "data_type": "real",
+      "numeric_precision": 24,
+      "udt_name": "float4"
+    },
+    {
+      "column_name": "g",
+      "data_type": "double precision",
+      "numeric_precision": 53,
+      "udt_name": "float8"
+    },
+    {
+      "column_name": "h",
+      "data_type": "ARRAY",
+      "numeric_precision": null,
+      "udt_name": "_float4"
+    }
+  ],
+  "rowCount": 8
+}

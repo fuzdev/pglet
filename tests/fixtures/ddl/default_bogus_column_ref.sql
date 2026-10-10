@@ -1,0 +1,11 @@
+-- The column-reference refusal is **unconditional**: `transformColumnRef` raises
+-- before the name is resolved, so a DEFAULT naming a column that exists nowhere is
+-- the same `0A000 cannot use column reference in DEFAULT expression` as one naming
+-- a real sibling. There is no `42703` in this context on either engine.
+--
+-- That is the opposite of the CHECK / index-expression contexts, where a column
+-- reference is legal and only an *unknown* one raises — which is why the DEFAULT
+-- walk is separate code rather than a flag on the stored-expression one.
+-- @expect-error: an unresolvable name is still a column reference, not 42703 (0A000)
+-- @test
+CREATE TABLE dfj (a INT, b INT DEFAULT totally_bogus_name);

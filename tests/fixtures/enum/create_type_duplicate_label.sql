@@ -1,0 +1,14 @@
+-- An enum's labels are a **set**. 18.6 enforces it with an ordinary unique index over
+-- `pg_enum (enumtypid, enumlabel)`, so the refusal is that index's `23505` rather than a
+-- DDL-shaped code, and pglet answers with the same sentence naming the same index.
+--
+-- What the repeat costs is *not* the member order — `enum_rank` reads the first match,
+-- so `values_compare_ordered`'s enum arm stays a total order with the duplicate present.
+-- It costs the catalog (`pg_enum` answered two rows for one label) and the dump: this
+-- exact statement is what `pglet::dump` emitted, and stock 18.6
+-- refuses it — so one such type made the **whole database** unloadable.
+-- @expect-error: the label b appears twice
+-- @expect-message
+-- @no-profile-lock: the @test is DDL and its setup builds nothing — the refusal lands before any plan, so index acceleration cannot reach it
+-- @test
+CREATE TYPE ctdl AS ENUM ('b', 'a', 'b');

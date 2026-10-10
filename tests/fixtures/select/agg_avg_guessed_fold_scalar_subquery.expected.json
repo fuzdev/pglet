@@ -1,0 +1,12 @@
+{
+  "rows": [
+    {
+      "case_branch": 1.5,
+      "coalesce_branch": 1.5,
+      "entry": 1.5,
+      "greatest_arg": 1.5,
+      "operand_fold": 1.5
+    }
+  ],
+  "rowCount": 1
+}

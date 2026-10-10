@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "active": true,
+      "id": 1,
+      "name": "Widget",
+      "price": 19.99
+    }
+  ],
+  "rowCount": 1
+}

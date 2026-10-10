@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42703",
+    "message": "column \"pglet_junk_0\" does not exist"
+  }
+}

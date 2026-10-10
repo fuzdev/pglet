@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "column_default": "nextval('dpr_seq'::regclass)",
+      "column_name": "a"
+    },
+    {
+      "column_default": "nextval('dpr_seq'::regclass)",
+      "column_name": "b"
+    },
+    {
+      "column_default": "5",
+      "column_name": "c"
+    },
+    {
+      "column_default": "5",
+      "column_name": "d"
+    }
+  ],
+  "rowCount": 4
+}

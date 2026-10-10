@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "hash": "blake3:dead",
+      "size": "30"
+    },
+    {
+      "hash": "blake3:orphan",
+      "size": "10"
+    }
+  ],
+  "rowCount": 2
+}

@@ -1,0 +1,40 @@
+{
+  "rows": [
+    {
+      "d": "-infinity",
+      "d_desc": "5",
+      "id": 4,
+      "ts": "infinity",
+      "ts_nulls_first": "5"
+    },
+    {
+      "d": "0001-01-01",
+      "d_desc": "4",
+      "id": 2,
+      "ts": "9999-12-31T23:59:59.999999Z",
+      "ts_nulls_first": "4"
+    },
+    {
+      "d": "9999-12-31",
+      "d_desc": "3",
+      "id": 5,
+      "ts": "0001-01-01T00:00:00Z",
+      "ts_nulls_first": "3"
+    },
+    {
+      "d": "infinity",
+      "d_desc": "2",
+      "id": 1,
+      "ts": "-infinity",
+      "ts_nulls_first": "2"
+    },
+    {
+      "d": null,
+      "d_desc": "1",
+      "id": 3,
+      "ts": null,
+      "ts_nulls_first": "1"
+    }
+  ],
+  "rowCount": 5
+}

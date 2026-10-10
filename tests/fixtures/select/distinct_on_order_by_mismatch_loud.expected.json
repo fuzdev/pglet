@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P10",
+    "message": "SELECT DISTINCT ON expressions must match initial ORDER BY expressions"
+  }
+}

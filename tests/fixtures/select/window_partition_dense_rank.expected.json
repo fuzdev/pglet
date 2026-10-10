@@ -1,0 +1,40 @@
+{
+  "rows": [
+    {
+      "amount": 100,
+      "dept": "eng",
+      "drnk": "1",
+      "name": "a",
+      "rnk": "1"
+    },
+    {
+      "amount": 100,
+      "dept": "eng",
+      "drnk": "1",
+      "name": "b",
+      "rnk": "1"
+    },
+    {
+      "amount": 90,
+      "dept": "eng",
+      "drnk": "2",
+      "name": "c",
+      "rnk": "3"
+    },
+    {
+      "amount": 50,
+      "dept": "sales",
+      "drnk": "1",
+      "name": "d",
+      "rnk": "1"
+    },
+    {
+      "amount": 40,
+      "dept": "sales",
+      "drnk": "2",
+      "name": "e",
+      "rnk": "2"
+    }
+  ],
+  "rowCount": 5
+}

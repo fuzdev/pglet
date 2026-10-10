@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42710",
+    "message": "constraint \"aafu_uq\" for relation \"aafu\" already exists"
+  }
+}

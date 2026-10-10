@@ -1,0 +1,16 @@
+{
+  "rows": [
+    {
+      "d1": "infinity",
+      "d2": "-infinity",
+      "d3": "infinity",
+      "d4": "infinity",
+      "d5": "-infinity",
+      "t1": "infinity",
+      "t2": "-infinity",
+      "z1": "infinity",
+      "z2": "-infinity"
+    }
+  ],
+  "rowCount": 1
+}

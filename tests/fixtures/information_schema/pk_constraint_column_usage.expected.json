@@ -1,0 +1,15 @@
+{
+  "rows": [
+    {
+      "column_name": "k",
+      "constraint_name": "isccu_k_key",
+      "table_name": "isccu"
+    },
+    {
+      "column_name": "id",
+      "constraint_name": "isccu_pkey",
+      "table_name": "isccu"
+    }
+  ],
+  "rowCount": 2
+}

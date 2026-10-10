@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "account_id": 9001,
+      "actor_id": 100,
+      "role": "admin",
+      "role_grant_id": 1,
+      "scope_id": 5,
+      "scope_kind": "repo"
+    },
+    {
+      "account_id": 9002,
+      "actor_id": 101,
+      "role": "writer",
+      "role_grant_id": 2,
+      "scope_id": 5,
+      "scope_kind": "repo"
+    }
+  ],
+  "rowCount": 2
+}

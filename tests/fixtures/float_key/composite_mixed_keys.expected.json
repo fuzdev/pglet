@@ -1,0 +1,41 @@
+{
+  "rows": [
+    {
+      "a": 1,
+      "r_shown": "1.5",
+      "shown": "1.5",
+      "t": "pz"
+    },
+    {
+      "a": 2,
+      "r_shown": "-0",
+      "shown": "1.5",
+      "t": "q"
+    },
+    {
+      "a": 1,
+      "r_shown": "0",
+      "shown": "NaN",
+      "t": "r"
+    },
+    {
+      "a": 3,
+      "r_shown": "9",
+      "shown": null,
+      "t": "s"
+    },
+    {
+      "a": 3,
+      "r_shown": "9",
+      "shown": null,
+      "t": "t"
+    },
+    {
+      "a": 4,
+      "r_shown": "4",
+      "shown": "4",
+      "t": "z"
+    }
+  ],
+  "rowCount": 6
+}

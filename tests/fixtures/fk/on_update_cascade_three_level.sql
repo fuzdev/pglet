@@ -1,0 +1,17 @@
+-- Three-level ON UPDATE CASCADE chain propagates all the way down.
+-- @setup
+CREATE TABLE o3l_a (id INT PRIMARY KEY);
+CREATE TABLE o3l_b (aid INT PRIMARY KEY REFERENCES o3l_a(id) ON UPDATE CASCADE);
+CREATE TABLE o3l_c (bid INT PRIMARY KEY REFERENCES o3l_b(aid) ON UPDATE CASCADE);
+CREATE TABLE o3l_d (cid INT PRIMARY KEY REFERENCES o3l_c(bid) ON UPDATE CASCADE);
+INSERT INTO o3l_a VALUES (1);
+INSERT INTO o3l_b VALUES (1);
+INSERT INTO o3l_c VALUES (1);
+INSERT INTO o3l_d VALUES (1);
+UPDATE o3l_a SET id = 9;
+
+-- @test
+SELECT
+  (SELECT aid FROM o3l_b) AS b,
+  (SELECT bid FROM o3l_c) AS c,
+  (SELECT cid FROM o3l_d) AS d;

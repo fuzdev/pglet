@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "conname": "cx_a_check",
+      "def": "CHECK ((has_schema_privilege('public'::text, 'USAGE'::text) OR (a > 0)))"
+    },
+    {
+      "conname": "cx_s_check",
+      "def": "CHECK ((quote_ident(s) <> ''::text))"
+    },
+    {
+      "conname": "cx_s_check1",
+      "def": "CHECK (((s ~ '^x'::text) OR (s !~ '^y'::text)))"
+    }
+  ],
+  "rowCount": 3
+}

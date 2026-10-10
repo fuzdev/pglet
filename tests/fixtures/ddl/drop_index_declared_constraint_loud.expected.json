@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "2BP01",
+    "message": "cannot drop index didc_my_pk because constraint didc_my_pk on table didc requires it"
+  }
+}

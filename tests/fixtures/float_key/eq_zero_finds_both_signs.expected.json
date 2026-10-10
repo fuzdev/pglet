@@ -1,0 +1,25 @@
+{
+  "rows": [
+    {
+      "id": 5,
+      "probe": "neg",
+      "shown": "-0"
+    },
+    {
+      "id": 6,
+      "probe": "neg",
+      "shown": "0"
+    },
+    {
+      "id": 5,
+      "probe": "pos",
+      "shown": "-0"
+    },
+    {
+      "id": 6,
+      "probe": "pos",
+      "shown": "0"
+    }
+  ],
+  "rowCount": 4
+}

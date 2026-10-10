@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42809",
+    "message": "\"trs_seq\" is not a table"
+  }
+}

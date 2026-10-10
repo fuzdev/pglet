@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "22004",
+    "message": "SET requires parameter name"
+  }
+}

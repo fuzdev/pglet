@@ -1,0 +1,16 @@
+{
+  "rows": [
+    {
+      "max_days": "2147483647 days",
+      "max_hours": "2562047788:00:00",
+      "max_minutes": "2562047788:00:00",
+      "max_months": "178956970 years 7 mons",
+      "max_seconds": "2562047788:00:54",
+      "max_years": "178956970 years",
+      "min_days": "-2147483648 days",
+      "min_months": "-178956970 years -8 mons",
+      "min_years": "-178956970 years"
+    }
+  ],
+  "rowCount": 1
+}

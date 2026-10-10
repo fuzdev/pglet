@@ -1,0 +1,28 @@
+{
+  "rows": [
+    {
+      "bigint_wins": [
+        "3",
+        "4"
+      ],
+      "int_widens": [
+        "2",
+        "1"
+      ],
+      "numeric_widens": [
+        "1",
+        "2.5"
+      ],
+      "numeric_widens_with_null": [
+        "1",
+        null,
+        "2.5"
+      ],
+      "real_wins": [
+        1.0,
+        2.0
+      ]
+    }
+  ],
+  "rowCount": 1
+}

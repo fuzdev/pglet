@@ -1,0 +1,30 @@
+{
+  "rows": [
+    {
+      "name": "Alice",
+      "rank": "1",
+      "score": 100
+    },
+    {
+      "name": "Bob",
+      "rank": "2",
+      "score": 90
+    },
+    {
+      "name": "Carol",
+      "rank": "2",
+      "score": 90
+    },
+    {
+      "name": "Dave",
+      "rank": "4",
+      "score": 80
+    },
+    {
+      "name": "Eve",
+      "rank": "4",
+      "score": 80
+    }
+  ],
+  "rowCount": 5
+}

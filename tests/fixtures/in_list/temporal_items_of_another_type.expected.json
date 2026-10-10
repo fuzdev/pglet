@@ -1,0 +1,23 @@
+{
+  "rows": [
+    {
+      "id": 1,
+      "iv_time": true,
+      "ts_dates": true,
+      "tz_mixed": true
+    },
+    {
+      "id": 2,
+      "iv_time": true,
+      "ts_dates": false,
+      "tz_mixed": true
+    },
+    {
+      "id": 3,
+      "iv_time": false,
+      "ts_dates": true,
+      "tz_mixed": false
+    }
+  ],
+  "rowCount": 3
+}

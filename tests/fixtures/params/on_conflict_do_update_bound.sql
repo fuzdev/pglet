@@ -1,0 +1,32 @@
+-- The headline bound upsert: a `$N` in every position of one statement — the row
+-- source, the `ON CONFLICT DO UPDATE` action, and nothing in `RETURNING`.
+--
+-- The action's parameter used to be **uncounted**: `infer_param_types`'s
+-- `Plan::Insert` arm destructured `{table, rows, returning, ..}` and the `..`
+-- swallowed `on_conflict`, so this statement advertised `ParameterDescription` n = 2
+-- against the three it carries — a bound upsert unusable from any extended-protocol
+-- driver. The `VALUES ($1, $2)` half is the control that identifies the missing arm
+-- rather than a typing gap: it was counted throughout.
+--
+-- **How the revert surfaces depends on the client, and this fixture sees only one of
+-- the two.** On the raw wire the server answers `08P01 bind message supplies 3
+-- parameters, but prepared statement "" requires 2` (measured through psql's
+-- `\bind`). The harness drives tokio-postgres, whose `encode_bind` compares the
+-- count against the advertised `Statement::params()` and returns
+-- `expected 2 parameters but got 3` **before writing a Bind message at all** — so no
+-- server error exists, and the harness records its `CLIENT-FAULT` tag rather than a
+-- SQLSTATE. Red either way; the message a maintainer will actually see here is the
+-- client-side one.
+--
+-- 18.6 reports `{integer,text,text}` for this statement. The harness sends `Parse`
+-- with **empty** parameter types, so the OIDs it binds against are the server's own
+-- inference — which is why this fixture is red on the revert rather than merely
+-- exercising the path.
+-- @setup
+CREATE TABLE oc_bound (id INT PRIMARY KEY, v TEXT, n BIGINT);
+INSERT INTO oc_bound VALUES (1, 'old', 10);
+-- @param $1 int4 1
+-- @param $2 text inserted
+-- @param $3 text updated
+-- @test
+INSERT INTO oc_bound (id, v) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET v = $3 RETURNING id, v, n;

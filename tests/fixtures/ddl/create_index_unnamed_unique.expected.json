@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "indexdef": "CREATE UNIQUE INDEX ciu7_a_idx ON public.ciu7 USING btree (a)",
+      "indexname": "ciu7_a_idx"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX ciu7_b_idx ON public.ciu7 USING btree (b)",
+      "indexname": "ciu7_b_idx"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX ciu7_b_key ON public.ciu7 USING btree (b)",
+      "indexname": "ciu7_b_key"
+    }
+  ],
+  "rowCount": 3
+}

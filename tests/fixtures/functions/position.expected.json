@@ -1,0 +1,26 @@
+{
+  "rows": [
+    {
+      "id": 1,
+      "pos": 3,
+      "pos_absent": 0,
+      "pos_empty": 1,
+      "sp": 5
+    },
+    {
+      "id": 2,
+      "pos": 0,
+      "pos_absent": 0,
+      "pos_empty": 1,
+      "sp": 1
+    },
+    {
+      "id": 3,
+      "pos": null,
+      "pos_absent": null,
+      "pos_empty": null,
+      "sp": null
+    }
+  ],
+  "rowCount": 3
+}

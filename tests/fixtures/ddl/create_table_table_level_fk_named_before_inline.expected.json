@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "constraint_name": "roftl_a_fkey",
+      "delete_rule": "CASCADE"
+    },
+    {
+      "constraint_name": "roftl_a_fkey1",
+      "delete_rule": "SET NULL"
+    }
+  ],
+  "rowCount": 2
+}

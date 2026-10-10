@@ -1,0 +1,65 @@
+{
+  "rows": [
+    {
+      "column_name": "cid",
+      "constraint_name": "cat_child_cid_not_null",
+      "table_name": "cat_child"
+    },
+    {
+      "column_name": "id",
+      "constraint_name": "cat_child_pid_fkey",
+      "table_name": "cat_parent"
+    },
+    {
+      "column_name": "qty",
+      "constraint_name": "cat_child_qty_not_null",
+      "table_name": "cat_child"
+    },
+    {
+      "column_name": "pid",
+      "constraint_name": "cat_child_qty_pid",
+      "table_name": "cat_child"
+    },
+    {
+      "column_name": "qty",
+      "constraint_name": "cat_child_qty_pid",
+      "table_name": "cat_child"
+    },
+    {
+      "column_name": "qty",
+      "constraint_name": "cat_child_qty_positive",
+      "table_name": "cat_child"
+    },
+    {
+      "column_name": "code",
+      "constraint_name": "cat_parent_code_not_null",
+      "table_name": "cat_parent"
+    },
+    {
+      "column_name": "code",
+      "constraint_name": "cat_parent_code_region_uq",
+      "table_name": "cat_parent"
+    },
+    {
+      "column_name": "region",
+      "constraint_name": "cat_parent_code_region_uq",
+      "table_name": "cat_parent"
+    },
+    {
+      "column_name": "id",
+      "constraint_name": "cat_parent_id_not_null",
+      "table_name": "cat_parent"
+    },
+    {
+      "column_name": "id",
+      "constraint_name": "cat_parent_pkey",
+      "table_name": "cat_parent"
+    },
+    {
+      "column_name": "region",
+      "constraint_name": "cat_parent_region_not_null",
+      "table_name": "cat_parent"
+    }
+  ],
+  "rowCount": 12
+}

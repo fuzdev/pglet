@@ -1,0 +1,61 @@
+{
+  "rows": [
+    {
+      "check_clause": "((a > 3) AND (b > 3))",
+      "constraint_name": "bx_and2"
+    },
+    {
+      "check_clause": "((a > 0) AND (b > 0) AND (c > 0))",
+      "constraint_name": "bx_and3"
+    },
+    {
+      "check_clause": "((a > 9) AND (b > 9) AND ((c > 9) OR (d > 9)))",
+      "constraint_name": "bx_and3_with_or"
+    },
+    {
+      "check_clause": "((a > 1) AND (b > 1) AND (c > 1) AND (d > 1))",
+      "constraint_name": "bx_and4"
+    },
+    {
+      "check_clause": "((a > 11) AND (NOT ((b > 11) OR (c > 11))))",
+      "constraint_name": "bx_and_not_or"
+    },
+    {
+      "check_clause": "(((a > 7) AND (b > 7)) OR (c > 7))",
+      "constraint_name": "bx_and_then_or"
+    },
+    {
+      "check_clause": "(((a + b) + c) > 12)",
+      "constraint_name": "bx_arith"
+    },
+    {
+      "check_clause": "((a - (b - c)) > 13)",
+      "constraint_name": "bx_arith_right"
+    },
+    {
+      "check_clause": "(NOT ((a > 10) AND (b > 10)))",
+      "constraint_name": "bx_not_and"
+    },
+    {
+      "check_clause": "((a > 2) OR (b > 2) OR (c > 2))",
+      "constraint_name": "bx_or3"
+    },
+    {
+      "check_clause": "((a > 6) OR ((b > 6) OR (c > 6)))",
+      "constraint_name": "bx_or_parens_right"
+    },
+    {
+      "check_clause": "((a > 8) AND ((b > 8) OR (c > 8)))",
+      "constraint_name": "bx_or_under_and"
+    },
+    {
+      "check_clause": "((a > 4) AND (b > 4) AND (c > 4))",
+      "constraint_name": "bx_parens_left"
+    },
+    {
+      "check_clause": "((a > 5) AND ((b > 5) AND (c > 5)))",
+      "constraint_name": "bx_parens_right"
+    }
+  ],
+  "rowCount": 14
+}

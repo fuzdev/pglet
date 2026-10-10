@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "22007",
+    "message": "invalid input syntax for type date: \"not a date\""
+  }
+}

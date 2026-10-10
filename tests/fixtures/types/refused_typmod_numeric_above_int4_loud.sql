@@ -1,0 +1,12 @@
+-- The coercion's other refusal: a component outside `int32` is `22003`, ahead of both
+-- windows and ahead of the arity count — `pg_strtoint32` runs on every component before
+-- `numerictypmodin` looks at how many there are.
+--
+-- The SQLSTATE is asserted and the message is not: pglet answers its own
+-- `integer out of range` where 18.6 says `value "2147483648" is out of range for type
+-- integer`. That wording is the integer-input path's and not this position's — off this
+-- position the same path diverges in the code too (`'2147483648'::int` is `22P02` here
+-- against `22003`, measured), `EDGES.md` row 324.
+-- @expect-error: a NUMERIC component above int4
+-- @test
+SELECT 1.5::numeric(2147483648) AS never_reached;

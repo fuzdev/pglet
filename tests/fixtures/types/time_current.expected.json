@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "after_midnight": true,
+      "before_end": true,
+      "current_time_set": true,
+      "localtime_set": true
+    }
+  ],
+  "rowCount": 1
+}

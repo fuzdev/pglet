@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42883",
+    "message": "function pg_get_serial_sequence(integer, unknown) does not exist"
+  }
+}

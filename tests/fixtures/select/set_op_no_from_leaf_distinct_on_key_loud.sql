@@ -1,0 +1,14 @@
+-- The `DISTINCT ON` spelling of the missing re-walk, as an **agreement snapshot** rather
+-- than as the guard. The no-FROM `DISTINCT ON` binding gate declines at expression-subquery
+-- depth by design — the key may still name an enclosing relation — and hands the verdict to
+-- the correlated re-walk, which for a leaf of a set op was never run.
+--
+-- This top-level read was `42703` here **before** that repair too, from the eval-time
+-- resolver (measured on the reverted build), so it is red on no mutation of its own and
+-- pins only that the plan-time refusal did not change the code. The member that answered
+-- rows — and wrote — is the unreferenced-CTE spelling its sibling
+-- `select/set_op_no_from_leaf_key_in_a_cte_delete_loud.sql` holds, whose body never reaches
+-- the eval-time resolver at all; that fixture and its row-survival test are the guard.
+-- @expect-error: column "bogusdon" does not exist (42703)
+-- @test
+SELECT 1 AS z UNION ALL SELECT (SELECT DISTINCT ON (bogusdon) 1 AS q);

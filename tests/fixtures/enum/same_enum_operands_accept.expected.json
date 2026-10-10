@@ -1,0 +1,26 @@
+{
+  "rows": [
+    {
+      "c": "sad",
+      "g": "ok",
+      "gt": false,
+      "id": 1,
+      "nz": "sad"
+    },
+    {
+      "c": "ok",
+      "g": "ok",
+      "gt": false,
+      "id": 2,
+      "nz": null
+    },
+    {
+      "c": "happy",
+      "g": "happy",
+      "gt": true,
+      "id": 3,
+      "nz": "happy"
+    }
+  ],
+  "rowCount": 3
+}

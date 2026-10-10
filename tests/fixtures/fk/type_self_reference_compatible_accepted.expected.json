@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "conname": "fts_parent_fkey",
+      "contype": "f"
+    },
+    {
+      "conname": "fts_up_fkey",
+      "contype": "f"
+    }
+  ],
+  "rowCount": 2
+}

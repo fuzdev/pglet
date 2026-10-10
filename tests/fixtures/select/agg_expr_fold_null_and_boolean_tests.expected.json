@@ -1,0 +1,25 @@
+{
+  "rows": [
+    {
+      "false_is_not_false": "0",
+      "is_false": "0",
+      "is_not_true": "0",
+      "is_not_unknown": "0",
+      "is_true": "0",
+      "is_unknown": "0",
+      "not_comparison": "0",
+      "not_null_literal": "0",
+      "null_is_false": "0",
+      "null_is_not_false": "0",
+      "null_is_not_null": "0",
+      "null_is_not_unknown": "0",
+      "null_is_null": "0",
+      "null_is_true": "0",
+      "true_is_not_null": "0",
+      "true_is_not_true": "0",
+      "true_is_null": "0",
+      "true_is_unknown": "0"
+    }
+  ],
+  "rowCount": 1
+}

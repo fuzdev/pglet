@@ -1,0 +1,17 @@
+-- The **non-empty** control for the no-FROM `DISTINCT ON` binding gate, and what makes
+-- emptiness load-bearing for the *read* polarity. The identical key over
+-- `unnest(ARRAY[1,2])` was already `42703` here before the gate existed, because a row
+-- reached the dedup and the eval-time resolver judged it — which is exactly why a guard
+-- written on this spelling says nothing about the hole
+-- (`select/distinct_on_no_from_key_binds_to_nothing_loud.sql` is the empty twin, and was
+-- `(0 rows)`).
+--
+-- Read that narrowly: it is a statement about the read polarity and **not** about the
+-- class. An unreferenced CTE's body never executes, so its write polarities destroyed rows
+-- at every row count, this array included.
+--
+-- Do not trim it to the empty spelling: without this pair, a repair that closed the gate
+-- only for a zero-row projection would look complete.
+-- @expect-error: column "bogusdon" does not exist (42703)
+-- @test
+SELECT DISTINCT ON (bogusdon) unnest(ARRAY[1,2]) AS q;

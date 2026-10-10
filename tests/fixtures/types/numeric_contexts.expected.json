@@ -1,0 +1,33 @@
+{
+  "rows": [
+    {
+      "a": "5.25",
+      "bucket": "small",
+      "in_range": true,
+      "in_set": true,
+      "with_default": "5.25"
+    },
+    {
+      "a": "10.50",
+      "bucket": "small",
+      "in_range": true,
+      "in_set": true,
+      "with_default": "10.50"
+    },
+    {
+      "a": "20.00",
+      "bucket": "big",
+      "in_range": false,
+      "in_set": false,
+      "with_default": "20.00"
+    },
+    {
+      "a": null,
+      "bucket": "small",
+      "in_range": null,
+      "in_set": null,
+      "with_default": "0"
+    }
+  ],
+  "rowCount": 4
+}

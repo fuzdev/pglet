@@ -1,0 +1,22 @@
+{
+  "rows": [
+    {
+      "col_name": "\"int\"",
+      "digit_first": "\"1a\"",
+      "digits": "a1_",
+      "dollar": "\"a$\"",
+      "empty": "\"\"",
+      "non_ascii": "\"é\"",
+      "non_ascii_tail": "\"aé\"",
+      "null_arg": null,
+      "plain": "abc",
+      "quote": "\"a\"\"b\"",
+      "space": "\"a b\"",
+      "type_func": "\"left\"",
+      "underscore": "_a",
+      "unreserved": "action",
+      "upper": "\"Abc\""
+    }
+  ],
+  "rowCount": 1
+}

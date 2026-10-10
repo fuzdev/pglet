@@ -1,0 +1,33 @@
+{
+  "rows": [
+    {
+      "check_clause": "cid IS NOT NULL",
+      "constraint_name": "cat_child_cid_not_null"
+    },
+    {
+      "check_clause": "qty IS NOT NULL",
+      "constraint_name": "cat_child_qty_not_null"
+    },
+    {
+      "check_clause": "((qty > 1) AND (pid > 0))",
+      "constraint_name": "cat_child_qty_pid"
+    },
+    {
+      "check_clause": "(qty > 0)",
+      "constraint_name": "cat_child_qty_positive"
+    },
+    {
+      "check_clause": "code IS NOT NULL",
+      "constraint_name": "cat_parent_code_not_null"
+    },
+    {
+      "check_clause": "id IS NOT NULL",
+      "constraint_name": "cat_parent_id_not_null"
+    },
+    {
+      "check_clause": "region IS NOT NULL",
+      "constraint_name": "cat_parent_region_not_null"
+    }
+  ],
+  "rowCount": 7
+}

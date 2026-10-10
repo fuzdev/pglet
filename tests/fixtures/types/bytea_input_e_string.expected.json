@@ -1,0 +1,71 @@
+{
+  "rows": [
+    {
+      "e_backslash": {
+        "data": [
+          92
+        ],
+        "type": "Buffer"
+      },
+      "e_escaped_backslash": {
+        "data": [
+          92,
+          48,
+          48,
+          49
+        ],
+        "type": "Buffer"
+      },
+      "e_hex": {
+        "data": [
+          97,
+          98
+        ],
+        "type": "Buffer"
+      },
+      "e_lexer_hex": {
+        "data": [
+          97,
+          98
+        ],
+        "type": "Buffer"
+      },
+      "e_lexer_octal": {
+        "data": [
+          1
+        ],
+        "type": "Buffer"
+      },
+      "e_newline": {
+        "data": [
+          97,
+          10,
+          98
+        ],
+        "type": "Buffer"
+      },
+      "e_octal": {
+        "data": [
+          1
+        ],
+        "type": "Buffer"
+      },
+      "plain_escaped_backslash": {
+        "data": [
+          92,
+          48,
+          48,
+          49
+        ],
+        "type": "Buffer"
+      },
+      "plain_octal": {
+        "data": [
+          1
+        ],
+        "type": "Buffer"
+      }
+    }
+  ],
+  "rowCount": 1
+}

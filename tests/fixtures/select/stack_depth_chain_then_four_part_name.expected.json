@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42601",
+    "message": "improper qualified name (too many dotted names): x.y.z.w"
+  }
+}

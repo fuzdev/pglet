@@ -1,0 +1,12 @@
+{
+  "rows": [
+    {
+      "chained": true,
+      "n": "2",
+      "nested": true,
+      "null_and_false": false,
+      "null_or_true": true
+    }
+  ],
+  "rowCount": 1
+}

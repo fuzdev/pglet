@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "2BP01",
+    "message": "cannot drop index dixr_pkey because constraint dixr_pkey on table dixr requires it"
+  }
+}

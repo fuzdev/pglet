@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P01",
+    "message": "relation \"dctos_t_a_seq\" does not exist"
+  }
+}

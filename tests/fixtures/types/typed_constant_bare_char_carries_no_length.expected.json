@@ -1,0 +1,18 @@
+{
+  "rows": [
+    {
+      "bare": "ab",
+      "bare_equals_itself": true,
+      "bare_length": 2,
+      "bare_long": "abcdefg",
+      "bare_spelled_out": "ab",
+      "cast_position": "a",
+      "cast_word_position": "a",
+      "varying_bare": "abc",
+      "varying_with_length": "ab",
+      "with_length": "a",
+      "with_length_spelled_out": "a"
+    }
+  ],
+  "rowCount": 1
+}

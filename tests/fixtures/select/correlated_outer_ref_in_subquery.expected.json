@@ -1,0 +1,15 @@
+{
+  "rows": [
+    {
+      "in_hit": true,
+      "not_in_hit": false,
+      "okey": 1
+    },
+    {
+      "in_hit": false,
+      "not_in_hit": true,
+      "okey": 2
+    }
+  ],
+  "rowCount": 2
+}

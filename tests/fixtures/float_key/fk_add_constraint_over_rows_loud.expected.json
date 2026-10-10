@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "23503",
+    "message": "insert or update on table \"fkcd\" violates foreign key constraint \"fkcd_fk\""
+  }
+}

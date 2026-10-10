@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "2BP01",
+    "message": "cannot drop type tnt20 because table tnt20 requires it"
+  }
+}

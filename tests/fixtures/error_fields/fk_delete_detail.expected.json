@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "23503",
+    "message": "update or delete on table \"p_fk2\" violates foreign key constraint \"c_fk2_a_fkey\" on table \"c_fk2\""
+  }
+}

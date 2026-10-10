@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42883",
+    "message": "function starts_with(jsonb, unknown) does not exist"
+  }
+}

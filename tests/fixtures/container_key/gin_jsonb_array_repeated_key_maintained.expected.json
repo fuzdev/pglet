@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "id": 2,
+      "probe": "one"
+    },
+    {
+      "id": 4,
+      "probe": "one"
+    },
+    {
+      "id": 1,
+      "probe": "two"
+    },
+    {
+      "id": 2,
+      "probe": "two"
+    }
+  ],
+  "rowCount": 4
+}

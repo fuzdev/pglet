@@ -1,0 +1,23 @@
+{
+  "rows": [
+    {
+      "id": 1,
+      "member_beside_column": true,
+      "mixed": false,
+      "self_array": true
+    },
+    {
+      "id": 2,
+      "member_beside_column": true,
+      "mixed": true,
+      "self_array": true
+    },
+    {
+      "id": 3,
+      "member_beside_column": true,
+      "mixed": true,
+      "self_array": true
+    }
+  ],
+  "rowCount": 3
+}

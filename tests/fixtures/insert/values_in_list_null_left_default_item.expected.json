@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42601",
+    "message": "DEFAULT is not allowed in this context"
+  }
+}

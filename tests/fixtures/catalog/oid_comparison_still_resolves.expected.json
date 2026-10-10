@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "gt": "5",
+      "ne_zero": "5",
+      "ordinary_int_arithmetic": "1",
+      "self_eq": "0"
+    }
+  ],
+  "rowCount": 1
+}

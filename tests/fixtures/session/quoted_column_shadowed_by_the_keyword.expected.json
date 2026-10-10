@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "col": "zeta",
+      "id": 1,
+      "role": "postgres",
+      "same": false
+    },
+    {
+      "col": "postgres",
+      "id": 2,
+      "role": "postgres",
+      "same": true
+    }
+  ],
+  "rowCount": 2
+}

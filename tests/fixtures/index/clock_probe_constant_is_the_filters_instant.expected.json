@@ -1,0 +1,73 @@
+{
+  "rows": [
+    {
+      "id": 1,
+      "probe": "between"
+    },
+    {
+      "id": 2,
+      "probe": "between"
+    },
+    {
+      "id": 3,
+      "probe": "between"
+    },
+    {
+      "id": 1,
+      "probe": "day"
+    },
+    {
+      "id": 2,
+      "probe": "day"
+    },
+    {
+      "id": 3,
+      "probe": "day"
+    },
+    {
+      "id": 1,
+      "probe": "eq"
+    },
+    {
+      "id": 2,
+      "probe": "eq"
+    },
+    {
+      "id": 3,
+      "probe": "eq"
+    },
+    {
+      "id": 1,
+      "probe": "eq and filter"
+    },
+    {
+      "id": 2,
+      "probe": "eq and filter"
+    },
+    {
+      "id": 3,
+      "probe": "eq and filter"
+    },
+    {
+      "id": 5,
+      "probe": "gt"
+    },
+    {
+      "id": 1,
+      "probe": "le"
+    },
+    {
+      "id": 2,
+      "probe": "le"
+    },
+    {
+      "id": 3,
+      "probe": "le"
+    },
+    {
+      "id": 4,
+      "probe": "le"
+    }
+  ],
+  "rowCount": 17
+}

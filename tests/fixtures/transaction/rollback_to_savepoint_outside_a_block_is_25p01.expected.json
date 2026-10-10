@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "25P01",
+    "message": "ROLLBACK TO SAVEPOINT can only be used in transaction blocks"
+  }
+}

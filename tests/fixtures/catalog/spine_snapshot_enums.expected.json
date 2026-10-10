@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "enum_name": "cat_mood",
+      "label": "sad"
+    },
+    {
+      "enum_name": "cat_mood",
+      "label": "ok"
+    },
+    {
+      "enum_name": "cat_mood",
+      "label": "happy"
+    }
+  ],
+  "rowCount": 3
+}

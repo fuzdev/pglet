@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "array_in_array": true,
+      "deep_nested": true,
+      "from_column": "1",
+      "missing_element": false,
+      "nested_array": true,
+      "nested_object": true
+    }
+  ],
+  "rowCount": 1
+}

@@ -1,0 +1,53 @@
+{
+  "rows": [
+    {
+      "conname": "q1",
+      "definition": "CHECK ((EXTRACT(year FROM t) > 2000.0))"
+    },
+    {
+      "conname": "q10",
+      "definition": "CHECK ((concat_ws('-'::text, s, 'x') = 'ab'::text))"
+    },
+    {
+      "conname": "q11",
+      "definition": "CHECK ((concat(s, 'x') = 'ab'::text))"
+    },
+    {
+      "conname": "q12",
+      "definition": "CHECK ((upper(s) = 'AB'::text))"
+    },
+    {
+      "conname": "q2",
+      "definition": "CHECK ((EXTRACT(year FROM t) > n))"
+    },
+    {
+      "conname": "q3",
+      "definition": "CHECK ((EXTRACT(\"MONTH\" FROM t) = EXTRACT(day FROM t)))"
+    },
+    {
+      "conname": "q4",
+      "definition": "CHECK ((date_part('year'::text, t) = date_part('day'::text, t)))"
+    },
+    {
+      "conname": "q5",
+      "definition": "CHECK ((NOT (a IS DISTINCT FROM 1)))"
+    },
+    {
+      "conname": "q6",
+      "definition": "CHECK ((NOT (s IS DISTINCT FROM 'x'::text)))"
+    },
+    {
+      "conname": "q7",
+      "definition": "CHECK ((NOT (NOT (a IS DISTINCT FROM 1))))"
+    },
+    {
+      "conname": "q8",
+      "definition": "CHECK ((a IS DISTINCT FROM 1))"
+    },
+    {
+      "conname": "q9",
+      "definition": "CHECK ((\"substring\"(s, 1, 2) = 'ab'::text))"
+    }
+  ],
+  "rowCount": 12
+}

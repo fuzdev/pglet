@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "k": 1,
+      "probe": "eq"
+    },
+    {
+      "k": 4,
+      "probe": "eq"
+    },
+    {
+      "k": 2,
+      "probe": "nan"
+    }
+  ],
+  "rowCount": 3
+}

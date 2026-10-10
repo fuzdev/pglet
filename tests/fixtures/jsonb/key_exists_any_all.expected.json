@@ -1,0 +1,16 @@
+{
+  "rows": [
+    {
+      "all_empty": true,
+      "all_hit": true,
+      "all_miss": false,
+      "all_skip_null": true,
+      "all_skip_null_miss": false,
+      "any_empty": false,
+      "any_hit": true,
+      "any_miss": false,
+      "any_skip_null": true
+    }
+  ],
+  "rowCount": 1
+}

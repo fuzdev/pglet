@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42804",
+    "message": "VALUES types text and mood cannot be matched"
+  }
+}

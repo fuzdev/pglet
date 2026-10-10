@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42601",
+    "message": "non-integer constant in GROUP BY"
+  }
+}

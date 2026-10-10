@@ -1,0 +1,29 @@
+{
+  "rows": [
+    {
+      "column_name": "b",
+      "constraint_name": "iskcu_b_a_key",
+      "ordinal_position": 1,
+      "position_in_unique_constraint": null
+    },
+    {
+      "column_name": "a",
+      "constraint_name": "iskcu_b_a_key",
+      "ordinal_position": 2,
+      "position_in_unique_constraint": null
+    },
+    {
+      "column_name": "a",
+      "constraint_name": "iskcu_pkey",
+      "ordinal_position": 1,
+      "position_in_unique_constraint": null
+    },
+    {
+      "column_name": "b",
+      "constraint_name": "iskcu_pkey",
+      "ordinal_position": 2,
+      "position_in_unique_constraint": null
+    }
+  ],
+  "rowCount": 4
+}

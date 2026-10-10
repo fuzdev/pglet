@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "id_str": "1",
+      "price_int": 20
+    },
+    {
+      "id_str": "2",
+      "price_int": 10
+    }
+  ],
+  "rowCount": 2
+}

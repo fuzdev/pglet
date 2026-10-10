@@ -1,0 +1,22 @@
+{
+  "rows": [
+    {
+      "canonical_key_order": {
+        "aa": 2,
+        "b": 1,
+        "c": 3
+      },
+      "deduped": {
+        "a": 2
+      },
+      "equals_literal": true,
+      "nested_deduped": {
+        "k": {
+          "a": 2
+        }
+      },
+      "reader_agrees": 2
+    }
+  ],
+  "rowCount": 1
+}

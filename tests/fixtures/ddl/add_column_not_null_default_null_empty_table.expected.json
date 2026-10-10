@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "column_default": null,
+      "column_name": "id",
+      "default_is_sql_null": true,
+      "is_nullable": "YES"
+    },
+    {
+      "column_default": null,
+      "column_name": "c",
+      "default_is_sql_null": true,
+      "is_nullable": "NO"
+    }
+  ],
+  "rowCount": 2
+}

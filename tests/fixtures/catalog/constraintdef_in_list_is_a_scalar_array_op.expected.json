@@ -1,0 +1,69 @@
+{
+  "rows": [
+    {
+      "conname": "k01",
+      "definition": "CHECK ((a = ANY (ARRAY[1, 2, 3])))"
+    },
+    {
+      "conname": "k02",
+      "definition": "CHECK ((a <> ALL (ARRAY[1, 2, 3])))"
+    },
+    {
+      "conname": "k03",
+      "definition": "CHECK ((a = 1))"
+    },
+    {
+      "conname": "k04",
+      "definition": "CHECK ((a <> 1))"
+    },
+    {
+      "conname": "k05",
+      "definition": "CHECK (((a = b) OR (a = c)))"
+    },
+    {
+      "conname": "k06",
+      "definition": "CHECK (((a <> b) AND (a <> c)))"
+    },
+    {
+      "conname": "k07",
+      "definition": "CHECK ((s = ANY (ARRAY['viewer'::text, 'editor'::text])))"
+    },
+    {
+      "conname": "k09",
+      "definition": "CHECK ((a = ANY (ARRAY[1, 2, 3])))"
+    },
+    {
+      "conname": "k10",
+      "definition": "CHECK (((a = 1) OR (a = b)))"
+    },
+    {
+      "conname": "k11",
+      "definition": "CHECK (((a = ANY (ARRAY[1, 2])) OR (a = b)))"
+    },
+    {
+      "conname": "k12",
+      "definition": "CHECK (((a <> ALL (ARRAY[1, 2])) AND (a <> b)))"
+    },
+    {
+      "conname": "k13",
+      "definition": "CHECK ((s = 'x'::text))"
+    },
+    {
+      "conname": "k14",
+      "definition": "CHECK ((NOT (a = ANY (ARRAY[1, 2]))))"
+    },
+    {
+      "conname": "k15",
+      "definition": "CHECK (('x'::text = ANY (ARRAY['a'::text, 'b'::text])))"
+    },
+    {
+      "conname": "k16",
+      "definition": "CHECK ((s = ANY (ARRAY['viewer'::text, 'editor'::text])))"
+    },
+    {
+      "conname": "k17",
+      "definition": "CHECK ((s <> ALL (ARRAY['viewer'::text, 'editor'::text])))"
+    }
+  ],
+  "rowCount": 16
+}

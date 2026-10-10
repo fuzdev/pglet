@@ -1,0 +1,47 @@
+[package]
+name = "pglet_server"
+description = "TCP server for pglet"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "pglet_server"
+path = "src/main.rs"
+
+[dependencies]
+# In-process embed facade: engine assembly (file/btree/memory), the
+# `StorageBackend` carrier + executor adapters, and commit semantics.
+# `file_store` re-enables the file-backed `Database::open`/`open_existing` the
+# server's `--data-dir` path drives (the workspace pins it off for wasm), and
+# `memory_storage` the `Database::in_memory` behind `--storage memory`.
+pglet = { workspace = true, features = ["file_store", "memory_storage"] }
+pglet_sql = { workspace = true }
+pglet_storage = { workspace = true, features = ["file_store"] }
+pglet_wire = { workspace = true }
+parking_lot = { workspace = true }
+# Native data-dir lock guard (flock); the server is native-only so the feature is
+# unconditional here, unlike the wasm-facing consumers that leave it off.
+pglet_core = { workspace = true, features = ["file_lock"] }
+
+[features]
+# The native server ships with query index acceleration ON. Build
+# `--no-default-features` for the stripped "testing" profile (acceleration off) —
+# results are *intended* to be byte-identical, only speed changes, with measured
+# exceptions — `EDGES.md`'s header names them. `file_store` rides the dependency
+# lines above, so `--no-default-features` drops only acceleration.
+default = ["index_acceleration"]
+index_acceleration = ["pglet/index_acceleration", "pglet_sql/index_acceleration"]
+
+[dev-dependencies]
+# Fault-injecting in-memory BlockIo + `open_database` for the autocommit/COMMIT
+# fail-loud tests (a meta-slot write that returns an I/O error). A
+# dev-dependency, so it never enters the production binary graph —
+# `cargo xtask check-release` enforces that.
+pglet_testing = { workspace = true, features = ["embed"] }
+
+[lints]
+workspace = true

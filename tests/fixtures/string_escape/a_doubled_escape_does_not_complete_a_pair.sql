@@ -1,0 +1,12 @@
+-- The weak half of the doubled-escape pair. `str_udeescape` refuses a pending first
+-- half at its doubled-escape arm before emitting the backslash, and this spelling pins
+-- the refusal but not its *position*: measured under a guard deferred to the end of the
+-- literal, it still answers `42601`. Its discriminating twin is
+-- `a_half_does_not_survive_a_doubled_escape.sql` (`U&'\D83D\\\DCA9'`), which decodes
+-- to the two-character `\💩` under that same mutation.
+-- @test
+-- @expect-error: a doubled escape char while a half is pending
+-- @no-error-fields: pglet's `P` is the string literal's own start where 18.6's is the
+-- offending escape inside it (and, for an unpaired first half, the token the `xeu`
+-- state fails at). That granularity is the lexer's everywhere, not this rule's.
+SELECT U&'\D83D\\';

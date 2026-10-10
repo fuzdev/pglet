@@ -1,0 +1,12 @@
+-- **Multidimensional arrays are a pglet non-goal**, and this is a deliberate
+-- pglet-stricter divergence: Postgres builds `{{1,2},{3,4}}` and pglet fails loud.
+-- Before, pglet neither built it nor rejected it — it rendered the inner arrays to text
+-- and returned a 1-D `{"{1,2}","{3,4}"}`, declaring `text` on the extended protocol and
+-- `text[]` on the simple one (the two walkers disagreed because `array_of()` has no
+-- second dimension to return, so one fell back to `text` and the other to `text[]`).
+-- @test
+-- The `::TEXT` keeps Postgres's side decodable by the harness (a bare 2-D array is
+-- not), so this reads as the deliberately-pglet-stricter shape: Postgres succeeds with
+-- `{{1,2},{3,4}}` and pglet fails loud.
+-- @expect-error: pglet does not support multidimensional arrays (Postgres accepts this)
+SELECT ARRAY[ARRAY[1,2],ARRAY[3,4]]::TEXT;

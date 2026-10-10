@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "a": false,
+      "b": false,
+      "id": 1
+    },
+    {
+      "a": true,
+      "b": true,
+      "id": 2
+    },
+    {
+      "a": false,
+      "b": false,
+      "id": 3
+    }
+  ],
+  "rowCount": 3
+}

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42809",
+    "message": "DISTINCT specified, but unnest is not an aggregate function"
+  }
+}

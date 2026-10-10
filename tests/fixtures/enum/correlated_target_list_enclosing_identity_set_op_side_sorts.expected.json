@@ -1,0 +1,15 @@
+{
+  "rows": [
+    {
+      "k": 1,
+      "least_union": "sad",
+      "least_union_all": "sad"
+    },
+    {
+      "k": 2,
+      "least_union": "sad",
+      "least_union_all": "sad"
+    }
+  ],
+  "rowCount": 2
+}

@@ -1,0 +1,37 @@
+{
+  "rows": [
+    {
+      "c_left": "a",
+      "c_mod": "1.5",
+      "c_mod_num": "1",
+      "c_ol": 3,
+      "c_pow": 9.0,
+      "c_sub": {
+        "data": [
+          97
+        ],
+        "type": "Buffer"
+      },
+      "case_pow": 1.7320508075688772,
+      "g_mod": "1.5",
+      "id": 1
+    },
+    {
+      "c_left": "z",
+      "c_mod": "0",
+      "c_mod_num": "1.5",
+      "c_ol": 0,
+      "c_pow": 0.0,
+      "c_sub": {
+        "data": [
+          0
+        ],
+        "type": "Buffer"
+      },
+      "case_pow": 1.0,
+      "g_mod": "1.5",
+      "id": 2
+    }
+  ],
+  "rowCount": 2
+}

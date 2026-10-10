@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "id": 1,
+      "then_int_else_bigint": "1",
+      "then_text_else_varchar": "aa",
+      "then_varchar_else_text": "bb"
+    }
+  ],
+  "rowCount": 1
+}

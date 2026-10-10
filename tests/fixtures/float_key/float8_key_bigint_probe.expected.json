@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "k": 2,
+      "probe": "cast"
+    },
+    {
+      "k": 2,
+      "probe": "literal"
+    }
+  ],
+  "rowCount": 2
+}

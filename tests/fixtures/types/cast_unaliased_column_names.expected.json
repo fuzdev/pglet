@@ -1,0 +1,14 @@
+{
+  "rows": [
+    {
+      "bool": true,
+      "float8": 1.5,
+      "int4": 100,
+      "numeric": "9.00",
+      "text": "5",
+      "varchar": "a",
+      "x": "7"
+    }
+  ],
+  "rowCount": 1
+}

@@ -1,0 +1,13 @@
+-- `transformIndexConstraint` tests the multiplicity at the top of the function and
+-- resolves the key columns further down, **inside the same call** — so the two errors
+-- interleave per constraint rather than running as two whole-list passes. Here the bad
+-- column sits on constraint 1, whose columns are resolved before constraint 2 is ever
+-- reached, so 42703 wins over the second PRIMARY KEY.
+--
+-- The mirror image is `create_table_second_primary_key_beats_later_key_column.sql`, and
+-- neither follows from the other: no ordering of one whole-list multiplicity check and
+-- one whole-list column check yields both.
+-- @expect-error: column nosuch named in key does not exist
+-- @no-profile-lock: the @test is DDL — it takes no query plan, so index acceleration cannot change its outcome
+-- @test
+CREATE TABLE ctkp (a INT NOT NULL, PRIMARY KEY (nosuch), PRIMARY KEY (a));

@@ -1,0 +1,12 @@
+{
+  "rows": [
+    {
+      "duplicate_last_wins": "{\"a\": 2}",
+      "length_then_bytes": "{\"b\": 1, \"c\": 3, \"aa\": 2}",
+      "nested_canonical": "{\"z\": {\"a\": 2, \"bb\": 1}}",
+      "short_key_first": "{\"a\": 2, \"zz\": 1}",
+      "through_storage": "{\"b\": 1, \"c\": 3, \"aa\": 2}"
+    }
+  ],
+  "rowCount": 1
+}

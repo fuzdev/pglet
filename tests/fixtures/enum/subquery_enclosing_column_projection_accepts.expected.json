@@ -1,0 +1,23 @@
+{
+  "rows": [
+    {
+      "computed": false,
+      "id": 1,
+      "passthrough": true,
+      "scalar_operand": false
+    },
+    {
+      "computed": true,
+      "id": 2,
+      "passthrough": true,
+      "scalar_operand": false
+    },
+    {
+      "computed": true,
+      "id": 3,
+      "passthrough": true,
+      "scalar_operand": false
+    }
+  ],
+  "rowCount": 3
+}

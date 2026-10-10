@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "3F000",
+    "message": "schema \"PUBLIC\" does not exist"
+  }
+}

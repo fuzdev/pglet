@@ -1,0 +1,21 @@
+{
+  "meta": {
+    "benchmark": "query_scan_latency",
+    "lane": "native_inprocess",
+    "layer": "L1",
+    "prepopulate_rows": 100000,
+    "index": "none (sequential scan for every scenario)",
+    "warmup": 5,
+    "samples": 30,
+    "units": "microseconds",
+    "higher_or_lower_is_better": "lower"
+  },
+  "rows": [
+    {"engine":"pglet","scenario":"point_lookup","p50_us":52150.569,"p95_us":53793.615,"cv":0.0207,"rows_out":1,"units":"microseconds","higher_or_lower_is_better":"lower"},
+    {"engine":"pglet","scenario":"full_scan","p50_us":64650.245,"p95_us":67364.668,"cv":0.0200,"rows_out":100000,"units":"microseconds","higher_or_lower_is_better":"lower"},
+    {"engine":"pglet","scenario":"aggregate","p50_us":53334.743,"p95_us":55438.197,"cv":0.0212,"rows_out":1,"units":"microseconds","higher_or_lower_is_better":"lower"},
+    {"engine":"sqlite","scenario":"point_lookup","p50_us":1926.397,"p95_us":1961.311,"cv":0.0102,"rows_out":1,"units":"microseconds","higher_or_lower_is_better":"lower"},
+    {"engine":"sqlite","scenario":"full_scan","p50_us":12454.813,"p95_us":12526.169,"cv":0.0036,"rows_out":100000,"units":"microseconds","higher_or_lower_is_better":"lower"},
+    {"engine":"sqlite","scenario":"aggregate","p50_us":2666.921,"p95_us":2683.601,"cv":0.0025,"rows_out":1,"units":"microseconds","higher_or_lower_is_better":"lower"}
+  ]
+}

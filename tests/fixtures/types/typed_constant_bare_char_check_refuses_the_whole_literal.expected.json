@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "23514",
+    "message": "new row for relation \"cck\" violates check constraint \"cck_c_check\""
+  }
+}

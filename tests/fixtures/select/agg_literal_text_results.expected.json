@@ -1,0 +1,29 @@
+{
+  "rows": [
+    {
+      "derived": true,
+      "enum_max": true,
+      "g": 1,
+      "null_op": null,
+      "tx_max": true,
+      "vc_min": true
+    },
+    {
+      "derived": true,
+      "enum_max": true,
+      "g": 2,
+      "null_op": null,
+      "tx_max": false,
+      "vc_min": false
+    },
+    {
+      "derived": null,
+      "enum_max": true,
+      "g": 3,
+      "null_op": null,
+      "tx_max": null,
+      "vc_min": null
+    }
+  ],
+  "rowCount": 3
+}

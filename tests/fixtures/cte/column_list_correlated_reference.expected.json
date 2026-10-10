@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "corr": "one",
+      "p": 1
+    },
+    {
+      "corr": "two",
+      "p": 2
+    }
+  ],
+  "rowCount": 2
+}

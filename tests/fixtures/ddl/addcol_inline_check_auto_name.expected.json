@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "constraint_name": "aicad_b_check",
+      "constraint_type": "CHECK"
+    },
+    {
+      "constraint_name": "aicad_c_check",
+      "constraint_type": "CHECK"
+    }
+  ],
+  "rowCount": 2
+}

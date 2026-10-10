@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "id": 1,
+      "superseded": true,
+      "to_account": 9001
+    },
+    {
+      "id": 2,
+      "superseded": false,
+      "to_account": 9002
+    },
+    {
+      "id": 3,
+      "superseded": true,
+      "to_account": 9001
+    }
+  ],
+  "rowCount": 3
+}

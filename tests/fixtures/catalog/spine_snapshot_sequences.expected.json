@@ -1,0 +1,9 @@
+{
+  "rows": [
+    {
+      "data_type": "bigint",
+      "sequence_name": "cat_plain_seq"
+    }
+  ],
+  "rowCount": 1
+}

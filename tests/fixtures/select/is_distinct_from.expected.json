@@ -1,0 +1,30 @@
+{
+  "rows": [
+    {
+      "id": 1,
+      "is_distinct": false,
+      "is_not_distinct": true
+    },
+    {
+      "id": 2,
+      "is_distinct": true,
+      "is_not_distinct": false
+    },
+    {
+      "id": 3,
+      "is_distinct": true,
+      "is_not_distinct": false
+    },
+    {
+      "id": 4,
+      "is_distinct": false,
+      "is_not_distinct": true
+    },
+    {
+      "id": 5,
+      "is_distinct": true,
+      "is_not_distinct": false
+    }
+  ],
+  "rowCount": 5
+}

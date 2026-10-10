@@ -1,0 +1,16 @@
+{
+  "rows": [
+    {
+      "false_or_false": "0",
+      "not_false_or_null": "0",
+      "not_null_and_true": "0",
+      "not_null_or_false": "0",
+      "null_and_null": "0",
+      "null_and_true": "0",
+      "null_or_false": "0",
+      "true_and_false": "0",
+      "true_and_null": "0"
+    }
+  ],
+  "rowCount": 1
+}

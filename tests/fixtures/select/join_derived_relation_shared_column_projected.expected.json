@@ -1,0 +1,10 @@
+{
+  "rows": [
+    {
+      "base_x": 1,
+      "cte_x": "z",
+      "sub_x": "z"
+    }
+  ],
+  "rowCount": 1
+}

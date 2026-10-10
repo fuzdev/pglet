@@ -1,0 +1,29 @@
+{
+  "rows": [
+    {
+      "id": 1,
+      "lp": "xyxhi",
+      "lp_empty": "hi",
+      "lp_trunc": " hi",
+      "rp": "hixyx",
+      "rp_space": "hi   "
+    },
+    {
+      "id": 2,
+      "lp": "hello",
+      "lp_empty": "hello",
+      "lp_trunc": "hel",
+      "rp": "hello",
+      "rp_space": "hello"
+    },
+    {
+      "id": 3,
+      "lp": null,
+      "lp_empty": null,
+      "lp_trunc": null,
+      "rp": null,
+      "rp_space": null
+    }
+  ],
+  "rowCount": 3
+}

@@ -1,0 +1,27 @@
+{
+  "rows": [
+    {
+      "bigint_numeric": "0",
+      "eq": "0",
+      "eq_no": "0",
+      "ge": "0",
+      "ge_no": "0",
+      "gt": "0",
+      "gt_no": "0",
+      "int_bigint": "0",
+      "int_numeric": "0",
+      "le": "0",
+      "le_no": "0",
+      "lt": "0",
+      "lt_no": "0",
+      "ne": "0",
+      "ne_no": "0",
+      "negative": "0",
+      "numeric_exact": "0",
+      "numeric_int": "0",
+      "numerics": "0",
+      "past_float_precision": "0"
+    }
+  ],
+  "rowCount": 1
+}

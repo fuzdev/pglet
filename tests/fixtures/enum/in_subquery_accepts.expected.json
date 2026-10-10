@@ -1,0 +1,23 @@
+{
+  "rows": [
+    {
+      "cast_left": false,
+      "id": 1,
+      "member_left": true,
+      "same_enum": true
+    },
+    {
+      "cast_left": true,
+      "id": 2,
+      "member_left": true,
+      "same_enum": true
+    },
+    {
+      "cast_left": false,
+      "id": 3,
+      "member_left": true,
+      "same_enum": true
+    }
+  ],
+  "rowCount": 3
+}

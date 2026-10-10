@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42601",
+    "message": "both default and identity specified for column \"c\" of table \"md\""
+  }
+}

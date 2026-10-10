@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P16",
+    "message": "multiple primary keys for table \"ctip\" are not allowed"
+  }
+}

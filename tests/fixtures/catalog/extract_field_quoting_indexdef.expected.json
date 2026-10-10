@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "indexdef": "CREATE INDEX xi_a_idx ON public.xi USING btree (EXTRACT(\"MONTH\" FROM d)) WHERE (EXTRACT(\"Hour\" FROM ti) > 1.0)",
+      "indexname": "xi_a_idx"
+    },
+    {
+      "indexdef": "CREATE INDEX xi_b_idx ON public.xi USING btree (EXTRACT(month FROM d)) WHERE (EXTRACT(hour FROM ti) > 1.0)",
+      "indexname": "xi_b_idx"
+    },
+    {
+      "indexdef": "CREATE INDEX xi_c_idx ON public.xi USING btree (EXTRACT(\"select\" FROM d)) WHERE (EXTRACT(\"my\"\"x\" FROM ti) IS NOT NULL)",
+      "indexname": "xi_c_idx"
+    }
+  ],
+  "rowCount": 3
+}

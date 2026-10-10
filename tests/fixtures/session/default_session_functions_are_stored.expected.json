@@ -1,0 +1,16 @@
+{
+  "rows": [
+    {
+      "a": "postgres",
+      "b": "postgres",
+      "c": "postgres",
+      "d": "postgres",
+      "e": "postgres",
+      "f": "public",
+      "g": "public",
+      "h": "postgres",
+      "i": "\"$user\", public"
+    }
+  ],
+  "rowCount": 1
+}

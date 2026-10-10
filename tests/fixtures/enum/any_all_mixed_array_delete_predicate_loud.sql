@@ -1,0 +1,12 @@
+-- The mixed array **writes**: the same predicate in a `DELETE` removed two rows 18.6
+-- keeps by refusing. The survivors are `crates/pglet`'s `enum_identity_gates`.
+-- @setup
+CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');
+CREATE TYPE m3 AS ENUM ('sad', 'happy', 'ok');
+CREATE TABLE w (id INT, m mood NOT NULL, y m3 NOT NULL, s TEXT NOT NULL);
+INSERT INTO w VALUES (1, 'sad', 'ok', 'ok'), (2, 'ok', 'happy', 'ok'), (3, 'happy', 'sad', 'zzz');
+
+-- @test
+-- @expect-error: no operator for mood = text in a DELETE predicate over a mixed array
+-- @expect-message
+DELETE FROM w WHERE m = ANY(ARRAY[s, 'ok']);

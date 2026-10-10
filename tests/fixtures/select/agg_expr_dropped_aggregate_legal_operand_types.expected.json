@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "case_arm": null,
+      "cast_min": false,
+      "coalesce_rest": 1,
+      "count_any": true,
+      "simple_case": 5,
+      "text_max": true
+    }
+  ],
+  "rowCount": 1
+}

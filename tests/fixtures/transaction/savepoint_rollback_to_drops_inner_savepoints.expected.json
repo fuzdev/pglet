@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "3B001",
+    "message": "savepoint \"inner_sp\" does not exist"
+  }
+}

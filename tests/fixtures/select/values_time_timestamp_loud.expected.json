@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42846",
+    "message": "VALUES could not convert type timestamp without time zone to time without time zone"
+  }
+}

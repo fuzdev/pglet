@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "is_zero": false,
+      "n": 13
+    },
+    {
+      "is_zero": true,
+      "n": 14
+    }
+  ],
+  "rowCount": 2
+}

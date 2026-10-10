@@ -1,0 +1,10 @@
+{
+  "rows": [
+    {
+      "a": "infinity",
+      "b": "-infinity",
+      "c": "infinity"
+    }
+  ],
+  "rowCount": 1
+}

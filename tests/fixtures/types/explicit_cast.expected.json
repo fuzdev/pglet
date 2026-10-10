@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "id_text": "1",
+      "name": "Alice"
+    },
+    {
+      "id_text": "2",
+      "name": "Bob"
+    }
+  ],
+  "rowCount": 2
+}

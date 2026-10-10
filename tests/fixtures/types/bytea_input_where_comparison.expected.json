@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "between_plain": "2",
+      "cast_beside_literal": true,
+      "casts_differ": false,
+      "eq_empty": 4,
+      "eq_hex": 2,
+      "eq_plain": 1,
+      "eq_plain_left": 5,
+      "eq_space": 3,
+      "gt_plain": "3",
+      "ne_plain": "5"
+    }
+  ],
+  "rowCount": 1
+}

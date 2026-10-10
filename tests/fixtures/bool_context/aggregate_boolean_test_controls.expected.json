@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "b": "x",
+      "scalar_leg": true
+    },
+    {
+      "b": "y",
+      "scalar_leg": true
+    }
+  ],
+  "rowCount": 2
+}

@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "round_len": 16385,
+      "round_preserved": true,
+      "round_to_zero": "0",
+      "trunc_len": 16385,
+      "trunc_preserved": true,
+      "trunc_to_zero": "0"
+    }
+  ],
+  "rowCount": 1
+}

@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "customer": "Alice",
+      "total": "300"
+    },
+    {
+      "customer": "Bob",
+      "total": "125"
+    },
+    {
+      "customer": "Carol",
+      "total": "150"
+    }
+  ],
+  "rowCount": 3
+}

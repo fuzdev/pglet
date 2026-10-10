@@ -1,0 +1,15 @@
+{
+  "rows": [
+    {
+      "hex_pair_is_e_acute": true,
+      "hex_pair_len": 1,
+      "hex_triple_is_euro": true,
+      "hex_triple_len": 1,
+      "mixed_len": 3,
+      "mixed_value": true,
+      "octal_pair_is_e_acute": true,
+      "octal_pair_len": 1
+    }
+  ],
+  "rowCount": 1
+}

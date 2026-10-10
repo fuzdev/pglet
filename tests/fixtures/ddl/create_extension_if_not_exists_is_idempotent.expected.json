@@ -1,0 +1,9 @@
+{
+  "rows": [
+    {
+      "pgcrypto": true,
+      "uuid_ossp": true
+    }
+  ],
+  "rowCount": 1
+}

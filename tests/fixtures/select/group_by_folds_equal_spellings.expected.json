@@ -1,0 +1,18 @@
+{
+  "rows": [
+    {
+      "array_a": "{1.0} x2",
+      "array_b": "{1.00} x2",
+      "day_a": "{\"1 day\"} x2",
+      "day_b": "{24:00:00} x2",
+      "jsonb_a": "{\"a\": 1.0} x2",
+      "jsonb_b": "{\"a\": 1} x2",
+      "mon_a": "{\"1 mon\"} x2",
+      "mon_b": "{\"30 days\"} x2",
+      "nan": "{NaN} x2",
+      "zero_a": "{0} x2",
+      "zero_b": "{-0} x2"
+    }
+  ],
+  "rowCount": 1
+}

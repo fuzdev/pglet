@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "generate_series": 1
+    },
+    {
+      "generate_series": 2
+    }
+  ],
+  "rowCount": 2
+}

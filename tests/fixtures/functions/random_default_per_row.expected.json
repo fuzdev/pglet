@@ -1,0 +1,10 @@
+{
+  "rows": [
+    {
+      "a_varies": true,
+      "b_varies": true,
+      "in_range": "6"
+    }
+  ],
+  "rowCount": 1
+}

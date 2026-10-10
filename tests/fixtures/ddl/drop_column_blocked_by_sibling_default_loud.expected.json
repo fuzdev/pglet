@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "2BP01",
+    "message": "cannot drop column id of table dcsib_t because other objects depend on it"
+  }
+}

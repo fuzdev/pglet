@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "2201X",
+    "message": "OFFSET must not be negative"
+  }
+}

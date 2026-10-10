@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "id": 2,
+      "name": "Banana"
+    },
+    {
+      "id": 4,
+      "name": "Orange"
+    }
+  ],
+  "rowCount": 2
+}

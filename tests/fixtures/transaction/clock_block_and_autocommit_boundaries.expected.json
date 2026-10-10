@@ -1,0 +1,38 @@
+{
+  "rows": [
+    {
+      "before_the_next_group": true,
+      "before_this_statement": true,
+      "clocks_agree": "0",
+      "default_differs": "0",
+      "grp": 1,
+      "statement_later": "4",
+      "statement_values": "4",
+      "transaction_values": "1",
+      "written_rows": "4"
+    },
+    {
+      "before_the_next_group": true,
+      "before_this_statement": true,
+      "clocks_agree": "2",
+      "default_differs": "0",
+      "grp": 2,
+      "statement_later": "0",
+      "statement_values": "2",
+      "transaction_values": "2",
+      "written_rows": "2"
+    },
+    {
+      "before_the_next_group": null,
+      "before_this_statement": true,
+      "clocks_agree": "0",
+      "default_differs": "0",
+      "grp": 3,
+      "statement_later": "2",
+      "statement_values": "2",
+      "transaction_values": "1",
+      "written_rows": "2"
+    }
+  ],
+  "rowCount": 3
+}

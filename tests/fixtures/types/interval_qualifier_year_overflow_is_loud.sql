@@ -1,0 +1,12 @@
+-- The refusing side of `interval_qualifier_year_overflow_boundary.sql`: one past the
+-- largest accepted year count. It used to answer the clamped `178956970 years`.
+-- The refusal is `22008 interval out of range` on both engines: the year count itself
+-- fits `int32` and only the ×12 product does not, which is an **assembly** overflow
+-- rather than a field one, so it does not take the field decoder's `22015`. The
+-- qualified spelling delegates to the shared interval decoder, so it answers as the
+-- `INTERVAL '178956971 years'` spelling does. `@expect-error` compares the SQLSTATE
+-- against the recorded oracle error, so this fixture holds the code as well as the
+-- refusal.
+-- @test
+-- @expect-error: interval out of range
+SELECT INTERVAL '178956971' YEAR;

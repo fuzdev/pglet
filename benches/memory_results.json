@@ -1,0 +1,116 @@
+{
+	"schema": "memory",
+	"note": "pglet-internal longitudinal peak; NOT a cross-engine ratio (pglite is whole-Postgres; WASM linear memory only grows). Watch-tier — compare to a prior local run, never a committed absolute; only size:check gates.",
+	"meta": {
+		"timestamp": "2026-10-04T00:17:59.063Z",
+		"git_commit": "7cae837c",
+		"workload": "load-only; schemas [indexfree, enforcing] × rows [10000, 100000]",
+		"native_method": "peak RSS via /proc/self/status VmHWM; fresh child process per workload; file-backed double-meta (CoW B+tree + LRU page cache, default 2000 pages)",
+		"wasm_method": "linear-memory high-water (WebAssembly.Memory.buffer.byteLength); fresh module (subprocess) per workload; in-memory PgletBtree",
+		"units": {
+			"native": "kilobytes",
+			"wasm": "bytes"
+		},
+		"higher_or_lower_is_better": "lower"
+	},
+	"native": [
+		{
+			"engine": "pglet",
+			"surface": "native_embed",
+			"schema": "indexfree",
+			"rows": 10000,
+			"baseline_rss_kb": 2728,
+			"current_rss_kb": 8196,
+			"peak_rss_kb": 8196,
+			"delta_kb": 5468,
+			"file_size_kb": 1572,
+			"units": "kilobytes",
+			"higher_or_lower_is_better": "lower"
+		},
+		{
+			"engine": "pglet",
+			"surface": "native_embed",
+			"schema": "enforcing",
+			"rows": 10000,
+			"baseline_rss_kb": 2856,
+			"current_rss_kb": 13928,
+			"peak_rss_kb": 13928,
+			"delta_kb": 11072,
+			"file_size_kb": 3176,
+			"units": "kilobytes",
+			"higher_or_lower_is_better": "lower"
+		},
+		{
+			"engine": "pglet",
+			"surface": "native_embed",
+			"schema": "indexfree",
+			"rows": 100000,
+			"baseline_rss_kb": 2732,
+			"current_rss_kb": 24612,
+			"peak_rss_kb": 24612,
+			"delta_kb": 21880,
+			"file_size_kb": 14276,
+			"units": "kilobytes",
+			"higher_or_lower_is_better": "lower"
+		},
+		{
+			"engine": "pglet",
+			"surface": "native_embed",
+			"schema": "enforcing",
+			"rows": 100000,
+			"baseline_rss_kb": 2940,
+			"current_rss_kb": 36216,
+			"peak_rss_kb": 36216,
+			"delta_kb": 33276,
+			"file_size_kb": 30024,
+			"units": "kilobytes",
+			"higher_or_lower_is_better": "lower"
+		}
+	],
+	"wasm": [
+		{
+			"engine": "pglet",
+			"surface": "wasm_inmemory",
+			"schema": "indexfree",
+			"rows": 10000,
+			"initial_bytes": 4325376,
+			"peak_bytes": 9043968,
+			"delta_bytes": 4718592,
+			"units": "bytes",
+			"higher_or_lower_is_better": "lower"
+		},
+		{
+			"engine": "pglet",
+			"surface": "wasm_inmemory",
+			"schema": "enforcing",
+			"rows": 10000,
+			"initial_bytes": 4325376,
+			"peak_bytes": 14155776,
+			"delta_bytes": 9830400,
+			"units": "bytes",
+			"higher_or_lower_is_better": "lower"
+		},
+		{
+			"engine": "pglet",
+			"surface": "wasm_inmemory",
+			"schema": "indexfree",
+			"rows": 100000,
+			"initial_bytes": 4325376,
+			"peak_bytes": 48562176,
+			"delta_bytes": 44236800,
+			"units": "bytes",
+			"higher_or_lower_is_better": "lower"
+		},
+		{
+			"engine": "pglet",
+			"surface": "wasm_inmemory",
+			"schema": "enforcing",
+			"rows": 100000,
+			"initial_bytes": 4325376,
+			"peak_bytes": 90767360,
+			"delta_bytes": 86441984,
+			"units": "bytes",
+			"higher_or_lower_is_better": "lower"
+		}
+	]
+}

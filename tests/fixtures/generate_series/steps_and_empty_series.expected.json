@@ -1,0 +1,57 @@
+{
+  "rows": [
+    {
+      "g": 1,
+      "k": "down"
+    },
+    {
+      "g": 2,
+      "k": "down"
+    },
+    {
+      "g": 3,
+      "k": "down"
+    },
+    {
+      "g": -3,
+      "k": "negatives"
+    },
+    {
+      "g": 0,
+      "k": "negatives"
+    },
+    {
+      "g": 3,
+      "k": "negatives"
+    },
+    {
+      "g": 5,
+      "k": "one"
+    },
+    {
+      "g": 1,
+      "k": "stride"
+    },
+    {
+      "g": 5,
+      "k": "stride"
+    },
+    {
+      "g": 9,
+      "k": "stride"
+    },
+    {
+      "g": 2,
+      "k": "stride_down"
+    },
+    {
+      "g": 6,
+      "k": "stride_down"
+    },
+    {
+      "g": 10,
+      "k": "stride_down"
+    }
+  ],
+  "rowCount": 13
+}

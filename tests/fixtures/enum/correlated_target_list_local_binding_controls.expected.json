@@ -1,0 +1,19 @@
+{
+  "rows": [
+    {
+      "in_its_where": true,
+      "inside_the_sub_plan": true,
+      "k": 1,
+      "outward_same_type": true,
+      "shadowed": true
+    },
+    {
+      "in_its_where": false,
+      "inside_the_sub_plan": false,
+      "k": 2,
+      "outward_same_type": false,
+      "shadowed": true
+    }
+  ],
+  "rowCount": 2
+}

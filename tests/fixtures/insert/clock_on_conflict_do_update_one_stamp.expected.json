@@ -1,0 +1,23 @@
+{
+  "rows": [
+    {
+      "created_this_transaction": true,
+      "id": 1,
+      "set_is_excluded": true,
+      "stamp_is_returning": true
+    },
+    {
+      "created_this_transaction": true,
+      "id": 2,
+      "set_is_excluded": true,
+      "stamp_is_returning": true
+    },
+    {
+      "created_this_transaction": true,
+      "id": 3,
+      "set_is_excluded": null,
+      "stamp_is_returning": true
+    }
+  ],
+  "rowCount": 3
+}

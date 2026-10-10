@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "?column?": false,
+      "g": 1
+    },
+    {
+      "?column?": true,
+      "g": 2
+    },
+    {
+      "?column?": null,
+      "g": 3
+    }
+  ],
+  "rowCount": 3
+}

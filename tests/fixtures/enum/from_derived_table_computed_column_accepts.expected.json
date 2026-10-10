@@ -1,0 +1,32 @@
+{
+  "rows": [
+    {
+      "any_array": false,
+      "between_": false,
+      "coalesced": "sad",
+      "eq": false,
+      "greatest_": "ok",
+      "gt": false,
+      "id": 1
+    },
+    {
+      "any_array": true,
+      "between_": true,
+      "coalesced": "ok",
+      "eq": true,
+      "greatest_": "ok",
+      "gt": false,
+      "id": 2
+    },
+    {
+      "any_array": false,
+      "between_": true,
+      "coalesced": "happy",
+      "eq": false,
+      "greatest_": "happy",
+      "gt": true,
+      "id": 3
+    }
+  ],
+  "rowCount": 3
+}

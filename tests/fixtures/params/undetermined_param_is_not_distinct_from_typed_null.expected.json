@@ -1,0 +1,14 @@
+{
+  "rows": [
+    {
+      "name": "x"
+    },
+    {
+      "name": "y"
+    },
+    {
+      "name": null
+    }
+  ],
+  "rowCount": 3
+}

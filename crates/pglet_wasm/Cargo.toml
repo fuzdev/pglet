@@ -1,0 +1,153 @@
+[package]
+name = "pglet_wasm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+# The npm-package description is authored in `scripts/patch_npm_package.ts`; this is the raw-crate
+# metadata (parity with `tsv_wasm`/`blake3_wasm`). The npm package spells the same repository in
+# npm's object form, from that same script.
+description = "fast and small embeddable postgres for speeding up your tests"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# Wraps the embed facade's parse→bind→execute→persist driver. Inherits the
+# workspace's `default-features = false`, dropping the native `file_store` (std::fs
+# `FileBlockIo`); the `opfs` feature's build assembles its store over OPFS and hands it
+# to `Database::with_storage`.
+pglet = { workspace = true }
+pglet_core.workspace = true
+pglet_sql.workspace = true
+pglet_storage = { workspace = true }
+
+# WASM-specific dependencies
+wasm-bindgen = "0.2"
+js-sys = "0.3"
+console_error_panic_hook = { version = "0.1", optional = true }
+
+# The `opfs` feature's two: the async OPFS open, and web-sys with the OPFS bindings.
+wasm-bindgen-futures = { version = "0.4", optional = true }
+web-sys = { version = "0.3", optional = true, features = [
+    "Navigator",
+    "StorageManager",
+    "FileSystemDirectoryHandle",
+    "FileSystemFileHandle",
+    "FileSystemSyncAccessHandle",
+    "FileSystemReadWriteOptions",
+    "FileSystemGetFileOptions",
+    "Window",
+    "WorkerGlobalScope",
+    "WorkerNavigator",
+] }
+
+[features]
+# `index_acceleration` (query index selection + IndexScan/IndexRangeScan/GinScan) is
+# ON by default. `--no-default-features` drops it — a size-floor lever (~2.4% smaller),
+# NOT a speed win: results are *intended* to be byte-identical (an index changes only
+# speed), with measured exceptions — `EDGES.md`'s header names them — but
+# `bench:index-accel` measures acceleration ~1.8–2.0× faster on reads from ~200 rows,
+# so the fixture/test audience keeps it on.
+# See CLAUDE.md § Build profiles.
+default = ["console_error_panic_hook", "index_acceleration"]
+index_acceleration = ["pglet/index_acceleration", "pglet_sql/index_acceleration"]
+# `opfs` adds the OPFS-backed persistent database (`PgletBtreePersistent`, a Web Worker
+# binding over the double-meta store) — an additive layer, OFF by default, so the build
+# the npm package ships and the size gate measures carries neither it nor the OPFS shim.
+# The browser example and `test:browser` build with it on (`deno task wasm:build:opfs`).
+opfs = ["dep:wasm-bindgen-futures", "dep:web-sys"]
+
+[package.metadata.wasm-pack.profile.release]
+# wasm-opt is ON (`-Oz`). Measured on the Rust 1.98.0 build: `-Oz` shrinks RAW 8.1%
+# (1 659 148 → 1 525 357 B) but INFLATES gzip (wire) 5.6% (578 992 → 611 480 B); it was kept
+# off while the RAW gate had ample headroom. The §7 conformance features pushed RAW to the
+# then-1280 KiB cap (the binding gate), so the RAW reclaim bought the headroom the remaining
+# items needed, and the gzip increase (paid once per environment) is the accepted trade.
+# `-Oz` maximizes the RAW reclaim (size is the constraint; the runtime delta is negligible
+# for this wasm).
+#
+# `--low-memory-unused` (−10 588 B raw, −4 674 B gzip) lets wasm-opt assume the program
+# never addresses the low 1 KiB of linear memory, so it may fold a pointer's added
+# constant into a load/store offset — the two differ only when the addition wraps past
+# 2^32, which lands in that low 1 KiB. The assumption holds because of the linker's
+# layout, read off the built module: its one global, the shadow-stack pointer, starts at
+# 4 194 304 and the stack grows down from it toward 0 (rustc links this target with
+# `--stack-first`, and `build.rs` sets `-z stack-size=4194304` in place of rustc's
+# 1 048 576); the first data segment sits at 4 194 304 (4 194 308 after wasm-bindgen); and
+# the allocator takes its memory from `memory.grow`, above the initial 66 pages. So only a
+# stack within 1 KiB of overflowing touches [0, 1024), and a wrapped address arises only
+# once the stack pointer has gone below 0 — which the statement-depth limit keeps it well
+# clear of (`build.rs`). Measured at the earlier 1 MiB layout, before that limit: the depth
+# at which a `SELECT 1+1+…` chain overflowed the stack and trapped, and the verdicts of six
+# other nesting shapes up to 50 000 deep, were identical with and without the flag. What would falsify it: anything that places data or live stack frames
+# in the low 1 KiB — dropping `--stack-first` together with a `--global-base` below
+# 1024, or any target/linker change that moves data or the stack there; re-read the
+# module's stack-pointer initial value and lowest data-segment offset after such a change.
+# `--converge` was measured again and not taken: −1 091 B raw / −2 969 B gzip at +23 s
+# of wasm-opt time per build.
+#
+# `-ocimfs=400` keeps a function with one caller out of line past 400 of wasm-opt's size
+# units, where `-Oz` inlines every such function: the walkers recurse from a lean frame
+# and keep each level's work in a helper (`pglet_sql::depth`), and inlining the helper
+# back gives V8's optimizing tier a frame a level several times the size — measured under
+# `--no-liftoff`, a `$N` chain exhausted V8's stack at 988 levels, and 5 625 with the
+# flag. +1 436 B raw. `tests-web/integration/pglet_wasm_test.ts` drives both tiers.
+#
+# `--enable-*`: the bundled wasm-opt is older than the features rustc/LLVM emit by
+# default (bulk-memory `memory.copy`/`fill`, sign-extension, mutable globals), so they
+# must be enabled or validation fails.
+wasm-opt = ['-Oz', '-ocimfs=400', '--low-memory-unused', '--enable-bulk-memory', '--enable-sign-ext', '--enable-mutable-globals', '--enable-nontrapping-float-to-int']
+
+# This crate cannot inherit `[lints] workspace = true`: the workspace forbids
+# `unsafe_code`, and a `forbid` cannot be lifted, but the `opfs` feature's OPFS
+# sync-handle needs `unsafe impl Send/Sync` (sound under single-threaded WASM — see
+# `opfs_block_io.rs`). So the workspace lint set is re-pasted here verbatim with
+# `unsafe_code` downgraded to `deny`, which that one module lifts with its own
+# `#![allow(unsafe_code)]`.
+[lints.rust]
+unsafe_code = "deny"
+missing_debug_implementations = "warn"
+trivial_casts = "warn"
+trivial_numeric_casts = "warn"
+unused_lifetimes = "warn"
+unused_qualifications = "warn"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+cargo = { level = "warn", priority = -1 }
+
+# Pedantic overrides (kept in sync with the workspace block — see Cargo.toml)
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+similar_names = "allow"
+too_many_lines = "allow"
+missing_panics_doc = "allow"
+missing_errors_doc = "allow"
+doc_markdown = "allow"
+cast_possible_truncation = "allow"
+cast_possible_wrap = "allow"
+cast_precision_loss = "allow"
+cast_sign_loss = "allow"
+
+# Nursery overrides
+significant_drop_tightening = "allow"
+
+# Cargo overrides. `cargo_common_metadata` stays allowed because these crates are
+# `publish = false` — the fields it asks for exist for a registry listing, and the
+# ones that carry meaning here (`description`, `license`, `repository`) are set
+# anyway. `multiple_crate_versions` is about the dependency graph, not this manifest.
+cargo_common_metadata = "allow"
+multiple_crate_versions = "allow"
+
+# Restriction lints (panic points need explicit #[allow] with justification)
+clone_on_ref_ptr = "warn"
+dbg_macro = "warn"
+expect_used = "warn"
+panic = "warn"
+todo = "warn"
+unwrap_used = "warn"

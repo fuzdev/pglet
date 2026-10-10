@@ -1,0 +1,10 @@
+{
+  "rows": [
+    {
+      "all_and": "2",
+      "all_or": "1",
+      "nested": "2"
+    }
+  ],
+  "rowCount": 1
+}

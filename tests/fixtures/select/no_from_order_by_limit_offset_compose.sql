@@ -1,0 +1,13 @@
+-- The whole no-FROM tail at once — direction, bound and offset composed over a
+-- row-expanding projection. It is the shape that separates "the clauses are parsed" from
+-- "the clauses are applied **in the right order**": with the `Sort` built under the
+-- `Limit`, `DESC` gives `4, 3, 2, 1` and the `LIMIT 2 OFFSET 1` window takes `3, 2`, while
+-- a `Limit` under the `Sort` windows the unsorted `3, 1, 4, 2` to `1, 4` and answers
+-- `4, 1`.
+--
+-- **The array is chosen to discriminate that, and it took a mutation to find one that
+-- does.** The obvious `ARRAY[3, 1, 2]` does not: both orderings answer `2, 1` over it, so
+-- the first draft of this fixture was green under a `Limit`-under-`Sort` mutation. A
+-- sorted-prefix array hides the swap; this one does not.
+-- @test
+SELECT unnest(ARRAY[3, 1, 4, 2]) AS q ORDER BY q DESC LIMIT 2 OFFSET 1;

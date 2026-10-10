@@ -1,0 +1,9 @@
+{
+  "rows": [
+    {
+      "length": 2688,
+      "m": "a_very_long_label_to_make_the_varlena_bigger_than_four_bytes_x"
+    }
+  ],
+  "rowCount": 1
+}

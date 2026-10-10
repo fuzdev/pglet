@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42883",
+    "message": "function current_database(integer) does not exist"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42703",
+    "message": "column \"b\" does not exist"
+  }
+}

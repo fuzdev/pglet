@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42712",
+    "message": "WITH query name \"c\" specified more than once"
+  }
+}

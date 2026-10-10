@@ -1,0 +1,19 @@
+-- A `GROUP BY` key naming nothing, over a FROM-clause `unnest(…)`.
+--
+-- The clause matters because the post-projection resolvers behind `GROUP BY` / `ORDER
+-- BY` / `HAVING` have no relation identity of their own — that is the whole reason
+-- `ColumnScope::check_binding` closes the class once in the planner rather than per site.
+-- So the exhaustiveness of the FROM relation is what decides them all, and each clause is
+-- a separate lowering that has to reach the gate. Enumerating them is the part that goes
+-- stale: this fixture, `select/unnest_bogus_order_by_key_loud.sql` and
+-- `select/unnest_bogus_having_name_loud.sql` are one fixture per clause for that reason,
+-- not for coverage arithmetic.
+--
+-- The array is **empty**, which is what makes the key's judgement the plan-time gate's:
+-- an aggregation over no rows still emits no group, so nothing below the gate ever reads
+-- the key.
+--
+-- No `@setup` at all, so nothing but the `@test` can raise the asserted code.
+-- @test
+-- @expect-error: the `GROUP BY` key names nothing at the unnest's level (42703)
+SELECT 1 FROM unnest(ARRAY[]::int[]) AS u(x) GROUP BY bogus;

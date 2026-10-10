@@ -1,0 +1,25 @@
+{
+  "rows": [
+    {
+      "indexname": "cac8_tttttttttttttttttttttttt_cooooooooooooooooooooooooooo_key1",
+      "len": 63
+    },
+    {
+      "indexname": "cac8_tttttttttttttttttttttttt_coooooooooooooooooooooooooooo_idx",
+      "len": 63
+    },
+    {
+      "indexname": "cac8_tttttttttttttttttttttttt_coooooooooooooooooooooooooooo_key",
+      "len": 63
+    },
+    {
+      "indexname": "cac8_tttttttttttttttttttttttt_id_cooooooooooooooooooooooooo_key",
+      "len": 63
+    },
+    {
+      "indexname": "cac8_ttttttttttttttttttttttttttttttttttttttttttttttttttttt_pkey",
+      "len": 63
+    }
+  ],
+  "rowCount": 5
+}

@@ -1,0 +1,61 @@
+{
+  "rows": [
+    {
+      "column_default": "5",
+      "column_name": "a"
+    },
+    {
+      "column_default": "'-1'::integer",
+      "column_name": "b"
+    },
+    {
+      "column_default": "1.5",
+      "column_name": "c"
+    },
+    {
+      "column_default": "5",
+      "column_name": "d"
+    },
+    {
+      "column_default": "(5)::bigint",
+      "column_name": "e"
+    },
+    {
+      "column_default": "(1 + 1)",
+      "column_name": "f"
+    },
+    {
+      "column_default": "5",
+      "column_name": "g"
+    },
+    {
+      "column_default": "5",
+      "column_name": "h"
+    },
+    {
+      "column_default": "5",
+      "column_name": "i"
+    },
+    {
+      "column_default": "true",
+      "column_name": "j"
+    },
+    {
+      "column_default": "'{}'::jsonb",
+      "column_name": "k"
+    },
+    {
+      "column_default": "'2024-01-01'::date",
+      "column_name": "l"
+    },
+    {
+      "column_default": "concat('a', 'b')",
+      "column_name": "m"
+    },
+    {
+      "column_default": "true",
+      "column_name": "n"
+    }
+  ],
+  "rowCount": 14
+}

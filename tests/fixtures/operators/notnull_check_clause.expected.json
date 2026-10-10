@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "check_clause": "(a IS NOT NULL)",
+      "constraint_name": "nck_a_check"
+    },
+    {
+      "check_clause": "((b IS NULL) OR (b > 0))",
+      "constraint_name": "nck_b_check"
+    }
+  ],
+  "rowCount": 2
+}

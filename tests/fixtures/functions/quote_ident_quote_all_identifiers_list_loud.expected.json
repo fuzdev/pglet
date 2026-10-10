@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "22023",
+    "message": "SET quote_all_identifiers takes only one argument"
+  }
+}

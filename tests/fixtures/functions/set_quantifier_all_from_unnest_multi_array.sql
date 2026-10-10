@@ -1,0 +1,12 @@
+-- The polarity control for `set_quantifier_distinct_from_unnest_multi_array_loud.sql`:
+-- the same statement with one keyword changed. `transformRangeFunction`'s multi-argument
+-- expansion is skipped only for a *decorated* call, and `ALL` sets no decoration
+-- (`!fc->agg_distinct` is the guard), so this expands into one `unnest` per argument and
+-- answers the two columns where its `DISTINCT` twin is 42883. This pair is not the only
+-- thing separating "read the quantifier" from "refuse the quantifier" at this route —
+-- the single-array `set_quantifier_all_from_unnest.sql` reddens under that mutation too,
+-- measured. What only the twin catches is the `arrays > 1` arm of
+-- `planner::refuse_from_unnest_quantifier`: deleting it leaves this fixture green and
+-- reddens the twin alone.
+-- @test
+SELECT * FROM unnest(ALL ARRAY[1, 2], ARRAY[3, 4]) AS u(x, y);

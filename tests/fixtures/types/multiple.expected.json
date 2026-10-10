@@ -1,0 +1,12 @@
+{
+  "rows": [
+    {
+      "active": true,
+      "count": "1000000000",
+      "id": 1,
+      "name": "test",
+      "price": 19.99
+    }
+  ],
+  "rowCount": 1
+}

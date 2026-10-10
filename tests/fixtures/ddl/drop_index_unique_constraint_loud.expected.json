@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "2BP01",
+    "message": "cannot drop index diuq_k_key because constraint diuq_k_key on table diuq requires it"
+  }
+}

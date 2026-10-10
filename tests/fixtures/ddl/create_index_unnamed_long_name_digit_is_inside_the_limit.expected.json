@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "indexname": "ciu16_ttttttttttttttttttttttt_cooooooooooooooooooooooooooo_idx1",
+      "len": 63
+    },
+    {
+      "indexname": "ciu16_ttttttttttttttttttttttt_cooooooooooooooooooooooooooo_idx2",
+      "len": 63
+    },
+    {
+      "indexname": "ciu16_ttttttttttttttttttttttt_coooooooooooooooooooooooooooo_idx",
+      "len": 63
+    }
+  ],
+  "rowCount": 3
+}

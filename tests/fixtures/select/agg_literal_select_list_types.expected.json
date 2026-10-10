@@ -1,0 +1,53 @@
+{
+  "rows": [
+    {
+      "by_min": true,
+      "f4_max": true,
+      "f4_sum": true,
+      "f8_avg": true,
+      "g": 1,
+      "i2_max": true,
+      "i2_sum": true,
+      "i8_avg": true,
+      "i8_sum": true,
+      "ia_max": true,
+      "iv_avg": true,
+      "iv_sum": true,
+      "ti_max": true,
+      "tz_max": true
+    },
+    {
+      "by_min": false,
+      "f4_max": false,
+      "f4_sum": true,
+      "f8_avg": false,
+      "g": 2,
+      "i2_max": false,
+      "i2_sum": true,
+      "i8_avg": true,
+      "i8_sum": true,
+      "ia_max": false,
+      "iv_avg": false,
+      "iv_sum": true,
+      "ti_max": true,
+      "tz_max": false
+    },
+    {
+      "by_min": null,
+      "f4_max": null,
+      "f4_sum": null,
+      "f8_avg": null,
+      "g": 3,
+      "i2_max": null,
+      "i2_sum": null,
+      "i8_avg": null,
+      "i8_sum": null,
+      "ia_max": null,
+      "iv_avg": null,
+      "iv_sum": null,
+      "ti_max": null,
+      "tz_max": null
+    }
+  ],
+  "rowCount": 3
+}

@@ -1,0 +1,53 @@
+{
+  "rows": [
+    {
+      "conname": "m01",
+      "definition": "CHECK ((((a = ANY (ARRAY[1, 2])) OR (a = b)) OR (a = d)))"
+    },
+    {
+      "conname": "m02",
+      "definition": "CHECK ((((a <> ALL (ARRAY[1, 2])) AND (a <> b)) AND (a <> d)))"
+    },
+    {
+      "conname": "m03",
+      "definition": "CHECK ((((a = b) OR (a = c)) OR (a = d)))"
+    },
+    {
+      "conname": "m04",
+      "definition": "CHECK ((((a <> b) AND (a <> c)) AND (a <> d)))"
+    },
+    {
+      "conname": "m05",
+      "definition": "CHECK (((((a = ANY (ARRAY[1, 2, 3])) OR (a = b)) OR (a = c)) OR (a = d)))"
+    },
+    {
+      "conname": "m06",
+      "definition": "CHECK (((a = b) OR (a = c)))"
+    },
+    {
+      "conname": "m07",
+      "definition": "CHECK ((((((a = ANY (ARRAY[1, 2])) OR (a = b)) OR (a = c)) OR (a = d)) AND (b > 0) AND (c > 0)))"
+    },
+    {
+      "conname": "m08",
+      "definition": "CHECK (((a = 1) OR (a = 2) OR ((a = b) OR (a = c))))"
+    },
+    {
+      "conname": "m09",
+      "definition": "CHECK ((((a = b) OR (a = c)) OR (a = 1) OR (a = 2)))"
+    },
+    {
+      "conname": "m10",
+      "definition": "CHECK ((((a = b) OR (a = c)) OR (((a = ANY (ARRAY[1, 2])) OR (a = b)) OR (a = c))))"
+    },
+    {
+      "conname": "m11",
+      "definition": "CHECK (((s = ANY (ARRAY['x'::text, 'y'::text, 'z'::text])) OR (s = s)))"
+    },
+    {
+      "conname": "m12",
+      "definition": "CHECK ((NOT (((a = ANY (ARRAY[1, 2])) OR (a = b)) OR (a = c))))"
+    }
+  ],
+  "rowCount": 12
+}

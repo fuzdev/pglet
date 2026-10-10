@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "target_hash": "blake3:t1"
+    },
+    {
+      "target_hash": "blake3:t2"
+    }
+  ],
+  "rowCount": 2
+}

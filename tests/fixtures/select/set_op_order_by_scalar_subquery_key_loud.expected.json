@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "0A000",
+    "message": "invalid UNION/INTERSECT/EXCEPT ORDER BY clause"
+  }
+}

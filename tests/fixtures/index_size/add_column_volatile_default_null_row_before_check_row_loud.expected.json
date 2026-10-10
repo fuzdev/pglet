@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "23502",
+    "message": "column \"b\" of relation \"t\" contains null values"
+  }
+}

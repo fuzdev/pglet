@@ -1,0 +1,14 @@
+{
+  "rows": [
+    {
+      "implicit": [
+        "pg_catalog",
+        "public"
+      ],
+      "just_path": [
+        "public"
+      ]
+    }
+  ],
+  "rowCount": 1
+}

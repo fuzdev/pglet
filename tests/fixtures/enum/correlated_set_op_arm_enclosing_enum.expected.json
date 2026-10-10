@@ -1,0 +1,27 @@
+{
+  "rows": [
+    {
+      "e": "ok",
+      "exists_except": true,
+      "i": null,
+      "in_union": true,
+      "nested": "happy",
+      "no_from": "happy",
+      "no_local": "happy",
+      "u": "happy",
+      "x": 1
+    },
+    {
+      "e": "ok",
+      "exists_except": true,
+      "i": "sad",
+      "in_union": true,
+      "nested": "ok",
+      "no_from": "ok",
+      "no_local": "ok",
+      "u": "ok",
+      "x": 2
+    }
+  ],
+  "rowCount": 2
+}

@@ -1,0 +1,24 @@
+[package]
+name = "pglet_core"
+description = "Leaf vocabulary for pglet: values, type OIDs, errors, row/index identifiers"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+time = { workspace = true }
+thiserror = { workspace = true }
+
+[features]
+# The `file_lock` module (native `flock` over `std::fs::File::try_lock`). Off by
+# default so the wasm build never compiles a `std::fs` path; the native
+# consumers that need a single-holder guard — `pglet_server` for `--data-dir`,
+# `xtask` for the runner's `run.lock` — enable it.
+file_lock = []
+
+[lints]
+workspace = true

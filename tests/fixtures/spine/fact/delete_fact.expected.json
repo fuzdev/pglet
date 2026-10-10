@@ -1,0 +1,9 @@
+{
+  "rows": [
+    {
+      "external_url": "https://example.test/blob",
+      "size": "4096"
+    }
+  ],
+  "rowCount": 1
+}

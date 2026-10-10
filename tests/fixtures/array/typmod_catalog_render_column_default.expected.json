@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "column_default": "'{ab}'::character varying(3)[]",
+      "column_name": "a"
+    },
+    {
+      "column_default": "'{9.9}'::numeric(4,1)[]",
+      "column_name": "b"
+    }
+  ],
+  "rowCount": 2
+}

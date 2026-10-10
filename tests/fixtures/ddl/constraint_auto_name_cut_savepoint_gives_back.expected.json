@@ -1,0 +1,25 @@
+{
+  "rows": [
+    {
+      "conname": "cac7_ttttttttttttttttttttttt_cooooooooooooooooooooooooooo_check",
+      "contype": "c",
+      "len": 63
+    },
+    {
+      "conname": "cac7_tttttttttttttttttttttttt_cooooooooooooooooooooooooooo_fkey",
+      "contype": "f",
+      "len": 63
+    },
+    {
+      "conname": "cac7_ttttttttttttttttttttttttttttttttttttttttttttttttttttt_pkey",
+      "contype": "p",
+      "len": 63
+    },
+    {
+      "conname": "cac7_tttttttttttttttttttttttt_coooooooooooooooooooooooooooo_key",
+      "contype": "u",
+      "len": 63
+    }
+  ],
+  "rowCount": 4
+}

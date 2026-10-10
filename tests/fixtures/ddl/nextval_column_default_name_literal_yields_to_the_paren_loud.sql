@@ -1,0 +1,11 @@
+-- The **unquantified** control for the same move, and a divergence it closes on the way:
+-- deferring the name-literal reduction past the closing paren is what lets the quantifier
+-- verdict sit between them, and it also puts pglet's `42602` behind the syntax error 18.6
+-- reports here. Before, the classifier reduced the literal as it read it, so this
+-- statement was `42602 invalid name syntax` against 18.6's `42601` — while the same
+-- statement's parenthesized spelling, which never enters the classifier, was already
+-- `42601`. Nothing about a set quantifier is written here, which is the point: the two
+-- polarities of one position. `42601` on both.
+-- @test
+-- @expect-error: syntax error at or near "junk"
+CREATE TABLE sq_nnp (a BIGINT DEFAULT nextval('bad name' junk));

@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "constraint_name": "ctfk_a_fkey",
+      "constraint_type": "CHECK"
+    },
+    {
+      "constraint_name": "ctfk_a_fkey1",
+      "constraint_type": "FOREIGN KEY"
+    }
+  ],
+  "rowCount": 2
+}

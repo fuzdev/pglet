@@ -1,0 +1,12 @@
+{
+  "rows": [
+    {
+      "big_u_then_big_u": true,
+      "big_u_then_u": true,
+      "len": 1,
+      "u_then_big_u": true,
+      "u_then_u": true
+    }
+  ],
+  "rowCount": 1
+}

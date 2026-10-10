@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "escaped_key": "{\"a\\tb\": 1}",
+      "escaped_low": "{\"k\": \"a\\u0001b\"}",
+      "escaped_value": "{\"k\": \"a\\tb\"}",
+      "every_short_escape": "{\"k\": \"a\\nb\\rc\\bd\\fe\"}"
+    }
+  ],
+  "rowCount": 1
+}

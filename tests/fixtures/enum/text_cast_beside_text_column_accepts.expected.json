@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "c": "sad",
+      "eq": false,
+      "id": 1
+    },
+    {
+      "c": "ok",
+      "eq": true,
+      "id": 2
+    },
+    {
+      "c": "happy",
+      "eq": false,
+      "id": 3
+    }
+  ],
+  "rowCount": 3
+}

@@ -1,0 +1,13 @@
+-- A relation's column names are a **set**, and this is the gate 18.6 raises from
+-- `MergeAttributes`. Both names are what the lexer folded, so this is a plain byte
+-- comparison; `create_table_column_names_distinct_after_folding.sql` is the
+-- accept-side control that says so.
+--
+-- `@expect-message` is load-bearing rather than decorative here: three
+-- `CREATE TABLE` gates answer `42701`, so a fixture that compared only the SQLSTATE would be
+-- satisfied by an engine that raised any of them at any position.
+-- @expect-error: two columns of one relation named a
+-- @expect-message
+-- @no-profile-lock: the @test is DDL and its setup builds nothing — the refusal lands before any plan, so index acceleration cannot reach it
+-- @test
+CREATE TABLE ctdc (a INT, a TEXT);

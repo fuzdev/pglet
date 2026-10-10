@@ -1,0 +1,27 @@
+{
+  "rows": [
+    {
+      "array_a": [
+        "1.0"
+      ],
+      "array_b": [
+        "1.00"
+      ],
+      "day_a": "1 day",
+      "day_b": "24:00:00",
+      "jsonb_a": {
+        "a": 1.0
+      },
+      "jsonb_b": {
+        "a": 1
+      },
+      "mon_a": "1 mon",
+      "mon_b": "30 days",
+      "numeric_a": "1.0",
+      "numeric_b": "1.00",
+      "zero_a": -0.0,
+      "zero_b": 0.0
+    }
+  ],
+  "rowCount": 1
+}

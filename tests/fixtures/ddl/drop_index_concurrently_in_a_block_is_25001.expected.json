@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "25001",
+    "message": "DROP INDEX CONCURRENTLY cannot run inside a transaction block"
+  }
+}

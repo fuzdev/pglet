@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "cast_of_column_arith": "2024-06-15 13:30:45.123+00",
+      "cast_of_subquery": "2024-06-15 12:30:45.123+00",
+      "cast_of_subquery_arith": "2024-06-15 13:30:45.123+00",
+      "concat_of_column_arith": "v=2024-06-15 13:30:45.123+00",
+      "concat_of_subquery": "v=2024-06-15 12:30:45.123+00",
+      "concat_of_subquery_arith": "v=2024-06-15 13:30:45.123+00"
+    }
+  ],
+  "rowCount": 1
+}

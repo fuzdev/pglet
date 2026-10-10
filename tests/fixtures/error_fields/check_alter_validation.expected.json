@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "23514",
+    "message": "check constraint \"t_c3_pos\" of relation \"t_c3\" is violated by some row"
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "rows": [
+    {
+      "in_e": false,
+      "in_m": null,
+      "in_mn": null,
+      "in_nn": null,
+      "k": 1,
+      "nin_e": true,
+      "nin_m": null,
+      "nin_mn": null,
+      "nin_nn": null,
+      "not_in_e": true,
+      "not_in_mn": null
+    },
+    {
+      "in_e": false,
+      "in_m": true,
+      "in_mn": true,
+      "in_nn": null,
+      "k": 2,
+      "nin_e": true,
+      "nin_m": false,
+      "nin_mn": false,
+      "nin_nn": null,
+      "not_in_e": true,
+      "not_in_mn": false
+    },
+    {
+      "in_e": false,
+      "in_m": false,
+      "in_mn": null,
+      "in_nn": null,
+      "k": 3,
+      "nin_e": true,
+      "nin_m": true,
+      "nin_mn": null,
+      "nin_nn": null,
+      "not_in_e": true,
+      "not_in_mn": null
+    }
+  ],
+  "rowCount": 3
+}

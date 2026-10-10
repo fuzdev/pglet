@@ -1,0 +1,10 @@
+{
+  "rows": [
+    {
+      "bare_public": "1",
+      "quoted_public": "3",
+      "upper_public": "2"
+    }
+  ],
+  "rowCount": 1
+}

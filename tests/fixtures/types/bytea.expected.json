@@ -1,0 +1,19 @@
+{
+  "rows": [
+    {
+      "empty_hex": "\\x",
+      "hex_text": "\\xdeadbeef",
+      "mixed_hex": "\\x00ff10",
+      "raw_bytea": {
+        "data": [
+          222,
+          173,
+          190,
+          239
+        ],
+        "type": "Buffer"
+      }
+    }
+  ],
+  "rowCount": 1
+}

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P19",
+    "message": "recursive query \"w\" must not contain data-modifying statements"
+  }
+}

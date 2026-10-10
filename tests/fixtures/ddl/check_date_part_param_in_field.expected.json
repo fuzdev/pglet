@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P02",
+    "message": "there is no parameter $1"
+  }
+}

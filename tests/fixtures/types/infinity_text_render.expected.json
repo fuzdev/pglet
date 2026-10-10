@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "d": "infinity",
+      "da": "{infinity,-infinity,2000-01-01}",
+      "t": "-infinity",
+      "z": "infinity",
+      "za": "{-infinity,infinity}",
+      "zt": "-infinity"
+    }
+  ],
+  "rowCount": 1
+}

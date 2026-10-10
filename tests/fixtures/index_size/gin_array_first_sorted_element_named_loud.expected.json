@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "54000",
+    "message": "index row size 3016 exceeds maximum 2712 for index \"g_i\""
+  }
+}

@@ -1,0 +1,13 @@
+-- A **fourth** trailing clause the no-FROM arm did not merely discard — it never reached
+-- it. The paren-leading, set-op and `FromParts` arms of `parse_select_inner` each call
+-- `parse_for_locking` after `parse_limit_offset` and this one stopped at the bound, so a
+-- row-level locking clause was `42601 syntax error … found 'for'` here against one row on
+-- 18.6. Inside a block a valid clause takes pglet's writer, which only a second connection
+-- sees; what this pins is that it parses at all.
+--
+-- Two controls put the divergence on the arm rather than on the clause, and both already
+-- answered on both engines: `SELECT a FROM … FOR UPDATE` (the `FromParts` arm) and
+-- `(SELECT 1 AS q) FOR UPDATE` — the identical no-FROM select routed through the
+-- paren-leading arm.
+-- @test
+SELECT 1 AS q FOR UPDATE;

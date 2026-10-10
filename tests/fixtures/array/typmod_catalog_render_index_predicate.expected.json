@@ -1,0 +1,9 @@
+{
+  "rows": [
+    {
+      "indexdef": "CREATE INDEX tmix_pred ON public.tmix USING btree (id) WHERE (a <> '{zzz}'::character varying(3)[])",
+      "indexname": "tmix_pred"
+    }
+  ],
+  "rowCount": 1
+}

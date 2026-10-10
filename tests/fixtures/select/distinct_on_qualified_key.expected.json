@@ -1,0 +1,15 @@
+{
+  "rows": [
+    {
+      "dept": "eng",
+      "name": "bob",
+      "salary": 150
+    },
+    {
+      "dept": "sales",
+      "name": "dan",
+      "salary": 90
+    }
+  ],
+  "rowCount": 2
+}

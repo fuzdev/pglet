@@ -1,0 +1,15 @@
+{
+  "rows": [
+    {
+      "id": 1,
+      "jdc_w.v": "srcval",
+      "v": "a"
+    },
+    {
+      "id": 2,
+      "jdc_w.v": "srcval2",
+      "v": "b"
+    }
+  ],
+  "rowCount": 2
+}

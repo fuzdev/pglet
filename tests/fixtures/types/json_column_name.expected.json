@@ -1,0 +1,9 @@
+{
+  "rows": [
+    {
+      "json": 1,
+      "jsonb": 2
+    }
+  ],
+  "rowCount": 1
+}

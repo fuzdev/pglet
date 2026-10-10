@@ -1,0 +1,10 @@
+{
+  "rows": [
+    {
+      "constraint_name": "ir_child_p1_fkey",
+      "delete_rule": "SET NULL",
+      "update_rule": "CASCADE"
+    }
+  ],
+  "rowCount": 1
+}

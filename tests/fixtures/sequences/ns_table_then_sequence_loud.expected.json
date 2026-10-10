@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P07",
+    "message": "relation \"ns_tbl_first\" already exists"
+  }
+}

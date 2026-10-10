@@ -1,0 +1,10 @@
+{
+  "rows": [
+    {
+      "is_today": true,
+      "not_null": true,
+      "ordered": true
+    }
+  ],
+  "rowCount": 1
+}

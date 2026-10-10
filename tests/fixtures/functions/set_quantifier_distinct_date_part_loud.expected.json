@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42809",
+    "message": "DISTINCT specified, but date_part is not an aggregate function"
+  }
+}

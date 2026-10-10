@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "source_hash": "blake3:a",
+      "target_hash": "blake3:b"
+    },
+    {
+      "source_hash": "blake3:a",
+      "target_hash": "blake3:c"
+    },
+    {
+      "source_hash": "blake3:b",
+      "target_hash": "blake3:a"
+    },
+    {
+      "source_hash": "blake3:b",
+      "target_hash": "blake3:b"
+    }
+  ],
+  "rowCount": 4
+}

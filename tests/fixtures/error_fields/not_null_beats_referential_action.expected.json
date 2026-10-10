@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "23502",
+    "message": "null value in column \"v\" of relation \"nn_p\" violates not-null constraint"
+  }
+}

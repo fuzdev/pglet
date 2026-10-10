@@ -1,0 +1,15 @@
+{
+  "rows": [
+    {
+      "id": 1,
+      "live": true,
+      "path": "docs/a"
+    },
+    {
+      "id": 2,
+      "live": false,
+      "path": "docs/a"
+    }
+  ],
+  "rowCount": 2
+}

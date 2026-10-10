@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42702",
+    "message": "common column name \"num\" appears more than once in left table"
+  }
+}

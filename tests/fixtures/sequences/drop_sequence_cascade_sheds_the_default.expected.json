@@ -1,0 +1,15 @@
+{
+  "rows": [
+    {
+      "column_default": null,
+      "column_name": "id",
+      "is_nullable": "NO"
+    },
+    {
+      "column_default": null,
+      "column_name": "b",
+      "is_nullable": "YES"
+    }
+  ],
+  "rowCount": 2
+}

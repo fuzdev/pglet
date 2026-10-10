@@ -1,0 +1,11 @@
+-- @no-txn
+-- `DISCARD ALL` is what a connection pool sends on check-in, and it was a bare
+-- `42601` here: `DISCARD` is not a lexer keyword, so the statement fell through to
+-- the parser's trailing-token path and the pool's release step failed as a syntax
+-- error. Outside a transaction block it succeeds on both engines and reports command
+-- tag `DISCARD ALL`.
+--
+-- `@no-txn` because the harness's isolating wrapper would put it inside a block,
+-- which is the *other* fixture (`discard_all_in_transaction_block`).
+-- @test
+DISCARD ALL;

@@ -1,0 +1,14 @@
+-- **The polarity control for where the canonical spelling puts the modifier.**
+-- `executor::type_resolution`'s `decompose_type_name` cuts on the first `(`, so a
+-- canonical `time(3) with time zone` would decompose to base `time` and silently build
+-- a `time(3)` out of a type pglet does not support. The canonical spelling carries the
+-- precision **last** (`time with time zone(3)`), which keeps this
+-- `42704 type "time with time zone" is not supported` — the same answer the parenless
+-- spelling already gives. 18.6 accepts the spelling and answers a `timetz` value, so
+-- this is pglet-stricter and any pglet error passes.
+--
+-- The `::text` wrapper is the harness's: 18.6's `timetz` result has no decoder arm on
+-- the binary leg, and an undecodable oracle value scores as a client fault.
+-- @expect-error: timetz stays unsupported, with a precision as without one
+-- @test
+SELECT ('03:04:05'::time(3) with time zone)::text;

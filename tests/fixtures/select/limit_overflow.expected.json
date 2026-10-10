@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "22003",
+    "message": "bigint out of range"
+  }
+}

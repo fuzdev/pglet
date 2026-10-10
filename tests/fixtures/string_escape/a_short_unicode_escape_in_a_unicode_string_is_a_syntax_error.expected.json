@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42601",
+    "message": "invalid Unicode escape"
+  }
+}

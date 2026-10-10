@@ -1,0 +1,9 @@
+{
+  "rows": [
+    {
+      "constraint_name": "aacu_pkey",
+      "constraint_type": "PRIMARY KEY"
+    }
+  ],
+  "rowCount": 1
+}

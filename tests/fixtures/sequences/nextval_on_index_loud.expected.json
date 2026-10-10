@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42809",
+    "message": "cannot open relation \"nvi_idx\""
+  }
+}

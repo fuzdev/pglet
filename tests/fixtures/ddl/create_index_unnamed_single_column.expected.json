@@ -1,0 +1,9 @@
+{
+  "rows": [
+    {
+      "indexdef": "CREATE INDEX ciu1_b_idx ON public.ciu1 USING btree (b)",
+      "indexname": "ciu1_b_idx"
+    }
+  ],
+  "rowCount": 1
+}

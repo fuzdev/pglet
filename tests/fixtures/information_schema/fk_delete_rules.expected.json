@@ -1,0 +1,19 @@
+{
+  "rows": [
+    {
+      "column_name": "owner_id",
+      "delete_rule": "SET NULL",
+      "foreign_column_name": "id",
+      "foreign_table_name": "fkr_parent",
+      "table_name": "fkr_child"
+    },
+    {
+      "column_name": "parent_id",
+      "delete_rule": "CASCADE",
+      "foreign_column_name": "id",
+      "foreign_table_name": "fkr_parent",
+      "table_name": "fkr_child"
+    }
+  ],
+  "rowCount": 2
+}

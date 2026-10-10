@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "id": 4,
+      "probe": "moved"
+    },
+    {
+      "id": 1,
+      "probe": "nan"
+    }
+  ],
+  "rowCount": 2
+}

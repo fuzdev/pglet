@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "arr_eq": true,
+      "bytea_eq": true,
+      "jsonb_ne": true,
+      "tag": "x"
+    }
+  ],
+  "rowCount": 1
+}

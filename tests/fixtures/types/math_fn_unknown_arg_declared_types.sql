@@ -1,0 +1,31 @@
+-- Postgres resolves a math function's **unknown-typed** argument to the preferred type
+-- of the numeric category, `float8`. That is not an incidental default: `typeconv.sgml`
+-- uses absolute value as the worked example for the rule ("Absolute-Value and Negation
+-- Operator Type Resolution" — "one of these entries is for type float8, which is the
+-- preferred type in the numeric category. Therefore PostgreSQL will use that entry when
+-- faced with an unknown input"). So each one-argument member below declares `double
+-- precision` over an untyped NULL, while the two-argument `round(x, s)` / `trunc(x, s)`
+-- have only a `numeric` overload and declare `numeric`.
+--
+-- `a` is the discriminating column and the reason this fixture exists. `abs` is the one
+-- member whose result rule passes its argument's type **through**, so an engine that
+-- hands overload resolution a *fallback* type instead of "unknown" answers with that
+-- fallback — and pglet's two declared-type walkers fell back differently on the same
+-- statement: `text` (25) on the simple-query `RowDescription` against `numeric` (1700)
+-- on the extended protocol's `Describe`, where 18.6 says `float8` (701) on both. A
+-- three-way disagreement, and both wrong answers are silent: the value is NULL, so
+-- neither leg's client sees anything but the OID.
+--
+-- `c` / `f` / `r` are the polarity pins: those three resolve to float8 through the
+-- shared rule's own default and were already correct on both legs, so a fix that moved
+-- the whole family onto some other type reddens here. `r2` / `t2` pin the two-argument
+-- overload, which stays `numeric` on an unknown argument.
+--
+-- `trunc(NULL)` is deliberately absent. Its overload set spans more than the numeric
+-- category, so 18.6 answers `42725 function trunc(unknown) is not unique` where pglet
+-- resolves it to float8 — a live divergence in function *overload* resolution rather
+-- than in result typing, recorded in `EDGES.md` and not
+-- closed here.
+-- @test
+SELECT abs(NULL) AS a, ceil(NULL) AS c, floor(NULL) AS f, round(NULL) AS r,
+       round(NULL, 2) AS r2, trunc(NULL, 2) AS t2;

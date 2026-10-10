@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "left": "a",
+      "ql": "xy",
+      "qr": "yz",
+      "right": "c"
+    }
+  ],
+  "rowCount": 1
+}

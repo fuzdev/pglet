@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "2BP01",
+    "message": "cannot drop index t_ci_pkey because constraint t_ci_pkey on table t_ci requires it"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "k": 3,
+      "probe": "eq"
+    },
+    {
+      "k": 4,
+      "probe": "order"
+    },
+    {
+      "k": 2,
+      "probe": "range"
+    },
+    {
+      "k": 4,
+      "probe": "range"
+    }
+  ],
+  "rowCount": 4
+}

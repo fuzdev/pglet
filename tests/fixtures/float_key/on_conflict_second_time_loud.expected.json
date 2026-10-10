@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "21000",
+    "message": "ON CONFLICT DO UPDATE command cannot affect row a second time"
+  }
+}

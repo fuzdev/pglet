@@ -1,0 +1,11 @@
+-- The positional half of the DEFAULT rejection walk, polarity 2 of 2 — the mirror
+-- of `default_aggregate_before_column_ref.sql`, same two constructs, swapped.
+-- 18.6 reaches the column reference first and answers `0A000 cannot use column
+-- reference in DEFAULT expression`, where the mirror answers `42803`.
+--
+-- Reverse the walk's child order and the two reddens swap; rank the constructs by
+-- kind instead of by position (the shape the CHECK / index contexts still have) and
+-- exactly one of the two reddens, whichever kind loses the ranking.
+-- @expect-error: column reference before the aggregate wins (0A000)
+-- @test
+CREATE TABLE dfb (a INT, b INT DEFAULT (a + count(*)));

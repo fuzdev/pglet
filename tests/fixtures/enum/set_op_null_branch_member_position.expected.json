@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "id": 1,
+      "lbl": "sad"
+    },
+    {
+      "id": 2,
+      "lbl": "ok"
+    },
+    {
+      "id": 3,
+      "lbl": "happy"
+    },
+    {
+      "id": 0,
+      "lbl": null
+    }
+  ],
+  "rowCount": 4
+}

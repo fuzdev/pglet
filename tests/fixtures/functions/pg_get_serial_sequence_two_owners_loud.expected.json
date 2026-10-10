@@ -1,0 +1,8 @@
+{
+  "rows": [
+    {
+      "pg_get_serial_sequence": "public.zz"
+    }
+  ],
+  "rowCount": 1
+}

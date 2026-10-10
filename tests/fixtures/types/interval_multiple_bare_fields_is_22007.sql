@@ -1,0 +1,12 @@
+-- **At most one unlabelled numeric field.** A second one is `22007` on 18.6 —
+-- `INTERVAL '1 2'`, `'1 2 3'`, `'1.5 2.5'` and `'2 1 day'` are all refused there —
+-- and the shared decoder used to sum the displaced one as seconds, answering
+-- `00:00:03` for the first of those with no error.
+--
+-- It is the interval *qualifier* that made this reachable as a wrong value twice
+-- over: masking `00:00:03` to a `DAY` field produced `00:00:00`, a second wrong
+-- answer over the first. The accepting neighbours are
+-- `interval_one_bare_field_is_accepted.sql`.
+-- @test
+-- @expect-error: invalid input syntax for type interval
+SELECT INTERVAL '1 2';

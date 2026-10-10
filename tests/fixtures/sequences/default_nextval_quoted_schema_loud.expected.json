@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P01",
+    "message": "relation \"PUBLIC.s2\" does not exist"
+  }
+}

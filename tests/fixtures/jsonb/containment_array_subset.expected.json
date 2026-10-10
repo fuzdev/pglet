@@ -1,0 +1,12 @@
+{
+  "rows": [
+    {
+      "from_column": "1",
+      "multiplicity_ignored": true,
+      "not_a_superset": false,
+      "order_irrelevant": true,
+      "subset": true
+    }
+  ],
+  "rowCount": 1
+}

@@ -1,0 +1,29 @@
+{
+  "rows": [
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "id"
+    },
+    {
+      "column_default": "now()",
+      "column_name": "created_at"
+    },
+    {
+      "column_default": "false",
+      "column_name": "flag"
+    },
+    {
+      "column_default": "1",
+      "column_name": "n"
+    },
+    {
+      "column_default": "'success'::text",
+      "column_name": "status"
+    },
+    {
+      "column_default": "nextval('cd_t_seq_seq'::regclass)",
+      "column_name": "seq"
+    }
+  ],
+  "rowCount": 6
+}

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42601",
+    "message": "invalid hexadecimal integer at or near \"0x\""
+  }
+}

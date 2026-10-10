@@ -1,0 +1,34 @@
+[package]
+name = "pglet-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+# Standalone workspace: the parent workspace is `members = ["crates/*"]`, so `fuzz/`
+# is deliberately NOT a member — it never enters the production build graph or the
+# `check:release` audit, and `cargo build/test --workspace` don't touch it (it
+# builds only under `cargo fuzz`, which needs nightly + a sanitizer). The empty
+# table makes this its own workspace root so cargo doesn't complain that the
+# package isn't a member of the parent.
+[workspace]
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+# The fuzz target drives the engine only through `pglet_testing`'s shared durability
+# invariant (`build_pristine_image`/`surviving_ids`/`is_valid_prefix`), the same
+# helpers `pglet/tests/crash.rs` uses — so the deterministic sweep and the
+# coverage-guided fuzz can't disagree on "recover-or-loud". `embed` pulls the engine.
+[dependencies.pglet_testing]
+path = "../crates/pglet_testing"
+features = ["embed"]
+
+[[bin]]
+name = "double_meta_reopen"
+path = "fuzz_targets/double_meta_reopen.rs"
+test = false
+doc = false
+bench = false

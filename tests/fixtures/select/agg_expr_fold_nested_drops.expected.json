@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "and_in_or": true,
+      "case_in_case": null,
+      "case_in_coalesce": "1",
+      "n": "2"
+    }
+  ],
+  "rowCount": 1
+}

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42601",
+    "message": "WITH TIES cannot be specified without ORDER BY clause"
+  }
+}

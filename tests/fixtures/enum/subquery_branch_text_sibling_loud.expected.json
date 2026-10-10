@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42804",
+    "message": "COALESCE types mood and text cannot be matched"
+  }
+}

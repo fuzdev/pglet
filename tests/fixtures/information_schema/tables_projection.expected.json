@@ -1,0 +1,10 @@
+{
+  "rows": [
+    {
+      "table_name": "widget",
+      "table_schema": "public",
+      "table_type": "BASE TABLE"
+    }
+  ],
+  "rowCount": 1
+}

@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "as_bytes": [
+        {
+          "data": [
+            97,
+            194,
+            160
+          ],
+          "type": "Buffer"
+        }
+      ],
+      "leading_kept": true,
+      "not_a_null": true,
+      "trailing_kept": true,
+      "trimmed": false
+    }
+  ],
+  "rowCount": 1
+}

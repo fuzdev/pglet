@@ -1,0 +1,9 @@
+{
+  "rows": [
+    {
+      "constraint_name": "cccn_positive",
+      "constraint_type": "CHECK"
+    }
+  ],
+  "rowCount": 1
+}

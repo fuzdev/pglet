@@ -1,0 +1,13 @@
+-- The `DISTINCT` half of the FROM-clause route. 42809 on both, and the message names
+-- `unnest` on 18.6 exactly as the select-list spelling
+-- (`set_quantifier_distinct_unnest_loud.sql`) does — but it arrives by a different rule:
+-- `transformRangeFunction` skips its multi-argument expansion for any decorated call
+-- (`!fc->agg_distinct`), leaving an ordinary `unnest(…)` for `ParseFuncOrColumn`. Over
+-- one array that call resolves, so the quantifier is what fails. pglet answered 42601
+-- here — loud, wrong code — because this route read no quantifier at all.
+-- *When* that verdict is rendered is a separate contract from *what* it says, and this
+-- fixture pins only the second: `set_quantifier_distinct_from_unnest_paren_beats_verdict_loud.sql`
+-- pins the first (the verdict runs after the call's closing paren, as `build_call` does).
+-- @test
+-- @expect-error: DISTINCT specified, but unnest is not an aggregate function
+SELECT * FROM unnest(DISTINCT ARRAY[1, 2]) AS u(x);

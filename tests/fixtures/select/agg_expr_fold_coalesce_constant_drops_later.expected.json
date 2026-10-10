@@ -1,0 +1,15 @@
+{
+  "rows": [
+    {
+      "bigint_literal": "10000000000",
+      "bool_literal": true,
+      "numeric_literal": "1.5",
+      "one": "1",
+      "three": "3",
+      "to_float": 1.0,
+      "to_numeric": "1",
+      "two": "2"
+    }
+  ],
+  "rowCount": 1
+}

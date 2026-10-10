@@ -1,0 +1,35 @@
+{
+  "rows": [
+    {
+      "bt": "  hi  ",
+      "id": 1,
+      "lt": "hi  ",
+      "rt": "  hi",
+      "t_both": "hi",
+      "t_lead": "hi  ",
+      "t_set": "  hi  ",
+      "t_trail": "  hi"
+    },
+    {
+      "bt": "trim",
+      "id": 2,
+      "lt": "xyxtrimyyx",
+      "rt": "xyxtrimyyx",
+      "t_both": "xyxtrimyyx",
+      "t_lead": "xyxtrimyyx",
+      "t_set": "trim",
+      "t_trail": "xyxtrimyyx"
+    },
+    {
+      "bt": null,
+      "id": 3,
+      "lt": null,
+      "rt": null,
+      "t_both": null,
+      "t_lead": null,
+      "t_set": null,
+      "t_trail": null
+    }
+  ],
+  "rowCount": 3
+}

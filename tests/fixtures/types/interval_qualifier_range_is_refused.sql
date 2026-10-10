@@ -1,0 +1,19 @@
+-- The `<field> TO <field>` ranges are refused rather than masked, because a range
+-- re-reads the literal's *unqualified* fields — `INTERVAL '3:04' MINUTE TO SECOND` is
+-- `00:03:04` on 18.6 where this parser's colon grammar reads `03:04:00` — so masking
+-- alone would answer a wrong value silently.
+--
+-- **The re-read is not a range-only property**, and reading it as one is what left a
+-- wrong value standing on the single-field path: `INTERVAL '1 2' HOUR` is
+-- `1 day 02:00:00` on 18.6 under one field word. What actually decides safety is the
+-- number of *unlabelled* fields, and a literal carrying more than one of those is now
+-- `22007` in the decoder itself (`interval_multiple_bare_fields_is_22007.sql`).
+-- Deliberately pglet-stricter here: 18.6 accepts, so any pglet error passes.
+--
+-- **A lock, not a new assertion.** 18.6 accepts, so any pglet error passes, and an
+-- engine that parses no qualifier at all errors here too (`42601`, from the unconsumed
+-- `TO`). What it holds is that the range stays refused rather than becoming a masked —
+-- and wrong — value now that the single-field qualifiers are handled.
+-- @test
+-- @expect-error: INTERVAL field ranges are not supported
+SELECT INTERVAL '3:04' MINUTE TO SECOND;

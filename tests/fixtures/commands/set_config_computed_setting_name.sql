@@ -1,0 +1,13 @@
+-- `set_config` reads its setting name as a **literal**, and refuses a computed one
+-- rather than echoing it. pglet does not constant-fold before lowering, so
+-- `'search' || '_path'` reaches the gate as an expression it cannot prove is not
+-- `search_path` — and echoing it reproduced the whole silent-wrong this fixture exists to close
+-- (`set_config('search'||'_path','nosuch',false)` followed by an
+-- unqualified read answered rows here and `42P01` on 18.6).
+--
+-- 18.6 accepts the spelling, so any pglet error passes; the `0A000` is pinned in a
+-- unit test. Refusing is pglet-stricter and loud — the direction correct-or-loud
+-- takes when the engine cannot see what it is being asked.
+-- @test
+-- @expect-error: set_config requires a literal setting name
+SELECT set_config('search' || '_path', 'nosuch', false);

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "22023",
+    "message": "NUMERIC precision 0 must be between 1 and 1000"
+  }
+}

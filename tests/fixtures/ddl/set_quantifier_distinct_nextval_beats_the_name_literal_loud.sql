@@ -1,0 +1,11 @@
+-- The other half of the verdict's position, and the one that decided how the classifier
+-- had to be rewritten: it runs **before** the name-literal reduction, which is where
+-- `planner::sequence_call` puts it on the general path (18.6 coerces the argument to
+-- `regclass` after `ParseFuncOrColumn`, so the modifier is judged first). The reduction
+-- used to run while the argument was read, which would have answered this statement
+-- `42602 invalid name syntax` — pglet's own code for the malformed name, and the
+-- parenthesized spelling's `42809` one pair of parens away. The select-list twin is
+-- `sequences/set_quantifier_distinct_beats_the_name_literal_loud.sql`. `42809` on both.
+-- @test
+-- @expect-error: DISTINCT specified, but nextval is not an aggregate function
+CREATE TABLE sq_nnl (a BIGINT DEFAULT nextval(DISTINCT 'bad name'));

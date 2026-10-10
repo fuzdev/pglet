@@ -1,0 +1,10 @@
+{
+  "rows": [
+    {
+      "idx": "cat_parent_pkey",
+      "round_trips": true,
+      "tbl": "cat_parent"
+    }
+  ],
+  "rowCount": 1
+}

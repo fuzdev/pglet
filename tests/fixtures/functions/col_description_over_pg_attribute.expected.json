@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "attname": "id",
+      "column_description": null
+    },
+    {
+      "attname": "name",
+      "column_description": null
+    }
+  ],
+  "rowCount": 2
+}

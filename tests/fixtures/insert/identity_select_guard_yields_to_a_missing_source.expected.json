@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P01",
+    "message": "relation \"acis_nosuch\" does not exist"
+  }
+}

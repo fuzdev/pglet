@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "constraint_name": "auand_c_key",
+      "constraint_type": "CHECK"
+    },
+    {
+      "constraint_name": "auand_c_key1",
+      "constraint_type": "UNIQUE"
+    }
+  ],
+  "rowCount": 2
+}

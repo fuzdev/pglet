@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "category": "A",
+      "sum": "250"
+    },
+    {
+      "category": "B",
+      "sum": "250"
+    }
+  ],
+  "rowCount": 2
+}

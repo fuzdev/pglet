@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P10",
+    "message": "ORDER BY position 5 is not in select list"
+  }
+}

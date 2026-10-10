@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "source_hash": "blake3:src",
+      "target_hash": "blake3:t1"
+    },
+    {
+      "source_hash": "blake3:src",
+      "target_hash": "blake3:t2"
+    },
+    {
+      "source_hash": "blake3:src",
+      "target_hash": "blake3:t3"
+    }
+  ],
+  "rowCount": 3
+}

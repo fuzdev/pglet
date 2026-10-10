@@ -1,0 +1,25 @@
+{
+  "rows": [
+    {
+      "col": "happy",
+      "cst": "sad",
+      "id": 1,
+      "lit": "ok",
+      "nul": null,
+      "tc": "happy",
+      "txt": "ok",
+      "vc": "sad"
+    },
+    {
+      "col": null,
+      "cst": "sad",
+      "id": 2,
+      "lit": "ok",
+      "nul": null,
+      "tc": "happy",
+      "txt": "ok",
+      "vc": "sad"
+    }
+  ],
+  "rowCount": 2
+}

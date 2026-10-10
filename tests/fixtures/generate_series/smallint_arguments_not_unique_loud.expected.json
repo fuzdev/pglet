@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42725",
+    "message": "function generate_series(smallint, smallint) is not unique"
+  }
+}

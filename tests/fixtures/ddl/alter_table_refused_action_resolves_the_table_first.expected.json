@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P01",
+    "message": "relation \"nosuch_atie18\" does not exist"
+  }
+}

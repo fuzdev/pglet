@@ -1,0 +1,8 @@
+{
+  "rows": [
+    {
+      "def": "CHECK (((s)::mood IS NOT NULL))"
+    }
+  ],
+  "rowCount": 1
+}

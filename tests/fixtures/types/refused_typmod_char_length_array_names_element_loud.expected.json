@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "22023",
+    "message": "length for type char must be at least 1"
+  }
+}

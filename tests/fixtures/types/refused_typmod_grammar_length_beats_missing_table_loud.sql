@@ -1,0 +1,13 @@
+-- The **grammar** half of the same order, and the half this close *gained*. A length
+-- `opt_precision` refuses is `42601` before any statement-level gate runs — bison reduces
+-- `CharacterWithLength` before `ALTER TABLE`'s relation lookup on 18.6, and pglet's own
+-- type-name reader refuses it before the executor — so it beats the `42P01` the
+-- *carrier's* `22023` loses to (`refused_typmod_add_column_loses_to_missing_table_loud`,
+-- one position up). Before the length window became an `Iconst` this answered `42P01`
+-- here against 18.6's `42601`, the same class `float(0)` and the temporal `(p)` grammars
+-- already sat in (`docs/ddl.md` § Which error wins is part of the contract).
+-- @no-error-fields: both engines send a `P` and pglet's reader reports one token later —
+--   see `types/refused_typmod_char_length_not_an_integer_loud.sql` for the offset.
+-- @expect-error: the grammar's refused length outranks the missing relation
+-- @test
+ALTER TABLE nosuchtbl_rtg ADD COLUMN c CHAR(3.5);

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42809",
+    "message": "DISTINCT specified, but nextval is not an aggregate function"
+  }
+}

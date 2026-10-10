@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "22021",
+    "message": "invalid byte sequence for encoding \"UTF8\": 0xe9"
+  }
+}

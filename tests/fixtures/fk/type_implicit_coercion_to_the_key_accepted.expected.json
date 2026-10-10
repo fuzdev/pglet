@@ -1,0 +1,33 @@
+{
+  "rows": [
+    {
+      "conname": "fcbn_k_fkey",
+      "contype": "f"
+    },
+    {
+      "conname": "fcif_k_fkey",
+      "contype": "f"
+    },
+    {
+      "conname": "fcin_k_fkey",
+      "contype": "f"
+    },
+    {
+      "conname": "fcnf_k_fkey",
+      "contype": "f"
+    },
+    {
+      "conname": "fcti_k_fkey",
+      "contype": "f"
+    },
+    {
+      "conname": "fctv_k_fkey",
+      "contype": "f"
+    },
+    {
+      "conname": "fcvt_k_fkey",
+      "contype": "f"
+    }
+  ],
+  "rowCount": 7
+}

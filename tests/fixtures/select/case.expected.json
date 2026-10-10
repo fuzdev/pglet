@@ -1,0 +1,25 @@
+{
+  "rows": [
+    {
+      "bucket": "low",
+      "id": 1,
+      "kind_code": 1
+    },
+    {
+      "bucket": "high",
+      "id": 2,
+      "kind_code": 2
+    },
+    {
+      "bucket": "unknown",
+      "id": 3,
+      "kind_code": 1
+    },
+    {
+      "bucket": "low",
+      "id": 4,
+      "kind_code": null
+    }
+  ],
+  "rowCount": 4
+}

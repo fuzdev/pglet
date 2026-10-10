@@ -1,0 +1,10 @@
+{
+  "rows": [
+    {
+      "aggregates": true,
+      "folded": "happy",
+      "through_a_case": true
+    }
+  ],
+  "rowCount": 1
+}

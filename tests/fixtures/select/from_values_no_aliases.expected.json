@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "column1": 1,
+      "column2": "x"
+    },
+    {
+      "column1": 2,
+      "column2": "y"
+    }
+  ],
+  "rowCount": 2
+}

@@ -1,0 +1,30 @@
+{
+  "rows": [
+    {
+      "indexdef": "CREATE INDEX cat_child_lower_label_idx ON public.cat_child USING btree (lower(label))",
+      "indexname": "cat_child_lower_label_idx",
+      "tablename": "cat_child"
+    },
+    {
+      "indexdef": "CREATE INDEX cat_child_partial_idx ON public.cat_child USING btree (qty) WHERE (qty > 10)",
+      "indexname": "cat_child_partial_idx",
+      "tablename": "cat_child"
+    },
+    {
+      "indexdef": "CREATE INDEX cat_child_pid_idx ON public.cat_child USING btree (pid)",
+      "indexname": "cat_child_pid_idx",
+      "tablename": "cat_child"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX cat_parent_code_region_uq ON public.cat_parent USING btree (code, region)",
+      "indexname": "cat_parent_code_region_uq",
+      "tablename": "cat_parent"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX cat_parent_pkey ON public.cat_parent USING btree (id)",
+      "indexname": "cat_parent_pkey",
+      "tablename": "cat_parent"
+    }
+  ],
+  "rowCount": 5
+}

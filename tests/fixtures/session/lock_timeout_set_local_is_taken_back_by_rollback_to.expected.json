@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "at": "after commit",
+      "v": "3s"
+    },
+    {
+      "at": "after rollback to",
+      "v": "8s"
+    }
+  ],
+  "rowCount": 2
+}

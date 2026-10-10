@@ -1,0 +1,26 @@
+{
+  "rows": [
+    {
+      "ln": 1,
+      "merged": 1,
+      "name": "one",
+      "rn": 1,
+      "value": "a"
+    },
+    {
+      "ln": 2,
+      "merged": 2,
+      "name": "two",
+      "rn": 2,
+      "value": "b"
+    },
+    {
+      "ln": 3,
+      "merged": 3,
+      "name": "three",
+      "rn": null,
+      "value": null
+    }
+  ],
+  "rowCount": 3
+}

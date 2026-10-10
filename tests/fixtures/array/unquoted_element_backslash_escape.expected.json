@@ -1,0 +1,33 @@
+{
+  "rows": [
+    {
+      "escaped_backslash": [
+        "a\\b",
+        "a\\b"
+      ],
+      "escaped_comma": [
+        "a,b",
+        "c"
+      ],
+      "escaped_digit": [
+        12,
+        3
+      ],
+      "escaped_null": [
+        "NULL",
+        null,
+        "null"
+      ],
+      "escaped_other": [
+        "a\"b",
+        "x41"
+      ],
+      "escaped_space": [
+        "a ",
+        "  z",
+        "x y"
+      ]
+    }
+  ],
+  "rowCount": 1
+}

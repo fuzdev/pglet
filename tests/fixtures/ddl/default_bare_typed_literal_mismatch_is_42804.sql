@@ -1,0 +1,15 @@
+-- The **bare constant** arm of the cook's assignment cast, which is a different code
+-- path from its expression sibling (`default_typed_expression_mismatch_is_42804.sql`):
+-- `parser::ddl`'s `column_default_from_expr` folds a lone literal into
+-- `ColumnDefault::Literal(Value)`, so there is no `Expr` left to type and the gate reads
+-- the `Value`'s own type instead. That is safe **only** because this arm is a bare
+-- constant by construction — Postgres's `unknown` is a syntactic property, and here it
+-- is exactly the `Text` and `Null` members, which the gate skips so that
+-- `int DEFAULT 'abc'` keeps 18.6's `22P02` from the target's input function.
+--
+-- `5` into `jsonb` is the smallest member 18.6 refuses: `integer → jsonb` has no
+-- assignment cast, so 18.6 is `42804` and pglet answered `42846` from its value
+-- coercion. `date DEFAULT 5` and `uuid DEFAULT 5` are the same shape.
+-- @expect-error: a bare typed constant with no assignment cast to the column type (42804)
+-- @test
+CREATE TABLE dbl (x JSONB DEFAULT 5);

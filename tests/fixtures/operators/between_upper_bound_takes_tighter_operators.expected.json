@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "a": true,
+      "b": true,
+      "c": true,
+      "d": false
+    }
+  ],
+  "rowCount": 1
+}

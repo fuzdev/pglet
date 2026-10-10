@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>pglet Browser Tests</title>
+</head>
+<body>
+  <h1>pglet Browser Tests</h1>
+  <p>This page is used by Playwright for automated testing.</p>
+  <div id="status">Loading WASM...</div>
+
+  <script type="module">
+    import init, { PgletBtree } from '/crates/pglet_wasm/pkg/pglet_wasm.js';
+
+    // Initialize WASM and expose to window for tests
+    async function setup() {
+      try {
+        await init();
+        window.PgletBtree = PgletBtree;
+        window.__pglet_ready = true;  // Signal for tests
+        document.getElementById('status').textContent = 'WASM loaded successfully';
+        console.log('[test.html] WASM module loaded');
+      } catch (e) {
+        window.__pglet_error = String(e);
+        document.getElementById('status').textContent = 'Failed to load WASM: ' + e;
+        console.error('[test.html] Failed to load WASM:', e);
+      }
+    }
+
+    // B+tree Worker API for OPFS tests (uses PgletBtreePersistent, from the `opfs` build)
+    function setupBtreeWorker() {
+      const worker = new Worker('/tests-web/browser/test-worker-btree.js', { type: 'module' });
+      let messageId = 0;
+      const pending = new Map();
+
+      worker.onmessage = (e) => {
+        const { id, ...response } = e.data;
+        const resolve = pending.get(id);
+        if (resolve) {
+          pending.delete(id);
+          resolve(response);
+        }
+      };
+
+      worker.onerror = (e) => {
+        console.error('[test.html] B+tree Worker error:', e);
+        window.__pglet_btree_opfs_error = String(e.message || e);
+      };
+
+      function send(type, sql) {
+        return new Promise((resolve) => {
+          const id = messageId++;
+          pending.set(id, resolve);
+          worker.postMessage({ id, type, sql });
+        });
+      }
+
+      window.pgletBtreeWorker = {
+        init: () => send('init'),
+        exec: (sql) => send('exec', sql),
+        query: (sql) => send('query', sql),
+        sync: () => send('sync'),
+        clear: () => send('clear'),
+      };
+
+      // Initialize worker and signal ready
+      window.pgletBtreeWorker.init().then((result) => {
+        if (result.success) {
+          window.__pglet_btree_opfs_ready = true;
+          console.log('[test.html] B+tree OPFS worker ready');
+        } else {
+          window.__pglet_btree_opfs_error = result.error;
+          console.error('[test.html] B+tree OPFS worker init failed:', result.error);
+        }
+      });
+    }
+
+    setup();
+    setupBtreeWorker();
+  </script>
+</body>
+</html>

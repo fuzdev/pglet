@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42809",
+    "message": "ALTER action ADD COLUMN cannot be performed on relation \"atie14\""
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "rows": [
+    {
+      "max_f": null,
+      "min_f": 1.0,
+      "nan_eq": true,
+      "nan_gt": true,
+      "nan_lt": false
+    }
+  ],
+  "rowCount": 1
+}

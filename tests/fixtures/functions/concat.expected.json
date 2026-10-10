@@ -1,0 +1,29 @@
+{
+  "rows": [
+    {
+      "cc": "a2b",
+      "cn": "ab",
+      "cw": "a,2,b",
+      "cwn": "a-b",
+      "cwnull": null,
+      "id": 1
+    },
+    {
+      "cc": "a22",
+      "cn": "a",
+      "cw": "a,22",
+      "cwn": "a",
+      "cwnull": null,
+      "id": 2
+    },
+    {
+      "cc": "",
+      "cn": "",
+      "cw": "",
+      "cwn": "",
+      "cwnull": null,
+      "id": 3
+    }
+  ],
+  "rowCount": 3
+}

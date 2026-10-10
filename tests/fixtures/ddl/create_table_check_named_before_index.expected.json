@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42710",
+    "message": "constraint \"ctcni_c_check\" for relation \"ctcni\" already exists"
+  }
+}

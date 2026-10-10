@@ -1,0 +1,10 @@
+{
+  "rows": [
+    {
+      "id": 1,
+      "next_from_the_columns_sequence": "2",
+      "z": 42
+    }
+  ],
+  "rowCount": 1
+}

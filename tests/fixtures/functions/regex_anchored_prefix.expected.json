@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "anchor_only": true,
+      "case_sensitive": false,
+      "empty": true,
+      "longer": false,
+      "multibyte": true,
+      "negated": false,
+      "not_prefix": false,
+      "null_pattern": null,
+      "null_value": null,
+      "prefix": true
+    }
+  ],
+  "rowCount": 1
+}

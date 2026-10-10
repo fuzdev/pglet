@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P18",
+    "message": "could not determine data type of parameter $1"
+  }
+}

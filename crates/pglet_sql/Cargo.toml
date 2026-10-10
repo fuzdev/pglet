@@ -1,0 +1,55 @@
+[package]
+name = "pglet_sql"
+description = "SQL front end for pglet: lexer, parser, planner, executor, catalog"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+# One test binary per crate (`tests/integration.rs`): see its module doc.
+autotests = false
+
+[dependencies]
+pglet_core = { workspace = true }
+# Compile-time keyword table for the native SQL lexer (`src/lexer/`).
+phf = { workspace = true }
+serde = { workspace = true }
+# Serializes the planner `Expr` IR: the catalog stores it for CHECK / index
+# predicates, and `index_spec_from_catalog` hands it to storage as opaque bytes.
+postcard = { workspace = true }
+time = { workspace = true }
+thiserror = { workspace = true }
+
+# Native-only: backs `gen_random_uuid()` with the OS RNG.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+getrandom = { workspace = true }
+
+# wasm-only: backs `now()` (JS `Date.now`) and `gen_random_uuid()` (JS `Math.random`)
+# in the browser/embedded build — see `src/builtins.rs`. js-sys is already in the
+# workspace via `pglet_wasm`.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+js-sys = "0.3"
+
+[features]
+default = ["index_acceleration"]
+# Query-time index acceleration: the planner's index selection plus the
+# `IndexScan`/`IndexRangeScan` point/range reads and the GIN `@>` containment scan.
+# OFF in the stripped "testing" build profile. Index *objects* are still built,
+# maintained, and introspectable either way (and PK/UNIQUE/FK enforcement — the
+# unique-index probe — is independent and always on), so a query's *result* is
+# *intended* to be identical with the feature on or off; only its speed changes.
+# Measured exceptions stand against that intent — `EDGES.md`'s header names them.
+index_acceleration = []
+
+[dev-dependencies]
+# The `MemStorage` scan-and-filter oracle + `TestDb` harness the `engine_*`
+# differential tests run against.
+pglet_testing = { workspace = true, features = ["oracle"] }
+
+[lints]
+workspace = true
+
+[[test]]
+name = "integration"
+path = "tests/integration.rs"

@@ -1,0 +1,15 @@
+{
+  "rows": [
+    {
+      "bucket": "short",
+      "id": 1,
+      "under_a_day": true
+    },
+    {
+      "bucket": "long",
+      "id": 2,
+      "under_a_day": false
+    }
+  ],
+  "rowCount": 2
+}

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42846",
+    "message": "COALESCE could not convert type text[] to mood[]"
+  }
+}

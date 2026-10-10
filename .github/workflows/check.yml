@@ -1,0 +1,266 @@
+# Three jobs run on every push to main and every PR, one per tier a contributor
+# can run locally:
+#
+#   hermetic     — `deno task check` plus `deno task test:rust`. Needs no
+#                  Postgres and no wasm toolchain; this is the bar that runs
+#                  anywhere.
+#   package      — the published wasm/npm shape: the package tests and the size
+#                  cap. Neither is reached by `hermetic`, so a packaging or size
+#                  break would otherwise surface at release time.
+#   differential — the six gates that compare pglet against a real Postgres,
+#                  against a `postgres:18.6` service.
+#
+# Every job runs the `deno task` bodies rather than re-enumerating them here: a
+# hand-copied command list goes stale the first time a task gains a step, and
+# `deno.json` is the authoritative version.
+#
+# The one thing this file must not do is be green because a prerequisite was
+# missing. Several harnesses exit 0 without theirs — `test:dump` and
+# `test:pg-dump` return early when `psql` / `pg_dump` is absent — so the
+# differential job both installs the clients explicitly and runs the gates under
+# `--check`, which fails on a counter the baseline records and the run did not
+# report.
+
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: ['**']
+  # Allow manually re-running checks from the Actions tab.
+  workflow_dispatch:
+
+# Cancel a PR's in-progress run when a new commit supersedes it; let main-branch
+# runs finish so every commit on main stays verified.
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Least privilege: these jobs only read the repo.
+permissions:
+  contents: read
+
+jobs:
+  # The hermetic bar, the same one `CONTRIBUTING.md` names: clippy under
+  # `-D warnings`, a `--no-default-features` check, clippy over `pglet` and
+  # `pglet_wasm` with the wasm build's default, stripped and `opfs` features,
+  # `cargo fmt --check`, the rustdoc link check, the
+  # release audit — then the workspace test suite. No
+  # Postgres (nothing under `crates/*/tests/` connects to one; the suite does
+  # build and spawn pglet servers, which is why it wants a full toolchain).
+  hermetic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      # persist-credentials: false keeps the GITHUB_TOKEN out of .git/config (no
+      # step here pushes via git).
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Pinned, not `stable`: the workspace runs clippy::pedantic + ::nursery and
+      # `check` denies warnings, so a floating toolchain reddens CI whenever a new
+      # Rust release adds a lint — a failure about the runner's date rather than
+      # about the change. The version is `rust-toolchain.toml`'s, which is what
+      # chooses it for cargo; this step only installs it. The wasm size gate is
+      # calibrated against it too. Bump the two together, deliberately.
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master (no semver tags; bump manually)
+        with:
+          toolchain: 1.98.0
+          components: clippy, rustfmt
+          # `check:wasm-features` lints `pglet` and `pglet_wasm` for the wasm target.
+          targets: wasm32-unknown-unknown
+
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+
+      - name: Install Deno
+        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          # Pinned to the version the tasks are developed against. Every gate is a
+          # `deno task`, so deno is on the critical path of all three jobs.
+          deno-version: 2.8.3
+          cache: true
+
+      # The lockfile gate for the whole run, asked once and cheaply: would
+      # resolving need to change `Cargo.lock`? `metadata` answers without
+      # compiling. The commands below deliberately do not pass `--locked`, which
+      # would impose it locally too, where an in-progress dependency edit
+      # legitimately moves the lock.
+      - name: Verify Cargo.lock is current
+        run: cargo metadata --locked --format-version 1 > /dev/null
+
+      - name: Check
+        run: deno task check
+
+      # `test:rust` turns the `opfs` feature on, which brings in the persistent wasm
+      # binding's host tests the default build does not compile.
+      - name: Test
+        run: deno task test:rust
+
+  # The published shape. `test:npm` builds the npm package and runs the adapter
+  # suite under both deno and node; `size:check` runs its own wasm build and
+  # compares against `benches/size_baseline.json` at +2% or the hard cap,
+  # whichever binds first. Runs in parallel with `hermetic` (no `needs:`), so a
+  # PR's wall clock is the max of the jobs rather than their sum.
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Same pin as `hermetic`; no clippy/rustfmt (the lints gate there). The
+      # wasm target is requested here rather than left to rustup's first use of
+      # `rust-toolchain.toml`, which names it too.
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master (no semver tags; bump manually)
+        with:
+          toolchain: 1.98.0
+          targets: wasm32-unknown-unknown
+
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+
+      # Prebuilt binary rather than `cargo install`, which would recompile on any
+      # dependency bump. Version-pinned because wasm-pack bundles wasm-opt, and
+      # wasm-opt's output size is exactly what the size cap is calibrated against
+      # — a float would trip `size:check` on an unrelated binaryen release. Bump
+      # the SHA and the version together, deliberately.
+      - name: Install wasm-pack
+        uses: taiki-e/install-action@fcf5432d9f50d67e37ee6e29bdb7a224ff67b4a7 # v2.86.8
+        with:
+          tool: wasm-pack@0.15.0
+
+      - name: Install Deno
+        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: 2.8.3
+          cache: true
+
+      # The package declares `engines: {node: '>=22'}` (`scripts/npm_metadata.ts`),
+      # and the node half of `test:npm` runs under `node --test` — refusing a Node
+      # below that floor — and packs and installs the tarball with the npm this
+      # step ships. Pinned to match the ecosystem's other workspaces.
+      - name: Install Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24.14.1'
+
+      # Builds the npm package, then runs the deno adapter suite and the node
+      # smoke tests against it, the packed tarball's included.
+      - name: Package tests
+        run: deno task test:npm
+
+      # `benches/size.ts` shells out to gzip and throws rather than skipping when
+      # it is missing, so this step cannot pass by omission.
+      - name: Size cap
+        run: deno task size:check
+
+      # The `opfs` build is the one wasm exporting `PgletBtreePersistent`, and nothing
+      # above builds it: build it and fail if the export is gone (a cfg slip that drops
+      # the module compiles clean). `test:browser` drives the class itself, by hand.
+      - name: OPFS build
+        run: deno task wasm:build:opfs && grep -q 'class PgletBtreePersistent' crates/pglet_wasm/pkg-opfs/pglet_wasm.d.ts
+
+  # The differential tier: pglet against a real Postgres, byte for byte.
+  differential:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    services:
+      postgres:
+        # The minor the fixtures assert (`show_server_version_num` answers `180006`).
+        image: postgres:18.6
+        env:
+          # `trust`, and no password: the harness's text-format leg speaks the
+          # startup message by hand and supports trust auth only, and that leg is
+          # where every fixture's simple-query declared types are asserted. A
+          # password-bearing service would fail it for every fixture.
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # master (no semver tags; bump manually)
+        with:
+          toolchain: 1.98.0
+
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+
+      - name: Install Deno
+        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: 2.8.3
+          cache: true
+
+      # From the PostgreSQL project's own apt repository rather than the runner
+      # image's default, which carries an older major. `pg_dump` refuses to dump
+      # a server newer than itself, so the client major has to be at least the
+      # service's.
+      - name: Install the Postgres 18 client
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -sS -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] \
+            https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends postgresql-client-18
+
+      # Both clients, by version, before anything runs: `test:dump` and
+      # `test:pg-dump` return early and exit 0 when either is absent, so a job
+      # without them would otherwise be green having run neither. The gate run
+      # below refuses a missing counter too — this step is the cheaper, earlier
+      # half of the same guard, and it also pins the major.
+      - name: Verify the Postgres clients
+        run: |
+          psql --version
+          pg_dump --version
+          test "$(pg_dump --version | grep -oE '[0-9]+' | head -1)" -ge 18
+
+      # `cargo xtask gates` rather than the six `deno task`s directly: it takes
+      # the exclusive run lock, writes a per-task log under `target/gates/`,
+      # distinguishes a killed task from a failing one, and extracts the counters
+      # `--check` compares. Run from the repository root, which the harness needs
+      # — it execs `target/debug/pglet_server` by relative path.
+      #
+      # `PGLET_PG_URL` names the service. The variable is the repo's one oracle
+      # knob; the harnesses reset the `public` schema of whatever it names, which
+      # is why it points at a disposable container here.
+      #
+      # The user and database are the image's own defaults, `postgres` and
+      # `postgres`, and that is load-bearing rather than lazy: a few fixtures
+      # select the session identity (`current_user`, `current_database()`) and
+      # compare against a snapshot holding those spellings, so a service named
+      # anything else reports them as stale. The knob moves the host, the port and
+      # the cluster freely; moving the *names* costs those fixtures.
+      - name: Differential gates
+        env:
+          PGLET_PG_URL: postgres://postgres@127.0.0.1:5432/postgres
+        run: >-
+          cargo xtask gates --check --only
+          test:fixtures,test:fixtures:profile-lock,test:dump,test:pg-dump,test:copy,test:keywords
+
+      # The per-task logs are the only record of which fixture diverged; a failed
+      # run is unreadable without them.
+      - name: Upload gate logs
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: gate-logs
+          path: target/gates/*.log

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42703",
+    "message": "column \"a\" referenced in foreign key constraint does not exist"
+  }
+}

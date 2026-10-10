@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "id": 1,
+      "level": null
+    },
+    {
+      "id": 2,
+      "level": null
+    },
+    {
+      "id": 3,
+      "level": "editor"
+    }
+  ],
+  "rowCount": 3
+}

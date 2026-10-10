@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "day": "1 day",
+      "numeric_a": "1.0",
+      "numeric_b": "1.00",
+      "zero": -0.0
+    }
+  ],
+  "rowCount": 1
+}

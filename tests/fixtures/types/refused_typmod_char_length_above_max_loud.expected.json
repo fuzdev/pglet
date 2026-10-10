@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "22023",
+    "message": "length for type char cannot exceed 10485760"
+  }
+}

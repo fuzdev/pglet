@@ -1,0 +1,77 @@
+{
+  "rows": [
+    {
+      "auto_incrementing": "public.kt_id_seq",
+      "column": "id",
+      "column_description": null,
+      "has_default": true,
+      "not_null": true,
+      "schema": "public",
+      "table": "kt",
+      "table_type": "r",
+      "type": "int4",
+      "type_schema": "pg_catalog"
+    },
+    {
+      "auto_incrementing": "public.kt_ident_seq",
+      "column": "ident",
+      "column_description": null,
+      "has_default": false,
+      "not_null": true,
+      "schema": "public",
+      "table": "kt",
+      "table_type": "r",
+      "type": "int4",
+      "type_schema": "pg_catalog"
+    },
+    {
+      "auto_incrementing": null,
+      "column": "plain",
+      "column_description": null,
+      "has_default": true,
+      "not_null": true,
+      "schema": "public",
+      "table": "kt",
+      "table_type": "r",
+      "type": "int4",
+      "type_schema": "pg_catalog"
+    },
+    {
+      "auto_incrementing": null,
+      "column": "Mixed",
+      "column_description": null,
+      "has_default": false,
+      "not_null": false,
+      "schema": "public",
+      "table": "kt",
+      "table_type": "r",
+      "type": "text",
+      "type_schema": "pg_catalog"
+    },
+    {
+      "auto_incrementing": "public.kt_big_seq",
+      "column": "big",
+      "column_description": null,
+      "has_default": true,
+      "not_null": true,
+      "schema": "public",
+      "table": "kt",
+      "table_type": "r",
+      "type": "int8",
+      "type_schema": "pg_catalog"
+    },
+    {
+      "auto_incrementing": "public.\"select_my col_seq\"",
+      "column": "my col",
+      "column_description": null,
+      "has_default": true,
+      "not_null": true,
+      "schema": "public",
+      "table": "select",
+      "table_type": "r",
+      "type": "int4",
+      "type_schema": "pg_catalog"
+    }
+  ],
+  "rowCount": 6
+}

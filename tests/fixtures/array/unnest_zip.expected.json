@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "role": "editor",
+      "scope": 10
+    },
+    {
+      "role": "viewer",
+      "scope": 20
+    }
+  ],
+  "rowCount": 2
+}

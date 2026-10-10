@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "v": "empty"
+    },
+    {
+      "v": "zero byte"
+    },
+    {
+      "v": "two zero bytes"
+    },
+    {
+      "v": "one"
+    }
+  ],
+  "rowCount": 4
+}

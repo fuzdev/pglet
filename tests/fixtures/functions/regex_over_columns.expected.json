@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "name_col": "1",
+      "negated": false,
+      "text_col": true,
+      "varchar_col": true
+    }
+  ],
+  "rowCount": 1
+}

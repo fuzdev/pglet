@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42601",
+    "message": "multiple default values specified for column \"a\" of table \"def_serial_multi\""
+  }
+}

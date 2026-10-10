@@ -1,0 +1,12 @@
+{
+  "rows": [
+    {
+      "div": "15 days",
+      "div_hours": "02:30:00",
+      "mul_days": "3 days",
+      "mul_frac": "2 mons 15 days",
+      "mul_neg": "-1 days -12:00:00"
+    }
+  ],
+  "rowCount": 1
+}

@@ -1,0 +1,21 @@
+{
+  "meta": {
+    "benchmark": "commit_cpu_attribution",
+    "lane": "native_inprocess",
+    "layer": "L1",
+    "durability_tier": "T1",
+    "prepopulate_rows": 100000,
+    "schemas": ["indexfree", "enforcing"],
+    "method": "real commits for page-count + write_at/fsync nanos; per-page serialize/clone/put micro-timed on a representative dirtied leaf; checksum + apply by difference",
+    "units": "microseconds",
+    "higher_or_lower_is_better": "lower"
+  },
+  "attributions": [
+    {"schema":"indexfree","batch_n":100,"pages_per_commit":7.87,"total_us":1398.876,"commit_cpu_us":1365.400,"cpu_per_row_us":13.6540,"apply_us":1245.141,"apply_pct":89.01,"serialize_us":82.282,"serialize_pct":5.88,"checksum_us":37.762,"checksum_pct":2.70,"clone_us":0.216,"clone_pct":0.02,"write_at_us":31.769,"write_at_pct":2.27,"fsync_us":1.708,"fsync_pct":0.12,"diag_store_get_us":0.0992,"diag_descent_clones_per_commit":12553.5,"pct_basis":"commit_total","units":"microseconds"},
+    {"schema":"indexfree","batch_n":1000,"pages_per_commit":38.98,"total_us":12458.260,"commit_cpu_us":12269.808,"cpu_per_row_us":12.2698,"apply_us":11668.957,"apply_pct":93.66,"serialize_us":405.338,"serialize_pct":3.25,"checksum_us":194.393,"checksum_pct":1.56,"clone_us":1.121,"clone_pct":0.01,"write_at_us":186.405,"write_at_pct":1.50,"fsync_us":2.047,"fsync_pct":0.02,"diag_store_get_us":0.0950,"diag_descent_clones_per_commit":122812.4,"pct_basis":"commit_total","units":"microseconds"},
+    {"schema":"indexfree","batch_n":10000,"pages_per_commit":353.10,"total_us":127947.440,"commit_cpu_us":126452.356,"cpu_per_row_us":12.6452,"apply_us":121217.745,"apply_pct":94.74,"serialize_us":3590.176,"serialize_pct":2.81,"checksum_us":1634.368,"checksum_pct":1.28,"clone_us":10.066,"clone_pct":0.01,"write_at_us":1492.365,"write_at_pct":1.17,"fsync_us":2.719,"fsync_pct":0.00,"diag_store_get_us":0.0948,"diag_descent_clones_per_commit":1278209.8,"pct_basis":"commit_total","units":"microseconds"},
+    {"schema":"enforcing","batch_n":100,"pages_per_commit":126.52,"total_us":3642.572,"commit_cpu_us":3468.070,"cpu_per_row_us":34.6807,"apply_us":2147.230,"apply_pct":58.95,"serialize_us":999.821,"serialize_pct":27.45,"checksum_us":319.293,"checksum_pct":8.77,"clone_us":1.727,"clone_pct":0.05,"write_at_us":173.584,"write_at_pct":4.77,"fsync_us":0.918,"fsync_pct":0.03,"diag_store_get_us":0.0506,"diag_descent_clones_per_commit":42443.3,"pct_basis":"commit_total","units":"microseconds"},
+    {"schema":"enforcing","batch_n":1000,"pages_per_commit":803.38,"total_us":32242.623,"commit_cpu_us":31020.237,"cpu_per_row_us":31.0202,"apply_us":24628.678,"apply_pct":76.39,"serialize_us":4523.590,"serialize_pct":14.03,"checksum_us":1857.191,"checksum_pct":5.76,"clone_us":10.777,"clone_pct":0.03,"write_at_us":1220.534,"write_at_pct":3.79,"fsync_us":1.852,"fsync_pct":0.01,"diag_store_get_us":0.0466,"diag_descent_clones_per_commit":528138.4,"pct_basis":"commit_total","units":"microseconds"},
+    {"schema":"enforcing","batch_n":10000,"pages_per_commit":3356.57,"total_us":266533.125,"commit_cpu_us":261072.644,"cpu_per_row_us":26.1073,"apply_us":235322.832,"apply_pct":88.29,"serialize_us":19736.933,"serialize_pct":7.41,"checksum_us":5901.668,"checksum_pct":2.21,"clone_us":111.211,"clone_pct":0.04,"write_at_us":5458.454,"write_at_pct":2.05,"fsync_us":2.027,"fsync_pct":0.00,"diag_store_get_us":0.0464,"diag_descent_clones_per_commit":5074620.3,"pct_basis":"commit_total","units":"microseconds"}
+  ]
+}

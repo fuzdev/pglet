@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "big_int": 1.2345678901234568e29,
+      "big_int_extract": "123456789012345678901234567890",
+      "high_scale_decimal": 0.12345678901234568,
+      "high_scale_extract": "0.1234567890123456789",
+      "past_i64": 9223372036854775808,
+      "twenty_one_digits": 1e20
+    }
+  ],
+  "rowCount": 1
+}

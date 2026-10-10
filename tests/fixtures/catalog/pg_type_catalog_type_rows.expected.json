@@ -1,0 +1,55 @@
+{
+  "rows": [
+    {
+      "typarray": 1002,
+      "typbyval": true,
+      "typcategory": "Z",
+      "typelem": 0,
+      "typisdefined": true,
+      "typlen": 1,
+      "typname": "char",
+      "typtype": "b"
+    },
+    {
+      "typarray": 1007,
+      "typbyval": true,
+      "typcategory": "N",
+      "typelem": 0,
+      "typisdefined": true,
+      "typlen": 4,
+      "typname": "int4",
+      "typtype": "b"
+    },
+    {
+      "typarray": 1003,
+      "typbyval": false,
+      "typcategory": "S",
+      "typelem": 18,
+      "typisdefined": true,
+      "typlen": 64,
+      "typname": "name",
+      "typtype": "b"
+    },
+    {
+      "typarray": 1231,
+      "typbyval": false,
+      "typcategory": "N",
+      "typelem": 0,
+      "typisdefined": true,
+      "typlen": -1,
+      "typname": "numeric",
+      "typtype": "b"
+    },
+    {
+      "typarray": 1028,
+      "typbyval": true,
+      "typcategory": "N",
+      "typelem": 0,
+      "typisdefined": true,
+      "typlen": 4,
+      "typname": "oid",
+      "typtype": "b"
+    }
+  ],
+  "rowCount": 5
+}

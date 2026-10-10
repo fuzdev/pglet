@@ -1,0 +1,68 @@
+{
+  "rows": [
+    {
+      "relchecks": 0,
+      "relhasindex": false,
+      "relkind": "i",
+      "relname": "cat_child_lower_label_idx",
+      "relnatts": 1,
+      "relpersistence": "p",
+      "relrowsecurity": false
+    },
+    {
+      "relchecks": 0,
+      "relhasindex": false,
+      "relkind": "i",
+      "relname": "cat_child_partial_idx",
+      "relnatts": 1,
+      "relpersistence": "p",
+      "relrowsecurity": false
+    },
+    {
+      "relchecks": 0,
+      "relhasindex": false,
+      "relkind": "i",
+      "relname": "cat_child_pid_idx",
+      "relnatts": 1,
+      "relpersistence": "p",
+      "relrowsecurity": false
+    },
+    {
+      "relchecks": 0,
+      "relhasindex": false,
+      "relkind": "i",
+      "relname": "cat_parent_code_region_uq",
+      "relnatts": 2,
+      "relpersistence": "p",
+      "relrowsecurity": false
+    },
+    {
+      "relchecks": 0,
+      "relhasindex": false,
+      "relkind": "i",
+      "relname": "cat_parent_pkey",
+      "relnatts": 1,
+      "relpersistence": "p",
+      "relrowsecurity": false
+    },
+    {
+      "relchecks": 2,
+      "relhasindex": true,
+      "relkind": "r",
+      "relname": "cat_child",
+      "relnatts": 6,
+      "relpersistence": "p",
+      "relrowsecurity": false
+    },
+    {
+      "relchecks": 0,
+      "relhasindex": true,
+      "relkind": "r",
+      "relname": "cat_parent",
+      "relnatts": 3,
+      "relpersistence": "p",
+      "relrowsecurity": false
+    }
+  ],
+  "rowCount": 7
+}

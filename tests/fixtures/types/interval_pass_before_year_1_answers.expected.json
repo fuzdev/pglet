@@ -1,0 +1,16 @@
+{
+  "rows": [
+    {
+      "clamp_year_zero": "0001-02-28 00:00:00",
+      "day_then_micros": "0001-01-01 00:00:00",
+      "days_pass_first": "0001-01-01 00:00:00",
+      "months_pass_december_4714_bc": "0001-01-01 00:00:00",
+      "months_pass_first": "0001-01-24 00:00:00",
+      "through_year_4000_bc": "0001-01-01 00:00:00",
+      "through_year_zero": "0001-01-01 00:00:00",
+      "tz_days_pass_first": "0001-01-01 00:00:00+00",
+      "tz_months_pass_first": "0001-01-24 00:00:00+00"
+    }
+  ],
+  "rowCount": 1
+}

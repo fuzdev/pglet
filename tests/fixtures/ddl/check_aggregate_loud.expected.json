@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42803",
+    "message": "aggregate functions are not allowed in check constraints"
+  }
+}

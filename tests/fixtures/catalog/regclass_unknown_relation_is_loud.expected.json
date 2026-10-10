@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P01",
+    "message": "relation \"cat_no_such_relation\" does not exist"
+  }
+}

@@ -1,0 +1,14 @@
+-- The qualified spelling of `interval_multiple_bare_fields_is_22007.sql`, which is
+-- where the wrong value was worst: the mask turned the decoder's wrong `00:00:03`
+-- into a different wrong `00:00:00`. 18.6 refuses this one too (`22007`), so the
+-- codes agree.
+--
+-- The neighbour that does **not** agree is `INTERVAL '1 2' HOUR`, which 18.6 answers
+-- `1 day 02:00:00`: a single-field qualifier makes unlabelled fields decode
+-- positionally, which pglet does not model, so that spelling is refused rather than
+-- answered. Recorded in `docs/parser.md`; it cannot be a fixture here, because a
+-- refusal against an accepting oracle is what `@expect-error` already permits and it
+-- would assert nothing this file does not.
+-- @test
+-- @expect-error: invalid input syntax for type interval
+SELECT INTERVAL '1 2' DAY;

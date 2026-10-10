@@ -1,0 +1,9 @@
+# `cargo xtask <cmd>` runs the dev-automation crate (crates/xtask).
+#
+#   check-release  the release firewall — fails if any production binary
+#                  transitively depends on a dev/test-only crate
+#   gates          run the gate set once, under an exclusive lock, reporting
+#                  every task's exit status and the counters a change is judged
+#                  by (`--check` fails on a regression, `--update` records)
+[alias]
+xtask = "run --package xtask --"

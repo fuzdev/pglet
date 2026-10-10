@@ -1,0 +1,34 @@
+-- A bound parameter in the **arbiter** rather than the action: a key expression the
+-- table carries no matching unique index for, so both engines refuse with `42P10` at
+-- execution — 18.6 from `infer_arbiter_indexes`, pglet from its own arbiter matcher.
+--
+-- What the fixture locks is the phase *before* that: 18.6 reports `{integer}` from
+-- `PREPARE` and the `Bind` must therefore succeed, so the statement reaches the
+-- arbiter matcher at all. With the clause unwalked the parameter was uncounted, and
+-- what that looks like depends on the client. On the raw wire the server answers
+-- `08P01 bind message supplies 1 parameters, but prepared statement "" requires 0` —
+-- a protocol violation reported for a well-formed exchange, and the wrong error class
+-- rather than merely the wrong moment. Under this harness tokio-postgres never gets
+-- that far: `encode_bind` compares the count against the advertised
+-- `Statement::params()` and returns `expected 0 parameters but got 1` before writing
+-- a Bind message, so no `DbError` exists and the harness records `CLIENT-FAULT`.
+-- Measured on the revert: `SQLSTATE mismatch (Postgres 42P10, pglet CLIENT-FAULT)`,
+-- which is the line a maintainer will see. That is a plain SQLSTATE comparison and
+-- not the by-name `is_client_fault` rejection: this fixture's recorded expectation is
+-- an **error** (42P10), so the harness takes the (Error, Error) arm, where the tag
+-- simply fails to equal `42P10`. The by-name check lives in the other arm — the one
+-- for a fixture Postgres *accepts*, where "any pglet error passes" would otherwise
+-- score a harness-side decode failure green.
+--
+-- The `::int` cast is load-bearing: pglet types no `$N` from an arithmetic sibling,
+-- so the bare `(id + $1)` spelling reports OID 0 — the unresolved-parameter class
+-- `docs/param_binding.md` records — and tokio-postgres then refuses the value
+-- client-side, with no SQLSTATE for the harness to compare. 18.6 reports
+-- `{integer}` for both spellings.
+-- @setup
+CREATE TABLE oc_arb (id INT PRIMARY KEY, v TEXT);
+-- @param $1 int4 0
+-- @profile-lock
+-- @test
+-- @expect-error: 42P10 — no unique index matches the arbiter, on both engines
+INSERT INTO oc_arb (id, v) VALUES (1, 'a') ON CONFLICT ((id + $1::int)) DO NOTHING;

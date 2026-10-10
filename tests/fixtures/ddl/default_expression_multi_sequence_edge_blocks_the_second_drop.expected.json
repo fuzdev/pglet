@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "2BP01",
+    "message": "cannot drop sequence mdrop_b because other objects depend on it"
+  }
+}

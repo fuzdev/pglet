@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42804",
+    "message": "foreign key constraint \"ftc_k_fkey\" cannot be implemented"
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "rows": [
+    {
+      "g": 3,
+      "shown": "-Infinity"
+    },
+    {
+      "g": 7,
+      "shown": "-1.5"
+    },
+    {
+      "g": 9,
+      "shown": "-1e-320"
+    },
+    {
+      "g": 4,
+      "shown": "0"
+    },
+    {
+      "g": 8,
+      "shown": "1e-320"
+    },
+    {
+      "g": 1,
+      "shown": "2.5"
+    },
+    {
+      "g": 6,
+      "shown": "Infinity"
+    },
+    {
+      "g": 2,
+      "shown": "NaN"
+    }
+  ],
+  "rowCount": 8
+}

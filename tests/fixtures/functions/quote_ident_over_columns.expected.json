@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "qualified": "public.\"Qi Table\"",
+      "qv": "ok"
+    },
+    {
+      "qualified": "public.\"Qi Table\"",
+      "qv": "\"select\""
+    }
+  ],
+  "rowCount": 2
+}

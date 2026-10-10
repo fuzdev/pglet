@@ -1,0 +1,25 @@
+{
+  "rows": [
+    {
+      "constraint_name": "isdc2_col_pk",
+      "constraint_type": "PRIMARY KEY",
+      "table_name": "isdc2"
+    },
+    {
+      "constraint_name": "isdc3_added_pk",
+      "constraint_type": "PRIMARY KEY",
+      "table_name": "isdc3"
+    },
+    {
+      "constraint_name": "isdc_my_pk",
+      "constraint_type": "PRIMARY KEY",
+      "table_name": "isdc"
+    },
+    {
+      "constraint_name": "isdc_my_uq",
+      "constraint_type": "UNIQUE",
+      "table_name": "isdc"
+    }
+  ],
+  "rowCount": 4
+}

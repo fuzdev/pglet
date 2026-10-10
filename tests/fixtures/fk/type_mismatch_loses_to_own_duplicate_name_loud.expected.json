@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42710",
+    "message": "constraint \"f\" for relation \"ftc\" already exists"
+  }
+}

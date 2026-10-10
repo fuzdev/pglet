@@ -1,0 +1,26 @@
+{
+  "rows": [
+    {
+      "clock_not_before": true,
+      "id": 1,
+      "set_is_returning": true,
+      "set_is_transaction": true,
+      "statement_is_returning": true
+    },
+    {
+      "clock_not_before": true,
+      "id": 2,
+      "set_is_returning": true,
+      "set_is_transaction": true,
+      "statement_is_returning": true
+    },
+    {
+      "clock_not_before": true,
+      "id": 3,
+      "set_is_returning": true,
+      "set_is_transaction": true,
+      "statement_is_returning": true
+    }
+  ],
+  "rowCount": 3
+}

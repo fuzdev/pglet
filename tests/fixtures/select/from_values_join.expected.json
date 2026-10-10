@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "label": "one",
+      "val": "A"
+    },
+    {
+      "label": "two",
+      "val": "B"
+    }
+  ],
+  "rowCount": 2
+}

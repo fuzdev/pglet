@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "23514",
+    "message": "new row for relation \"nce\" violates check constraint \"nce_a_check\""
+  }
+}

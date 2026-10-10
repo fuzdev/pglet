@@ -1,0 +1,9 @@
+{
+  "rows": [
+    {
+      "constraint_name": "irdn_myfk",
+      "constraint_type": "FOREIGN KEY"
+    }
+  ],
+  "rowCount": 1
+}

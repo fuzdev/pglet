@@ -1,0 +1,16 @@
+{
+  "rows": [
+    {
+      "data": {
+        "n": 2,
+        "ref": "blake3:bbbb"
+      },
+      "id": "11111111-1111-1111-1111-111111111111",
+      "path": "notes/a",
+      "refs": [
+        "blake3:bbbb"
+      ]
+    }
+  ],
+  "rowCount": 1
+}

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42602",
+    "message": "invalid name syntax"
+  }
+}

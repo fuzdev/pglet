@@ -1,0 +1,15 @@
+{
+  "rows": [
+    {
+      "conname": "cac11_ttttttttttttttttttttttttttttttttttttttttttttt_id_not_null",
+      "contype": "n",
+      "seq": "public.cac11_tttttttttttttttttttttttttttttttttttttttttttttttttt_id_seq"
+    },
+    {
+      "conname": "cac11_tttttttttttttttttttttttttttttttttttttttttttttttttttt_pkey",
+      "contype": "p",
+      "seq": "public.cac11_tttttttttttttttttttttttttttttttttttttttttttttttttt_id_seq"
+    }
+  ],
+  "rowCount": 2
+}

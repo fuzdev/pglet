@@ -1,0 +1,25 @@
+{
+  "rows": [
+    {
+      "c": "one",
+      "d": "other",
+      "x": 1
+    },
+    {
+      "c": "one",
+      "d": "two",
+      "x": 1
+    },
+    {
+      "c": "other",
+      "d": "other",
+      "x": 2
+    },
+    {
+      "c": "other",
+      "d": "two",
+      "x": 2
+    }
+  ],
+  "rowCount": 4
+}

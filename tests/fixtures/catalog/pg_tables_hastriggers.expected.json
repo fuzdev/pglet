@@ -1,0 +1,19 @@
+{
+  "rows": [
+    {
+      "hasindexes": true,
+      "hasrules": false,
+      "hastriggers": true,
+      "rowsecurity": false,
+      "tablename": "cat_child"
+    },
+    {
+      "hasindexes": true,
+      "hasrules": false,
+      "hastriggers": true,
+      "rowsecurity": false,
+      "tablename": "cat_parent"
+    }
+  ],
+  "rowCount": 2
+}

@@ -1,0 +1,12 @@
+{
+  "rows": [
+    {
+      "all_neg": "-1 years -2 mons -3 days -04:05:06",
+      "mixed_sign": "-1 years -2 mons +3 days -04:05:06",
+      "neg_plural": "-1 years",
+      "singular": "1 year",
+      "zero": "00:00:00"
+    }
+  ],
+  "rowCount": 1
+}

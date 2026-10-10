@@ -1,0 +1,93 @@
+{
+  "rows": [
+    {
+      "b2": {
+        "data": [
+          98,
+          99,
+          100,
+          101,
+          102
+        ],
+        "type": "Buffer"
+      },
+      "b3": {
+        "data": [
+          98,
+          99,
+          100
+        ],
+        "type": "Buffer"
+      },
+      "id": 1,
+      "t2": "bcdef",
+      "t3": "bcd",
+      "t_unknown": "bc"
+    },
+    {
+      "b2": {
+        "data": [
+          0,
+          255,
+          0,
+          1
+        ],
+        "type": "Buffer"
+      },
+      "b3": {
+        "data": [
+          0
+        ],
+        "type": "Buffer"
+      },
+      "id": 2,
+      "t2": "héllo",
+      "t3": "h",
+      "t_unknown": "él"
+    },
+    {
+      "b2": {
+        "data": [],
+        "type": "Buffer"
+      },
+      "b3": {
+        "data": [],
+        "type": "Buffer"
+      },
+      "id": 3,
+      "t2": "xyz",
+      "t3": "",
+      "t_unknown": "yz"
+    },
+    {
+      "b2": null,
+      "b3": null,
+      "id": 4,
+      "t2": null,
+      "t3": null,
+      "t_unknown": null
+    },
+    {
+      "b2": null,
+      "b3": null,
+      "id": 5,
+      "t2": null,
+      "t3": null,
+      "t_unknown": "bc"
+    },
+    {
+      "b2": {
+        "data": [
+          97
+        ],
+        "type": "Buffer"
+      },
+      "b3": null,
+      "id": 6,
+      "t2": "abc",
+      "t3": null,
+      "t_unknown": "bc"
+    }
+  ],
+  "rowCount": 6
+}

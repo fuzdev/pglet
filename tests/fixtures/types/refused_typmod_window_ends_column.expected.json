@@ -1,0 +1,23 @@
+{
+  "rows": [
+    {
+      "character_maximum_length": null,
+      "column_name": "a",
+      "numeric_precision": 5,
+      "numeric_scale": 1000
+    },
+    {
+      "character_maximum_length": null,
+      "column_name": "b",
+      "numeric_precision": 1000,
+      "numeric_scale": 0
+    },
+    {
+      "character_maximum_length": 10485760,
+      "column_name": "c",
+      "numeric_precision": null,
+      "numeric_scale": null
+    }
+  ],
+  "rowCount": 3
+}

@@ -1,0 +1,41 @@
+{
+  "rows": [
+    {
+      "column_default": "'private'::cdl_mood",
+      "column_name": "m",
+      "data_type": "USER-DEFINED",
+      "udt_name": "cdl_mood"
+    },
+    {
+      "column_default": "'x'::character varying",
+      "column_name": "v",
+      "data_type": "character varying",
+      "udt_name": "varchar"
+    },
+    {
+      "column_default": "'plain'::text",
+      "column_name": "t",
+      "data_type": "text",
+      "udt_name": "text"
+    },
+    {
+      "column_default": "'-1'::integer",
+      "column_name": "n",
+      "data_type": "smallint",
+      "udt_name": "int2"
+    },
+    {
+      "column_default": "'-1'::integer",
+      "column_name": "o",
+      "data_type": "bigint",
+      "udt_name": "int8"
+    },
+    {
+      "column_default": "'-1.5'::numeric",
+      "column_name": "f",
+      "data_type": "double precision",
+      "udt_name": "float8"
+    }
+  ],
+  "rowCount": 6
+}

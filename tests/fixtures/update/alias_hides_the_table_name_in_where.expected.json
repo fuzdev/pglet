@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P01",
+    "message": "invalid reference to FROM-clause entry for table \"hw\""
+  }
+}

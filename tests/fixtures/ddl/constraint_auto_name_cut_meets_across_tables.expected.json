@@ -1,0 +1,55 @@
+{
+  "rows": [
+    {
+      "conname": "cac5_ttttttttttttttttttttttttttttttttttttttttttttttttt_v_check1",
+      "contype": "c",
+      "len": 63
+    },
+    {
+      "conname": "cac5_tttttttttttttttttttttttttttttttttttttttttttttttttt_v_check",
+      "contype": "c",
+      "len": 63
+    },
+    {
+      "conname": "cac5_ttttttttttttttttttttttttttttttttttttttttttttttttttt_check1",
+      "contype": "c",
+      "len": 63
+    },
+    {
+      "conname": "cac5_tttttttttttttttttttttttttttttttttttttttttttttttttttt_check",
+      "contype": "c",
+      "len": 63
+    },
+    {
+      "conname": "cac5_tttttttttttttttttttttttttttttttttttttttttttttttttt_v_fkey1",
+      "contype": "f",
+      "len": 63
+    },
+    {
+      "conname": "cac5_ttttttttttttttttttttttttttttttttttttttttttttttttttt_v_fkey",
+      "contype": "f",
+      "len": 63
+    },
+    {
+      "conname": "cac5_tttttttttttttttttttttttttttttttttttttttttttttttttttt_pkey1",
+      "contype": "p",
+      "len": 63
+    },
+    {
+      "conname": "cac5_ttttttttttttttttttttttttttttttttttttttttttttttttttttt_pkey",
+      "contype": "p",
+      "len": 63
+    },
+    {
+      "conname": "cac5_ttttttttttttttttttttttttttttttttttttttttttttttttttt_v_key1",
+      "contype": "u",
+      "len": 63
+    },
+    {
+      "conname": "cac5_tttttttttttttttttttttttttttttttttttttttttttttttttttt_v_key",
+      "contype": "u",
+      "len": 63
+    }
+  ],
+  "rowCount": 10
+}

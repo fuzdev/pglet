@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42804",
+    "message": "EXCEPT types integer and date cannot be matched"
+  }
+}

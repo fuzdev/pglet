@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "absent": null,
+      "bigint_oid": null,
+      "max_oid": null,
+      "negative": null,
+      "smallints": null,
+      "zero": null
+    }
+  ],
+  "rowCount": 1
+}

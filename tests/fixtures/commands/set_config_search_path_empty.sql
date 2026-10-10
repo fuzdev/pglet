@@ -1,0 +1,14 @@
+-- `pg_dump`'s own preamble line, verbatim. It is accepted on both engines and
+-- returns the value it set — the decision `check_search_path_elements` documents,
+-- and the reason `test:pg-dump` still loads a modern plain-text dump.
+--
+-- What it costs is a residual rather than a refusal: on 18.6 an empty `search_path`
+-- makes every *unqualified* name `42P01`, where pglet still resolves it to `public`.
+-- That is silent, it is `EDGES.md`'s, and it is invisible to the dump that motivates
+-- it, since `pg_dump` schema-qualifies every name it writes — which is why this
+-- fixture asserts the statement's own answer and not an unqualified read.
+--
+-- Green before the gate existed too: this is the accept-side lock against refusing
+-- the preamble, not a defect guard.
+-- @test
+SELECT pg_catalog.set_config('search_path', '', false) AS sp;

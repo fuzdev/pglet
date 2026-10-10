@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "max_price": 1499.99,
+      "name": "Electronics"
+    },
+    {
+      "max_price": 1499.99,
+      "name": "Clothing"
+    }
+  ],
+  "rowCount": 2
+}

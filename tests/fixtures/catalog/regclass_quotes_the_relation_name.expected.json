@@ -1,0 +1,19 @@
+{
+  "rows": [
+    {
+      "brace_literal": "\"{quo_plain}\"",
+      "from_oid": "\"Quo Odd\"",
+      "plain_literal": "quo_plain",
+      "quoted_literal": "\"Quo Odd\"",
+      "relname": "Quo Odd"
+    },
+    {
+      "brace_literal": "\"{quo_plain}\"",
+      "from_oid": "quo_plain",
+      "plain_literal": "quo_plain",
+      "quoted_literal": "\"Quo Odd\"",
+      "relname": "quo_plain"
+    }
+  ],
+  "rowCount": 2
+}

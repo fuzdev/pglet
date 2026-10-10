@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "bang": "one!",
+      "name": "one",
+      "num": 1,
+      "value": "a"
+    },
+    {
+      "bang": "two!",
+      "name": "two",
+      "num": 2,
+      "value": "b"
+    }
+  ],
+  "rowCount": 2
+}

@@ -1,0 +1,23 @@
+{
+  "rows": [
+    {
+      "amount": 30,
+      "product": "widget",
+      "region": "eu",
+      "ts": 3
+    },
+    {
+      "amount": 5,
+      "product": "gadget",
+      "region": "us",
+      "ts": 1
+    },
+    {
+      "amount": 20,
+      "product": "widget",
+      "region": "us",
+      "ts": 2
+    }
+  ],
+  "rowCount": 3
+}

@@ -1,0 +1,35 @@
+{
+  "rows": [
+    {
+      "id": 1,
+      "len": 3,
+      "rep": "abc",
+      "up": "ABC"
+    },
+    {
+      "id": 2,
+      "len": 4,
+      "rep": "josé",
+      "up": "JOSÉ"
+    },
+    {
+      "id": 3,
+      "len": 0,
+      "rep": "",
+      "up": ""
+    },
+    {
+      "id": 4,
+      "len": null,
+      "rep": null,
+      "up": null
+    },
+    {
+      "id": 5,
+      "len": 8,
+      "rep": "yayby",
+      "up": "XXAXXBXX"
+    }
+  ],
+  "rowCount": 5
+}

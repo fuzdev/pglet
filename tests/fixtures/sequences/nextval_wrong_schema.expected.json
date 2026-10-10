@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P01",
+    "message": "relation \"otherschema.seq_ws\" does not exist"
+  }
+}

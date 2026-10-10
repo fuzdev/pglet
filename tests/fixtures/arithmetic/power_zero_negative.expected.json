@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "2201F",
+    "message": "zero raised to a negative power is undefined"
+  }
+}

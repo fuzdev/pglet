@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "greatest_typed_first": 2,
+      "greatest_untyped_first": 2,
+      "least_untyped_first": 2,
+      "nullif_untyped_first": null
+    }
+  ],
+  "rowCount": 1
+}

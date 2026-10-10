@@ -1,0 +1,45 @@
+{
+  "rows": [
+    {
+      "g": 1,
+      "k": "arith"
+    },
+    {
+      "g": 2,
+      "k": "arith"
+    },
+    {
+      "g": 3,
+      "k": "arith"
+    },
+    {
+      "g": 2,
+      "k": "functions"
+    },
+    {
+      "g": 3,
+      "k": "functions"
+    },
+    {
+      "g": 4,
+      "k": "functions"
+    },
+    {
+      "g": -2147483648,
+      "k": "negated"
+    },
+    {
+      "g": -2147483647,
+      "k": "negated"
+    },
+    {
+      "g": 1,
+      "k": "parenthesized"
+    },
+    {
+      "g": 2,
+      "k": "parenthesized"
+    }
+  ],
+  "rowCount": 10
+}

@@ -1,0 +1,12 @@
+-- The error-shaped half of the same gate. 18.6 resolves a column's type in the
+-- `tableElts` walk and cooks the `DEFAULT` afterwards, in `AddRelationNewConstraints`, so
+-- an unknown type outranks a constant cast that cannot coerce; pglet's equivalents are
+-- both in the executor, behind its parser. Running 18.6's argument transform for an
+-- unquantified call put the cast ahead of all of them, and this statement is one of the
+-- twelve error-coded unquantified DDL statements it moved (`42704` / `42P07` / `42P16` /
+-- `42703` / `42P01` / `42601` all became `22P02`), beside five `IF NOT EXISTS` skips, one
+-- of which its sibling fixture holds. The control is the same statement with `upper('a')`, which was
+-- `42704` throughout. 42704 on both.
+-- @test
+-- @expect-error: the column type outranks the constant cast (42704)
+CREATE TABLE cc_badtype (a nosuchtype, b TEXT DEFAULT upper('a'::int));

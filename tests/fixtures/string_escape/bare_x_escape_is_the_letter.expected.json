@@ -1,0 +1,12 @@
+{
+  "rows": [
+    {
+      "bare": "x",
+      "bare_is_the_letter": true,
+      "one_non_digit": "xG",
+      "trailing": "ax",
+      "two_non_digits": "xZZ"
+    }
+  ],
+  "rowCount": 1
+}

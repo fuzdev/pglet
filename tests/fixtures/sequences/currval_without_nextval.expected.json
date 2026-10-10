@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "55000",
+    "message": "currval of sequence \"seq_currval_undef\" is not yet defined in this session"
+  }
+}

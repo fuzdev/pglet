@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42704",
+    "message": "index \"idx_nonexistent\" does not exist"
+  }
+}

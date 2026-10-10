@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "k": 5,
+      "probe": "big"
+    },
+    {
+      "k": 1,
+      "probe": "half"
+    },
+    {
+      "k": 4,
+      "probe": "zero"
+    },
+    {
+      "k": 8,
+      "probe": "zero"
+    }
+  ],
+  "rowCount": 4
+}

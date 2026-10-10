@@ -1,0 +1,12 @@
+-- The other side of that position: a constant cast on the name argument is transformed
+-- **with** the arguments on 18.6, ahead of the modifier check, so this statement is a cast
+-- failure on both engines rather than the quantifier's 42809. That transform is the whole
+-- call's rule and lives in `planner::transform_call_args` above the dispatch —
+-- `functions/set_quantifier_distinct_yields_to_a_const_cast_loud.sql` is the same
+-- statement over a name whose arm has no such check of its own, and it answered 42809
+-- while this one agreed. The pair with
+-- `set_quantifier_distinct_beats_the_name_literal_loud.sql` fixes what is left of the
+-- verdict's place in this arm: above the name reduction. 22P02 on both.
+-- @test
+-- @expect-error: invalid input syntax for type integer: "sq"
+SELECT nextval(DISTINCT 'sq'::int);

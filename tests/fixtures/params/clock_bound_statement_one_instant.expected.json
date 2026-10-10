@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "default_agrees": true,
+      "id": 7,
+      "returning_agrees": true,
+      "statement_agrees": true,
+      "transaction_before_statement": true,
+      "written_agree": true
+    },
+    {
+      "default_agrees": true,
+      "id": 8,
+      "returning_agrees": true,
+      "statement_agrees": true,
+      "transaction_before_statement": true,
+      "written_agree": true
+    }
+  ],
+  "rowCount": 2
+}

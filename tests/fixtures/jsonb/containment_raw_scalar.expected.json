@@ -1,0 +1,14 @@
+{
+  "rows": [
+    {
+      "array_contains_number": true,
+      "array_contains_primitive": true,
+      "from_column": "2",
+      "no_exception_when_nested": false,
+      "object_never_contains_scalar": false,
+      "scalar_contains_itself": true,
+      "scalar_does_not_contain_array": false
+    }
+  ],
+  "rowCount": 1
+}

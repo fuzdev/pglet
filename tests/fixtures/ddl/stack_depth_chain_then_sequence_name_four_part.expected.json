@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42601",
+    "message": "improper relation name (too many dotted names): a.b.c.d"
+  }
+}

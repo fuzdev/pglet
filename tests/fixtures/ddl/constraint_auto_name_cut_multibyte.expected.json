@@ -1,0 +1,50 @@
+{
+  "rows": [
+    {
+      "chars": 33,
+      "conname": "Cac4üüüüüüüüüüüü_C€€€€€€€€_check1",
+      "contype": "c"
+    },
+    {
+      "chars": 33,
+      "conname": "Cac4üüüüüüüüüüüü_C€€€€€€€€€_check",
+      "contype": "c"
+    },
+    {
+      "chars": 36,
+      "conname": "Cac4üüüüüüüüüüüüüüüüüüüüüüüüüü_check",
+      "contype": "c"
+    },
+    {
+      "chars": 32,
+      "conname": "Cac4üüüüüüüüüüüü_C€€€€€€€€€_fkey",
+      "contype": "f"
+    },
+    {
+      "chars": 33,
+      "conname": "Cac4üüüüüüüüüüüü_C€€€€€€€€€_fkey1",
+      "contype": "f"
+    },
+    {
+      "chars": 36,
+      "conname": "Cac4üüüüüüüüüüüüüüüüüüüüüüüüüüü_pkey",
+      "contype": "p"
+    },
+    {
+      "chars": 31,
+      "conname": "Cac4üüüüüüüüüüüü_C€€€€€€€€€_key",
+      "contype": "u"
+    },
+    {
+      "chars": 32,
+      "conname": "Cac4üüüüüüüüüüüü_C€€€€€€€€€_key1",
+      "contype": "u"
+    },
+    {
+      "chars": 32,
+      "conname": "Cac4üüüüüüüüüüüü_C€€€€€€€€€_key2",
+      "contype": "u"
+    }
+  ],
+  "rowCount": 9
+}

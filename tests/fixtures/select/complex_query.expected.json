@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "amount": 250.0,
+      "customer": "Bob"
+    },
+    {
+      "amount": 125.75,
+      "customer": "Bob"
+    }
+  ],
+  "rowCount": 2
+}

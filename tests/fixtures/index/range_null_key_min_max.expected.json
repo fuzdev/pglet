@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "every_row": "3",
+      "greatest": 10,
+      "keyed": "2",
+      "least": 1
+    }
+  ],
+  "rowCount": 1
+}

@@ -1,0 +1,27 @@
+{
+  "rows": [
+    {
+      "east_hms": "1999-12-31T08:00:01Z",
+      "east_hms_small": "1999-12-31T18:29:45Z",
+      "empty_minute": "1999-12-31T09:00:00Z",
+      "hh": "1999-12-31T09:00:00Z",
+      "hh_mm": "1999-12-31T08:30:00Z",
+      "negative_zero": "2000-01-01T00:00:00Z",
+      "one_digit_hour": "1999-12-31T19:00:00Z",
+      "one_digit_minute": "1999-12-31T18:57:00Z",
+      "run_together": "1999-12-31T08:01:00Z",
+      "run_together_0530": "1999-12-31T18:30:00Z",
+      "run_together_hmm": "1999-12-31T22:05:00Z",
+      "run_together_long": "1999-12-31T23:55:00Z",
+      "signed_zero_minute": "1999-12-31T09:00:00Z",
+      "space_after_sign": "1999-12-31T19:00:00Z",
+      "space_before_sign": "1999-12-31T19:00:00Z",
+      "t_frac_hms": "1999-12-31T18:29:45.123Z",
+      "west_hh_mm": "2000-01-01T15:59:00Z",
+      "west_hms": "2000-01-01T15:59:59Z",
+      "west_hms_small": "2000-01-01T17:30:15Z",
+      "zulu": "2000-01-01T00:00:00Z"
+    }
+  ],
+  "rowCount": 1
+}

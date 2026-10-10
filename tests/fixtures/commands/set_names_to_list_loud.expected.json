@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "22023",
+    "message": "SET names takes only one argument"
+  }
+}

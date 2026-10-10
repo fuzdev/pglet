@@ -1,0 +1,35 @@
+{
+  "rows": [
+    {
+      "conname": "cat_child_pid_fkey",
+      "contype": "f",
+      "definition": "FOREIGN KEY (pid) REFERENCES cat_parent(id) ON DELETE CASCADE",
+      "table_name": "cat_child"
+    },
+    {
+      "conname": "cat_child_qty_pid",
+      "contype": "c",
+      "definition": "CHECK (((qty > 1) AND (pid > 0)))",
+      "table_name": "cat_child"
+    },
+    {
+      "conname": "cat_child_qty_positive",
+      "contype": "c",
+      "definition": "CHECK ((qty > 0))",
+      "table_name": "cat_child"
+    },
+    {
+      "conname": "cat_parent_code_region_uq",
+      "contype": "u",
+      "definition": "UNIQUE (code, region)",
+      "table_name": "cat_parent"
+    },
+    {
+      "conname": "cat_parent_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "cat_parent"
+    }
+  ],
+  "rowCount": 5
+}

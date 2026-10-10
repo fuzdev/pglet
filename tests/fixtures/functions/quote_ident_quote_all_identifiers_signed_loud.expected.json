@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "22023",
+    "message": "parameter \"quote_all_identifiers\" requires a Boolean value"
+  }
+}

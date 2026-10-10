@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "constraint_name": "ctdk1_pkey",
+      "constraint_type": "PRIMARY KEY",
+      "table_name": "ctdk1"
+    },
+    {
+      "constraint_name": "ctdk2_myu",
+      "constraint_type": "PRIMARY KEY",
+      "table_name": "ctdk2"
+    },
+    {
+      "constraint_name": "ctdk3_myu",
+      "constraint_type": "PRIMARY KEY",
+      "table_name": "ctdk3"
+    }
+  ],
+  "rowCount": 3
+}

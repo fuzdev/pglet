@@ -1,0 +1,32 @@
+{
+  "rows": [
+    {
+      "aggregate_entry": true,
+      "case_entry": true,
+      "cast_entry": false,
+      "coalesce_entry": true,
+      "greatest_entry": false,
+      "group_key_entry": true,
+      "id": 1
+    },
+    {
+      "aggregate_entry": false,
+      "case_entry": true,
+      "cast_entry": true,
+      "coalesce_entry": true,
+      "greatest_entry": true,
+      "group_key_entry": true,
+      "id": 2
+    },
+    {
+      "aggregate_entry": false,
+      "case_entry": true,
+      "cast_entry": false,
+      "coalesce_entry": true,
+      "greatest_entry": true,
+      "group_key_entry": true,
+      "id": 3
+    }
+  ],
+  "rowCount": 3
+}

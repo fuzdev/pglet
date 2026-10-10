@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "2BP01",
+    "message": "cannot drop index dipk_pkey because constraint dipk_pkey on table dipk requires it"
+  }
+}

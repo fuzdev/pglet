@@ -1,0 +1,14 @@
+{
+  "rows": [
+    {
+      "beside_item": null,
+      "doubled_item": true,
+      "doubled_under_operator": null,
+      "operator_in_parens": null,
+      "paren_item": true,
+      "under_cast": null,
+      "under_operator": null
+    }
+  ],
+  "rowCount": 1
+}

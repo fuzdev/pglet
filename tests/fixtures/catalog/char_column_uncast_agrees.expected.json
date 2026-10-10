@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "attidentity": "a",
+      "attname": "id",
+      "relkind": "r",
+      "typcategory": "N"
+    },
+    {
+      "attidentity": "",
+      "attname": "code",
+      "relkind": "r",
+      "typcategory": "S"
+    }
+  ],
+  "rowCount": 2
+}

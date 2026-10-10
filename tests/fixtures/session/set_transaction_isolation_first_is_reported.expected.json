@@ -1,0 +1,8 @@
+{
+  "rows": [
+    {
+      "transaction_isolation": "repeatable read"
+    }
+  ],
+  "rowCount": 1
+}

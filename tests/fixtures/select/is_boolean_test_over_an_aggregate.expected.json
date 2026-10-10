@@ -1,0 +1,12 @@
+{
+  "rows": [
+    {
+      "control": false,
+      "nested_is_null": false,
+      "never_unknown": false,
+      "not_false": true,
+      "projected": true
+    }
+  ],
+  "rowCount": 1
+}

@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "in_gt": false,
+      "k": 1,
+      "nin_eq": true
+    },
+    {
+      "in_gt": false,
+      "k": 2,
+      "nin_eq": true
+    },
+    {
+      "in_gt": false,
+      "k": 3,
+      "nin_eq": false
+    }
+  ],
+  "rowCount": 3
+}

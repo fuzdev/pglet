@@ -1,0 +1,9 @@
+{
+  "rows": [
+    {
+      "source_hash": "blake3:other",
+      "target_hash": "blake3:t9"
+    }
+  ],
+  "rowCount": 1
+}

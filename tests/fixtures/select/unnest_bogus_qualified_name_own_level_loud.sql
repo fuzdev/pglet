@@ -1,0 +1,23 @@
+-- The **qualified** spelling of `select/unnest_bogus_bare_name_own_level_loud.sql`, and
+-- it is a different arm of the same walk rather than a restatement.
+--
+-- `binding_qualified` resolves the relation first and then asks that relation alone, so
+-- it reads `ScopeRelation::exhaustive` **directly** — a non-exhaustive relation that
+-- lacks the name answers `Uncertain` where an exhaustive one answers `NoColumn`. The bare
+-- spelling never reaches that branch: it goes through `level_columns_uncertain`, a
+-- per-*level* question over the same field. One flip moves both, and a repair that
+-- reached only `binding_bare` would leave this one silent.
+--
+-- The qualifier resolves — `u` is the relation's own name (`chooseScalarFunctionAlias`
+-- gives a written alias to the relation and to its single column alike) — so the verdict
+-- is `42703` and not `42P01`; `select/unnest_bogus_qualifier_loud.sql` is the fixture for
+-- the other of those two, where the qualifier names nothing.
+--
+-- The array is **empty** for the reason the whole family is: with elements the eval-time
+-- resolver raises the same code, so the non-empty spelling was already green and pins
+-- nothing.
+--
+-- No `@setup` at all, so nothing but the `@test` can raise the asserted code.
+-- @test
+-- @expect-error: `u` resolves and carries no `bogus` (42703)
+SELECT u.bogus FROM unnest(ARRAY[]::int[]) AS u(x);

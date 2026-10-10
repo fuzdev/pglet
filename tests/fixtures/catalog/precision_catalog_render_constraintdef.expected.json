@@ -1,0 +1,25 @@
+{
+  "rows": [
+    {
+      "check_clause": "((a)::timestamp(6) without time zone = a)",
+      "conname": "tcr_a_check",
+      "def": "CHECK (((a)::timestamp(6) without time zone = a))"
+    },
+    {
+      "check_clause": "((b)::timestamp(1) with time zone = b)",
+      "conname": "tcr_b_check",
+      "def": "CHECK (((b)::timestamp(1) with time zone = b))"
+    },
+    {
+      "check_clause": "((c)::time(1) without time zone = c)",
+      "conname": "tcr_c_check",
+      "def": "CHECK (((c)::time(1) without time zone = c))"
+    },
+    {
+      "check_clause": "((d)::interval(1) = d)",
+      "conname": "tcr_d_check",
+      "def": "CHECK (((d)::interval(1) = d))"
+    }
+  ],
+  "rowCount": 4
+}

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "2201F",
+    "message": "cannot take square root of a negative number"
+  }
+}

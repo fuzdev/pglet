@@ -1,0 +1,12 @@
+-- pglet has one schema, so a `search_path` naming another is refused (`0A000`)
+-- rather than accepted and discarded. 18.6 accepts it — a schema may be created
+-- later, and a missing one is skipped at resolution — so this is a deliberately
+-- pglet-stricter case and any pglet error passes; the exact SQLSTATE is pinned in
+-- `catalog::commands`'s unit tests.
+--
+-- What the old accept cost: a schema-per-test harness (`CREATE SCHEMA test_1; SET
+-- search_path TO test_1`) believed it was isolated and read and wrote the one shared
+-- schema, with no error anywhere.
+-- @test
+-- @expect-error: pglet has only the public schema
+SET search_path TO nonexistent_schema;

@@ -1,0 +1,81 @@
+{
+  "rows": [
+    {
+      "bs": [
+        {
+          "data": [
+            97,
+            98,
+            99,
+            100
+          ],
+          "type": "Buffer"
+        },
+        {
+          "data": [
+            99,
+            97,
+            102,
+            101
+          ],
+          "type": "Buffer"
+        }
+      ],
+      "holds_plain": true,
+      "id": 1,
+      "is_plain": true
+    },
+    {
+      "bs": [
+        {
+          "data": [
+            171,
+            205
+          ],
+          "type": "Buffer"
+        },
+        {
+          "data": [
+            202,
+            254
+          ],
+          "type": "Buffer"
+        }
+      ],
+      "holds_plain": false,
+      "id": 2,
+      "is_plain": false
+    },
+    {
+      "bs": [
+        {
+          "data": [
+            102,
+            97,
+            99,
+            101
+          ],
+          "type": "Buffer"
+        }
+      ],
+      "holds_plain": false,
+      "id": 3,
+      "is_plain": false
+    },
+    {
+      "bs": [
+        {
+          "data": [
+            32
+          ],
+          "type": "Buffer"
+        },
+        null
+      ],
+      "holds_plain": false,
+      "id": 4,
+      "is_plain": false
+    }
+  ],
+  "rowCount": 4
+}

@@ -1,0 +1,23 @@
+{
+  "rows": [
+    {
+      "computed_pair": false,
+      "concat_pair": true,
+      "id": 1,
+      "int_pair": true
+    },
+    {
+      "computed_pair": false,
+      "concat_pair": true,
+      "id": 2,
+      "int_pair": true
+    },
+    {
+      "computed_pair": false,
+      "concat_pair": true,
+      "id": 3,
+      "int_pair": true
+    }
+  ],
+  "rowCount": 3
+}

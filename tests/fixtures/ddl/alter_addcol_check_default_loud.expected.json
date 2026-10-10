@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "23514",
+    "message": "check constraint \"alter_addcol_ckd_val_check\" of relation \"alter_addcol_ckd\" is violated by some row"
+  }
+}

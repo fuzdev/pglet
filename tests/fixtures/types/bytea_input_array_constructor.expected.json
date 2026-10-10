@@ -1,0 +1,59 @@
+{
+  "rows": [
+    {
+      "cast_constructor": [
+        {
+          "data": [
+            97,
+            98,
+            99,
+            100
+          ],
+          "type": "Buffer"
+        },
+        {
+          "data": [
+            97,
+            98
+          ],
+          "type": "Buffer"
+        },
+        {
+          "data": [
+            32
+          ],
+          "type": "Buffer"
+        },
+        {
+          "data": [
+            97
+          ],
+          "type": "Buffer"
+        }
+      ],
+      "equal_bytes": true,
+      "hex_reading": false,
+      "typed_sibling": [
+        {
+          "data": [
+            97,
+            98,
+            99,
+            100
+          ],
+          "type": "Buffer"
+        },
+        {
+          "data": [
+            99,
+            97,
+            102,
+            101
+          ],
+          "type": "Buffer"
+        }
+      ]
+    }
+  ],
+  "rowCount": 1
+}

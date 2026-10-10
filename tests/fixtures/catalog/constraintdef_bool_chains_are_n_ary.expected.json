@@ -1,0 +1,61 @@
+{
+  "rows": [
+    {
+      "conname": "bx_and2",
+      "def": "CHECK (((a > 3) AND (b > 3)))"
+    },
+    {
+      "conname": "bx_and3",
+      "def": "CHECK (((a > 0) AND (b > 0) AND (c > 0)))"
+    },
+    {
+      "conname": "bx_and3_with_or",
+      "def": "CHECK (((a > 9) AND (b > 9) AND ((c > 9) OR (d > 9))))"
+    },
+    {
+      "conname": "bx_and4",
+      "def": "CHECK (((a > 1) AND (b > 1) AND (c > 1) AND (d > 1)))"
+    },
+    {
+      "conname": "bx_and_not_or",
+      "def": "CHECK (((a > 11) AND (NOT ((b > 11) OR (c > 11)))))"
+    },
+    {
+      "conname": "bx_and_then_or",
+      "def": "CHECK ((((a > 7) AND (b > 7)) OR (c > 7)))"
+    },
+    {
+      "conname": "bx_arith",
+      "def": "CHECK ((((a + b) + c) > 12))"
+    },
+    {
+      "conname": "bx_arith_right",
+      "def": "CHECK (((a - (b - c)) > 13))"
+    },
+    {
+      "conname": "bx_not_and",
+      "def": "CHECK ((NOT ((a > 10) AND (b > 10))))"
+    },
+    {
+      "conname": "bx_or3",
+      "def": "CHECK (((a > 2) OR (b > 2) OR (c > 2)))"
+    },
+    {
+      "conname": "bx_or_parens_right",
+      "def": "CHECK (((a > 6) OR ((b > 6) OR (c > 6))))"
+    },
+    {
+      "conname": "bx_or_under_and",
+      "def": "CHECK (((a > 8) AND ((b > 8) OR (c > 8))))"
+    },
+    {
+      "conname": "bx_parens_left",
+      "def": "CHECK (((a > 4) AND (b > 4) AND (c > 4)))"
+    },
+    {
+      "conname": "bx_parens_right",
+      "def": "CHECK (((a > 5) AND ((b > 5) AND (c > 5))))"
+    }
+  ],
+  "rowCount": 14
+}

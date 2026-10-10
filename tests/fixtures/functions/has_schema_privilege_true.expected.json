@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "grant_option": true,
+      "information_schema": true,
+      "list": true,
+      "lower": true,
+      "null_privilege": null,
+      "null_schema": null,
+      "padded": true,
+      "pg_catalog": true,
+      "tab": true,
+      "usage": true
+    }
+  ],
+  "rowCount": 1
+}

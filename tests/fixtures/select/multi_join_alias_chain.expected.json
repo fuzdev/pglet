@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "seq": 100,
+      "username": "wu_chain"
+    },
+    {
+      "seq": 101,
+      "username": "wu_direct"
+    },
+    {
+      "seq": 102,
+      "username": null
+    }
+  ],
+  "rowCount": 3
+}

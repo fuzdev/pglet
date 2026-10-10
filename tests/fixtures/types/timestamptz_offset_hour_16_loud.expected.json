@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "22009",
+    "message": "time zone displacement out of range: \"2000-01-01 00:00:00+16:00\""
+  }
+}

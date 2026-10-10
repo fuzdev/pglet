@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42704",
+    "message": "index \"dian_pkey\" does not exist"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "rows": [
+    {
+      "cte": 7,
+      "derived": 7,
+      "join_left": 7,
+      "join_outer": 7,
+      "join_right": 7,
+      "join_using": 7,
+      "own_alias": 7,
+      "quoted": 7,
+      "series": 7,
+      "unnest_item": 7,
+      "vals": 7,
+      "y": 1
+    },
+    {
+      "cte": 7,
+      "derived": 7,
+      "join_left": 7,
+      "join_outer": 7,
+      "join_right": 7,
+      "join_using": 7,
+      "own_alias": 7,
+      "quoted": 7,
+      "series": 7,
+      "unnest_item": 7,
+      "vals": 7,
+      "y": 2
+    }
+  ],
+  "rowCount": 2
+}

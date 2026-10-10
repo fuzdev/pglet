@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "negative_decimal": -42.5,
+      "negative_zero": 0,
+      "one_point_two_zeros": 1.0,
+      "one_point_zero": 1.0,
+      "sci_lower": 100,
+      "sci_negative_exp": 0.0015,
+      "sci_to_one_scale": 1.0,
+      "sci_trailing_zero": 120,
+      "sci_upper": 100,
+      "zero_point_zero": 0.0
+    }
+  ],
+  "rowCount": 1
+}

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "22023",
+    "message": "precision for type float must be less than 54 bits"
+  }
+}

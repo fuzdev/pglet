@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "indexname": "ciu2_a_B_c_idx"
+    },
+    {
+      "indexname": "ciu2_c_B_a_idx"
+    }
+  ],
+  "rowCount": 2
+}

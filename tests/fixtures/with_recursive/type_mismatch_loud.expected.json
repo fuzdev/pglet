@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42804",
+    "message": "recursive query \"t\" column 1 has type integer in non-recursive term but type numeric overall"
+  }
+}

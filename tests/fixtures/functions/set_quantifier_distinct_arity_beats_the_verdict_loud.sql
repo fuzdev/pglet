@@ -1,0 +1,16 @@
+-- The precedence pin in the other direction. `ParseFuncOrColumn` runs `func_get_detail`
+-- first, so an argument list matching no signature is 42883 and the quantifier's own
+-- check is never reached — `upper(unknown, unknown)` does not exist. The verdict
+-- therefore has to sit **below** every argument-count check `build_call` already does;
+-- hoisting it above them turns this statement into 42809. 42883 on both.
+--
+-- The **ordering** is what generalizes; the code is the arm's. `upper` is on
+-- `planner::string_call`, one of the arms whose arity refusal is already 18.6's `42883`,
+-- which is why this pair is fixturable at all: the `math_call` / `single_arg` /
+-- `binary_call` arms answer `0A000` to the same shape (`lower(DISTINCT 'a','b')`,
+-- `abs(DISTINCT 1,2)`, `starts_with(DISTINCT 'ab','a','c')`), refusing ahead of the
+-- quantifier exactly as this one does but at pglet's own code — the recorded
+-- arity-spelling split, identical for their unquantified spellings and not this gate's.
+-- @test
+-- @expect-error: function upper(unknown, unknown) does not exist
+SELECT upper(DISTINCT 'a', 'b');

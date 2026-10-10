@@ -1,0 +1,29 @@
+{
+  "rows": [
+    {
+      "label": "sad",
+      "ord": 1.0,
+      "typcategory": "E",
+      "typisdefined": true,
+      "typname": "cat_mood",
+      "typtype": "e"
+    },
+    {
+      "label": "ok",
+      "ord": 2.0,
+      "typcategory": "E",
+      "typisdefined": true,
+      "typname": "cat_mood",
+      "typtype": "e"
+    },
+    {
+      "label": "happy",
+      "ord": 3.0,
+      "typcategory": "E",
+      "typisdefined": true,
+      "typname": "cat_mood",
+      "typtype": "e"
+    }
+  ],
+  "rowCount": 3
+}

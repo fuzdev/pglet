@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "23503",
+    "message": "insert or update on table \"fk_child\" violates foreign key constraint \"fk_child_parent_id_fkey\""
+  }
+}

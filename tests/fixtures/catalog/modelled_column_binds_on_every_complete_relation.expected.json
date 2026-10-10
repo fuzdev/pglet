@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "ccu": "1",
+      "checks": "1",
+      "con": "2",
+      "enums": "3",
+      "idx": "3",
+      "idxs": "1",
+      "kcu": "1",
+      "rc": "1",
+      "seqs": "1",
+      "tbls": "1"
+    }
+  ],
+  "rowCount": 1
+}

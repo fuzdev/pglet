@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "22011",
+    "message": "negative substring length not allowed"
+  }
+}

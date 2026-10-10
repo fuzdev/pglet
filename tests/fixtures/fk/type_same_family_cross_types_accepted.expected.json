@@ -1,0 +1,29 @@
+{
+  "rows": [
+    {
+      "conname": "fc2_k_fkey",
+      "contype": "f"
+    },
+    {
+      "conname": "fc4_k_fkey",
+      "contype": "f"
+    },
+    {
+      "conname": "fc8_k_fkey",
+      "contype": "f"
+    },
+    {
+      "conname": "fcd_k_fkey",
+      "contype": "f"
+    },
+    {
+      "conname": "fcf8_k_fkey",
+      "contype": "f"
+    },
+    {
+      "conname": "fcts_k_fkey",
+      "contype": "f"
+    }
+  ],
+  "rowCount": 6
+}

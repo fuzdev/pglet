@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "2BP01",
+    "message": "cannot drop table dtrr_par because other objects depend on it"
+  }
+}

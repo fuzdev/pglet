@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "22001",
+    "message": "value too long for type character varying(8)"
+  }
+}

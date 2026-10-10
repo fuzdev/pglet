@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P10",
+    "message": "GROUP BY position 0 is not in select list"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "26000",
+    "message": "prepared statement \"nosuch\" does not exist"
+  }
+}

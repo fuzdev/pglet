@@ -1,0 +1,12 @@
+{
+  "rows": [
+    {
+      "abs_of_negate": 7,
+      "abs_of_round": "1.6",
+      "abs_shifted": 8,
+      "abs_thrice": 7,
+      "rounded": "1.6"
+    }
+  ],
+  "rowCount": 1
+}

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42601",
+    "message": "syntax error at or near \"NULL\""
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "rows": [
+    {
+      "indexname": "ciu5_a_b_a1_a2_idx"
+    },
+    {
+      "indexname": "ciu5_expr_expr1_idx"
+    },
+    {
+      "indexname": "ciu5_lower_upper_lower1_idx"
+    }
+  ],
+  "rowCount": 3
+}

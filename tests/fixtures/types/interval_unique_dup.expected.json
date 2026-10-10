@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "23505",
+    "message": "duplicate key value violates unique constraint \"iv_uniq_span_key\""
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "rows": [
+    {
+      "bigserial": "public.ss_b_seq",
+      "identity_always": "public.ss_i_seq",
+      "identity_default": "public.ss_j_seq",
+      "keyword": "public.ss_select_seq",
+      "mixed_case": "public.\"ss_MixCol_seq\"",
+      "none": null,
+      "owned_by": "public.own_s",
+      "referenced": null,
+      "serial": "public.ss_id_seq"
+    }
+  ],
+  "rowCount": 1
+}

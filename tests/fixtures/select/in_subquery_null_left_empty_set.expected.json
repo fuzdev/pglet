@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "in_empty": false,
+      "in_empty_is_false": true,
+      "not_in_empty": true,
+      "not_of_in_empty": true
+    }
+  ],
+  "rowCount": 1
+}

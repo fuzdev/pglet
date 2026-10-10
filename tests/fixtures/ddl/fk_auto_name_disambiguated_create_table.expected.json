@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "constraint_name": "fkct_a_fkey",
+      "constraint_type": "FOREIGN KEY"
+    },
+    {
+      "constraint_name": "fkct_a_fkey1",
+      "constraint_type": "FOREIGN KEY"
+    }
+  ],
+  "rowCount": 2
+}

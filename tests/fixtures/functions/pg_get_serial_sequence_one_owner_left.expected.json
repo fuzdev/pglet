@@ -1,0 +1,9 @@
+{
+  "rows": [
+    {
+      "after_drop": "public.aa",
+      "after_owned_by_none": "public.t2_d_seq"
+    }
+  ],
+  "rowCount": 1
+}

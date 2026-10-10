@@ -1,0 +1,129 @@
+{
+  "rows": [
+    {
+      "column_default": "true",
+      "column_name": "b1"
+    },
+    {
+      "column_default": "true",
+      "column_name": "b2"
+    },
+    {
+      "column_default": "true",
+      "column_name": "b3"
+    },
+    {
+      "column_default": "true",
+      "column_name": "b4"
+    },
+    {
+      "column_default": "false",
+      "column_name": "b5"
+    },
+    {
+      "column_default": "false",
+      "column_name": "b6"
+    },
+    {
+      "column_default": "7",
+      "column_name": "i1"
+    },
+    {
+      "column_default": "5",
+      "column_name": "i2"
+    },
+    {
+      "column_default": "'-3'::integer",
+      "column_name": "i3"
+    },
+    {
+      "column_default": "0",
+      "column_name": "i4"
+    },
+    {
+      "column_default": "'7'::bigint",
+      "column_name": "j1"
+    },
+    {
+      "column_default": "'3000000000'::bigint",
+      "column_name": "j2"
+    },
+    {
+      "column_default": "'-7'::bigint",
+      "column_name": "j3"
+    },
+    {
+      "column_default": "'7'::smallint",
+      "column_name": "k1"
+    },
+    {
+      "column_default": "'-7'::smallint",
+      "column_name": "k2"
+    },
+    {
+      "column_default": "1.50",
+      "column_name": "n1"
+    },
+    {
+      "column_default": "1.50",
+      "column_name": "n2"
+    },
+    {
+      "column_default": "'1000'::numeric",
+      "column_name": "n3"
+    },
+    {
+      "column_default": "1.5",
+      "column_name": "n4"
+    },
+    {
+      "column_default": "'-1.5'::numeric",
+      "column_name": "n5"
+    },
+    {
+      "column_default": "'0'::numeric",
+      "column_name": "n6"
+    },
+    {
+      "column_default": "'1.5'::double precision",
+      "column_name": "f1"
+    },
+    {
+      "column_default": "'1.5'::real",
+      "column_name": "f2"
+    },
+    {
+      "column_default": "5",
+      "column_name": "f3"
+    },
+    {
+      "column_default": "5",
+      "column_name": "f4"
+    },
+    {
+      "column_default": "'hi'::text",
+      "column_name": "t1"
+    },
+    {
+      "column_default": "'hi'::character varying",
+      "column_name": "v1"
+    },
+    {
+      "column_default": "'00000000-0000-0000-0000-000000000000'::uuid",
+      "column_name": "u1"
+    },
+    {
+      "column_default": "'\\x01'::bytea",
+      "column_name": "y1"
+    },
+    {
+      "column_default": "'{a,b}'::text[]",
+      "column_name": "a1"
+    },
+    {
+      "column_default": "'2024-01-01'::date",
+      "column_name": "d1"
+    }
+  ],
+  "rowCount": 31
+}

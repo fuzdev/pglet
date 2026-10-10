@@ -1,0 +1,3 @@
+-- `ISNULL` binds above `NOT`: `NOT NULL ISNULL` is `NOT (NULL ISNULL)`, `f`.
+-- @test
+SELECT NOT NULL ISNULL AS v, NOT 1 NOTNULL AS w;

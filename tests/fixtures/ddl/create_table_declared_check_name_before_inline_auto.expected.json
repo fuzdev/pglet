@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "constraint_name": "ctdc_a_check"
+    },
+    {
+      "constraint_name": "ctdc_a_check1"
+    }
+  ],
+  "rowCount": 2
+}

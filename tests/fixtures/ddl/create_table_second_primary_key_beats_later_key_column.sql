@@ -1,0 +1,11 @@
+-- The other half of the interleave: the bad column now sits on constraint 2, whose
+-- multiplicity is tested before its own columns are resolved, so 42P16 wins. Constraint
+-- 1 is well-formed and resolves clean.
+--
+-- Read against `create_table_key_column_beats_second_primary_key.sql`, the pair pins the
+-- per-constraint interleave — the same shape as the CHECK cook-then-name loop one scale
+-- down, and for the same reason: Postgres decides in source order.
+-- @expect-error: multiple primary keys for table ctsp are not allowed
+-- @no-profile-lock: the @test is DDL — it takes no query plan, so index acceleration cannot change its outcome
+-- @test
+CREATE TABLE ctsp (a INT NOT NULL, PRIMARY KEY (a), PRIMARY KEY (nosuch));

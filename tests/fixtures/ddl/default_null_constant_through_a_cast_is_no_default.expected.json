@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "column_name": "a",
+      "no_default": true
+    },
+    {
+      "column_name": "b",
+      "no_default": true
+    },
+    {
+      "column_name": "c",
+      "no_default": false
+    },
+    {
+      "column_name": "d",
+      "no_default": true
+    }
+  ],
+  "rowCount": 4
+}

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "2BP01",
+    "message": "cannot drop index diac_pkey because constraint diac_pkey on table diac requires it"
+  }
+}

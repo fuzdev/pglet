@@ -1,0 +1,25 @@
+{
+  "rows": [
+    {
+      "column_default": "EXTRACT(\"YEAR\" FROM now())",
+      "column_name": "a"
+    },
+    {
+      "column_default": "EXTRACT(year FROM now())",
+      "column_name": "b"
+    },
+    {
+      "column_default": "EXTRACT(\"Doy\" FROM now())",
+      "column_name": "c"
+    },
+    {
+      "column_default": "EXTRACT(doy FROM now())",
+      "column_name": "d"
+    },
+    {
+      "column_default": "EXTRACT(\"user\" FROM now())",
+      "column_name": "e"
+    }
+  ],
+  "rowCount": 5
+}

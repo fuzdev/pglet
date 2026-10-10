@@ -1,0 +1,32 @@
+[package]
+name = "pglet_bench"
+description = "Native benchmark harness for pglet"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+# pglet_storage's native `file_store` feature for `FileBlockIo`, re-added over the
+# workspace's default-features = false as the other native consumers do.
+# `memory_storage` because the btree-only scenarios match `StorageBackend`, whose
+# `Memory` arm exists only with it.
+pglet = { workspace = true, features = ["memory_storage"] }
+pglet_sql = { workspace = true }
+pglet_storage = { workspace = true, features = ["file_store"] }
+postcard = { workspace = true }
+# Approved: bundled SQLite-C compiled from source for a pinned, reproducible
+# baseline. Lives only in this bench crate.
+rusqlite = { version = "0.37", features = ["bundled"] }
+tempfile = "3"
+
+[features]
+# The benches (gin, query, …) exercise the accelerated read paths, so query index
+# acceleration is ON by default.
+default = ["index_acceleration"]
+index_acceleration = ["pglet/index_acceleration", "pglet_sql/index_acceleration"]
+
+[lints]
+workspace = true

@@ -1,0 +1,73 @@
+{
+  "rows": [
+    {
+      "check_clause": "(EXTRACT(\"MONTH\" FROM t) > 0.0)",
+      "constraint_name": "x01"
+    },
+    {
+      "check_clause": "(EXTRACT(\"Epoch\" FROM t) > 0.0)",
+      "constraint_name": "x02"
+    },
+    {
+      "check_clause": "(EXTRACT(\"Hour\" FROM t) > 0.0)",
+      "constraint_name": "x03"
+    },
+    {
+      "check_clause": "(EXTRACT(\"select\" FROM t) IS NOT NULL)",
+      "constraint_name": "x04"
+    },
+    {
+      "check_clause": "(EXTRACT(\"user\" FROM t) IS NOT NULL)",
+      "constraint_name": "x05"
+    },
+    {
+      "check_clause": "(EXTRACT(\"left\" FROM t) IS NOT NULL)",
+      "constraint_name": "x06"
+    },
+    {
+      "check_clause": "(EXTRACT(\"between\" FROM t) IS NOT NULL)",
+      "constraint_name": "x07"
+    },
+    {
+      "check_clause": "(EXTRACT(action FROM t) IS NOT NULL)",
+      "constraint_name": "x08"
+    },
+    {
+      "check_clause": "(EXTRACT(\"my\"\"x\" FROM t) IS NOT NULL)",
+      "constraint_name": "x09"
+    },
+    {
+      "check_clause": "(EXTRACT(\"\" FROM t) IS NOT NULL)",
+      "constraint_name": "x10"
+    },
+    {
+      "check_clause": "(EXTRACT(\"é\" FROM t) IS NOT NULL)",
+      "constraint_name": "x11"
+    },
+    {
+      "check_clause": "(EXTRACT(\"1x\" FROM t) IS NOT NULL)",
+      "constraint_name": "x12"
+    },
+    {
+      "check_clause": "(EXTRACT(\"a b\" FROM t) IS NOT NULL)",
+      "constraint_name": "x13"
+    },
+    {
+      "check_clause": "(EXTRACT(_a1 FROM t) IS NOT NULL)",
+      "constraint_name": "x14"
+    },
+    {
+      "check_clause": "(EXTRACT(year FROM t) > 0.0)",
+      "constraint_name": "x15"
+    },
+    {
+      "check_clause": "(EXTRACT(month FROM t) > 0.0)",
+      "constraint_name": "x16"
+    },
+    {
+      "check_clause": "(EXTRACT(dow FROM t) > 0.0)",
+      "constraint_name": "x17"
+    }
+  ],
+  "rowCount": 17
+}

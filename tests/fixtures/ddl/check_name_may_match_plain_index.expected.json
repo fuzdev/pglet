@@ -1,0 +1,15 @@
+{
+  "rows": [
+    {
+      "constraint_name": "cnpi_plain",
+      "constraint_type": "CHECK",
+      "table_name": "cnpi"
+    },
+    {
+      "constraint_name": "cnpi_plain",
+      "constraint_type": "CHECK",
+      "table_name": "cnpi2"
+    }
+  ],
+  "rowCount": 2
+}

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "23514",
+    "message": "check constraint \"abcn_c_check\" of relation \"abcn\" is violated by some row"
+  }
+}

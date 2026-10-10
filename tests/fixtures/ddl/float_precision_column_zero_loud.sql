@@ -1,0 +1,11 @@
+-- A column definition takes the refusal too, and takes it **before** the catalog is
+-- touched: 18.6 raises it while reducing the type name, in the grammar. Measured against
+-- the checks that could outrank it: over an existing `zq` it still answers this `22023`
+-- and not `42P07`, on both engines; and `CREATE TABLE zq (a float(0), a int)` answers it
+-- on both too, which outranks the duplicate column's `42701` on each — the second
+-- contrast is a real check on both sides now that pglet has that gate, and
+-- `column_type_beats_the_duplicate_column.sql` is where it is asserted.
+-- @expect-error: a float precision below 1 bit at a column
+-- @expect-message
+-- @test
+CREATE TABLE zq (a float(0));

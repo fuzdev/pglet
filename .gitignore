@@ -1,0 +1,50 @@
+# Deps
+node_modules
+
+# Output
+/target
+crates/pglet_wasm/pkg/
+crates/pglet_wasm/pkg-npm/
+crates/pglet_wasm/pkg-opfs/
+
+# Env
+.env*
+!.env.example
+!.env.*.example
+!.env.test
+!.env.*.test
+
+# Secrets
+*.pem
+id_rsa
+
+# Local (per-machine, never shared)
+*.local
+*.local.*
+
+# Ignore
+*.ignore
+*.ignore.*
+ignore
+
+# Temporary files
+tmp/
+*.tmp
+.tmp*
+*.bak
+
+# Log files
+*.log
+
+# Workflow
+/worktree
+
+# Os
+.DS_Store
+Thumbs.db
+
+# spy-proxy wire captures (`deno task spy:spine:*`)
+tests/captures/*.jsonl
+
+# per-machine agent settings
+.claude/

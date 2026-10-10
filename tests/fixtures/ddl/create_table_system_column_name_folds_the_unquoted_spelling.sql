@@ -1,0 +1,11 @@
+-- The system-column half of the fold contrast: the parser downcases an unquoted
+-- identifier where it reads it, so `CTID` reaches a list of lowercase members as
+-- `ctid` and is refused. 18.6 names the **folded** spelling in the message and not
+-- the written one, which is the half `@expect-message` carries here. Its quoted twin,
+-- where `"CTID"` stays a distinct name and is an ordinary column, is
+-- `create_table_quoted_system_column_name_is_ordinary.sql`.
+-- @expect-error: an unquoted CTID folds onto the system column name
+-- @expect-message
+-- @no-profile-lock: the @test is DDL and its setup builds nothing — the refusal lands before any plan, so index acceleration cannot reach it
+-- @test
+CREATE TABLE ctsfu (CTID INT);

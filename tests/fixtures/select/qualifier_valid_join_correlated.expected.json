@@ -1,0 +1,19 @@
+{
+  "rows": [
+    {
+      "id": 1,
+      "label": "north",
+      "name": "alice",
+      "order_count": "1",
+      "total": 100
+    },
+    {
+      "id": 2,
+      "label": "south",
+      "name": "bob",
+      "order_count": "1",
+      "total": 200
+    }
+  ],
+  "rowCount": 2
+}

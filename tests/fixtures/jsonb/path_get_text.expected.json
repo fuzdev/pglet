@@ -1,0 +1,16 @@
+{
+  "rows": [
+    {
+      "arr": "y",
+      "json_null_is_sql_null": true,
+      "neg_index": "30",
+      "nested": "30",
+      "null_path_elem": true,
+      "obj": "1",
+      "out_of_range": null,
+      "scalar_mid": null,
+      "whole_doc": "{\"a\": 1, \"b\": 2}"
+    }
+  ],
+  "rowCount": 1
+}

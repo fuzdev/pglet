@@ -1,0 +1,41 @@
+{
+  "rows": [
+    {
+      "dist": false,
+      "eq": true,
+      "eq_left": true,
+      "g": 1,
+      "ge": true,
+      "gt": true,
+      "gt_left": true,
+      "le": true,
+      "ne": false,
+      "notdist": false
+    },
+    {
+      "dist": true,
+      "eq": false,
+      "eq_left": false,
+      "g": 2,
+      "ge": true,
+      "gt": false,
+      "gt_left": false,
+      "le": true,
+      "ne": true,
+      "notdist": true
+    },
+    {
+      "dist": true,
+      "eq": false,
+      "eq_left": null,
+      "g": 3,
+      "ge": null,
+      "gt": null,
+      "gt_left": null,
+      "le": null,
+      "ne": null,
+      "notdist": false
+    }
+  ],
+  "rowCount": 3
+}

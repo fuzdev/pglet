@@ -1,0 +1,29 @@
+{
+  "rows": [
+    {
+      "conname": "fca_k_fkey",
+      "contype": "f"
+    },
+    {
+      "conname": "fcb_k_fkey",
+      "contype": "f"
+    },
+    {
+      "conname": "fcj_k_fkey",
+      "contype": "f"
+    },
+    {
+      "conname": "fcm_k_fkey",
+      "contype": "f"
+    },
+    {
+      "conname": "fcta_k_fkey",
+      "contype": "f"
+    },
+    {
+      "conname": "fcu_k_fkey",
+      "contype": "f"
+    }
+  ],
+  "rowCount": 6
+}

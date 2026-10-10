@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "btw": true,
+      "gt": true,
+      "lt": false,
+      "vs_subquery": true
+    }
+  ],
+  "rowCount": 1
+}

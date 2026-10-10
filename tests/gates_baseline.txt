@@ -1,0 +1,33 @@
+# Gate counters, written by `cargo xtask gates --update`.
+#
+# `cargo xtask gates --check` fails when a counter decreases, when any
+# `failed` / `divergent` counter is non-zero, or when a gate that ran did not
+# report a counter recorded here — a gate that skipped for want of a
+# prerequisite proves nothing, and used to pass by printing no counters at
+# all. A counter that grows is progress and is reported rather than failed.
+# Regenerate rather than hand-editing.
+
+rust.passed = 2440
+rust.failed = 0
+fixtures.passed = 5132
+fixtures.failed = 0
+fixtures.skipped = 38
+fixtures.declared_text = 2138
+fixtures.declared_extended = 2445
+fixtures.divergent = 0
+fixtures_profile_lock.passed = 707
+fixtures_profile_lock.failed = 0
+fixtures_profile_lock.skipped = 0
+fixtures_profile_lock.declared_text = 295
+fixtures_profile_lock.declared_extended = 370
+fixtures_profile_lock.divergent = 0
+dump.passed = 1
+dump.failed = 0
+pg_dump.passed = 1
+pg_dump.failed = 0
+copy.passed = 38
+copy.failed = 0
+keywords.probes = 448
+keywords.keywords = 109
+concurrent.passed = 38
+concurrent.failed = 0

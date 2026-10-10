@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "54001",
+    "message": "stack depth limit exceeded"
+  }
+}

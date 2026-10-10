@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "constraint_name": "cansw_b_a_check",
+      "table_name": "cansw_a"
+    },
+    {
+      "constraint_name": "cansw_b_a_check1",
+      "table_name": "cansw_b"
+    }
+  ],
+  "rowCount": 2
+}

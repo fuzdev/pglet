@@ -1,0 +1,115 @@
+[package]
+name = "pglet_tests"
+description = "Integration tests for pglet"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+tokio = { workspace = true }
+tokio-postgres = { workspace = true }
+# For the keyword-conformance sweep (`test_keywords`): the lexer's `ALL_KEYWORDS`
+# roster + `PgClass`, so the sweep iterates pglet's real keyword set rather than a
+# hand-copied list that could drift. Internal workspace crate, dev-only here.
+pglet_sql = { workspace = true }
+# The in-process embed facade: the dump round-trip (`test_dump`) builds a populated
+# `Database`, calls `dump_sql()`, and renders its rows to compare against the
+# psql-restored backends. `file_store` is on so the soak harness (`test_soak`) can
+# `Database::open` a real data-dir file for its in-process post-kill audit + live
+# stats leg. `memory_storage` keeps `StorageBackend` two-armed, which the soak's
+# `let … else` over its B+tree arm relies on. Internal workspace crate, dev-only here.
+pglet = { workspace = true, features = ["file_store", "memory_storage"] }
+# Direct storage-layer access for `test_soak`'s in-process legs: the recovered
+# `BtreeStorageWrapper` (index defs, `stats()`, `inner()` band scans via `BtreeKey`),
+# the re-exported `Storage`/`RowId`, and (Leg B) assembling a file-backed wrapper
+# directly (`FileBlockIo`/`DoubleMetaStore`/`CowBtree`, so `file_store` is on) to
+# drive `execute_with_storage` churn with live `stats()`. Already in the workspace
+# lockfile (used by `pglet_bench`). Internal workspace crate, dev-only here.
+pglet_storage = { workspace = true, features = ["file_store"] }
+# Shared server spawn/wait/connect/kill harness + the seedable PRNG used by the
+# crash/soak loop. A normal dep, which is fine because every binary this crate
+# builds is a test harness: `cargo xtask check-release` classifies `pglet_tests`
+# dev-only and so never walks it as a production binary.)
+pglet_testing = { workspace = true, features = ["server"] }
+thiserror = { workspace = true }
+serde = { workspace = true }
+serde_json = "1"
+time = { workspace = true }
+uuid = { version = "1", features = ["v4"] }
+# Driving tokio-postgres's COPY sink/stream (the differential `test_copy` harness):
+# `futures-util` supplies `SinkExt::send`/`StreamExt::next` and `bytes::Bytes` is the
+# CopyInSink item type. Both are already in the workspace lockfile (transitive via
+# tokio-postgres). Pinned to `default-features = false` + `["sink"]` so the direct
+# edge pulls no *new* crates (the `async-await` default would drag in
+# `futures-macro`); `SinkExt` needs the `sink` feature, and `StreamExt::next` is
+# available without any feature.
+futures-util = { version = "0.3", default-features = false, features = ["sink"] }
+bytes = "1"
+
+[features]
+# Acceleration ON by default (the embed `test_dump` round-trip runs the full engine).
+# The differential/keyword harnesses spawn `pglet_server`; the stripped "testing"
+# differential run sets `PGLET_NO_INDEX_ACCEL=1`, which makes the harness build the
+# spawned server `--no-default-features` instead of toggling this crate.
+default = ["index_acceleration"]
+index_acceleration = ["pglet/index_acceleration", "pglet_sql/index_acceleration"]
+
+[[bin]]
+name = "test_binary"
+path = "src/bin/test_binary.rs"
+
+[[bin]]
+name = "test_fixtures"
+path = "src/bin/test_fixtures.rs"
+
+[[bin]]
+name = "test_concurrent"
+path = "src/bin/test_concurrent.rs"
+
+[[bin]]
+name = "test_copy"
+path = "src/bin/test_copy.rs"
+
+[[bin]]
+name = "test_pg_dump"
+path = "src/bin/test_pg_dump.rs"
+
+[[bin]]
+name = "test_dump"
+path = "src/bin/test_dump.rs"
+
+[[bin]]
+name = "test_crash"
+path = "src/bin/test_crash.rs"
+
+# True power-loss (page-cache-bypassing) durability driver. Root-only + opt-in: the
+# binary itself honestly skips without the dm-flakey device set up by
+# `tools/durability/power_loss_test.sh`, so it is NOT chained into `deno task test`.
+[[bin]]
+name = "test_power_loss"
+path = "src/bin/test_power_loss.rs"
+
+[[bin]]
+name = "test_keywords"
+path = "src/bin/test_keywords.rs"
+
+# Large-dataset soak harness: server-driven churn + kill + in-process post-kill
+# audit (Leg A) and an in-process embed leg with live vacuum/snapshot stats (Leg
+# B). Opt-in (like `test_power_loss`), NOT chained into `deno task test`.
+[[bin]]
+name = "test_soak"
+path = "src/bin/test_soak.rs"
+
+# NOTE: SQL fixture tests are in the `test_fixtures` binary (self-contained).
+# Engine tests are in `crates/pglet_sql/tests/engine_*.rs` (parallel-safe, no server).
+# Binary format tests are in `test_binary` binary (self-contained).
+# Concurrent/MVCC tests are in `test_concurrent` binary (self-contained).
+# Crash / kill -9 durability tests are in `test_crash` (self-contained).
+# True power-loss durability is in `test_power_loss` (root-only; driven by
+# `tools/durability/power_loss_test.sh`, honestly skips without the device).
+
+[lints]
+workspace = true

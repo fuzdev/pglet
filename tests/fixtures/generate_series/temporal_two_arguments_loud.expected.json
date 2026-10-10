@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42883",
+    "message": "function generate_series(timestamp without time zone, unknown) does not exist"
+  }
+}

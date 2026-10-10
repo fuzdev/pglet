@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "both_elements": true,
+      "element_not_contained": false,
+      "from_column": "1",
+      "no_container_element": false,
+      "object_element": true,
+      "partial_object_element": true
+    }
+  ],
+  "rowCount": 1
+}

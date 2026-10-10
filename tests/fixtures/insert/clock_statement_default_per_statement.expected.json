@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "after_the_transaction_started": true,
+      "src": 1,
+      "statement_values": "1",
+      "written_rows": "4"
+    },
+    {
+      "after_the_transaction_started": true,
+      "src": 2,
+      "statement_values": "1",
+      "written_rows": "4"
+    }
+  ],
+  "rowCount": 2
+}

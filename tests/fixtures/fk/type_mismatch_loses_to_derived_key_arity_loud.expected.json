@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42830",
+    "message": "number of referencing and referenced columns for foreign key disagree"
+  }
+}

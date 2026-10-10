@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "428C9",
+    "message": "cannot insert a non-DEFAULT value into column \"id\""
+  }
+}

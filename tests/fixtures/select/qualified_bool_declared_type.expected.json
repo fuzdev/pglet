@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "flag": true,
+      "id": 1
+    },
+    {
+      "flag": false,
+      "id": 2
+    },
+    {
+      "flag": null,
+      "id": 3
+    }
+  ],
+  "rowCount": 3
+}

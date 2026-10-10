@@ -1,0 +1,14 @@
+{
+  "rows": [
+    {
+      "eq_hex": 2,
+      "eq_octal": 8,
+      "eq_plain": 1,
+      "eq_plain_written_plain": 5,
+      "eq_space": 3,
+      "ge_plain": "4",
+      "total": "7"
+    }
+  ],
+  "rowCount": 1
+}

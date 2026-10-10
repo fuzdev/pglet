@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "backslash": "{\"a\\\\b\": 1}",
+      "low_control": "{\"a\\u0001b\": 1}",
+      "plain": "{\"ab\": 1}",
+      "quote": "{\"a\\\"b\": 1}",
+      "tab": "{\"a\\tb\": 1}",
+      "verbatim": "{\"a/éb\": 1}"
+    }
+  ],
+  "rowCount": 1
+}

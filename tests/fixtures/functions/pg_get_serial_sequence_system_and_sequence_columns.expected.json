@@ -1,0 +1,12 @@
+{
+  "rows": [
+    {
+      "ctid": null,
+      "null_column": null,
+      "null_table": null,
+      "seq_column": null,
+      "xmin": null
+    }
+  ],
+  "rowCount": 1
+}

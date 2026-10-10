@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "22008",
+    "message": "date/time field value out of range: \"0000-13-01 00:00:00\""
+  }
+}

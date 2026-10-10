@@ -1,0 +1,33 @@
+{
+  "rows": [
+    {
+      "id": 1,
+      "lit": 6,
+      "ob": 3,
+      "octet_length": 3,
+      "ov": 3
+    },
+    {
+      "id": 2,
+      "lit": 6,
+      "ob": 3,
+      "octet_length": 6,
+      "ov": 6
+    },
+    {
+      "id": 3,
+      "lit": 6,
+      "ob": 0,
+      "octet_length": 0,
+      "ov": 0
+    },
+    {
+      "id": 4,
+      "lit": 6,
+      "ob": null,
+      "octet_length": null,
+      "ov": null
+    }
+  ],
+  "rowCount": 4
+}

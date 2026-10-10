@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "bare_only_target": 142,
+      "id": 1,
+      "only_target": 142,
+      "v": "TARGET"
+    },
+    {
+      "bare_only_target": 143,
+      "id": 2,
+      "only_target": 143,
+      "v": "TARGET2"
+    }
+  ],
+  "rowCount": 2
+}

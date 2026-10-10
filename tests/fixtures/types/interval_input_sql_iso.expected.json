@@ -1,0 +1,14 @@
+{
+  "rows": [
+    {
+      "day_time": "3 days 04:05:06",
+      "iso_full": "1 year 2 mons 3 days 04:05:06",
+      "iso_minutes": "00:05:00",
+      "neg_day_pos_time": "-1 days +02:03:04",
+      "neg_year_month": "-1 years -2 mons",
+      "pos_year_month": "1 year 2 mons",
+      "year_month": "1 year 2 mons"
+    }
+  ],
+  "rowCount": 1
+}

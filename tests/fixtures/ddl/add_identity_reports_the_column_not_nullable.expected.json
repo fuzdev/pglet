@@ -1,0 +1,10 @@
+{
+  "rows": [
+    {
+      "identity_generation": "ALWAYS",
+      "is_identity": "YES",
+      "is_nullable": "NO"
+    }
+  ],
+  "rowCount": 1
+}

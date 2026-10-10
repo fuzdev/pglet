@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "coalesce_gt_sad": true,
+      "greatest_btw": true,
+      "max_lt_ok": false,
+      "min_gt_sad": true
+    }
+  ],
+  "rowCount": 1
+}

@@ -1,0 +1,15 @@
+{
+  "rows": [
+    {
+      "astral": true,
+      "dot": true,
+      "double_quote": true,
+      "eight": true,
+      "letter": true,
+      "nine": true,
+      "non_ascii": true,
+      "percent": true
+    }
+  ],
+  "rowCount": 1
+}

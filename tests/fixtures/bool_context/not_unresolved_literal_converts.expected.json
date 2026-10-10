@@ -1,0 +1,10 @@
+{
+  "rows": [
+    {
+      "not_false": true,
+      "not_off": true,
+      "not_true": false
+    }
+  ],
+  "rowCount": 1
+}

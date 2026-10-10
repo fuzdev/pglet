@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "3B001",
+    "message": "savepoint \"mysp\" does not exist"
+  }
+}

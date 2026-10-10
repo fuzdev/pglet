@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "55000",
+    "message": "column \"c\" of relation \"aid\" already has a default value"
+  }
+}

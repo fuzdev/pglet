@@ -1,0 +1,15 @@
+{
+  "rows": [
+    {
+      "display_name": "Alice A",
+      "id": "00000000-0000-0000-0000-000000000011",
+      "username": "alice"
+    },
+    {
+      "display_name": "Alice Alt",
+      "id": "00000000-0000-0000-0000-000000000033",
+      "username": "alice"
+    }
+  ],
+  "rowCount": 2
+}

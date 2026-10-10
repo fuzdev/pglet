@@ -1,0 +1,9 @@
+{
+  "rows": [
+    {
+      "column_default": "((1 > 0) OR (2 > 0) OR (3 > 0))",
+      "column_name": "f"
+    }
+  ],
+  "rowCount": 1
+}

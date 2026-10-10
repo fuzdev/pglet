@@ -1,0 +1,13 @@
+-- The modifier itself is **not** applied by the argument transform, and this is the pair
+-- that says so. `coerce_type` passes `inputTypeMod = -1` to `stringTypeDatum` for every
+-- type but `interval` ("Any length constraint will be applied later by our caller",
+-- `parse_coerce.c`), and that caller's `coerce_type_typmod` node is folded by the
+-- **planner** — below every parse-analysis verdict. So the input conversion's 22P02 beats
+-- the quantifier (the sibling fixture) while the quantifier's 42809 beats the modifier's
+-- own overflow, here. The control that identifies which gate answers is the unquantified
+-- `SELECT concat('12345'::numeric(3,1))`, which is 22003 on both engines. A transform
+-- that applied the modifier would answer 22003 to this statement — a third answer neither
+-- engine gives. 42809 on both.
+-- @test
+-- @expect-error: DISTINCT specified, but concat is not an aggregate function (42809)
+SELECT concat(DISTINCT '12345'::numeric(3,1));

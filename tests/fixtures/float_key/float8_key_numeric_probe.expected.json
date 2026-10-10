@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "k": 1,
+      "probe": "exact"
+    },
+    {
+      "k": 1,
+      "probe": "gt"
+    },
+    {
+      "k": 2,
+      "probe": "gt"
+    },
+    {
+      "k": 1,
+      "probe": "rounds"
+    }
+  ],
+  "rowCount": 4
+}

@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "conname": "cac10_ttttttttttttttttttttt_cooooooooooooooooooooooooo_not_null",
+      "len": 63
+    },
+    {
+      "conname": "cac10_ttttttttttttttttttttttttttttttttttttttttttttt_id_not_null",
+      "len": 63
+    },
+    {
+      "conname": "cac10_tttttttttttttttttttttttttttttttttttttttttttttt_k_not_null",
+      "len": 63
+    }
+  ],
+  "rowCount": 3
+}

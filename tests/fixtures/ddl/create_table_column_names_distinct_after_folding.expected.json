@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "column_name": "a",
+      "ordinal_position": 1
+    },
+    {
+      "column_name": "A",
+      "ordinal_position": 2
+    }
+  ],
+  "rowCount": 2
+}

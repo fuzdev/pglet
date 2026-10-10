@@ -1,0 +1,14 @@
+{
+  "rows": [
+    {
+      "and_binds_looser": false,
+      "chained": false,
+      "cmp_binds_tighter": true,
+      "cmp_binds_tighter_false": false,
+      "like_binds_tighter": true,
+      "not_binds_looser": false,
+      "not_binds_looser_true": true
+    }
+  ],
+  "rowCount": 1
+}

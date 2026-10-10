@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "concatenated": "7x",
+      "doubled": 14,
+      "measured": 7,
+      "negated": -7,
+      "shifted": 8,
+      "shifted_twice": 9
+    }
+  ],
+  "rowCount": 1
+}

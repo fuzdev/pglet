@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P10",
+    "message": "DISTINCT ON position 9 is not in select list"
+  }
+}

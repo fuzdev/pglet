@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "23514",
+    "message": "new row for relation \"socf\" violates check constraint \"socf_check\""
+  }
+}

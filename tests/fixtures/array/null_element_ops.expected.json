@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "gt0": true,
+      "gt2": true,
+      "lt0": false,
+      "lt2": false
+    }
+  ],
+  "rowCount": 1
+}

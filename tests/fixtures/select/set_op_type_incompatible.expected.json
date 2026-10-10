@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42804",
+    "message": "UNION types integer and text cannot be matched"
+  }
+}

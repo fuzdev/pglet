@@ -1,0 +1,30 @@
+{
+  "rows": [
+    {
+      "depth": 1,
+      "id": 1,
+      "name": "ceo"
+    },
+    {
+      "depth": 2,
+      "id": 2,
+      "name": "vp1"
+    },
+    {
+      "depth": 2,
+      "id": 3,
+      "name": "vp2"
+    },
+    {
+      "depth": 3,
+      "id": 4,
+      "name": "eng"
+    },
+    {
+      "depth": 4,
+      "id": 5,
+      "name": "intern"
+    }
+  ],
+  "rowCount": 5
+}

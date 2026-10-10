@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "23514",
+    "message": "new row for relation \"snc_child\" violates check constraint \"snc_child_parent_id_check\""
+  }
+}

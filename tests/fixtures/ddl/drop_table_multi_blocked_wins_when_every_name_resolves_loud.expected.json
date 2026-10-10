@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "2BP01",
+    "message": "cannot drop desired object(s) because other objects depend on them"
+  }
+}

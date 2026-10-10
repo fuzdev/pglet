@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "constraint_name": "ispk2_pkey",
+      "constraint_type": "PRIMARY KEY",
+      "table_name": "ispk2"
+    },
+    {
+      "constraint_name": "ispk_k_key",
+      "constraint_type": "UNIQUE",
+      "table_name": "ispk"
+    },
+    {
+      "constraint_name": "ispk_pkey",
+      "constraint_type": "PRIMARY KEY",
+      "table_name": "ispk"
+    }
+  ],
+  "rowCount": 3
+}

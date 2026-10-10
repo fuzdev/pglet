@@ -1,0 +1,12 @@
+{
+  "rows": [
+    {
+      "d_ts": true,
+      "d_tz": true,
+      "ge": true,
+      "lt": true,
+      "ts_tz": true
+    }
+  ],
+  "rowCount": 1
+}

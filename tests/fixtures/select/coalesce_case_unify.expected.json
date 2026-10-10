@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "case_branch": 10,
+      "coalesced": 10,
+      "id": 1,
+      "same_type": "a"
+    },
+    {
+      "case_branch": 0,
+      "coalesced": 99,
+      "id": 2,
+      "same_type": "b"
+    }
+  ],
+  "rowCount": 2
+}

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "23503",
+    "message": "insert or update on table \"ni_s\" violates foreign key constraint \"ni_s_w_fkey\""
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "a_later_statement_is_later": true,
+      "body_rows": "2",
+      "clock_before_statement": "0",
+      "columns_differing": "0",
+      "statement_values": "1",
+      "transaction_values": "1"
+    }
+  ],
+  "rowCount": 1
+}

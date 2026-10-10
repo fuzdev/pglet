@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P20",
+    "message": "window functions are not allowed in index predicates"
+  }
+}

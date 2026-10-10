@@ -1,0 +1,105 @@
+{
+  "rows": [
+    {
+      "column_default": "'5'::text",
+      "column_name": "a"
+    },
+    {
+      "column_default": "gen_random_uuid()",
+      "column_name": "f"
+    },
+    {
+      "column_default": "'-1'::integer",
+      "column_name": "k"
+    },
+    {
+      "column_default": "('a'::text || 'b'::text)",
+      "column_name": "l"
+    },
+    {
+      "column_default": "5",
+      "column_name": "m"
+    },
+    {
+      "column_default": "(5)::bigint",
+      "column_name": "n"
+    },
+    {
+      "column_default": "5",
+      "column_name": "o"
+    },
+    {
+      "column_default": "'-1.5'::numeric",
+      "column_name": "p"
+    },
+    {
+      "column_default": "1.5::numeric(10,2)",
+      "column_name": "q"
+    },
+    {
+      "column_default": "'{}'::jsonb",
+      "column_name": "e"
+    },
+    {
+      "column_default": "'2024-01-01'::date",
+      "column_name": "x"
+    },
+    {
+      "column_default": "(NOT true)",
+      "column_name": "y"
+    },
+    {
+      "column_default": "'-5'::integer",
+      "column_name": "z"
+    },
+    {
+      "column_default": "'2147483648'::bigint",
+      "column_name": "w"
+    },
+    {
+      "column_default": "'1000'::numeric",
+      "column_name": "v"
+    },
+    {
+      "column_default": "'\\x00'::bytea",
+      "column_name": "u"
+    },
+    {
+      "column_default": "abs('-3'::integer)",
+      "column_name": "t"
+    },
+    {
+      "column_default": "(nextval('cds_seq'::regclass) + 1)",
+      "column_name": "s"
+    },
+    {
+      "column_default": "5",
+      "column_name": "b"
+    },
+    {
+      "column_default": "true",
+      "column_name": "i"
+    },
+    {
+      "column_default": "1.5",
+      "column_name": "j"
+    },
+    {
+      "column_default": "COALESCE('a'::text, 'b'::text)",
+      "column_name": "ca"
+    },
+    {
+      "column_default": "ARRAY['a'::text, 'b'::text]",
+      "column_name": "cb"
+    },
+    {
+      "column_default": "ARRAY[1, 2]",
+      "column_name": "cc"
+    },
+    {
+      "column_default": "concat('a', 'b')",
+      "column_name": "as_"
+    }
+  ],
+  "rowCount": 25
+}

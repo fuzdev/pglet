@@ -1,0 +1,55 @@
+{
+  "rows": [
+    {
+      "constraint_name": "cat_child_cid_not_null",
+      "constraint_type": "CHECK",
+      "table_name": "cat_child"
+    },
+    {
+      "constraint_name": "cat_child_pid_fkey",
+      "constraint_type": "FOREIGN KEY",
+      "table_name": "cat_child"
+    },
+    {
+      "constraint_name": "cat_child_qty_not_null",
+      "constraint_type": "CHECK",
+      "table_name": "cat_child"
+    },
+    {
+      "constraint_name": "cat_child_qty_pid",
+      "constraint_type": "CHECK",
+      "table_name": "cat_child"
+    },
+    {
+      "constraint_name": "cat_child_qty_positive",
+      "constraint_type": "CHECK",
+      "table_name": "cat_child"
+    },
+    {
+      "constraint_name": "cat_parent_code_not_null",
+      "constraint_type": "CHECK",
+      "table_name": "cat_parent"
+    },
+    {
+      "constraint_name": "cat_parent_code_region_uq",
+      "constraint_type": "UNIQUE",
+      "table_name": "cat_parent"
+    },
+    {
+      "constraint_name": "cat_parent_id_not_null",
+      "constraint_type": "CHECK",
+      "table_name": "cat_parent"
+    },
+    {
+      "constraint_name": "cat_parent_pkey",
+      "constraint_type": "PRIMARY KEY",
+      "table_name": "cat_parent"
+    },
+    {
+      "constraint_name": "cat_parent_region_not_null",
+      "constraint_type": "CHECK",
+      "table_name": "cat_parent"
+    }
+  ],
+  "rowCount": 10
+}

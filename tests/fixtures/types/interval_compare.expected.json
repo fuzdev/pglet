@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "gt": true,
+      "lt": true,
+      "ne": true,
+      "thirty_eq_mon": true
+    }
+  ],
+  "rowCount": 1
+}

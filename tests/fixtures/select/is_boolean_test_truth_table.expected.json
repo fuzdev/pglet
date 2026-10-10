@@ -1,0 +1,32 @@
+{
+  "rows": [
+    {
+      "id": 1,
+      "is_false": false,
+      "is_not_false": true,
+      "is_not_true": false,
+      "is_not_unknown": true,
+      "is_true": true,
+      "is_unknown": false
+    },
+    {
+      "id": 2,
+      "is_false": true,
+      "is_not_false": false,
+      "is_not_true": true,
+      "is_not_unknown": true,
+      "is_true": false,
+      "is_unknown": false
+    },
+    {
+      "id": 3,
+      "is_false": false,
+      "is_not_false": true,
+      "is_not_true": true,
+      "is_not_unknown": false,
+      "is_true": false,
+      "is_unknown": true
+    }
+  ],
+  "rowCount": 3
+}

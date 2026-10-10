@@ -1,0 +1,97 @@
+{
+  "rows": [
+    {
+      "conname": "p01",
+      "definition": "CHECK ((s = 'x'::text))"
+    },
+    {
+      "conname": "p02",
+      "definition": "CHECK ((s ~~ 'x%'::text))"
+    },
+    {
+      "conname": "p03",
+      "definition": "CHECK ((s !~~ 'x%'::text))"
+    },
+    {
+      "conname": "p04",
+      "definition": "CHECK ((s ~~* 'x%'::text))"
+    },
+    {
+      "conname": "p05",
+      "definition": "CHECK ((s IS DISTINCT FROM 'q'::text))"
+    },
+    {
+      "conname": "p06",
+      "definition": "CHECK ((a <> NULL::integer))"
+    },
+    {
+      "conname": "p07",
+      "definition": "CHECK (((a = 1) AND (bo = true)))"
+    },
+    {
+      "conname": "p08",
+      "definition": "CHECK ((concat('a', 'b') <> s))"
+    },
+    {
+      "conname": "p09",
+      "definition": "CHECK ((s IS NOT NULL))"
+    },
+    {
+      "conname": "p10",
+      "definition": "CHECK ((lower(s) = 'x'::text))"
+    },
+    {
+      "conname": "p11",
+      "definition": "CHECK (((s || 'z'::text) = 'xz'::text))"
+    },
+    {
+      "conname": "p12",
+      "definition": "CHECK ((ar @> ARRAY['x'::text]))"
+    },
+    {
+      "conname": "p13",
+      "definition": "CHECK ((COALESCE(s, 'd'::text) = 'x'::text))"
+    },
+    {
+      "conname": "p14",
+      "definition": "CHECK ((a > '-1'::integer))"
+    },
+    {
+      "conname": "p15",
+      "definition": "CHECK ((n > '-1.5'::numeric))"
+    },
+    {
+      "conname": "p16",
+      "definition": "CHECK ((s = 'x'::text))"
+    },
+    {
+      "conname": "p17",
+      "definition": "CHECK (((a)::text = 'x'::text))"
+    },
+    {
+      "conname": "p18",
+      "definition": "CHECK ((upper(s) > 'a'::text))"
+    },
+    {
+      "conname": "p19",
+      "definition": "CHECK ((upper('x'::text) <> s))"
+    },
+    {
+      "conname": "p20",
+      "definition": "CHECK ((length('abc'::text) = a))"
+    },
+    {
+      "conname": "p21",
+      "definition": "CHECK ((lower('AB'::text) <> s))"
+    },
+    {
+      "conname": "p22",
+      "definition": "CHECK ((btrim('  x  '::text) <> s))"
+    },
+    {
+      "conname": "p23",
+      "definition": "CHECK ((lpad('x'::text, 3) <> s))"
+    }
+  ],
+  "rowCount": 23
+}

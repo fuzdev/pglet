@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "a": 1,
+      "aliased_inner": "10",
+      "bare": "10",
+      "computed": 11,
+      "empty_inner": null,
+      "qualified": "10"
+    },
+    {
+      "a": 2,
+      "aliased_inner": "20",
+      "bare": "20",
+      "computed": 21,
+      "empty_inner": null,
+      "qualified": "20"
+    }
+  ],
+  "rowCount": 2
+}

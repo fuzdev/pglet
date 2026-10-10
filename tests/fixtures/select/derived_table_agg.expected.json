@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "product": "A",
+      "total": "250"
+    },
+    {
+      "product": "B",
+      "total": "250"
+    },
+    {
+      "product": "C",
+      "total": "300"
+    }
+  ],
+  "rowCount": 3
+}

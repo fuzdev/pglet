@@ -1,0 +1,12 @@
+{
+  "rows": [
+    {
+      "eq_mid": true,
+      "gt_before": true,
+      "lt_after": true,
+      "lt_mid": false,
+      "ts_gt_date": true
+    }
+  ],
+  "rowCount": 1
+}

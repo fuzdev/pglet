@@ -1,0 +1,14 @@
+-- A no-FROM literal argument, the spelling with no relation to starve.
+--
+-- This one was always loud — a no-FROM projection has one row, so evaluation reached the
+-- leaf and `execute_project_unnest` raised `0A000 unnest requires an array argument, got
+-- Int4(1)` (a third 0A000 spelling, distinct from the scalar-position refusal a
+-- row-bearing `FROM` reached). What the gate changes is which error, and when: `42883`
+-- from signature resolution, at plan time, before the row exists. A bare `NULL` or a
+-- bare string literal is **not** this member — both are
+-- Postgres's `unknown` at this position and it answers `42725 function unnest(unknown)
+-- is not unique`, a code pglet does not raise (`EDGES.md` row 55's residual).
+-- @no-profile-lock: this fixture has no `@setup` at all and builds no index — the word "unique" above is prose, which the completeness check's uppercase substring scan reads as setup text (its documented over-report direction); the refusal is raised in the plan-time expression gate, before any index selection runs
+-- @test
+-- @expect-error: no unnest(integer)
+SELECT unnest(1);

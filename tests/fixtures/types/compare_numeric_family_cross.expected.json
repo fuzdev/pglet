@@ -1,0 +1,19 @@
+{
+  "rows": [
+    {
+      "f4_f8": true,
+      "f4_n": true,
+      "f8_n": true,
+      "ge": true,
+      "i2_f4": true,
+      "i2_i4": true,
+      "i2_i8": true,
+      "i4_f8": true,
+      "i4_i8": true,
+      "i8_n": true,
+      "lt": false,
+      "n_i4": true
+    }
+  ],
+  "rowCount": 1
+}

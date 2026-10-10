@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "column_default": "nextval('sq_nad'::regclass)",
+      "table_name": "sq_nad_bare"
+    },
+    {
+      "column_default": "nextval('sq_nad'::regclass)",
+      "table_name": "sq_nad_paren"
+    },
+    {
+      "column_default": "nextval('sq_nad'::regclass)",
+      "table_name": "sq_nad_plain"
+    }
+  ],
+  "rowCount": 3
+}

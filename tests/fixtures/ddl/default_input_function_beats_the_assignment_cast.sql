@@ -1,0 +1,13 @@
+-- **Order, half 1 of 2.** 18.6 runs the target type's input function inside
+-- `transformExpr` when an unknown constant sits under an explicit cast, so a malformed
+-- one is refused before `cookDefault` ever asks about the assignment cast:
+-- `INT DEFAULT 'zzz'::date` is `22007` and not the `42804` the `date → integer` pair
+-- would otherwise get. pglet reproduces the order by leaving the cook's
+-- `is_cook_time_error` family ahead of the assignment gate.
+--
+-- The other half is `add_column_default_assignment_cast_beats_the_value_error.sql`,
+-- where the evaluation 18.6 never performs must lose instead. The two codes differ,
+-- which is what makes the pair pin the order rather than the set.
+-- @expect-error: the cast's input function is raised before the assignment cast (22007)
+-- @test
+CREATE TABLE dif (x INT DEFAULT 'zzz'::date);

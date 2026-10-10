@@ -1,0 +1,32 @@
+-- The polarity control for the `Expr::Unnest` arm of the two declared-type walkers.
+-- With a real array inner both answer the element type — int4 (OID 23) — and so does
+-- 18.6, on both wire legs.
+--
+-- The other pole is now a refusal rather than a divergence, for every spelling whose
+-- argument type the plan-time gate can certainly read. `unnest(<a non-array>)` used to
+-- reach the same two arms and they disagreed: over an empty table the executor walk
+-- answered the argument's own type on the simple-query `RowDescription`
+-- (21/23/20/1700/700 for smallint/int/bigint/numeric/real) while the planner walk
+-- answered nothing and the boundary substituted text (25) on `Describe` — for a
+-- statement 18.6 refuses outright. `planner::legality`'s `unnest_legality` raises 18.6's
+-- own `42883` there instead, and the `unnest_*non_array*` fixtures beside this one hold
+-- it. What survives is the *computed*-argument residual the gate's conservative reader
+-- declines to type (`unnest(i + 0)` and four siblings, measured), still 23 against 25;
+-- a faithful fixture for that is red before any declared type is compared, so it is
+-- pinned by the `executor::walker_pins` unit corpus and recorded in `EDGES.md` row 55.
+--
+-- **This file's marginal detection is zero, and saying so is the point.** Replacing the
+-- executor arm with a bare `text` reddens six fixtures, five of which predate this one
+-- and are untagged incidental users of the same shape: `no_from_order_by_sorts_an_unnest`,
+-- `no_from_order_by_positional_sorts_an_unnest`, `no_from_order_by_limit_offset_compose`,
+-- `no_from_distinct_dedups_an_unnest` and `distinct_on_no_from_alias_key_over_an_unnest`.
+-- Measured, not assumed. `select/unnest_projection.sql` is not among the six: it uses a
+-- `text[]`, where the executor walk's own unknown-operand fallback is also text, so it
+-- cannot tell a dropped `array_element` from a correct one.
+--
+-- What it adds over those five is that it is the **named** control: `walker_pins`'s cell-F
+-- test points at this file, and each of the five exists to pin an `ORDER BY` / `DISTINCT`
+-- routing question that has nothing to do with the walkers, so any of them could be
+-- rewritten or dropped for its own reasons and take the coverage with it silently.
+-- @test
+SELECT unnest(ARRAY[1, 2]) AS u;

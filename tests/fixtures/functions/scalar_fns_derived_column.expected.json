@@ -1,0 +1,19 @@
+{
+  "rows": [
+    {
+      "avg_p": 48.5,
+      "l": "a",
+      "max_ol": 7,
+      "n": "2",
+      "sum_m": "1"
+    },
+    {
+      "avg_p": null,
+      "l": "b",
+      "max_ol": 6,
+      "n": "1",
+      "sum_m": null
+    }
+  ],
+  "rowCount": 2
+}

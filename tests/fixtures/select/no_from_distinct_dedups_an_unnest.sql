@@ -1,0 +1,15 @@
+-- **`SELECT DISTINCT` over a no-FROM projection was a complete no-op.** The arm discarded
+-- the quantifier, on the reasoning that a dedup over one projected row is redundant — true
+-- of the one-row `Plan::Values` it was written for
+-- (`select/no_from_distinct_over_one_row.sql` is that control) and false of
+-- `Plan::ProjectUnnest`, which row-expands: this answered `2 1 2 1` where 18.6 answers two
+-- rows.
+--
+-- The `ORDER BY q` is **required, not decoration**: 18.6 dedups through a hash aggregate
+-- and its output order is unspecified (measured — the bare spelling answers `1 2` there
+-- and `2 1` here, both correct), so a fixture without it would pin an order neither engine
+-- promises. Sorting also makes this fixture depend on the tail routing, which is why the
+-- dedup itself is pinned again by the row *count* in
+-- `insert/select_distinct_no_from_unnest_dedups.sql`.
+-- @test
+SELECT DISTINCT unnest(ARRAY[2, 1, 2, 1]) AS q ORDER BY q;

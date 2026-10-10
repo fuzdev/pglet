@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "actor_id": 1,
+      "note": "scoped",
+      "role": "admin",
+      "scope_kind": "repo"
+    },
+    {
+      "actor_id": 1,
+      "note": "second",
+      "role": "admin",
+      "scope_kind": null
+    }
+  ],
+  "rowCount": 2
+}

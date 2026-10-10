@@ -1,0 +1,41 @@
+{
+  "rows": [
+    {
+      "column_name": "id",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "ordinal_position": 1
+    },
+    {
+      "column_name": "name",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "ordinal_position": 2
+    },
+    {
+      "column_name": "tags",
+      "data_type": "ARRAY",
+      "is_nullable": "YES",
+      "ordinal_position": 3
+    },
+    {
+      "column_name": "created",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "ordinal_position": 4
+    },
+    {
+      "column_name": "flag",
+      "data_type": "boolean",
+      "is_nullable": "YES",
+      "ordinal_position": 5
+    },
+    {
+      "column_name": "n",
+      "data_type": "bigint",
+      "is_nullable": "YES",
+      "ordinal_position": 6
+    }
+  ],
+  "rowCount": 6
+}

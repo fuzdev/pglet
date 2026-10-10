@@ -1,0 +1,24 @@
+{
+  "rows": [
+    {
+      "double_rounds_down": "2000-01-01T00:00:00.000125Z",
+      "five_digit_year_into_domain": "9999-12-31T19:00:00Z",
+      "hour_24_with_offset": "2000-01-02T05:00:00Z",
+      "lower_t": "2000-01-01T12:34:56Z",
+      "offset_after_date": "1999-12-31T11:25:04Z",
+      "offset_between": "1999-12-31T19:00:00Z",
+      "offset_first": "1999-12-31T19:00:00Z",
+      "posix_max_hour_east": "1999-12-25T01:00:00Z",
+      "posix_minutes": "2000-01-01T05:30:00Z",
+      "posix_one_letter": "2000-01-01T05:00:00Z",
+      "posix_utc_plus_16": "2000-01-01T16:00:00Z",
+      "posix_zulu_plus_5": "2000-01-01T05:00:00Z",
+      "second_60_with_offset": "2000-06-30T19:00:00Z",
+      "slash_with_offset": "2000-01-01T07:34:56Z",
+      "space": "2000-01-01T12:34:56Z",
+      "zulu_after_space": "2000-01-01T00:00:00Z",
+      "zulu_first": "2000-01-01T00:00:00Z"
+    }
+  ],
+  "rowCount": 1
+}

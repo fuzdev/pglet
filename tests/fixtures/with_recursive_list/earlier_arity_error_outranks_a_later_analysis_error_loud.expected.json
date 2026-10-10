@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P10",
+    "message": "WITH query \"c\" has 1 columns available but 2 columns specified"
+  }
+}

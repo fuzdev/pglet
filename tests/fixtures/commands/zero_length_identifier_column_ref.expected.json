@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42601",
+    "message": "zero-length delimited identifier at or near \"\"\"\""
+  }
+}

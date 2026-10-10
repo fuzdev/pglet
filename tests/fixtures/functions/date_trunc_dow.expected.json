@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "22023",
+    "message": "unit \"dow\" not recognized for type timestamp without time zone"
+  }
+}

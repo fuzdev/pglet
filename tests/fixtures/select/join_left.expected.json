@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "name": "Alice",
+      "product": "Gadget"
+    },
+    {
+      "name": "Alice",
+      "product": "Widget"
+    },
+    {
+      "name": "Bob",
+      "product": "Gizmo"
+    },
+    {
+      "name": "Carol",
+      "product": null
+    }
+  ],
+  "rowCount": 4
+}

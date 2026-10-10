@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P01",
+    "message": "relation \"dof_nosuch\" does not exist"
+  }
+}

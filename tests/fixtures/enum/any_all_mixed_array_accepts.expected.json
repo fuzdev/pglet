@@ -1,0 +1,26 @@
+{
+  "rows": [
+    {
+      "cast_element_pair": false,
+      "id": 1,
+      "member_beside_column": true,
+      "null_beside_cast": null,
+      "null_beside_column": true
+    },
+    {
+      "cast_element_pair": true,
+      "id": 2,
+      "member_beside_column": true,
+      "null_beside_cast": true,
+      "null_beside_column": true
+    },
+    {
+      "cast_element_pair": false,
+      "id": 3,
+      "member_beside_column": true,
+      "null_beside_cast": null,
+      "null_beside_column": true
+    }
+  ],
+  "rowCount": 3
+}

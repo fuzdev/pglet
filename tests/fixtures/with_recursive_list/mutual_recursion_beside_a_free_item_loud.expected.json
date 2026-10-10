@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "0A000",
+    "message": "mutual recursion between WITH items is not implemented"
+  }
+}

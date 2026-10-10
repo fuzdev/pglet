@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "actor_id": 1,
+      "role": "admin"
+    },
+    {
+      "actor_id": 2,
+      "role": "member"
+    },
+    {
+      "actor_id": 3,
+      "role": "member"
+    }
+  ],
+  "rowCount": 3
+}

@@ -1,0 +1,16 @@
+{
+  "rows": [
+    {
+      "avg_d": 0.0,
+      "avg_real": 0.0,
+      "avg_tenths": 0.20000000000000004,
+      "sum_d": 0.0,
+      "sum_no_overflow": 1.7e308,
+      "sum_plain": 1.0,
+      "sum_real": 0.0,
+      "sum_tenths": 0.6000000000000001,
+      "sum_tenths_plain": 0.6
+    }
+  ],
+  "rowCount": 1
+}

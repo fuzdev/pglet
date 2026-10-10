@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P01",
+    "message": "relation \"no_such_sequence_here\" does not exist"
+  }
+}

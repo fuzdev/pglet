@@ -1,0 +1,12 @@
+{
+  "rows": [
+    {
+      "arrays": "3",
+      "floats": "2",
+      "intervals": "2",
+      "jsonb": "2",
+      "texts": "2"
+    }
+  ],
+  "rowCount": 1
+}

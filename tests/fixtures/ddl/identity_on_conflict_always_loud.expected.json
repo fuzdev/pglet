@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "428C9",
+    "message": "column \"id\" can only be updated to DEFAULT"
+  }
+}

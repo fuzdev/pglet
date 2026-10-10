@@ -1,0 +1,15 @@
+-- A `HAVING` predicate naming nothing, over a FROM-clause `unnest(…)`.
+--
+-- The third clause of the post-projection set, measured on 18.6 rather than inferred from
+-- its neighbours: `42703` there, `(0 rows)` here before the `build_column_scope` unnest
+-- arm was made columns-exhaustive. A `HAVING` name is **not** an output-alias position —
+-- `findTargetlistEntrySQL92` takes its target-list branch for a sort/group key and
+-- nothing else — so this predicate is judged against the FROM namespace outright.
+--
+-- The array is **empty**, so no group is emitted and no eval-time reader sees the
+-- predicate; the refusal can only be the plan-time gate's.
+--
+-- No `@setup` at all, so nothing but the `@test` can raise the asserted code.
+-- @test
+-- @expect-error: the `HAVING` reference names nothing at the unnest's level (42703)
+SELECT 1 FROM unnest(ARRAY[]::int[]) AS u(x) GROUP BY x HAVING bogus > 1;

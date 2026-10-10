@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "dmax": "infinity",
+      "dmin": "-infinity",
+      "g": "infinity",
+      "l": "-infinity",
+      "tmax": "infinity",
+      "tmin": "-infinity"
+    }
+  ],
+  "rowCount": 1
+}

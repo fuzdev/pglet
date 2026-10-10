@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "2BP01",
+    "message": "cannot drop sequence dsidc_t_id_seq because column id of table dsidc_t requires it"
+  }
+}

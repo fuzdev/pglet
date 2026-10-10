@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "add": "1 day 02:00:00",
+      "add_months": "1 year 5 mons",
+      "negate": "-1 days -02:00:00",
+      "sub_no_justify": "1 day -25:00:00"
+    }
+  ],
+  "rowCount": 1
+}

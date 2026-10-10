@@ -1,0 +1,23 @@
+{
+  "rows": [
+    {
+      "both_levels": true,
+      "id": 1,
+      "outer_coalesce": true,
+      "outer_greatest": false
+    },
+    {
+      "both_levels": true,
+      "id": 2,
+      "outer_coalesce": true,
+      "outer_greatest": true
+    },
+    {
+      "both_levels": true,
+      "id": 3,
+      "outer_coalesce": true,
+      "outer_greatest": true
+    }
+  ],
+  "rowCount": 3
+}

@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "big": true,
+      "g": 1
+    },
+    {
+      "big": true,
+      "g": 2
+    },
+    {
+      "big": null,
+      "g": 3
+    }
+  ],
+  "rowCount": 3
+}

@@ -1,0 +1,11 @@
+-- The discarded no-FROM tail never reached the positional range check either, so this
+-- answered a row where 18.6 refuses in parse analysis. It is the **loud** member of the
+-- discard — the reason the class read as an `ORDER BY` bug from outside, while the
+-- `LIMIT`/`OFFSET` members beside it were silent on both engines.
+--
+-- Its negative twin (`select/no_from_order_by_negative_position_loud.sql`) is the same
+-- check reached through the unary-minus constant fold, and the routed accept polarity is
+-- `select/no_from_order_by_positional_sorts_an_unnest.sql`.
+-- @expect-error: ORDER BY position 5 is not in select list (42P10)
+-- @test
+SELECT 1 AS q ORDER BY 5;

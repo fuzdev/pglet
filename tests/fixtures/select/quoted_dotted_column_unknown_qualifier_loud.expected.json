@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P01",
+    "message": "missing FROM-clause entry for table \"a\""
+  }
+}

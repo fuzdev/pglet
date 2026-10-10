@@ -1,0 +1,107 @@
+{
+	"schema": "exit_proof",
+	"note": "fuz_app `db` suite wall-time per engine leg, isolated by testNamePattern over the shared four-leg files. L1 (pglite, pglet-wasm) in-process; L2 (pglet-server, pg) out-of-process — never compared across the line. Ratios are the durable signal; absolute seconds flap with the box. Engine boot is amortized over the file set (see wasm_compare_results.json for the cold-start number).",
+	"timestamp": "2026-10-04T00:11:59.912Z",
+	"git_commit": "7cae837c",
+	"reps": 2,
+	"warmup": 1,
+	"shared_files": 44,
+	"results": [
+		{
+			"name": "pglite",
+			"tier": "L1",
+			"passed": 473,
+			"failed": 0,
+			"files": 44,
+			"leg_failed": false,
+			"total": {
+				"p50": 11525,
+				"p95": 11565.5,
+				"mean": 11525,
+				"min": 11480,
+				"max": 11570,
+				"cv": 0.0039045553145336228
+			},
+			"tests": {
+				"p50": 10442.313134499998,
+				"p95": 10483.535205850003,
+				"mean": 10442.313134499998,
+				"min": 10396.510832999993,
+				"max": 10488.115436000004,
+				"cv": 0.004386221798758428
+			}
+		},
+		{
+			"name": "pglet-wasm",
+			"tier": "L1",
+			"passed": 473,
+			"failed": 0,
+			"files": 44,
+			"leg_failed": false,
+			"total": {
+				"p50": 2275,
+				"p95": 2279.5,
+				"mean": 2275,
+				"min": 2270,
+				"max": 2280,
+				"cv": 0.002197802197802198
+			},
+			"tests": {
+				"p50": 1237.9985685000008,
+				"p95": 1243.4585557500004,
+				"mean": 1237.9985685000008,
+				"min": 1231.9319160000014,
+				"max": 1244.0652210000003,
+				"cv": 0.004900371175186427
+			}
+		},
+		{
+			"name": "pglet-server",
+			"tier": "L2",
+			"passed": 473,
+			"failed": 0,
+			"files": 44,
+			"leg_failed": false,
+			"total": {
+				"p50": 3130,
+				"p95": 3139,
+				"mean": 3130,
+				"min": 3120,
+				"max": 3140,
+				"cv": 0.003194888178913738
+			},
+			"tests": {
+				"p50": 2085.592965500001,
+				"p95": 2102.9395947499997,
+				"mean": 2085.592965500001,
+				"min": 2066.3189330000023,
+				"max": 2104.8669979999995,
+				"cv": 0.009241512039420332
+			}
+		},
+		{
+			"name": "pg",
+			"tier": "L2",
+			"passed": 473,
+			"failed": 0,
+			"files": 44,
+			"leg_failed": false,
+			"total": {
+				"p50": 10780,
+				"p95": 11104,
+				"mean": 10780,
+				"min": 10420,
+				"max": 11140,
+				"cv": 0.03339517625231911
+			},
+			"tests": {
+				"p50": 9712.7540095,
+				"p95": 10043.11155145,
+				"mean": 9712.7540095,
+				"min": 9345.690074000002,
+				"max": 10079.817944999999,
+				"cv": 0.03779195222497913
+			}
+		}
+	]
+}

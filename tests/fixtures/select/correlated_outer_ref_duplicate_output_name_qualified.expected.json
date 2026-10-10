@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42702",
+    "message": "column reference \"x\" is ambiguous"
+  }
+}

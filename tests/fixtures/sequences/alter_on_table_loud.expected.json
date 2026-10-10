@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42809",
+    "message": "cannot open relation \"alter_not_a_seq\""
+  }
+}

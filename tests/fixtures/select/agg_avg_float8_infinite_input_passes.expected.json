@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "inf_first": "Infinity",
+      "nan_first": "NaN",
+      "squares_in_range": 0.0,
+      "sum_inf_first": "Infinity"
+    }
+  ],
+  "rowCount": 1
+}

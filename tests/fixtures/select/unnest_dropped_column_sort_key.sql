@@ -1,0 +1,19 @@
+-- A sort key naming a **real** column of a FROM-clause `unnest(…)` that the projection
+-- drops. Postgres sorts the pre-projection rows and trims the key off (a resjunk
+-- column); pglet was `42703 column "q" does not exist` here — and `42703 column "v.q"`
+-- for the qualified spelling — because `build_column_scope` registered the unnest under
+-- its alias with an *empty* column map, so nothing at plan time could say the relation
+-- carried `q` at all. Registering the unnest's own columns closes both spellings, and
+-- both are in the key list so a repair reaching only one of them reddens.
+--
+-- The defect was row-count dependent — the empty-array spelling answered on both engines
+-- — which is what made it a false **rejection** on real data and invisible on none.
+--
+-- `q * 10` rather than a constant projection is what makes the *order* observable in the
+-- compared values (`10, 20, 30` over an input of `3, 1, 2`): a fixture projecting `1 AS x`
+-- reads identically sorted or not, so it would pin the acceptance and not the sort. It is
+-- also still a **dropped** column — a computed expression is not an output column named
+-- `q`, so `findTargetlistEntrySQL92` finds no target-list entry and falls through to the
+-- range table, which is the path under test.
+-- @test
+SELECT q * 10 AS x FROM unnest(ARRAY[3, 1, 2]) AS v(q) ORDER BY v.q, q;

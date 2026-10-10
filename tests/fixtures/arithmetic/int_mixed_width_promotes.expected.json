@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "narrow_left_28": "5000030000",
+      "narrow_left_add": 90000,
+      "narrow_left_add8": "5000060000",
+      "narrow_left_mod": "60000",
+      "narrow_left_mod2": 30000,
+      "narrow_left_mul": 1800000000,
+      "narrow_left_sub": "-4999940000",
+      "wide_left_add": 90000,
+      "wide_left_add8": "5000060000",
+      "wide_left_div": "83333"
+    }
+  ],
+  "rowCount": 1
+}

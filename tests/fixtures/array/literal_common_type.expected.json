@@ -1,0 +1,10 @@
+{
+  "rows": [
+    {
+      "mixed_int": "{1,2}",
+      "mixed_numeric": "{1,2.5,3}",
+      "pair": "{1,2.5}"
+    }
+  ],
+  "rowCount": 1
+}

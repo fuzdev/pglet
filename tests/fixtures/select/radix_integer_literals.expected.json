@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "bin": 5,
+      "bin_val": 15,
+      "hex": 31,
+      "hex_bigint": "4294967295",
+      "hex_sep": 65535,
+      "hex_sep_lead": 31,
+      "hex_upper_prefix": 31,
+      "hex_zero": 0,
+      "oct": 15,
+      "oct_val": 511
+    }
+  ],
+  "rowCount": 1
+}

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "22023",
+    "message": "NUMERIC scale 1001 must be between -1000 and 1000"
+  }
+}

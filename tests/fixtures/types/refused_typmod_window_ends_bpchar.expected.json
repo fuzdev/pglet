@@ -1,0 +1,10 @@
+{
+  "rows": [
+    {
+      "cmin": "a",
+      "leading_zero": "abc",
+      "radix": "abc"
+    }
+  ],
+  "rowCount": 1
+}

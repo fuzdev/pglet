@@ -1,0 +1,32 @@
+{
+  "rows": [
+    {
+      "coal": "sad",
+      "eq": false,
+      "g": "ok",
+      "gt": false,
+      "id": 1,
+      "l": "sad",
+      "nz": "sad"
+    },
+    {
+      "coal": "ok",
+      "eq": true,
+      "g": "ok",
+      "gt": false,
+      "id": 2,
+      "l": "ok",
+      "nz": null
+    },
+    {
+      "coal": "happy",
+      "eq": false,
+      "g": "happy",
+      "gt": true,
+      "id": 3,
+      "l": "ok",
+      "nz": "happy"
+    }
+  ],
+  "rowCount": 3
+}

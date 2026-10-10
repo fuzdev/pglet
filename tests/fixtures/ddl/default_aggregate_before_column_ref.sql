@@ -1,0 +1,15 @@
+-- The **positional** half of the DEFAULT rejection walk, polarity 1 of 2.
+--
+-- Postgres analyzes a column DEFAULT in one bottom-up, left-to-right walk with one
+-- verdict per node, so when two forbidden constructs both appear the *positionally
+-- first* one is reported whatever kind it is. Here the aggregate is the left
+-- operand and 18.6 answers `42803`; the mirror
+-- (`default_column_ref_before_aggregate.sql`) writes the same two constructs the
+-- other way round and 18.6 answers `0A000`.
+--
+-- Ship the pair, never one half: `@expect-error` compares SQLSTATE only, so a
+-- single polarity is satisfied by an engine that always reports that code. The two
+-- codes differ, which is what makes the pair pin the *order* rather than the set.
+-- @expect-error: aggregate before the column reference wins (42803)
+-- @test
+CREATE TABLE dfa (a INT, b INT DEFAULT (count(*) + a));

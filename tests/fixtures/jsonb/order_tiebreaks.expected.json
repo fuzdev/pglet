@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "arr_elem": true,
+      "arr_len": true,
+      "arr_len2": true,
+      "num_vs_str": false,
+      "obj_pairs": true,
+      "obj_val": true
+    }
+  ],
+  "rowCount": 1
+}

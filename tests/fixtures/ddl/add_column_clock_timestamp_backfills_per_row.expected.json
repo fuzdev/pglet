@@ -1,0 +1,12 @@
+{
+  "rows": [
+    {
+      "clock_is_per_row": true,
+      "current_timestamp_values": "1",
+      "now_values": "1",
+      "statement_values": "1",
+      "transaction_values": "1"
+    }
+  ],
+  "rowCount": 1
+}

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "2201F",
+    "message": "a negative number raised to a non-integer power yields a complex result"
+  }
+}

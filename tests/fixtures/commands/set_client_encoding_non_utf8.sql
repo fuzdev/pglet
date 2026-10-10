@@ -1,0 +1,13 @@
+-- pglet is UTF-8 end to end, so a `client_encoding` it cannot honour is refused rather
+-- than accepted-and-ignored. Accepting it is the one modelled-parameter divergence that
+-- corrupts data: 18.6 converts and reports the new value, while pglet would keep sending
+-- UTF-8 bytes to a client told to decode LATIN1.
+--
+-- 18.6 accepts, so any pglet error passes. The accepted spellings (`UTF8`, `UTF-8`,
+-- `UNICODE`, and `SQL_ASCII` — "no conversion", which is what pglet does), the
+-- `SET NAMES` spelling and the `set_config` route are pinned in `catalog::commands`'s
+-- unit tests; the **startup packet**, which is the route libpq and JDBC actually use and
+-- which no fixture can write, is pinned in `pglet_server`'s handler tests.
+-- @test
+-- @expect-error: pglet is UTF8-only
+SET client_encoding TO 'LATIN1';

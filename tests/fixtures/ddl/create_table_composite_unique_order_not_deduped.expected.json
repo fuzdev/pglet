@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "indexname": "ctcu_a_b_key"
+    },
+    {
+      "indexname": "ctcu_b_a_key"
+    }
+  ],
+  "rowCount": 2
+}

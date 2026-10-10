@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "23503",
+    "message": "update or delete on table \"upto_c\" violates foreign key constraint \"upto_g_cp_fkey\" on table \"upto_g\""
+  }
+}

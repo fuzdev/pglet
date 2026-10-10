@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42601",
+    "message": "SKIP LOCKED and WITH TIES options cannot be used together"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "23001",
+    "message": "update or delete on table \"odr_parent\" violates RESTRICT setting of foreign key constraint \"odr_child_parent_id_fkey\" on table \"odr_child\""
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "rows": [
+    {
+      "join_pairs": "1",
+      "literal_equality": true,
+      "matching_rows": "2",
+      "nested_equality": true,
+      "still_distinguishes_values": true
+    }
+  ],
+  "rowCount": 1
+}

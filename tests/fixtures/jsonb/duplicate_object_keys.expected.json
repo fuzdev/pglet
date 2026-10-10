@@ -1,0 +1,16 @@
+{
+  "rows": [
+    {
+      "arrow_json": 2,
+      "arrow_text": "2",
+      "contains": true,
+      "deduped_obj": {
+        "a": 3,
+        "b": 2
+      },
+      "equals": true,
+      "path_text": "2"
+    }
+  ],
+  "rowCount": 1
+}

@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "except_nested": true,
+      "limited": false,
+      "union_bare": true,
+      "union_parens": true
+    }
+  ],
+  "rowCount": 1
+}

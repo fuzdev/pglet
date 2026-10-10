@@ -1,0 +1,18 @@
+-- 18.6's `cookDefault` (`catalog/heap.c`) runs the default through
+-- `coerce_to_target_type` under `COERCION_ASSIGNMENT` and raises `42804 column "x" is of
+-- type integer but default expression is of type text` when no assignment cast reaches
+-- the column. The verdict is on the expression's **declared type**, reached without
+-- evaluating anything, which is why `'abc'::text` is a type error there and not the
+-- `22P02` its *value* would produce: the cast is what types the literal, so the unknown
+-- is gone by the time the assignment cast is asked.
+--
+-- pglet answered that position four different ways before this gate reached the cook —
+-- `42846`, `22P02`, `42804` for six enumerated pairs, and **silence** where the text
+-- happened to parse (`int DEFAULT '5'::text` was accepted). Its two accepting neighbours
+-- are `default_unknown_literal_runs_its_input_function_at_ddl.sql` and
+-- `default_assignment_cast_accepts_its_family.sql`; its ordering pair is
+-- `default_input_function_beats_the_assignment_cast.sql` and
+-- `add_column_default_assignment_cast_beats_the_value_error.sql`.
+-- @expect-error: a typed default with no assignment cast to the column type (42804)
+-- @test
+CREATE TABLE dtm (x INT DEFAULT 'abc'::text);

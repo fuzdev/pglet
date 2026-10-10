@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "3F000",
+    "message": "schema \"nosuchschema\" does not exist"
+  }
+}

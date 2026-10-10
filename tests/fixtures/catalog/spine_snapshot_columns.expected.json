@@ -1,0 +1,86 @@
+{
+  "rows": [
+    {
+      "column_default": null,
+      "column_name": "cid",
+      "data_type": "integer",
+      "is_identity": "YES",
+      "is_nullable": "NO",
+      "table_name": "cat_child",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": null,
+      "column_name": "pid",
+      "data_type": "integer",
+      "is_identity": "NO",
+      "is_nullable": "YES",
+      "table_name": "cat_child",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": null,
+      "column_name": "qty",
+      "data_type": "integer",
+      "is_identity": "NO",
+      "is_nullable": "NO",
+      "table_name": "cat_child",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": null,
+      "column_name": "label",
+      "data_type": "text",
+      "is_identity": "NO",
+      "is_nullable": "YES",
+      "table_name": "cat_child",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "price",
+      "data_type": "numeric",
+      "is_identity": "NO",
+      "is_nullable": "YES",
+      "table_name": "cat_child",
+      "udt_name": "numeric"
+    },
+    {
+      "column_default": null,
+      "column_name": "m",
+      "data_type": "USER-DEFINED",
+      "is_identity": "NO",
+      "is_nullable": "YES",
+      "table_name": "cat_child",
+      "udt_name": "cat_mood"
+    },
+    {
+      "column_default": null,
+      "column_name": "id",
+      "data_type": "integer",
+      "is_identity": "YES",
+      "is_nullable": "NO",
+      "table_name": "cat_parent",
+      "udt_name": "int4"
+    },
+    {
+      "column_default": null,
+      "column_name": "code",
+      "data_type": "text",
+      "is_identity": "NO",
+      "is_nullable": "NO",
+      "table_name": "cat_parent",
+      "udt_name": "text"
+    },
+    {
+      "column_default": null,
+      "column_name": "region",
+      "data_type": "character varying",
+      "is_identity": "NO",
+      "is_nullable": "NO",
+      "table_name": "cat_parent",
+      "udt_name": "varchar"
+    }
+  ],
+  "rowCount": 9
+}

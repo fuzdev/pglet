@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>pglet WASM Demo</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 { color: #333; margin-bottom: 5px; }
+        h2 { margin-top: 0; margin-bottom: 15px; color: #444; }
+        h3 { margin: 0 0 10px 0; font-size: 13px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+        .subtitle { color: #666; margin-bottom: 20px; }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .sql-editor {
+            width: 100%;
+            min-height: 120px;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+            line-height: 1.4;
+        }
+        .editor-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        button.secondary { background: #6c757d; }
+        button.secondary:hover { background: #545b62; }
+        button.danger { background: #dc3545; }
+        button.danger:hover { background: #c82333; }
+        button.run { background: #28a745; }
+        button.run:hover { background: #218838; }
+        .output {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            min-height: 100px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .output table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        .output th, .output td {
+            padding: 6px 10px;
+            text-align: left;
+            border: 1px solid #444;
+        }
+        .output th { background: #2d2d2d; color: #9cdcfe; }
+        .output td { color: #ce9178; }
+        .output .success { color: #4ec9b0; }
+        .output .error { color: #f14c4c; }
+        .output .info { color: #808080; }
+        .output .query-label { color: #569cd6; margin-bottom: 5px; }
+        .category {
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 12px;
+            background: #fafafa;
+        }
+        .category:last-child { margin-bottom: 0; }
+        .btn-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .btn-grid button {
+            background: #f8f9fa;
+            color: #333;
+            border: 1px solid #ddd;
+            font-size: 12px;
+            padding: 6px 12px;
+        }
+        .btn-grid button:hover {
+            background: #e9ecef;
+            border-color: #adb5bd;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+        .status-memory { background: #fff3cd; color: #856404; }
+        .status-ready { background: #d4edda; color: #155724; }
+        .status-loading { background: #cce5ff; color: #004085; }
+        .note {
+            background: #e7f3ff;
+            border: 1px solid #b6d4fe;
+            border-radius: 4px;
+            padding: 12px;
+            font-size: 13px;
+            color: #084298;
+        }
+        .note a { color: #084298; }
+        .schema-info {
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>pglet <span class="status-badge status-loading" id="statusBadge">Loading...</span></h1>
+    <p class="subtitle">A lightweight Postgres-compatiblesque database running entirely in your browser.</p>
+
+    <div class="container">
+        <h2>SQL Examples</h2>
+        <p style="margin-top: 0; color: #666; font-size: 13px;">Click any button to load and run an example. Start with "Create Table" then "Insert Data" to set up sample data.</p>
+
+        <div class="category">
+            <h3>Basics</h3>
+            <div class="btn-grid">
+                <button onclick="runExample('createTable')">Create Table</button>
+                <button onclick="runExample('insertData')">Insert Data</button>
+                <button onclick="runExample('selectAll')">Select All</button>
+                <button onclick="runExample('update')">Update</button>
+                <button onclick="runExample('delete')">Delete</button>
+                <button onclick="runExample('resetDb')" class="danger">Reset DB</button>
+            </div>
+        </div>
+
+        <div class="category">
+            <h3>Queries</h3>
+            <div class="btn-grid">
+                <button onclick="runExample('whereFilter')">WHERE Filter</button>
+                <button onclick="runExample('orderBy')">ORDER BY</button>
+                <button onclick="runExample('limitOffset')">LIMIT / OFFSET</button>
+                <button onclick="runExample('like')">LIKE Pattern</button>
+                <button onclick="runExample('nullHandling')">NULL Handling</button>
+                <button onclick="runExample('cast')">Type Cast</button>
+            </div>
+        </div>
+
+        <div class="category">
+            <h3>Aggregates</h3>
+            <div class="btn-grid">
+                <button onclick="runExample('countSumAvg')">COUNT / SUM / AVG</button>
+                <button onclick="runExample('minMax')">MIN / MAX</button>
+                <button onclick="runExample('groupBy')">GROUP BY</button>
+                <button onclick="runExample('having')">HAVING</button>
+                <button onclick="runExample('distinct')">DISTINCT</button>
+            </div>
+        </div>
+
+        <div class="category">
+            <h3>JOINs</h3>
+            <div class="btn-grid">
+                <button onclick="runExample('setupJoins')">Setup Tables</button>
+                <button onclick="runExample('innerJoin')">INNER JOIN</button>
+                <button onclick="runExample('leftJoin')">LEFT JOIN</button>
+                <button onclick="runExample('rightJoin')">RIGHT JOIN</button>
+                <button onclick="runExample('fullJoin')">FULL JOIN</button>
+            </div>
+        </div>
+
+        <div class="category">
+            <h3>Advanced</h3>
+            <div class="btn-grid">
+                <button onclick="runExample('subquery')">Subquery (IN)</button>
+                <button onclick="runExample('scalarSubquery')">Scalar Subquery</button>
+                <button onclick="runExample('derivedTable')">Derived Table</button>
+                <button onclick="runExample('cte')">CTE (WITH)</button>
+                <button onclick="runExample('windowFn')">Window Functions</button>
+                <button onclick="runExample('upsert')">UPSERT</button>
+                <button onclick="runExample('returning')">RETURNING</button>
+                <button onclick="runExample('transaction')">Transaction</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>SQL Editor</h2>
+        <textarea class="sql-editor" id="sqlInput" placeholder="Enter SQL here or click an example above...">SELECT 'Hello from pglet!' AS message, 1 + 1 AS math;</textarea>
+        <div class="editor-actions">
+            <button onclick="runSQL()" class="run">Execute SQL</button>
+            <button onclick="clearOutput()" class="secondary">Clear Output</button>
+            <button onclick="showSchema()" class="secondary">Show Schema</button>
+        </div>
+        <div class="schema-info" id="schemaInfo" style="display: none;"></div>
+    </div>
+
+    <div class="container">
+        <h2>Output</h2>
+        <div class="output" id="output">Ready. Click an example or execute your own SQL.</div>
+    </div>
+
+    <div class="note">
+        <strong>In-Memory Mode:</strong> Data is lost on page refresh.
+        For persistent storage using OPFS, see <a href="persistent.html">the persistence demo</a>.
+    </div>
+
+    <script type="module" src="./main.js"></script>
+</body>
+</html>

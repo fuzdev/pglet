@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P19",
+    "message": "recursive query \"t\" does not have the form non-recursive-term UNION [ALL] recursive-term"
+  }
+}

@@ -1,0 +1,12 @@
+-- The FROM route's own precedence pair, and the one that shows the rule is
+-- `transformRangeFunction`'s rather than `ParseFuncOrColumn`'s alone. A multi-argument
+-- FROM-clause `unnest` is expanded into one call per argument, and the expansion is
+-- skipped for a decorated call — so `DISTINCT` leaves `unnest(integer[], integer[])`,
+-- which resolves to no signature at all, and 18.6 answers 42883 **ahead** of the
+-- quantifier's 42809. `ALL` sets no decoration, so its one-keyword twin
+-- (`set_quantifier_all_from_unnest_multi_array.sql`) expands and answers the two columns.
+-- The discriminator for a fix that refuses `DISTINCT` at this route unconditionally:
+-- that spelling answers 42809 here and would redden this fixture.
+-- @test
+-- @expect-error: function unnest(integer[], integer[]) does not exist
+SELECT * FROM unnest(DISTINCT ARRAY[1, 2], ARRAY[3, 4]) AS u(x, y);

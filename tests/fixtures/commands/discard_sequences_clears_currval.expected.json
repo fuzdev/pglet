@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "55000",
+    "message": "currval of sequence \"discard_seq\" is not yet defined in this session"
+  }
+}

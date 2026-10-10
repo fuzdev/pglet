@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42601",
+    "message": "LIMIT #,# syntax is not supported"
+  }
+}

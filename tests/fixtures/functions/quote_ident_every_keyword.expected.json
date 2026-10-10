@@ -1,0 +1,1981 @@
+{
+  "rows": [
+    {
+      "q": "abort",
+      "w": "abort"
+    },
+    {
+      "q": "absent",
+      "w": "absent"
+    },
+    {
+      "q": "absolute",
+      "w": "absolute"
+    },
+    {
+      "q": "access",
+      "w": "access"
+    },
+    {
+      "q": "action",
+      "w": "action"
+    },
+    {
+      "q": "add",
+      "w": "add"
+    },
+    {
+      "q": "admin",
+      "w": "admin"
+    },
+    {
+      "q": "after",
+      "w": "after"
+    },
+    {
+      "q": "aggregate",
+      "w": "aggregate"
+    },
+    {
+      "q": "\"all\"",
+      "w": "all"
+    },
+    {
+      "q": "also",
+      "w": "also"
+    },
+    {
+      "q": "alter",
+      "w": "alter"
+    },
+    {
+      "q": "always",
+      "w": "always"
+    },
+    {
+      "q": "\"analyse\"",
+      "w": "analyse"
+    },
+    {
+      "q": "\"analyze\"",
+      "w": "analyze"
+    },
+    {
+      "q": "\"and\"",
+      "w": "and"
+    },
+    {
+      "q": "\"any\"",
+      "w": "any"
+    },
+    {
+      "q": "\"array\"",
+      "w": "array"
+    },
+    {
+      "q": "\"as\"",
+      "w": "as"
+    },
+    {
+      "q": "\"asc\"",
+      "w": "asc"
+    },
+    {
+      "q": "asensitive",
+      "w": "asensitive"
+    },
+    {
+      "q": "assertion",
+      "w": "assertion"
+    },
+    {
+      "q": "assignment",
+      "w": "assignment"
+    },
+    {
+      "q": "\"asymmetric\"",
+      "w": "asymmetric"
+    },
+    {
+      "q": "at",
+      "w": "at"
+    },
+    {
+      "q": "atomic",
+      "w": "atomic"
+    },
+    {
+      "q": "attach",
+      "w": "attach"
+    },
+    {
+      "q": "attribute",
+      "w": "attribute"
+    },
+    {
+      "q": "\"authorization\"",
+      "w": "authorization"
+    },
+    {
+      "q": "backward",
+      "w": "backward"
+    },
+    {
+      "q": "before",
+      "w": "before"
+    },
+    {
+      "q": "begin",
+      "w": "begin"
+    },
+    {
+      "q": "\"between\"",
+      "w": "between"
+    },
+    {
+      "q": "\"bigint\"",
+      "w": "bigint"
+    },
+    {
+      "q": "\"binary\"",
+      "w": "binary"
+    },
+    {
+      "q": "\"bit\"",
+      "w": "bit"
+    },
+    {
+      "q": "\"boolean\"",
+      "w": "boolean"
+    },
+    {
+      "q": "\"both\"",
+      "w": "both"
+    },
+    {
+      "q": "breadth",
+      "w": "breadth"
+    },
+    {
+      "q": "by",
+      "w": "by"
+    },
+    {
+      "q": "cache",
+      "w": "cache"
+    },
+    {
+      "q": "call",
+      "w": "call"
+    },
+    {
+      "q": "called",
+      "w": "called"
+    },
+    {
+      "q": "cascade",
+      "w": "cascade"
+    },
+    {
+      "q": "cascaded",
+      "w": "cascaded"
+    },
+    {
+      "q": "\"case\"",
+      "w": "case"
+    },
+    {
+      "q": "\"cast\"",
+      "w": "cast"
+    },
+    {
+      "q": "catalog",
+      "w": "catalog"
+    },
+    {
+      "q": "chain",
+      "w": "chain"
+    },
+    {
+      "q": "\"char\"",
+      "w": "char"
+    },
+    {
+      "q": "\"character\"",
+      "w": "character"
+    },
+    {
+      "q": "characteristics",
+      "w": "characteristics"
+    },
+    {
+      "q": "\"check\"",
+      "w": "check"
+    },
+    {
+      "q": "checkpoint",
+      "w": "checkpoint"
+    },
+    {
+      "q": "class",
+      "w": "class"
+    },
+    {
+      "q": "close",
+      "w": "close"
+    },
+    {
+      "q": "cluster",
+      "w": "cluster"
+    },
+    {
+      "q": "\"coalesce\"",
+      "w": "coalesce"
+    },
+    {
+      "q": "\"collate\"",
+      "w": "collate"
+    },
+    {
+      "q": "\"collation\"",
+      "w": "collation"
+    },
+    {
+      "q": "\"column\"",
+      "w": "column"
+    },
+    {
+      "q": "columns",
+      "w": "columns"
+    },
+    {
+      "q": "comment",
+      "w": "comment"
+    },
+    {
+      "q": "comments",
+      "w": "comments"
+    },
+    {
+      "q": "commit",
+      "w": "commit"
+    },
+    {
+      "q": "committed",
+      "w": "committed"
+    },
+    {
+      "q": "compression",
+      "w": "compression"
+    },
+    {
+      "q": "\"concurrently\"",
+      "w": "concurrently"
+    },
+    {
+      "q": "conditional",
+      "w": "conditional"
+    },
+    {
+      "q": "configuration",
+      "w": "configuration"
+    },
+    {
+      "q": "conflict",
+      "w": "conflict"
+    },
+    {
+      "q": "connection",
+      "w": "connection"
+    },
+    {
+      "q": "\"constraint\"",
+      "w": "constraint"
+    },
+    {
+      "q": "constraints",
+      "w": "constraints"
+    },
+    {
+      "q": "content",
+      "w": "content"
+    },
+    {
+      "q": "continue",
+      "w": "continue"
+    },
+    {
+      "q": "conversion",
+      "w": "conversion"
+    },
+    {
+      "q": "copy",
+      "w": "copy"
+    },
+    {
+      "q": "cost",
+      "w": "cost"
+    },
+    {
+      "q": "\"create\"",
+      "w": "create"
+    },
+    {
+      "q": "\"cross\"",
+      "w": "cross"
+    },
+    {
+      "q": "csv",
+      "w": "csv"
+    },
+    {
+      "q": "cube",
+      "w": "cube"
+    },
+    {
+      "q": "current",
+      "w": "current"
+    },
+    {
+      "q": "\"current_catalog\"",
+      "w": "current_catalog"
+    },
+    {
+      "q": "\"current_date\"",
+      "w": "current_date"
+    },
+    {
+      "q": "\"current_role\"",
+      "w": "current_role"
+    },
+    {
+      "q": "\"current_schema\"",
+      "w": "current_schema"
+    },
+    {
+      "q": "\"current_time\"",
+      "w": "current_time"
+    },
+    {
+      "q": "\"current_timestamp\"",
+      "w": "current_timestamp"
+    },
+    {
+      "q": "\"current_user\"",
+      "w": "current_user"
+    },
+    {
+      "q": "cursor",
+      "w": "cursor"
+    },
+    {
+      "q": "cycle",
+      "w": "cycle"
+    },
+    {
+      "q": "data",
+      "w": "data"
+    },
+    {
+      "q": "database",
+      "w": "database"
+    },
+    {
+      "q": "day",
+      "w": "day"
+    },
+    {
+      "q": "deallocate",
+      "w": "deallocate"
+    },
+    {
+      "q": "\"dec\"",
+      "w": "dec"
+    },
+    {
+      "q": "\"decimal\"",
+      "w": "decimal"
+    },
+    {
+      "q": "declare",
+      "w": "declare"
+    },
+    {
+      "q": "\"default\"",
+      "w": "default"
+    },
+    {
+      "q": "defaults",
+      "w": "defaults"
+    },
+    {
+      "q": "\"deferrable\"",
+      "w": "deferrable"
+    },
+    {
+      "q": "deferred",
+      "w": "deferred"
+    },
+    {
+      "q": "definer",
+      "w": "definer"
+    },
+    {
+      "q": "delete",
+      "w": "delete"
+    },
+    {
+      "q": "delimiter",
+      "w": "delimiter"
+    },
+    {
+      "q": "delimiters",
+      "w": "delimiters"
+    },
+    {
+      "q": "depends",
+      "w": "depends"
+    },
+    {
+      "q": "depth",
+      "w": "depth"
+    },
+    {
+      "q": "\"desc\"",
+      "w": "desc"
+    },
+    {
+      "q": "detach",
+      "w": "detach"
+    },
+    {
+      "q": "dictionary",
+      "w": "dictionary"
+    },
+    {
+      "q": "disable",
+      "w": "disable"
+    },
+    {
+      "q": "discard",
+      "w": "discard"
+    },
+    {
+      "q": "\"distinct\"",
+      "w": "distinct"
+    },
+    {
+      "q": "\"do\"",
+      "w": "do"
+    },
+    {
+      "q": "document",
+      "w": "document"
+    },
+    {
+      "q": "domain",
+      "w": "domain"
+    },
+    {
+      "q": "double",
+      "w": "double"
+    },
+    {
+      "q": "drop",
+      "w": "drop"
+    },
+    {
+      "q": "each",
+      "w": "each"
+    },
+    {
+      "q": "\"else\"",
+      "w": "else"
+    },
+    {
+      "q": "empty",
+      "w": "empty"
+    },
+    {
+      "q": "enable",
+      "w": "enable"
+    },
+    {
+      "q": "encoding",
+      "w": "encoding"
+    },
+    {
+      "q": "encrypted",
+      "w": "encrypted"
+    },
+    {
+      "q": "\"end\"",
+      "w": "end"
+    },
+    {
+      "q": "enforced",
+      "w": "enforced"
+    },
+    {
+      "q": "enum",
+      "w": "enum"
+    },
+    {
+      "q": "error",
+      "w": "error"
+    },
+    {
+      "q": "escape",
+      "w": "escape"
+    },
+    {
+      "q": "event",
+      "w": "event"
+    },
+    {
+      "q": "\"except\"",
+      "w": "except"
+    },
+    {
+      "q": "exclude",
+      "w": "exclude"
+    },
+    {
+      "q": "excluding",
+      "w": "excluding"
+    },
+    {
+      "q": "exclusive",
+      "w": "exclusive"
+    },
+    {
+      "q": "execute",
+      "w": "execute"
+    },
+    {
+      "q": "\"exists\"",
+      "w": "exists"
+    },
+    {
+      "q": "explain",
+      "w": "explain"
+    },
+    {
+      "q": "expression",
+      "w": "expression"
+    },
+    {
+      "q": "extension",
+      "w": "extension"
+    },
+    {
+      "q": "external",
+      "w": "external"
+    },
+    {
+      "q": "\"extract\"",
+      "w": "extract"
+    },
+    {
+      "q": "\"false\"",
+      "w": "false"
+    },
+    {
+      "q": "family",
+      "w": "family"
+    },
+    {
+      "q": "\"fetch\"",
+      "w": "fetch"
+    },
+    {
+      "q": "filter",
+      "w": "filter"
+    },
+    {
+      "q": "finalize",
+      "w": "finalize"
+    },
+    {
+      "q": "first",
+      "w": "first"
+    },
+    {
+      "q": "\"float\"",
+      "w": "float"
+    },
+    {
+      "q": "following",
+      "w": "following"
+    },
+    {
+      "q": "\"for\"",
+      "w": "for"
+    },
+    {
+      "q": "force",
+      "w": "force"
+    },
+    {
+      "q": "\"foreign\"",
+      "w": "foreign"
+    },
+    {
+      "q": "format",
+      "w": "format"
+    },
+    {
+      "q": "forward",
+      "w": "forward"
+    },
+    {
+      "q": "\"freeze\"",
+      "w": "freeze"
+    },
+    {
+      "q": "\"from\"",
+      "w": "from"
+    },
+    {
+      "q": "\"full\"",
+      "w": "full"
+    },
+    {
+      "q": "function",
+      "w": "function"
+    },
+    {
+      "q": "functions",
+      "w": "functions"
+    },
+    {
+      "q": "generated",
+      "w": "generated"
+    },
+    {
+      "q": "global",
+      "w": "global"
+    },
+    {
+      "q": "\"grant\"",
+      "w": "grant"
+    },
+    {
+      "q": "granted",
+      "w": "granted"
+    },
+    {
+      "q": "\"greatest\"",
+      "w": "greatest"
+    },
+    {
+      "q": "\"group\"",
+      "w": "group"
+    },
+    {
+      "q": "\"grouping\"",
+      "w": "grouping"
+    },
+    {
+      "q": "groups",
+      "w": "groups"
+    },
+    {
+      "q": "handler",
+      "w": "handler"
+    },
+    {
+      "q": "\"having\"",
+      "w": "having"
+    },
+    {
+      "q": "header",
+      "w": "header"
+    },
+    {
+      "q": "hold",
+      "w": "hold"
+    },
+    {
+      "q": "hour",
+      "w": "hour"
+    },
+    {
+      "q": "identity",
+      "w": "identity"
+    },
+    {
+      "q": "if",
+      "w": "if"
+    },
+    {
+      "q": "\"ilike\"",
+      "w": "ilike"
+    },
+    {
+      "q": "immediate",
+      "w": "immediate"
+    },
+    {
+      "q": "immutable",
+      "w": "immutable"
+    },
+    {
+      "q": "implicit",
+      "w": "implicit"
+    },
+    {
+      "q": "import",
+      "w": "import"
+    },
+    {
+      "q": "\"in\"",
+      "w": "in"
+    },
+    {
+      "q": "include",
+      "w": "include"
+    },
+    {
+      "q": "including",
+      "w": "including"
+    },
+    {
+      "q": "increment",
+      "w": "increment"
+    },
+    {
+      "q": "indent",
+      "w": "indent"
+    },
+    {
+      "q": "index",
+      "w": "index"
+    },
+    {
+      "q": "indexes",
+      "w": "indexes"
+    },
+    {
+      "q": "inherit",
+      "w": "inherit"
+    },
+    {
+      "q": "inherits",
+      "w": "inherits"
+    },
+    {
+      "q": "\"initially\"",
+      "w": "initially"
+    },
+    {
+      "q": "inline",
+      "w": "inline"
+    },
+    {
+      "q": "\"inner\"",
+      "w": "inner"
+    },
+    {
+      "q": "\"inout\"",
+      "w": "inout"
+    },
+    {
+      "q": "input",
+      "w": "input"
+    },
+    {
+      "q": "insensitive",
+      "w": "insensitive"
+    },
+    {
+      "q": "insert",
+      "w": "insert"
+    },
+    {
+      "q": "instead",
+      "w": "instead"
+    },
+    {
+      "q": "\"int\"",
+      "w": "int"
+    },
+    {
+      "q": "\"integer\"",
+      "w": "integer"
+    },
+    {
+      "q": "\"intersect\"",
+      "w": "intersect"
+    },
+    {
+      "q": "\"interval\"",
+      "w": "interval"
+    },
+    {
+      "q": "\"into\"",
+      "w": "into"
+    },
+    {
+      "q": "invoker",
+      "w": "invoker"
+    },
+    {
+      "q": "\"is\"",
+      "w": "is"
+    },
+    {
+      "q": "\"isnull\"",
+      "w": "isnull"
+    },
+    {
+      "q": "isolation",
+      "w": "isolation"
+    },
+    {
+      "q": "\"join\"",
+      "w": "join"
+    },
+    {
+      "q": "\"json\"",
+      "w": "json"
+    },
+    {
+      "q": "\"json_array\"",
+      "w": "json_array"
+    },
+    {
+      "q": "\"json_arrayagg\"",
+      "w": "json_arrayagg"
+    },
+    {
+      "q": "\"json_exists\"",
+      "w": "json_exists"
+    },
+    {
+      "q": "\"json_object\"",
+      "w": "json_object"
+    },
+    {
+      "q": "\"json_objectagg\"",
+      "w": "json_objectagg"
+    },
+    {
+      "q": "\"json_query\"",
+      "w": "json_query"
+    },
+    {
+      "q": "\"json_scalar\"",
+      "w": "json_scalar"
+    },
+    {
+      "q": "\"json_serialize\"",
+      "w": "json_serialize"
+    },
+    {
+      "q": "\"json_table\"",
+      "w": "json_table"
+    },
+    {
+      "q": "\"json_value\"",
+      "w": "json_value"
+    },
+    {
+      "q": "keep",
+      "w": "keep"
+    },
+    {
+      "q": "key",
+      "w": "key"
+    },
+    {
+      "q": "keys",
+      "w": "keys"
+    },
+    {
+      "q": "label",
+      "w": "label"
+    },
+    {
+      "q": "language",
+      "w": "language"
+    },
+    {
+      "q": "large",
+      "w": "large"
+    },
+    {
+      "q": "last",
+      "w": "last"
+    },
+    {
+      "q": "\"lateral\"",
+      "w": "lateral"
+    },
+    {
+      "q": "\"leading\"",
+      "w": "leading"
+    },
+    {
+      "q": "leakproof",
+      "w": "leakproof"
+    },
+    {
+      "q": "\"least\"",
+      "w": "least"
+    },
+    {
+      "q": "\"left\"",
+      "w": "left"
+    },
+    {
+      "q": "level",
+      "w": "level"
+    },
+    {
+      "q": "\"like\"",
+      "w": "like"
+    },
+    {
+      "q": "\"limit\"",
+      "w": "limit"
+    },
+    {
+      "q": "listen",
+      "w": "listen"
+    },
+    {
+      "q": "load",
+      "w": "load"
+    },
+    {
+      "q": "local",
+      "w": "local"
+    },
+    {
+      "q": "\"localtime\"",
+      "w": "localtime"
+    },
+    {
+      "q": "\"localtimestamp\"",
+      "w": "localtimestamp"
+    },
+    {
+      "q": "location",
+      "w": "location"
+    },
+    {
+      "q": "lock",
+      "w": "lock"
+    },
+    {
+      "q": "locked",
+      "w": "locked"
+    },
+    {
+      "q": "logged",
+      "w": "logged"
+    },
+    {
+      "q": "mapping",
+      "w": "mapping"
+    },
+    {
+      "q": "match",
+      "w": "match"
+    },
+    {
+      "q": "matched",
+      "w": "matched"
+    },
+    {
+      "q": "materialized",
+      "w": "materialized"
+    },
+    {
+      "q": "maxvalue",
+      "w": "maxvalue"
+    },
+    {
+      "q": "merge",
+      "w": "merge"
+    },
+    {
+      "q": "\"merge_action\"",
+      "w": "merge_action"
+    },
+    {
+      "q": "method",
+      "w": "method"
+    },
+    {
+      "q": "minute",
+      "w": "minute"
+    },
+    {
+      "q": "minvalue",
+      "w": "minvalue"
+    },
+    {
+      "q": "mode",
+      "w": "mode"
+    },
+    {
+      "q": "month",
+      "w": "month"
+    },
+    {
+      "q": "move",
+      "w": "move"
+    },
+    {
+      "q": "name",
+      "w": "name"
+    },
+    {
+      "q": "names",
+      "w": "names"
+    },
+    {
+      "q": "\"national\"",
+      "w": "national"
+    },
+    {
+      "q": "\"natural\"",
+      "w": "natural"
+    },
+    {
+      "q": "\"nchar\"",
+      "w": "nchar"
+    },
+    {
+      "q": "nested",
+      "w": "nested"
+    },
+    {
+      "q": "new",
+      "w": "new"
+    },
+    {
+      "q": "next",
+      "w": "next"
+    },
+    {
+      "q": "nfc",
+      "w": "nfc"
+    },
+    {
+      "q": "nfd",
+      "w": "nfd"
+    },
+    {
+      "q": "nfkc",
+      "w": "nfkc"
+    },
+    {
+      "q": "nfkd",
+      "w": "nfkd"
+    },
+    {
+      "q": "no",
+      "w": "no"
+    },
+    {
+      "q": "\"none\"",
+      "w": "none"
+    },
+    {
+      "q": "\"normalize\"",
+      "w": "normalize"
+    },
+    {
+      "q": "normalized",
+      "w": "normalized"
+    },
+    {
+      "q": "\"not\"",
+      "w": "not"
+    },
+    {
+      "q": "nothing",
+      "w": "nothing"
+    },
+    {
+      "q": "notify",
+      "w": "notify"
+    },
+    {
+      "q": "\"notnull\"",
+      "w": "notnull"
+    },
+    {
+      "q": "nowait",
+      "w": "nowait"
+    },
+    {
+      "q": "\"null\"",
+      "w": "null"
+    },
+    {
+      "q": "\"nullif\"",
+      "w": "nullif"
+    },
+    {
+      "q": "nulls",
+      "w": "nulls"
+    },
+    {
+      "q": "\"numeric\"",
+      "w": "numeric"
+    },
+    {
+      "q": "object",
+      "w": "object"
+    },
+    {
+      "q": "objects",
+      "w": "objects"
+    },
+    {
+      "q": "of",
+      "w": "of"
+    },
+    {
+      "q": "off",
+      "w": "off"
+    },
+    {
+      "q": "\"offset\"",
+      "w": "offset"
+    },
+    {
+      "q": "oids",
+      "w": "oids"
+    },
+    {
+      "q": "old",
+      "w": "old"
+    },
+    {
+      "q": "omit",
+      "w": "omit"
+    },
+    {
+      "q": "\"on\"",
+      "w": "on"
+    },
+    {
+      "q": "\"only\"",
+      "w": "only"
+    },
+    {
+      "q": "operator",
+      "w": "operator"
+    },
+    {
+      "q": "option",
+      "w": "option"
+    },
+    {
+      "q": "options",
+      "w": "options"
+    },
+    {
+      "q": "\"or\"",
+      "w": "or"
+    },
+    {
+      "q": "\"order\"",
+      "w": "order"
+    },
+    {
+      "q": "ordinality",
+      "w": "ordinality"
+    },
+    {
+      "q": "others",
+      "w": "others"
+    },
+    {
+      "q": "\"out\"",
+      "w": "out"
+    },
+    {
+      "q": "\"outer\"",
+      "w": "outer"
+    },
+    {
+      "q": "over",
+      "w": "over"
+    },
+    {
+      "q": "\"overlaps\"",
+      "w": "overlaps"
+    },
+    {
+      "q": "\"overlay\"",
+      "w": "overlay"
+    },
+    {
+      "q": "overriding",
+      "w": "overriding"
+    },
+    {
+      "q": "owned",
+      "w": "owned"
+    },
+    {
+      "q": "owner",
+      "w": "owner"
+    },
+    {
+      "q": "parallel",
+      "w": "parallel"
+    },
+    {
+      "q": "parameter",
+      "w": "parameter"
+    },
+    {
+      "q": "parser",
+      "w": "parser"
+    },
+    {
+      "q": "partial",
+      "w": "partial"
+    },
+    {
+      "q": "partition",
+      "w": "partition"
+    },
+    {
+      "q": "passing",
+      "w": "passing"
+    },
+    {
+      "q": "password",
+      "w": "password"
+    },
+    {
+      "q": "path",
+      "w": "path"
+    },
+    {
+      "q": "period",
+      "w": "period"
+    },
+    {
+      "q": "\"placing\"",
+      "w": "placing"
+    },
+    {
+      "q": "plan",
+      "w": "plan"
+    },
+    {
+      "q": "plans",
+      "w": "plans"
+    },
+    {
+      "q": "policy",
+      "w": "policy"
+    },
+    {
+      "q": "\"position\"",
+      "w": "position"
+    },
+    {
+      "q": "preceding",
+      "w": "preceding"
+    },
+    {
+      "q": "\"precision\"",
+      "w": "precision"
+    },
+    {
+      "q": "prepare",
+      "w": "prepare"
+    },
+    {
+      "q": "prepared",
+      "w": "prepared"
+    },
+    {
+      "q": "preserve",
+      "w": "preserve"
+    },
+    {
+      "q": "\"primary\"",
+      "w": "primary"
+    },
+    {
+      "q": "prior",
+      "w": "prior"
+    },
+    {
+      "q": "privileges",
+      "w": "privileges"
+    },
+    {
+      "q": "procedural",
+      "w": "procedural"
+    },
+    {
+      "q": "procedure",
+      "w": "procedure"
+    },
+    {
+      "q": "procedures",
+      "w": "procedures"
+    },
+    {
+      "q": "program",
+      "w": "program"
+    },
+    {
+      "q": "publication",
+      "w": "publication"
+    },
+    {
+      "q": "quote",
+      "w": "quote"
+    },
+    {
+      "q": "quotes",
+      "w": "quotes"
+    },
+    {
+      "q": "range",
+      "w": "range"
+    },
+    {
+      "q": "read",
+      "w": "read"
+    },
+    {
+      "q": "\"real\"",
+      "w": "real"
+    },
+    {
+      "q": "reassign",
+      "w": "reassign"
+    },
+    {
+      "q": "recursive",
+      "w": "recursive"
+    },
+    {
+      "q": "ref",
+      "w": "ref"
+    },
+    {
+      "q": "\"references\"",
+      "w": "references"
+    },
+    {
+      "q": "referencing",
+      "w": "referencing"
+    },
+    {
+      "q": "refresh",
+      "w": "refresh"
+    },
+    {
+      "q": "reindex",
+      "w": "reindex"
+    },
+    {
+      "q": "relative",
+      "w": "relative"
+    },
+    {
+      "q": "release",
+      "w": "release"
+    },
+    {
+      "q": "rename",
+      "w": "rename"
+    },
+    {
+      "q": "repeatable",
+      "w": "repeatable"
+    },
+    {
+      "q": "replace",
+      "w": "replace"
+    },
+    {
+      "q": "replica",
+      "w": "replica"
+    },
+    {
+      "q": "reset",
+      "w": "reset"
+    },
+    {
+      "q": "restart",
+      "w": "restart"
+    },
+    {
+      "q": "restrict",
+      "w": "restrict"
+    },
+    {
+      "q": "return",
+      "w": "return"
+    },
+    {
+      "q": "\"returning\"",
+      "w": "returning"
+    },
+    {
+      "q": "returns",
+      "w": "returns"
+    },
+    {
+      "q": "revoke",
+      "w": "revoke"
+    },
+    {
+      "q": "\"right\"",
+      "w": "right"
+    },
+    {
+      "q": "role",
+      "w": "role"
+    },
+    {
+      "q": "rollback",
+      "w": "rollback"
+    },
+    {
+      "q": "rollup",
+      "w": "rollup"
+    },
+    {
+      "q": "routine",
+      "w": "routine"
+    },
+    {
+      "q": "routines",
+      "w": "routines"
+    },
+    {
+      "q": "\"row\"",
+      "w": "row"
+    },
+    {
+      "q": "rows",
+      "w": "rows"
+    },
+    {
+      "q": "rule",
+      "w": "rule"
+    },
+    {
+      "q": "savepoint",
+      "w": "savepoint"
+    },
+    {
+      "q": "scalar",
+      "w": "scalar"
+    },
+    {
+      "q": "schema",
+      "w": "schema"
+    },
+    {
+      "q": "schemas",
+      "w": "schemas"
+    },
+    {
+      "q": "scroll",
+      "w": "scroll"
+    },
+    {
+      "q": "search",
+      "w": "search"
+    },
+    {
+      "q": "second",
+      "w": "second"
+    },
+    {
+      "q": "security",
+      "w": "security"
+    },
+    {
+      "q": "\"select\"",
+      "w": "select"
+    },
+    {
+      "q": "sequence",
+      "w": "sequence"
+    },
+    {
+      "q": "sequences",
+      "w": "sequences"
+    },
+    {
+      "q": "serializable",
+      "w": "serializable"
+    },
+    {
+      "q": "server",
+      "w": "server"
+    },
+    {
+      "q": "session",
+      "w": "session"
+    },
+    {
+      "q": "\"session_user\"",
+      "w": "session_user"
+    },
+    {
+      "q": "set",
+      "w": "set"
+    },
+    {
+      "q": "\"setof\"",
+      "w": "setof"
+    },
+    {
+      "q": "sets",
+      "w": "sets"
+    },
+    {
+      "q": "share",
+      "w": "share"
+    },
+    {
+      "q": "show",
+      "w": "show"
+    },
+    {
+      "q": "\"similar\"",
+      "w": "similar"
+    },
+    {
+      "q": "simple",
+      "w": "simple"
+    },
+    {
+      "q": "skip",
+      "w": "skip"
+    },
+    {
+      "q": "\"smallint\"",
+      "w": "smallint"
+    },
+    {
+      "q": "snapshot",
+      "w": "snapshot"
+    },
+    {
+      "q": "\"some\"",
+      "w": "some"
+    },
+    {
+      "q": "source",
+      "w": "source"
+    },
+    {
+      "q": "sql",
+      "w": "sql"
+    },
+    {
+      "q": "stable",
+      "w": "stable"
+    },
+    {
+      "q": "standalone",
+      "w": "standalone"
+    },
+    {
+      "q": "start",
+      "w": "start"
+    },
+    {
+      "q": "statement",
+      "w": "statement"
+    },
+    {
+      "q": "statistics",
+      "w": "statistics"
+    },
+    {
+      "q": "stdin",
+      "w": "stdin"
+    },
+    {
+      "q": "stdout",
+      "w": "stdout"
+    },
+    {
+      "q": "storage",
+      "w": "storage"
+    },
+    {
+      "q": "stored",
+      "w": "stored"
+    },
+    {
+      "q": "strict",
+      "w": "strict"
+    },
+    {
+      "q": "string",
+      "w": "string"
+    },
+    {
+      "q": "strip",
+      "w": "strip"
+    },
+    {
+      "q": "subscription",
+      "w": "subscription"
+    },
+    {
+      "q": "\"substring\"",
+      "w": "substring"
+    },
+    {
+      "q": "support",
+      "w": "support"
+    },
+    {
+      "q": "\"symmetric\"",
+      "w": "symmetric"
+    },
+    {
+      "q": "sysid",
+      "w": "sysid"
+    },
+    {
+      "q": "system",
+      "w": "system"
+    },
+    {
+      "q": "\"system_user\"",
+      "w": "system_user"
+    },
+    {
+      "q": "\"table\"",
+      "w": "table"
+    },
+    {
+      "q": "tables",
+      "w": "tables"
+    },
+    {
+      "q": "\"tablesample\"",
+      "w": "tablesample"
+    },
+    {
+      "q": "tablespace",
+      "w": "tablespace"
+    },
+    {
+      "q": "target",
+      "w": "target"
+    },
+    {
+      "q": "temp",
+      "w": "temp"
+    },
+    {
+      "q": "template",
+      "w": "template"
+    },
+    {
+      "q": "temporary",
+      "w": "temporary"
+    },
+    {
+      "q": "text",
+      "w": "text"
+    },
+    {
+      "q": "\"then\"",
+      "w": "then"
+    },
+    {
+      "q": "ties",
+      "w": "ties"
+    },
+    {
+      "q": "\"time\"",
+      "w": "time"
+    },
+    {
+      "q": "\"timestamp\"",
+      "w": "timestamp"
+    },
+    {
+      "q": "\"to\"",
+      "w": "to"
+    },
+    {
+      "q": "\"trailing\"",
+      "w": "trailing"
+    },
+    {
+      "q": "transaction",
+      "w": "transaction"
+    },
+    {
+      "q": "transform",
+      "w": "transform"
+    },
+    {
+      "q": "\"treat\"",
+      "w": "treat"
+    },
+    {
+      "q": "trigger",
+      "w": "trigger"
+    },
+    {
+      "q": "\"trim\"",
+      "w": "trim"
+    },
+    {
+      "q": "\"true\"",
+      "w": "true"
+    },
+    {
+      "q": "truncate",
+      "w": "truncate"
+    },
+    {
+      "q": "trusted",
+      "w": "trusted"
+    },
+    {
+      "q": "type",
+      "w": "type"
+    },
+    {
+      "q": "types",
+      "w": "types"
+    },
+    {
+      "q": "uescape",
+      "w": "uescape"
+    },
+    {
+      "q": "unbounded",
+      "w": "unbounded"
+    },
+    {
+      "q": "uncommitted",
+      "w": "uncommitted"
+    },
+    {
+      "q": "unconditional",
+      "w": "unconditional"
+    },
+    {
+      "q": "unencrypted",
+      "w": "unencrypted"
+    },
+    {
+      "q": "\"union\"",
+      "w": "union"
+    },
+    {
+      "q": "\"unique\"",
+      "w": "unique"
+    },
+    {
+      "q": "unknown",
+      "w": "unknown"
+    },
+    {
+      "q": "unlisten",
+      "w": "unlisten"
+    },
+    {
+      "q": "unlogged",
+      "w": "unlogged"
+    },
+    {
+      "q": "until",
+      "w": "until"
+    },
+    {
+      "q": "update",
+      "w": "update"
+    },
+    {
+      "q": "\"user\"",
+      "w": "user"
+    },
+    {
+      "q": "\"using\"",
+      "w": "using"
+    },
+    {
+      "q": "vacuum",
+      "w": "vacuum"
+    },
+    {
+      "q": "valid",
+      "w": "valid"
+    },
+    {
+      "q": "validate",
+      "w": "validate"
+    },
+    {
+      "q": "validator",
+      "w": "validator"
+    },
+    {
+      "q": "value",
+      "w": "value"
+    },
+    {
+      "q": "\"values\"",
+      "w": "values"
+    },
+    {
+      "q": "\"varchar\"",
+      "w": "varchar"
+    },
+    {
+      "q": "\"variadic\"",
+      "w": "variadic"
+    },
+    {
+      "q": "varying",
+      "w": "varying"
+    },
+    {
+      "q": "\"verbose\"",
+      "w": "verbose"
+    },
+    {
+      "q": "version",
+      "w": "version"
+    },
+    {
+      "q": "view",
+      "w": "view"
+    },
+    {
+      "q": "views",
+      "w": "views"
+    },
+    {
+      "q": "virtual",
+      "w": "virtual"
+    },
+    {
+      "q": "volatile",
+      "w": "volatile"
+    },
+    {
+      "q": "\"when\"",
+      "w": "when"
+    },
+    {
+      "q": "\"where\"",
+      "w": "where"
+    },
+    {
+      "q": "whitespace",
+      "w": "whitespace"
+    },
+    {
+      "q": "\"window\"",
+      "w": "window"
+    },
+    {
+      "q": "\"with\"",
+      "w": "with"
+    },
+    {
+      "q": "within",
+      "w": "within"
+    },
+    {
+      "q": "without",
+      "w": "without"
+    },
+    {
+      "q": "work",
+      "w": "work"
+    },
+    {
+      "q": "wrapper",
+      "w": "wrapper"
+    },
+    {
+      "q": "write",
+      "w": "write"
+    },
+    {
+      "q": "xml",
+      "w": "xml"
+    },
+    {
+      "q": "\"xmlattributes\"",
+      "w": "xmlattributes"
+    },
+    {
+      "q": "\"xmlconcat\"",
+      "w": "xmlconcat"
+    },
+    {
+      "q": "\"xmlelement\"",
+      "w": "xmlelement"
+    },
+    {
+      "q": "\"xmlexists\"",
+      "w": "xmlexists"
+    },
+    {
+      "q": "\"xmlforest\"",
+      "w": "xmlforest"
+    },
+    {
+      "q": "\"xmlnamespaces\"",
+      "w": "xmlnamespaces"
+    },
+    {
+      "q": "\"xmlparse\"",
+      "w": "xmlparse"
+    },
+    {
+      "q": "\"xmlpi\"",
+      "w": "xmlpi"
+    },
+    {
+      "q": "\"xmlroot\"",
+      "w": "xmlroot"
+    },
+    {
+      "q": "\"xmlserialize\"",
+      "w": "xmlserialize"
+    },
+    {
+      "q": "\"xmltable\"",
+      "w": "xmltable"
+    },
+    {
+      "q": "year",
+      "w": "year"
+    },
+    {
+      "q": "yes",
+      "w": "yes"
+    },
+    {
+      "q": "zone",
+      "w": "zone"
+    }
+  ],
+  "rowCount": 494
+}

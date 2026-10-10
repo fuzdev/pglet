@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "by_agg": "2",
+      "by_col": 7,
+      "by_dropped": 7,
+      "y": 1
+    },
+    {
+      "by_agg": "2",
+      "by_col": 7,
+      "by_dropped": 7,
+      "y": 2
+    }
+  ],
+  "rowCount": 2
+}

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "22023",
+    "message": "step size cannot equal zero"
+  }
+}

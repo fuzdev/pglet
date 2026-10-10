@@ -1,0 +1,41 @@
+{
+  "rows": [
+    {
+      "column_default": "CURRENT_USER",
+      "column_name": "a"
+    },
+    {
+      "column_default": "SESSION_USER",
+      "column_name": "b"
+    },
+    {
+      "column_default": "USER",
+      "column_name": "c"
+    },
+    {
+      "column_default": "CURRENT_ROLE",
+      "column_name": "d"
+    },
+    {
+      "column_default": "CURRENT_CATALOG",
+      "column_name": "e"
+    },
+    {
+      "column_default": "CURRENT_SCHEMA",
+      "column_name": "f"
+    },
+    {
+      "column_default": "\"current_schema\"()",
+      "column_name": "g"
+    },
+    {
+      "column_default": "current_database()",
+      "column_name": "h"
+    },
+    {
+      "column_default": "version()",
+      "column_name": "i"
+    }
+  ],
+  "rowCount": 9
+}

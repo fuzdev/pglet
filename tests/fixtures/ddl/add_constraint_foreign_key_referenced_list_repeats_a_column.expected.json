@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42830",
+    "message": "foreign key referenced-columns list must not contain duplicates"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "derived_qualified": "5000030000",
+      "derived_same_width": 120000,
+      "derived_unqualified": "5000030000",
+      "derived_wide_plus_lit": "5000000000"
+    }
+  ],
+  "rowCount": 1
+}

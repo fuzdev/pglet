@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P19",
+    "message": "recursive reference to query \"r\" must not appear within a subquery"
+  }
+}

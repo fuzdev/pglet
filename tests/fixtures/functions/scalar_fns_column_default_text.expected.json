@@ -1,0 +1,33 @@
+{
+  "rows": [
+    {
+      "column_default": "\"left\"('abcdef'::text, 2)",
+      "column_name": "l"
+    },
+    {
+      "column_default": "\"right\"('abcdef'::text, 2)",
+      "column_name": "r"
+    },
+    {
+      "column_default": "substr('abcdef'::text, 2)",
+      "column_name": "s"
+    },
+    {
+      "column_default": "octet_length('abc'::text)",
+      "column_name": "o"
+    },
+    {
+      "column_default": "md5('a'::text)",
+      "column_name": "m"
+    },
+    {
+      "column_default": "mod(7, 3)",
+      "column_name": "md"
+    },
+    {
+      "column_default": "random()",
+      "column_name": "rn"
+    }
+  ],
+  "rowCount": 7
+}

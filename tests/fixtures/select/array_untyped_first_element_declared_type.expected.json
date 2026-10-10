@@ -1,0 +1,19 @@
+{
+  "rows": [
+    {
+      "literal_second": [
+        null,
+        1
+      ],
+      "typed_first": [
+        2,
+        null
+      ],
+      "untyped_first": [
+        null,
+        2
+      ]
+    }
+  ],
+  "rowCount": 1
+}

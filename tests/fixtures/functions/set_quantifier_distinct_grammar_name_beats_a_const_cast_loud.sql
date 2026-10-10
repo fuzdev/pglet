@@ -1,0 +1,12 @@
+-- The transform's upper bound, and the reason `grammar_only_name` stays above it: 18.6
+-- refuses a quantifier on a `func_expr_common_subexpr` name in **bison**, before any
+-- argument is transformed, so this is a syntax error there and not the 22P02 its
+-- unquantified twin `SELECT coalesce('a'::int, 1)` gets — measured, both engines, and
+-- that pair is what identifies which gate decides. This fixture is a position guard, not
+-- a regression pin: it is green on the build that had the transform inside the sequence
+-- arm, and the mutation it catches — the only one of six in this set's sweep that
+-- reddens it alone — is the transform hoisted above the grammar-name refusal.
+-- 42601 on both.
+-- @test
+-- @expect-error: syntax error at or near "DISTINCT"
+SELECT coalesce(DISTINCT 'a'::int, 1);

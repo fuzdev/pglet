@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "id": 2,
+      "probe": "nan"
+    },
+    {
+      "id": 4,
+      "probe": "negzero"
+    },
+    {
+      "id": 1,
+      "probe": "tenth"
+    }
+  ],
+  "rowCount": 3
+}

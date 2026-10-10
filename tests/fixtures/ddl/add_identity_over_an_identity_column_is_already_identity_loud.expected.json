@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "55000",
+    "message": "column \"c\" of relation \"aid\" is already an identity column"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "array_not_in_scalar": false,
+      "array_subset": true,
+      "from_column": "1",
+      "nested_array": true,
+      "not_contained": false,
+      "raw_scalar": true
+    }
+  ],
+  "rowCount": 1
+}

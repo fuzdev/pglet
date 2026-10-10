@@ -1,0 +1,19 @@
+[package]
+name = "xtask"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+# `flock`-backed run lock for `cargo xtask gates`, so two gate runs cannot
+# corrupt each other's spawned servers and scratch schema. Released by the
+# kernel on process exit (SIGKILL included), so a killed run leaves no stale
+# lock. The workspace's one lock rule — `pglet_server` takes the same one for
+# the `--data-dir` guard.
+pglet_core = { workspace = true, features = ["file_lock"] }
+
+[lints]
+workspace = true

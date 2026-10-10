@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>pglet Persistence Demo</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 { color: #333; margin-bottom: 5px; }
+        h2 { margin-top: 0; margin-bottom: 15px; color: #444; }
+        h3 { margin: 0 0 10px 0; font-size: 13px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+        .subtitle { color: #666; margin-bottom: 20px; }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .sql-editor {
+            width: 100%;
+            min-height: 100px;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+            line-height: 1.4;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        button.secondary { background: #6c757d; }
+        button.secondary:hover { background: #545b62; }
+        button.danger { background: #dc3545; }
+        button.danger:hover { background: #c82333; }
+        button.success { background: #28a745; }
+        button.success:hover { background: #218838; }
+        button.step {
+            background: #17a2b8;
+            min-width: 140px;
+        }
+        button.step:hover { background: #138496; }
+        button.step.done {
+            background: #28a745;
+        }
+        .output {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            min-height: 80px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .output table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        .output th, .output td {
+            padding: 6px 10px;
+            text-align: left;
+            border: 1px solid #444;
+        }
+        .output th { background: #2d2d2d; color: #9cdcfe; }
+        .output td { color: #ce9178; }
+        .output .success { color: #4ec9b0; }
+        .output .error { color: #f14c4c; }
+        .output .info { color: #808080; }
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 12px 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 13px;
+        }
+        .status-bar.ready { background: #d4edda; color: #155724; }
+        .status-bar.loading { background: #fff3cd; color: #856404; }
+        .status-bar.error { background: #f8d7da; color: #721c24; }
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 15px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #333;
+            line-height: 1;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .step-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .step-buttons button {
+            position: relative;
+        }
+        .step-num {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 50%;
+            line-height: 20px;
+            text-align: center;
+            font-size: 11px;
+            margin-right: 6px;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .note {
+            background: #e7f3ff;
+            border: 1px solid #b6d4fe;
+            border-radius: 4px;
+            padding: 12px;
+            font-size: 13px;
+            color: #084298;
+        }
+        .note a { color: #084298; }
+        .refresh-hint {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 4px;
+            padding: 12px;
+            margin: 15px 0;
+            font-size: 13px;
+            color: #856404;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .refresh-hint strong { white-space: nowrap; }
+        .tables-summary {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>pglet Persistence Demo</h1>
+    <p class="subtitle">Data persists across page refreshes using OPFS (Origin Private File System).</p>
+
+    <div class="status-bar loading" id="statusBar">
+        <span class="status-indicator"></span>
+        <span id="statusText">Initializing Web Worker...</span>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value" id="visitCount">-</div>
+            <div class="stat-label">Page Visits</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="tableCount">-</div>
+            <div class="stat-label">Tables</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="rowCount">-</div>
+            <div class="stat-label">Total Rows</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="storageSize">-</div>
+            <div class="stat-label">Storage</div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>Test Persistence</h2>
+        <p style="margin-top: 0; color: #666; font-size: 13px;">Follow these steps to verify data survives page refresh:</p>
+
+        <div class="step-buttons">
+            <button onclick="runStep(1)" id="step1" class="step" disabled>
+                <span class="step-num">1</span>Create Table
+            </button>
+            <button onclick="runStep(2)" id="step2" class="step" disabled>
+                <span class="step-num">2</span>Insert Data
+            </button>
+            <button onclick="runStep(3)" id="step3" class="step" disabled>
+                <span class="step-num">3</span>View Data
+            </button>
+            <button onclick="runStep(4)" id="step4" class="step" disabled>
+                <span class="step-num">4</span>Sync to Disk
+            </button>
+        </div>
+
+        <div class="refresh-hint">
+            <strong>Now refresh the page (F5)</strong>
+            <span>After refresh, click "View Data" to verify your data persisted!</span>
+        </div>
+
+        <div class="action-buttons">
+            <button onclick="clearDB()" id="clearBtn" class="danger" disabled>Clear All Data</button>
+            <button onclick="refreshStats()" id="refreshBtn" class="secondary" disabled>Refresh Stats</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>SQL Editor</h2>
+        <textarea class="sql-editor" id="sqlInput" placeholder="Enter custom SQL here...">SELECT * FROM demo_users ORDER BY id;</textarea>
+        <div class="action-buttons">
+            <button onclick="runSQL()" id="runBtn" class="success" disabled>Execute SQL</button>
+        </div>
+        <div class="tables-summary" id="tablesSummary" style="display: none;"></div>
+    </div>
+
+    <div class="container">
+        <h2>Output</h2>
+        <div class="output" id="output"><span class="info">Waiting for worker to initialize...</span></div>
+    </div>
+
+    <div class="note">
+        <strong>How it works:</strong> pglet uses OPFS (Origin Private File System) via a Web Worker
+        to persist data. OPFS provides a high-performance, sandboxed file system for web apps.
+        <a href="index.html">Back to in-memory demo</a>
+    </div>
+
+    <script type="module">
+        let worker = null;
+        let msgId = 0;
+        const pending = new Map();
+
+        function sendMessage(type, payload = {}) {
+            return new Promise((resolve, reject) => {
+                const id = ++msgId;
+                pending.set(id, { resolve, reject });
+                worker.postMessage({ id, type, ...payload });
+            });
+        }
+
+        function updateStatus(text, className) {
+            const bar = document.getElementById('statusBar');
+            const statusText = document.getElementById('statusText');
+            statusText.textContent = text;
+            bar.className = 'status-bar ' + className;
+        }
+
+        function enableButtons() {
+            document.getElementById('step1').disabled = false;
+            document.getElementById('step2').disabled = false;
+            document.getElementById('step3').disabled = false;
+            document.getElementById('step4').disabled = false;
+            document.getElementById('clearBtn').disabled = false;
+            document.getElementById('refreshBtn').disabled = false;
+            document.getElementById('runBtn').disabled = false;
+        }
+
+        function formatResult(result) {
+            if (!result || !result.rows || result.rows.length === 0) {
+                const rowCount = result?.rowCount || 0;
+                return `<div class="success">OK${rowCount > 0 ? ` (${rowCount} row${rowCount !== 1 ? 's' : ''} affected)` : ''}</div>`;
+            }
+
+            const fields = result.fields || [];
+            const rows = result.rows || [];
+
+            let html = '<table><tr>';
+            for (const field of fields) {
+                html += `<th>${field.name}</th>`;
+            }
+            html += '</tr>';
+
+            for (const row of rows) {
+                html += '<tr>';
+                for (const field of fields) {
+                    const value = row[field.name];
+                    html += `<td>${value !== null && value !== undefined ? value : '<span style="color:#666">NULL</span>'}</td>`;
+                }
+                html += '</tr>';
+            }
+            html += '</table>';
+            html += `<div class="info">${rows.length} row${rows.length !== 1 ? 's' : ''}</div>`;
+            return html;
+        }
+
+        function escapeHtml(str) {
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        // Step SQL statements
+        const steps = {
+            1: {
+                sql: `CREATE TABLE IF NOT EXISTS demo_users (
+    id INT,
+    name TEXT,
+    created_at TIMESTAMP
+)`,
+                desc: 'Creating demo_users table...'
+            },
+            2: {
+                sql: `INSERT INTO demo_users VALUES
+    (1, 'Alice', '2024-01-15 09:00:00'),
+    (2, 'Bob', '2024-02-20 14:30:00'),
+    (3, 'Carol', '2024-03-10 11:15:00')`,
+                desc: 'Inserting sample data...'
+            },
+            3: {
+                sql: 'SELECT * FROM demo_users ORDER BY id',
+                desc: 'Fetching all users...'
+            },
+            4: {
+                sync: true,
+                desc: 'Syncing to disk...'
+            }
+        };
+
+        window.runStep = async function(stepNum) {
+            const output = document.getElementById('output');
+            const step = steps[stepNum];
+            const btn = document.getElementById('step' + stepNum);
+
+            output.innerHTML = `<span class="info">${step.desc}</span>`;
+
+            try {
+                if (step.sync) {
+                    const response = await sendMessage('sync');
+                    if (response.error) {
+                        output.innerHTML = `<span class="error">Sync failed: ${escapeHtml(response.error)}</span>`;
+                    } else {
+                        output.innerHTML = '<span class="success">Data synced to OPFS! You can now refresh the page.</span>';
+                        btn.classList.add('done');
+                    }
+                } else {
+                    const response = await sendMessage('exec', { sql: step.sql });
+                    if (response.error) {
+                        output.innerHTML = `<span class="error">Error: ${escapeHtml(response.error)}</span>`;
+                    } else {
+                        output.innerHTML = formatResult(response.result);
+                        btn.classList.add('done');
+                    }
+                }
+                await refreshStats();
+            } catch (e) {
+                output.innerHTML = `<span class="error">Error: ${escapeHtml(e)}</span>`;
+            }
+        };
+
+        window.runSQL = async function() {
+            const sql = document.getElementById('sqlInput').value.trim();
+            const output = document.getElementById('output');
+
+            if (!sql) {
+                output.innerHTML = '<span class="error">Please enter SQL</span>';
+                return;
+            }
+
+            output.innerHTML = '<span class="info">Executing...</span>';
+
+            try {
+                const statements = sql.split(';').map(s => s.trim()).filter(s => s);
+                let html = '';
+
+                for (const stmt of statements) {
+                    const response = await sendMessage('exec', { sql: stmt });
+                    if (response.error) {
+                        html += `<div class="error">Error: ${escapeHtml(response.error)}</div>`;
+                    } else {
+                        html += `<div style="margin-bottom: 10px;">`;
+                        html += `<div style="color: #569cd6; font-size: 12px; margin-bottom: 5px;">${escapeHtml(stmt.substring(0, 60))}${stmt.length > 60 ? '...' : ''}</div>`;
+                        html += formatResult(response.result);
+                        html += `</div>`;
+                    }
+                }
+
+                output.innerHTML = html;
+                await refreshStats();
+            } catch (e) {
+                output.innerHTML = `<span class="error">Error: ${escapeHtml(e)}</span>`;
+            }
+        };
+
+        window.clearDB = async function() {
+            if (!confirm('This will delete ALL data including the visit counter. Are you sure?')) return;
+
+            const output = document.getElementById('output');
+            try {
+                const response = await sendMessage('clear');
+                if (response.error) {
+                    output.innerHTML = `<span class="error">Clear failed: ${escapeHtml(response.error)}</span>`;
+                } else {
+                    output.innerHTML = '<span class="success">All data cleared!</span>';
+                    // Reset step button states
+                    for (let i = 1; i <= 4; i++) {
+                        document.getElementById('step' + i).classList.remove('done');
+                    }
+                    await refreshStats();
+                }
+            } catch (e) {
+                output.innerHTML = `<span class="error">Error: ${escapeHtml(e)}</span>`;
+            }
+        };
+
+        window.refreshStats = async function() {
+            try {
+                const response = await sendMessage('stats');
+                if (response.error) {
+                    console.error('Stats error:', response.error);
+                    return;
+                }
+
+                const stats = response.stats;
+                document.getElementById('visitCount').textContent = stats.visitCount;
+                document.getElementById('tableCount').textContent = stats.tableCount;
+                document.getElementById('rowCount').textContent = stats.totalRows;
+                document.getElementById('storageSize').textContent = formatBytes(stats.storageBytes);
+
+                // Update tables summary
+                const summary = document.getElementById('tablesSummary');
+                if (stats.tables && stats.tables.length > 0) {
+                    summary.textContent = 'Tables: ' + stats.tables.map(t => `${t.name} (${t.rows} rows)`).join(', ');
+                    summary.style.display = 'block';
+                } else {
+                    summary.textContent = 'No tables yet. Click "Create Table" to get started.';
+                    summary.style.display = 'block';
+                }
+            } catch (e) {
+                console.error('Failed to refresh stats:', e);
+            }
+        };
+
+        function formatBytes(bytes) {
+            if (bytes === 0 || bytes === undefined) return '0 B';
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        async function init() {
+            try {
+                worker = new Worker('./worker.js', { type: 'module' });
+
+                worker.onmessage = (e) => {
+                    const { id, ...response } = e.data;
+                    const p = pending.get(id);
+                    if (p) {
+                        pending.delete(id);
+                        p.resolve(response);
+                    }
+                };
+
+                worker.onerror = (e) => {
+                    console.error('Worker error:', e);
+                    updateStatus('Worker Error: ' + e.message, 'error');
+                };
+
+                const response = await sendMessage('init');
+
+                if (response.success) {
+                    updateStatus('Connected to OPFS', 'ready');
+                    enableButtons();
+                    document.getElementById('output').innerHTML = '<span class="info">Ready! Follow the steps above to test persistence.</span>';
+
+                    // Increment and fetch visit count
+                    await sendMessage('incrementVisit');
+                    await refreshStats();
+                } else {
+                    updateStatus('Failed: ' + response.error, 'error');
+                    document.getElementById('output').innerHTML = `<span class="error">${escapeHtml(response.error)}</span>`;
+                }
+            } catch (e) {
+                updateStatus('Worker failed: ' + e, 'error');
+                document.getElementById('output').innerHTML = `<span class="error">${escapeHtml(e)}</span>`;
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

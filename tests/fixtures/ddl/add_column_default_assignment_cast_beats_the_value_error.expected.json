@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42804",
+    "message": "column \"c\" is of type integer but default expression is of type text"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "rows": [
+    {
+      "id": 1,
+      "multi": "b",
+      "p2": "b",
+      "pempty": "a,b,c",
+      "plast": "c",
+      "poor": ""
+    },
+    {
+      "id": 2,
+      "multi": "b",
+      "p2": "",
+      "pempty": "a~@~b~@~c",
+      "plast": "a~@~b~@~c",
+      "poor": ""
+    },
+    {
+      "id": 3,
+      "multi": "b",
+      "p2": null,
+      "pempty": null,
+      "plast": null,
+      "poor": null
+    }
+  ],
+  "rowCount": 3
+}

@@ -1,0 +1,37 @@
+{
+  "rows": [
+    {
+      "avg_mod": "0.50000000000000000000",
+      "avg_pow": 12.5,
+      "g": 1,
+      "max_left": "h",
+      "max_sub": {
+        "data": [
+          1
+        ],
+        "type": "Buffer"
+      },
+      "ravg_ol": "4",
+      "sum_mod": "1",
+      "sum_nmod": "2.0",
+      "sum_ol": "2"
+    },
+    {
+      "avg_mod": "1.00000000000000000000",
+      "avg_pow": 25.0,
+      "g": 2,
+      "max_left": "x",
+      "max_sub": {
+        "data": [
+          1
+        ],
+        "type": "Buffer"
+      },
+      "ravg_ol": "3",
+      "sum_mod": "1",
+      "sum_nmod": "0",
+      "sum_ol": "1"
+    }
+  ],
+  "rowCount": 2
+}

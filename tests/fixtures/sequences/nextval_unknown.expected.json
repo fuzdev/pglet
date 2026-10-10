@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P01",
+    "message": "relation \"seq_does_not_exist\" does not exist"
+  }
+}

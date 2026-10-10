@@ -1,0 +1,25 @@
+{
+  "rows": [
+    {
+      "bare": 7,
+      "cnt": "2",
+      "dist": 7,
+      "don": "2",
+      "join_proj": 7,
+      "ungrouped": 5,
+      "where_clause": "1",
+      "y": 1
+    },
+    {
+      "bare": 7,
+      "cnt": "2",
+      "dist": 7,
+      "don": "2",
+      "join_proj": 7,
+      "ungrouped": 5,
+      "where_clause": "1",
+      "y": 2
+    }
+  ],
+  "rowCount": 2
+}

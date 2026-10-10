@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P17",
+    "message": "functions in index predicate must be marked IMMUTABLE"
+  }
+}

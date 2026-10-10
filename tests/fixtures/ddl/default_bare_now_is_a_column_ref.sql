@@ -1,0 +1,23 @@
+-- An ordinary function's parens are **required**. A bare `now` is not the function
+-- at all — it is an ordinary column reference, and a column `DEFAULT` refuses one
+-- unconditionally (`transformColumnRef`, before the name is even resolved), so 18.6
+-- answers `0A000 cannot use column reference in DEFAULT expression`. Measured, and
+-- identically for bare `clock_timestamp`, `statement_timestamp`,
+-- `transaction_timestamp`, `gen_random_uuid` and `uuid_generate_v4`, which
+-- `crates/pglet/tests/column_default_verdicts.rs` covers (a fixture compares SQLSTATE only, and
+-- all six answer the same one).
+--
+-- pglet's token-level classifier used to consume the bare identifier as if it were
+-- the call, **silently** defining the column with a real timestamp default where
+-- 18.6 refuses the statement outright — and disagreeing with pglet's own
+-- `DEFAULT (now)`, which takes the general expression path and already answered the
+-- column-reference verdict. The classifier's arms for the six real `pg_proc` names
+-- are gated on a following `(` now, so the bare spelling falls through to that same
+-- path. The accepting side is covered elsewhere (`insert/cluster_default_now.sql`,
+-- `insert/cluster_default_uuid.sql`, `ddl/default_parenthesized_now_is_a_timestamp.sql`).
+--
+-- `CURRENT_TIMESTAMP` / `CURRENT_DATE` / `CURRENT_TIME` are deliberately not part of
+-- this: they are parenless SQL value functions, legal bare on both engines.
+-- @expect-error: a bare function name is a column reference, not a call (0A000)
+-- @test
+CREATE TABLE dbn (a INT, b TIMESTAMPTZ DEFAULT now);

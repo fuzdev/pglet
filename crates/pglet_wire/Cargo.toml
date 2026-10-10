@@ -1,0 +1,17 @@
+[package]
+name = "pglet_wire"
+description = "Postgres wire protocol codec for pglet"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+pglet_core = { workspace = true }
+thiserror = { workspace = true }
+getrandom = { workspace = true }
+
+[lints]
+workspace = true

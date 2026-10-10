@@ -1,0 +1,8 @@
+{
+  "rows": [
+    {
+      "d": "('q'::text)::mood"
+    }
+  ],
+  "rowCount": 1
+}

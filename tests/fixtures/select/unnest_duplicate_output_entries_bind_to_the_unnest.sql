@@ -1,0 +1,27 @@
+-- Two target-list entries under one output name, over a FROM-clause `unnest(…)`, with a
+-- bare `ORDER BY` key naming them. 18.6 answers; pglet was `42702`.
+--
+-- `findTargetlistEntrySQL92` raises `42702` for two matching entries only when they are
+-- **not** `equal()` — its own worked example is *"we allow SELECT a, a FROM table ORDER BY
+-- a but not SELECT a AS b, b FROM table ORDER BY b"* — so `u.x` and a bare `x` are one
+-- column written twice and the key resolves. pglet compares the entries structurally,
+-- after binding a bare column reference to the relation carrying it, and that binding is
+-- `ColumnScope::sole_relation_carrying` — which **declines outright on an uncertain
+-- level**. A FROM-clause `unnest(…)` made its level uncertain, so the bare `x` stayed
+-- unbound, the two entries were two distinct expressions, and an ordinary query was
+-- refused.
+--
+-- This is the one reader of `ScopeRelation::exhaustive` whose move the reject fixtures in
+-- this family cannot show: it is not `check_binding` and it does not answer a `Binding`
+-- at all. It changes what `output_name_binding` *counts*.
+--
+-- The array is **empty** because the divergence is confined to the plan-time comparison:
+-- with elements the eval-time resolver flags the name collision on the row it is handed
+-- and answers `42702` here regardless — measured, `SELECT u.x AS q, x AS q FROM
+-- unnest(ARRAY[1,2]) u(x) ORDER BY q` is still `42702` here against 18.6's four values,
+-- an open divergence this fixture does not claim to close.
+--
+-- Its `GROUP BY q` spelling is likewise still `42702` here, from a different resolver
+-- that does not read this binding.
+-- @test
+SELECT u.x AS q, x AS q FROM unnest(ARRAY[]::int[]) AS u(x) ORDER BY q;

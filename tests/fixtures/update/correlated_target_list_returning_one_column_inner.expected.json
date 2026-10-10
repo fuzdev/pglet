@@ -1,0 +1,15 @@
+{
+  "rows": [
+    {
+      "bare": "sa",
+      "id": 1,
+      "qualified": "sa"
+    },
+    {
+      "bare": "sb",
+      "id": 2,
+      "qualified": "sb"
+    }
+  ],
+  "rowCount": 2
+}

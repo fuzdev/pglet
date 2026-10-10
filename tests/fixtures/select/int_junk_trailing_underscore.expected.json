@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42601",
+    "message": "trailing junk after numeric literal at or near \"1000_\""
+  }
+}

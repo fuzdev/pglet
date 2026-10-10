@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "indexdef": "CREATE INDEX ciu9_b_idx ON public.ciu9 USING btree (b) WHERE (a > 0)",
+      "indexname": "ciu9_b_idx"
+    },
+    {
+      "indexdef": "CREATE INDEX ciu9_b_idx1 ON public.ciu9 USING btree (b) WHERE (a < 0)",
+      "indexname": "ciu9_b_idx1"
+    }
+  ],
+  "rowCount": 2
+}

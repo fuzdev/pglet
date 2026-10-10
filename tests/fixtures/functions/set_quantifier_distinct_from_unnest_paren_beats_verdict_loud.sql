@@ -1,0 +1,18 @@
+-- The FROM route renders its quantifier verdict **after** the call's closing paren, the
+-- position `parse_function_call` already gives `build_call`. 18.6 answers the syntax
+-- error because bison scans the whole statement before parse analysis runs, and pglet
+-- reaches the same answer without moving anything out of its parser: the bad token is
+-- *inside* the parens, so `self.ts.expect(&TokenKind::RParen)` meets it first. It did
+-- not — `parse_unnest_table` called `planner::refuse_from_unnest_quantifier` above that
+-- `expect`, and this statement was 42809 here. The mutation that reddens this fixture is
+-- moving that one call back above the paren; the multi-array spelling
+-- `unnest(DISTINCT ARRAY[1, 2], ARRAY[3, 4] junk)` takes the same line and was 42883.
+-- The select-list sibling `upper(DISTINCT 'a' junk)` is the control that identifies the
+-- position: the same verdict over the same keyword, and 42601 on both engines throughout,
+-- because `build_call` was already below the paren. The `ALL` and unquantified spellings
+-- of this statement were 42601 throughout too, which says only that the route parses this
+-- shape correctly when no verdict fires. Distinct from the *later*-syntax-error class the
+-- row-51 bullet records, which sits after the whole call and stays open.
+-- @test
+-- @expect-error: syntax error at or near "junk"
+SELECT * FROM unnest(DISTINCT ARRAY[1, 2] junk) AS u(x);

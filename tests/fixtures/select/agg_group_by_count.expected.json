@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "count": "3",
+      "type": "click"
+    },
+    {
+      "count": "2",
+      "type": "view"
+    }
+  ],
+  "rowCount": 2
+}

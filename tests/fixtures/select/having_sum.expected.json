@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "region": "east",
+      "sum": 700.0
+    },
+    {
+      "region": "north",
+      "sum": 300.0
+    }
+  ],
+  "rowCount": 2
+}

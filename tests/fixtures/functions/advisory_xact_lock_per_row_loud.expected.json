@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "pg_advisory_xact_lock": ""
+    },
+    {
+      "pg_advisory_xact_lock": ""
+    }
+  ],
+  "rowCount": 2
+}

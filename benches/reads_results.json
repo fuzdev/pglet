@@ -1,0 +1,27 @@
+{
+  "meta": {
+    "benchmark": "read_concurrency_scaling",
+    "lane": "native_inprocess",
+    "layer": "L1",
+    "rows_prepopulated": 5000,
+    "ops_per_thread": 200000,
+    "repeats": 5,
+    "units": "ops_per_sec",
+    "note": "cache-warm point-gets, no concurrent writer; median of `repeats` timed runs. mode=root_direct isolates the sharded per-page cache (DoubleMetaStore::cache) — scaling should rise with thread count; mode=per_statement_snapshot adds the active_snapshots RwLock per op (the realistic server statement path), so the gap is the snapshot-refcount overhead",
+    "higher_or_lower_is_better": "higher"
+  },
+  "rows": [
+    {"mode":"root_direct","threads":1,"ops_per_sec":2262871.7,"scaling":1.0000,"units":"ops_per_sec","higher_or_lower_is_better":"higher"},
+    {"mode":"root_direct","threads":2,"ops_per_sec":3218676.0,"scaling":1.4224,"units":"ops_per_sec","higher_or_lower_is_better":"higher"},
+    {"mode":"root_direct","threads":4,"ops_per_sec":4870113.4,"scaling":2.1522,"units":"ops_per_sec","higher_or_lower_is_better":"higher"},
+    {"mode":"root_direct","threads":6,"ops_per_sec":4870006.7,"scaling":2.1521,"units":"ops_per_sec","higher_or_lower_is_better":"higher"},
+    {"mode":"root_direct","threads":8,"ops_per_sec":4380706.8,"scaling":1.9359,"units":"ops_per_sec","higher_or_lower_is_better":"higher"},
+    {"mode":"root_direct","threads":12,"ops_per_sec":3229127.7,"scaling":1.4270,"units":"ops_per_sec","higher_or_lower_is_better":"higher"},
+    {"mode":"per_statement_snapshot","threads":1,"ops_per_sec":1722438.0,"scaling":1.0000,"units":"ops_per_sec","higher_or_lower_is_better":"higher"},
+    {"mode":"per_statement_snapshot","threads":2,"ops_per_sec":2484332.9,"scaling":1.4423,"units":"ops_per_sec","higher_or_lower_is_better":"higher"},
+    {"mode":"per_statement_snapshot","threads":4,"ops_per_sec":3763030.3,"scaling":2.1847,"units":"ops_per_sec","higher_or_lower_is_better":"higher"},
+    {"mode":"per_statement_snapshot","threads":6,"ops_per_sec":4216396.6,"scaling":2.4479,"units":"ops_per_sec","higher_or_lower_is_better":"higher"},
+    {"mode":"per_statement_snapshot","threads":8,"ops_per_sec":3854384.7,"scaling":2.2377,"units":"ops_per_sec","higher_or_lower_is_better":"higher"},
+    {"mode":"per_statement_snapshot","threads":12,"ops_per_sec":3475038.2,"scaling":2.0175,"units":"ops_per_sec","higher_or_lower_is_better":"higher"}
+  ]
+}

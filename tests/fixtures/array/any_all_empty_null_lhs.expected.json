@@ -1,0 +1,12 @@
+{
+  "rows": [
+    {
+      "all_empty_null": true,
+      "all_nonempty_null": null,
+      "any_empty_five": false,
+      "any_empty_null": false,
+      "any_nonempty_null": null
+    }
+  ],
+  "rowCount": 1
+}

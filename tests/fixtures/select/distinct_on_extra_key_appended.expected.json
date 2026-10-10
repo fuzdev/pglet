@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "grp": "a",
+      "label": "y",
+      "sub": 1
+    },
+    {
+      "grp": "a",
+      "label": "x",
+      "sub": 2
+    },
+    {
+      "grp": "b",
+      "label": "z",
+      "sub": 1
+    }
+  ],
+  "rowCount": 3
+}

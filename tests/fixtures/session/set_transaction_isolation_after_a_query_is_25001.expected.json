@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "25001",
+    "message": "SET TRANSACTION ISOLATION LEVEL must be called before any query"
+  }
+}

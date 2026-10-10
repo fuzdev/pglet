@@ -1,0 +1,26 @@
+{
+  "rows": [
+    {
+      "a": 1,
+      "b": 5,
+      "by_neg_ninetynine": "2",
+      "by_neg_two": "2",
+      "by_two": "2"
+    },
+    {
+      "a": 2,
+      "b": 7,
+      "by_neg_ninetynine": "3",
+      "by_neg_two": "3",
+      "by_two": "3"
+    },
+    {
+      "a": 3,
+      "b": 9,
+      "by_neg_ninetynine": "1",
+      "by_neg_two": "1",
+      "by_two": "1"
+    }
+  ],
+  "rowCount": 3
+}

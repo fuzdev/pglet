@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "23514",
+    "message": "new row for relation \"f2\" violates check constraint \"f2_a_check\""
+  }
+}

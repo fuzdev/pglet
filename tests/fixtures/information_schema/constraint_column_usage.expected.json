@@ -1,0 +1,15 @@
+{
+  "rows": [
+    {
+      "constraint_name": "ccu_child_a_fkey",
+      "foreign_column_name": "id",
+      "foreign_table_name": "ccu_parent"
+    },
+    {
+      "constraint_name": "ccu_child_b_fkey",
+      "foreign_column_name": "id",
+      "foreign_table_name": "ccu_parent"
+    }
+  ],
+  "rowCount": 2
+}

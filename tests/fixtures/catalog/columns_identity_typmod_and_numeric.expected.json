@@ -1,0 +1,95 @@
+{
+  "rows": [
+    {
+      "charmax": null,
+      "column_name": "cid",
+      "idgen": "BY DEFAULT",
+      "isgen": "NEVER",
+      "np": 32,
+      "npr": 2,
+      "ns": 0,
+      "table_name": "cat_child"
+    },
+    {
+      "charmax": null,
+      "column_name": "pid",
+      "idgen": null,
+      "isgen": "NEVER",
+      "np": 32,
+      "npr": 2,
+      "ns": 0,
+      "table_name": "cat_child"
+    },
+    {
+      "charmax": null,
+      "column_name": "qty",
+      "idgen": null,
+      "isgen": "NEVER",
+      "np": 32,
+      "npr": 2,
+      "ns": 0,
+      "table_name": "cat_child"
+    },
+    {
+      "charmax": null,
+      "column_name": "label",
+      "idgen": null,
+      "isgen": "NEVER",
+      "np": null,
+      "npr": null,
+      "ns": null,
+      "table_name": "cat_child"
+    },
+    {
+      "charmax": null,
+      "column_name": "price",
+      "idgen": null,
+      "isgen": "NEVER",
+      "np": 10,
+      "npr": 10,
+      "ns": 2,
+      "table_name": "cat_child"
+    },
+    {
+      "charmax": null,
+      "column_name": "m",
+      "idgen": null,
+      "isgen": "NEVER",
+      "np": null,
+      "npr": null,
+      "ns": null,
+      "table_name": "cat_child"
+    },
+    {
+      "charmax": null,
+      "column_name": "id",
+      "idgen": "ALWAYS",
+      "isgen": "NEVER",
+      "np": 32,
+      "npr": 2,
+      "ns": 0,
+      "table_name": "cat_parent"
+    },
+    {
+      "charmax": null,
+      "column_name": "code",
+      "idgen": null,
+      "isgen": "NEVER",
+      "np": null,
+      "npr": null,
+      "ns": null,
+      "table_name": "cat_parent"
+    },
+    {
+      "charmax": 8,
+      "column_name": "region",
+      "idgen": null,
+      "isgen": "NEVER",
+      "np": null,
+      "npr": null,
+      "ns": null,
+      "table_name": "cat_parent"
+    }
+  ],
+  "rowCount": 9
+}

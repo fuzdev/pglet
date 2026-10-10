@@ -1,0 +1,10 @@
+{
+  "rows": [
+    {
+      "aggregate_answers": true,
+      "cast_then_shifted": true,
+      "shifted_count": "2"
+    }
+  ],
+  "rowCount": 1
+}

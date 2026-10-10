@@ -1,0 +1,15 @@
+-- **Routing the tail is not by itself a binding gate, and this is the fixture that says
+-- so.** A `Plan::Sort` over a no-FROM projection judges its key only where a row reaches
+-- the eval-time resolver, and a projection `unnest` over an **empty** array produces none —
+-- so with the tail routed and nothing else, this would still answer `(0 rows)` where 18.6
+-- refuses in parse analysis. The keys are bound at plan time by `plan_no_from_order_limit`,
+-- against the target-list claimants a bare single-field key may name
+-- (`findTargetlistEntrySQL92`, spelled as `correlation::key_scope`).
+--
+-- Emptiness identifies the site rather than the rule: the same statement over
+-- `unnest(ARRAY[1,2])` was already `42703` here, from the eval-time resolver. The write
+-- polarity (`select/no_from_order_by_bogus_key_in_a_cte_delete_loud.sql`) is row-count
+-- **independent**, an unreferenced CTE's body never executing at all.
+-- @expect-error: column "zzz" does not exist (42703)
+-- @test
+SELECT unnest(ARRAY[]::int[]) AS q ORDER BY zzz;

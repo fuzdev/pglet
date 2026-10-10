@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "55000",
+    "message": "column \"c\" of relation \"ai\" must be declared NOT NULL before identity can be added"
+  }
+}

@@ -1,0 +1,12 @@
+-- A non-container operand resolves to **no** `@>` operator, which is `42883`, not
+-- `0A000`.
+--
+-- The distinction is the engine's own rule: `0A000` means Postgres has the operator
+-- and pglet has not implemented it; `42883` means it does not exist. Postgres
+-- registers containment over `jsonb @> jsonb` and `anyarray @> anyarray` only, so
+-- `text @> text` is `operator does not exist` there — and reporting `0A000` here made
+-- the divergence unlockable, since the harness requires an `@expect-error` fixture's
+-- SQLSTATE to match Postgres's.
+-- @test
+-- @expect-error: text has no @> operator
+SELECT 'abc'::text @> 'a'::text;

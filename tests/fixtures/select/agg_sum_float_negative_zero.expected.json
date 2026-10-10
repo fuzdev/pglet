@@ -1,0 +1,14 @@
+{
+  "rows": [
+    {
+      "avg8": 0.0,
+      "distinct_neg_first": -0.0,
+      "distinct_pos_first": 0.0,
+      "distinct_real": -0.0,
+      "mixed": 0.0,
+      "sum4": -0.0,
+      "sum8": -0.0
+    }
+  ],
+  "rowCount": 1
+}

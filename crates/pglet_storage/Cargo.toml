@@ -1,0 +1,32 @@
+[package]
+name = "pglet_storage"
+description = "Storage backends for pglet"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+pglet_core = { workspace = true }
+pglet_sql = { workspace = true }
+thiserror = { workspace = true }
+postcard = { workspace = true }
+lru = { workspace = true }
+parking_lot = { workspace = true }
+crc32fast = { workspace = true }
+
+[features]
+default = ["file_store"]
+# Gates the native `FileBlockIo` (std::fs positioned I/O). The workspace table pins
+# `pglet_storage` `default-features = false`, so every `workspace = true` **edge**
+# starts without this default: the native consumers (pglet_server, pglet_tests,
+# pglet_bench) re-add it on their dependency lines, and pglet_wasm sets nothing — which
+# is what keeps it out of the wasm32 build. The pin
+# binds edges, not packages: selecting this crate as a **root** (`cargo test -p
+# pglet_storage`, and `cargo test --workspace`) takes the default anyway.
+file_store = []
+
+[lints]
+workspace = true

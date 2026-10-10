@@ -1,0 +1,40 @@
+[package]
+name = "pglet_testing"
+description = "Test-only helpers for pglet — in-memory / fault-injecting BlockIo doubles, the MemStorage oracle, engine assembly, and the server spawn/kill harness. Dev-dependency only; NEVER link from a production binary."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+# Test-support crate — a dev-dependency of the `pglet` / `pglet_sql` integration
+# tests and a normal dep of the `pglet_tests` harness, whose own binaries are
+# test harnesses. (`pglet_storage` keeps its own leaf double: a crate's in-crate
+# unit tests can't borrow a helper that depends back on it — the two crate
+# instances don't unify.) It is never reachable from a production binary
+# (`pglet_server` / `pglet_bench`): the other crates depend on it only through
+# dev-dependencies, excluded from the normal build graph, and
+# `cargo xtask check-release` enforces that by walking each production binary's
+# `cargo tree -e normal` closure for this crate's name.
+
+# Modules are feature-gated so a leaf consumer pulls only what it needs (e.g.
+# `pglet_storage` tests enable `block-io` and get the doubles without dragging in
+# `pglet`/`pglet_sql`/tokio). The features layer up the stack:
+[features]
+default = []
+block-io = ["dep:pglet_storage"]
+embed = ["block-io", "dep:pglet", "dep:pglet_sql", "dep:postcard"]
+oracle = ["dep:pglet_sql"]
+server = ["dep:tokio", "dep:tokio-postgres"]
+
+[dependencies]
+pglet = { workspace = true, optional = true }
+pglet_sql = { workspace = true, optional = true }
+pglet_storage = { workspace = true, optional = true }
+postcard = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
+tokio-postgres = { workspace = true, optional = true }
+
+[lints]
+workspace = true

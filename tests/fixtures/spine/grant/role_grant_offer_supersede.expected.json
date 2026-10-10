@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "from_account_id": 7000,
+      "id": 1,
+      "role": "admin",
+      "scope_id": 5,
+      "to_account_id": 9001,
+      "was_superseded": true
+    }
+  ],
+  "rowCount": 1
+}

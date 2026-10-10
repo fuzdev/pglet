@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42809",
+    "message": "now(*) specified, but now is not an aggregate function"
+  }
+}

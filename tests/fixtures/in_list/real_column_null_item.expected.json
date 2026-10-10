@@ -1,0 +1,25 @@
+{
+  "rows": [
+    {
+      "hit": true,
+      "id": 1,
+      "miss": false
+    },
+    {
+      "hit": null,
+      "id": 2,
+      "miss": null
+    },
+    {
+      "hit": null,
+      "id": 3,
+      "miss": null
+    },
+    {
+      "hit": null,
+      "id": 4,
+      "miss": null
+    }
+  ],
+  "rowCount": 4
+}

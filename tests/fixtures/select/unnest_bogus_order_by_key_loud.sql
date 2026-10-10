@@ -1,0 +1,16 @@
+-- An `ORDER BY` key naming nothing, over a FROM-clause `unnest(…)`.
+--
+-- A bare single-field sort key is judged against the level's **target list** first
+-- (`findTargetlistEntrySQL92`) and falls through to the range table when no entry carries
+-- the name — so this key reaches the FROM namespace, where the unnest's exhaustiveness
+-- decides it. `select/unnest_output_alias_sort_key_answers.sql` is the polarity that
+-- stops at the target list, and `select/unnest_dropped_column_sort_key.sql` the one that
+-- falls through and *resolves*; this is the one that falls through and finds nothing.
+--
+-- The array is **empty**, so a sort over no rows never reaches an eval-time reader of the
+-- key: the refusal here can only be the plan-time gate's.
+--
+-- No `@setup` at all, so nothing but the `@test` can raise the asserted code.
+-- @test
+-- @expect-error: the `ORDER BY` key names nothing at the unnest's level (42703)
+SELECT 1 FROM unnest(ARRAY[]::int[]) AS u(x) ORDER BY bogus;

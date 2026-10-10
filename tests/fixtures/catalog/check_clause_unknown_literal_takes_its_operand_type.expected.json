@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "check_clause": "(level = ANY (ARRAY['viewer'::text, 'editor'::text]))",
+      "constraint_name": "ckc_level"
+    },
+    {
+      "check_clause": "(s = 'x'::text)",
+      "constraint_name": "ckc_s"
+    }
+  ],
+  "rowCount": 2
+}

@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "indexdef": "CREATE INDEX ciu10_j_idx ON public.ciu10 USING gin (j)",
+      "indexname": "ciu10_j_idx"
+    },
+    {
+      "indexdef": "CREATE INDEX ciu10_tags_idx ON public.ciu10 USING gin (tags)",
+      "indexname": "ciu10_tags_idx"
+    }
+  ],
+  "rowCount": 2
+}

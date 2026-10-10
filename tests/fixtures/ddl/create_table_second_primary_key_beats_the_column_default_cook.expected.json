@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P16",
+    "message": "multiple primary keys for table \"ctspd\" are not allowed"
+  }
+}

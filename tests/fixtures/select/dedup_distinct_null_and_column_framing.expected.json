@@ -1,0 +1,10 @@
+{
+  "rows": [
+    {
+      "framing": "2",
+      "null_per_column": "3",
+      "null_vs_empty": "2"
+    }
+  ],
+  "rowCount": 1
+}

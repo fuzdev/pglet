@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42703",
+    "message": "column \"nosuch\" of relation \"own_host\" does not exist"
+  }
+}

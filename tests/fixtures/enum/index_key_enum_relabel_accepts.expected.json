@@ -1,0 +1,14 @@
+{
+  "rows": [
+    {
+      "indexname": "ir_kx"
+    },
+    {
+      "indexname": "ir_lx"
+    },
+    {
+      "indexname": "ir_px"
+    }
+  ],
+  "rowCount": 3
+}

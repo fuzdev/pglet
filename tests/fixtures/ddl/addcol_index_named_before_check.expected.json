@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "constraint_name": "ainbc_c_check",
+      "constraint_type": "UNIQUE"
+    },
+    {
+      "constraint_name": "ainbc_c_check1",
+      "constraint_type": "CHECK"
+    }
+  ],
+  "rowCount": 2
+}

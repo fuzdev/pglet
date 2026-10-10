@@ -1,0 +1,19 @@
+{
+  "rows": [
+    {
+      "a": 1,
+      "doubled": 20,
+      "gt": true,
+      "total": "30",
+      "v": 10
+    },
+    {
+      "a": 2,
+      "doubled": 40,
+      "gt": true,
+      "total": "30",
+      "v": 20
+    }
+  ],
+  "rowCount": 2
+}

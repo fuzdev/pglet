@@ -1,0 +1,13 @@
+-- The **qualified** spelling of the no-FROM `DISTINCT ON` binding hole, and a separate
+-- arm rather than a restatement: `findTargetlistEntrySQL92` is entered only for a bare
+-- single-field key, so a qualifier resolves against the FROM relations — of which a
+-- no-FROM select has none — and 18.6 answers `42P01`, not `42703`. This site left
+-- qualified ungated too, so the statement answered `(0 rows)`.
+--
+-- The SQLSTATE is the point and it was wrong even where the site was loud: over a
+-- **non-empty** `unnest(ARRAY[1,2])` the same key reached the eval-time resolver, which
+-- reports `42703 column "bogusrel.z" does not exist` — a name error for a relation error.
+-- Judging the key at plan time is what gets the pair right.
+-- @expect-error: missing FROM-clause entry for table "bogusrel" (42P01)
+-- @test
+SELECT DISTINCT ON (bogusrel.z) unnest(ARRAY[]::int[]) AS q;

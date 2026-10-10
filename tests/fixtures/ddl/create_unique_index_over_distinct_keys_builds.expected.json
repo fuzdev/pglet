@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "indexname": "cuok_nulls",
+      "tablename": "cuok_n"
+    },
+    {
+      "indexname": "cuok_ok",
+      "tablename": "cuok_t"
+    },
+    {
+      "indexname": "cuok_part",
+      "tablename": "cuok_p"
+    },
+    {
+      "indexname": "cuok_taken",
+      "tablename": "cuok_d"
+    }
+  ],
+  "rowCount": 4
+}

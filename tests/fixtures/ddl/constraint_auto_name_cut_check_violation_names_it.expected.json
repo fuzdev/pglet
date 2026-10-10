@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "23514",
+    "message": "new row for relation \"cac13_tttttttttttttttttttttttttttttttttttttttttttttttttttttt\" violates check constraint \"cac13_tttttttttttttttttttttt_cooooooooooooooooooooooooooo_check\""
+  }
+}

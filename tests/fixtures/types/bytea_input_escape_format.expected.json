@@ -1,0 +1,146 @@
+{
+  "rows": [
+    {
+      "backslash": {
+        "data": [
+          97,
+          92,
+          98
+        ],
+        "type": "Buffer"
+      },
+      "backslash_alone": {
+        "data": [
+          92
+        ],
+        "type": "Buffer"
+      },
+      "empty": {
+        "data": [],
+        "type": "Buffer"
+      },
+      "escaped_backslash_then_digits": {
+        "data": [
+          92,
+          49,
+          52,
+          49
+        ],
+        "type": "Buffer"
+      },
+      "escaped_backslash_then_x": {
+        "data": [
+          92,
+          120,
+          54,
+          49,
+          54,
+          50
+        ],
+        "type": "Buffer"
+      },
+      "even_hex_digits": {
+        "data": [
+          97,
+          98,
+          99,
+          100
+        ],
+        "type": "Buffer"
+      },
+      "no_backslash": {
+        "data": [
+          120,
+          54,
+          49,
+          54,
+          50
+        ],
+        "type": "Buffer"
+      },
+      "non_ascii": {
+        "data": [
+          104,
+          195,
+          169,
+          108,
+          108,
+          111,
+          32,
+          226,
+          130,
+          172
+        ],
+        "type": "Buffer"
+      },
+      "octal": {
+        "data": [
+          97,
+          98
+        ],
+        "type": "Buffer"
+      },
+      "octal_bounds": {
+        "data": [
+          0,
+          255,
+          127
+        ],
+        "type": "Buffer"
+      },
+      "octal_then_digit": {
+        "data": [
+          97,
+          49
+        ],
+        "type": "Buffer"
+      },
+      "odd_hex_digits": {
+        "data": [
+          97,
+          98,
+          99
+        ],
+        "type": "Buffer"
+      },
+      "one_space": {
+        "data": [
+          32
+        ],
+        "type": "Buffer"
+      },
+      "plain": {
+        "data": [
+          104,
+          101,
+          108,
+          108,
+          111
+        ],
+        "type": "Buffer"
+      },
+      "spaces_kept": {
+        "data": [
+          32,
+          32,
+          97,
+          98,
+          99,
+          100,
+          32
+        ],
+        "type": "Buffer"
+      },
+      "upper_hex_digits": {
+        "data": [
+          65,
+          66,
+          49,
+          50
+        ],
+        "type": "Buffer"
+      }
+    }
+  ],
+  "rowCount": 1
+}

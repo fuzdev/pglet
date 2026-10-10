@@ -1,0 +1,29 @@
+{
+  "rows": [
+    {
+      "alter": 7,
+      "begin": 15,
+      "between": 22,
+      "by": 5,
+      "commit": 16,
+      "conflict": 13,
+      "delete": 3,
+      "drop": 6,
+      "first": 11,
+      "index": 8,
+      "insert": 1,
+      "last": 12,
+      "nothing": 14,
+      "nulls": 10,
+      "recursive": 20,
+      "rollback": 17,
+      "set": 4,
+      "start": 18,
+      "transaction": 19,
+      "truncate": 9,
+      "update": 2,
+      "values": 21
+    }
+  ],
+  "rowCount": 1
+}

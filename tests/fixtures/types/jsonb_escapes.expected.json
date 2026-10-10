@@ -1,0 +1,12 @@
+{
+  "rows": [
+    {
+      "backslash_t": "\\t",
+      "escapes": "a\tb\\c\"d/e",
+      "newline": "x\ny",
+      "surrogate": "😀",
+      "unicode": "éü"
+    }
+  ],
+  "rowCount": 1
+}

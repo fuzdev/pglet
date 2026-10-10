@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "cte_qualified": "5000030000",
+      "cte_same_width": 120000,
+      "cte_unqualified": "5000030000",
+      "cte_wide_plus_lit": "5000000000"
+    }
+  ],
+  "rowCount": 1
+}

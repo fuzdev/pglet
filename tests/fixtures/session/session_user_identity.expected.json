@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "current_role": "postgres",
+      "current_user": "postgres",
+      "session_user": "postgres",
+      "user": "postgres"
+    }
+  ],
+  "rowCount": 1
+}

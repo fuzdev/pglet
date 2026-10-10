@@ -1,0 +1,12 @@
+{
+  "rows": [
+    {
+      "from_int": "42",
+      "from_text": "1234.5678",
+      "keeps_scale": "123.456",
+      "to_float": 0.3333333333333333,
+      "to_int_round": "3"
+    }
+  ],
+  "rowCount": 1
+}

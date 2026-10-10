@@ -1,0 +1,15 @@
+-- The one decision the no-catalog model keeps: whether the **name** is one this
+-- engine provides. An unknown one is 18.6's
+-- `0A000 extension "…" is not available` — the code that server gives when it can
+-- find no control file, and the code it gives under `IF NOT EXISTS` too. The
+-- `IF NOT EXISTS` spelling is the sibling fixture
+-- `create_extension_unknown_name_is_unavailable_even_if_not_exists.sql`.
+--
+-- **A lock, not a new assertion.** It is green against an engine that does not parse
+-- `CREATE EXTENSION` at all: the blanket `0A000 only CREATE TABLE / INDEX / … are
+-- supported` is the same SQLSTATE for an entirely different reason, and
+-- `@expect-error` compares only the code. What it holds is that the code stays
+-- `0A000` now that the statement does parse.
+-- @test
+-- @expect-error: extension "nosuch_ext" is not available
+CREATE EXTENSION nosuch_ext;

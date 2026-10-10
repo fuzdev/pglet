@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "23514",
+    "message": "new row for relation \"alter_addcol_ck\" violates check constraint \"alter_addcol_ck_val_check\""
+  }
+}

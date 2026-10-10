@@ -1,0 +1,14 @@
+{
+  "rows": [
+    {
+      "coalesced": "postgres",
+      "concatenated": "postgrespublic",
+      "greatest_of": "postgres",
+      "in_list": true,
+      "liked": true,
+      "ordered": true,
+      "started": true
+    }
+  ],
+  "rowCount": 1
+}

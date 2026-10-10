@@ -1,0 +1,11 @@
+-- `current_schema` is 18.6's one dual-form member: a TYPE_FUNC_NAME_KEYWORD that is
+-- both an `SVFOP_CURRENT_SCHEMA` and `pg_proc` 1402, so both spellings resolve.
+-- Aliased because both would otherwise be named `current_schema` and the harness's
+-- JSON keying collapses duplicate output names.
+--
+-- The answer is `public` on both, for different reasons: 18.6 resolves the default
+-- `"$user", public` past a `$user` schema it does not have, and pglet holds that
+-- path fixed (`EDGES.md` row 66), so `SET search_path TO pg_catalog, public` moves
+-- 18.6's answer and not pglet's — which is why no fixture here sets it.
+-- @test
+SELECT current_schema AS bare, current_schema() AS called;

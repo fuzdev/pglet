@@ -1,0 +1,13 @@
+-- A rounding carry out of the representable range **fails loud** rather than silently
+-- keeping the unrounded value. 18.6 answers `10000-01-01 00:00:00` here; pglet's
+-- `OffsetDateTime` caps at year 9999 (`'10000-01-01'::timestamp` is already an error
+-- here), so it raises `22008 timestamp out of range` —
+-- `ERRCODE_DATETIME_VALUE_OUT_OF_RANGE`, the code 18.6 itself spends when a timestamp
+-- leaves its own range. pglet-stricter, so any pglet error passes.
+--
+-- The `::text` wrapper is the harness's, not the rule's: 18.6's year-10000 answer has
+-- no decoder arm on the binary leg, and an undecodable oracle value scores as a client
+-- fault rather than as the divergence it is.
+-- @expect-error: a rounding carry past year 9999
+-- @test
+SELECT ('9999-12-31 23:59:59.9999'::timestamp(3))::text;

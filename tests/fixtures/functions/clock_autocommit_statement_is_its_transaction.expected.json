@@ -1,0 +1,10 @@
+{
+  "rows": [
+    {
+      "clock_not_before": "t",
+      "spelled_out": "t",
+      "transaction_is_statement": "t"
+    }
+  ],
+  "rowCount": 1
+}

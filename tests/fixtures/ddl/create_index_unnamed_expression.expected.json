@@ -1,0 +1,33 @@
+{
+  "rows": [
+    {
+      "indexdef": "CREATE INDEX ciu3_a_idx ON public.ciu3 USING btree (((a)::bigint))",
+      "indexname": "ciu3_a_idx"
+    },
+    {
+      "indexdef": "CREATE INDEX ciu3_abs_idx ON public.ciu3 USING btree (((abs(a))::text))",
+      "indexname": "ciu3_abs_idx"
+    },
+    {
+      "indexdef": "CREATE INDEX ciu3_coalesce_idx ON public.ciu3 USING btree (COALESCE(a, 0))",
+      "indexname": "ciu3_coalesce_idx"
+    },
+    {
+      "indexdef": "CREATE INDEX ciu3_expr_idx ON public.ciu3 USING btree (((a + 1)))",
+      "indexname": "ciu3_expr_idx"
+    },
+    {
+      "indexdef": "CREATE INDEX ciu3_expr_idx1 ON public.ciu3 USING btree (((j ->> 'k'::text)))",
+      "indexname": "ciu3_expr_idx1"
+    },
+    {
+      "indexdef": "CREATE INDEX ciu3_expr_idx2 ON public.ciu3 USING btree (((a IS NULL)))",
+      "indexname": "ciu3_expr_idx2"
+    },
+    {
+      "indexdef": "CREATE INDEX ciu3_lower_idx ON public.ciu3 USING btree (lower(t))",
+      "indexname": "ciu3_lower_idx"
+    }
+  ],
+  "rowCount": 7
+}

@@ -1,0 +1,15 @@
+{
+  "rows": [
+    {
+      "int_zero": false,
+      "k": 1,
+      "numeric_zero": false
+    },
+    {
+      "int_zero": false,
+      "k": 2,
+      "numeric_zero": false
+    }
+  ],
+  "rowCount": 2
+}

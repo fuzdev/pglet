@@ -1,0 +1,69 @@
+{
+  "rows": [
+    {
+      "conname": "n01",
+      "definition": "CHECK ((COALESCE(a, b) > 0))"
+    },
+    {
+      "conname": "n02",
+      "definition": "CHECK ((GREATEST(a, b) > 0))"
+    },
+    {
+      "conname": "n03",
+      "definition": "CHECK ((LEAST(a, b, 3) > 0))"
+    },
+    {
+      "conname": "n04",
+      "definition": "CHECK ((NULLIF(a, b) IS NOT NULL))"
+    },
+    {
+      "conname": "n05",
+      "definition": "CHECK ((NULLIF(a, 3) IS NOT NULL))"
+    },
+    {
+      "conname": "n06",
+      "definition": "CHECK ((LEAST('a'::text, s) <> ''::text))"
+    },
+    {
+      "conname": "n07",
+      "definition": "CHECK ((GREATEST('a'::text, s) <> ''::text))"
+    },
+    {
+      "conname": "n08",
+      "definition": "CHECK ((LEAST(v, 'x'::character varying) IS NOT NULL))"
+    },
+    {
+      "conname": "n09",
+      "definition": "CHECK ((GREATEST(v, 'x'::character varying) IS NOT NULL))"
+    },
+    {
+      "conname": "n10",
+      "definition": "CHECK ((GREATEST(a) > 0))"
+    },
+    {
+      "conname": "n11",
+      "definition": "CHECK ((COALESCE(s, 'd'::text) <> ''::text))"
+    },
+    {
+      "conname": "n12",
+      "definition": "CHECK ((NULLIF(s, 'x'::text) IS NOT NULL))"
+    },
+    {
+      "conname": "n13",
+      "definition": "CHECK ((concat_ws('-'::text, s, 'x') <> ''::text))"
+    },
+    {
+      "conname": "n14",
+      "definition": "CHECK ((concat('a', s) <> ''::text))"
+    },
+    {
+      "conname": "n15",
+      "definition": "CHECK ((GREATEST('a'::text, 'b'::text) <> ''::text))"
+    },
+    {
+      "conname": "n16",
+      "definition": "CHECK ((NULLIF('a'::text, 'b'::text) IS NOT NULL))"
+    }
+  ],
+  "rowCount": 16
+}

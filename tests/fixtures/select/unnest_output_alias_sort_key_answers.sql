@@ -1,0 +1,21 @@
+-- A bare single-field `ORDER BY` key naming an **output** column, at a level whose only
+-- FROM relation is an `unnest(…)`.
+--
+-- `findTargetlistEntrySQL92` judges such a key against the target list first and falls
+-- through to the range table only when no entry carries the name, so this key binds to
+-- the projection rather than to the unnest — the accept polarity the flip's reject
+-- fixtures (`select/unnest_bogus_order_by_key_loud.sql`) leave unstated. Its sibling
+-- `select/unnest_dropped_column_sort_key.sql` is the other polarity of the same fall-
+-- through: a key naming a real unnest column the projection drops.
+--
+-- The key also reaches `ColumnScope::sole_relation_carrying`, which declines outright on
+-- an uncertain level — so before the flip no `ORDER BY` key over an unnest level could be
+-- bound to its relation when deciding whether two same-named target entries are one
+-- expression or two. Making the arm exhaustive un-declines it, and that is a change to
+-- what `output_name_binding` counts, not only to `check_binding`'s verdict.
+--
+-- The input order `2, 1, 3` against the output `1, 2, 3` is what makes the *sort*
+-- observable in the compared values; a fixture over an already-ordered array would pin
+-- the acceptance and not the ordering.
+-- @test
+SELECT x AS k FROM unnest(ARRAY[2, 1, 3]) AS u(x) ORDER BY k;

@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "day_endpoint": true,
+      "eq": true,
+      "gt": true,
+      "lt": true,
+      "neq": false,
+      "reversed": true
+    }
+  ],
+  "rowCount": 1
+}

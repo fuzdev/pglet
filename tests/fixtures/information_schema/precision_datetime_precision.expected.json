@@ -1,0 +1,75 @@
+{
+  "rows": [
+    {
+      "column_name": "a",
+      "data_type": "timestamp without time zone",
+      "datetime_precision": 3
+    },
+    {
+      "column_name": "b",
+      "data_type": "timestamp with time zone",
+      "datetime_precision": 2
+    },
+    {
+      "column_name": "c",
+      "data_type": "time without time zone",
+      "datetime_precision": 1
+    },
+    {
+      "column_name": "d",
+      "data_type": "interval",
+      "datetime_precision": 4
+    },
+    {
+      "column_name": "e",
+      "data_type": "timestamp without time zone",
+      "datetime_precision": 6
+    },
+    {
+      "column_name": "f",
+      "data_type": "date",
+      "datetime_precision": 0
+    },
+    {
+      "column_name": "g",
+      "data_type": "integer",
+      "datetime_precision": null
+    },
+    {
+      "column_name": "h",
+      "data_type": "character varying",
+      "datetime_precision": null
+    },
+    {
+      "column_name": "i",
+      "data_type": "numeric",
+      "datetime_precision": null
+    },
+    {
+      "column_name": "j",
+      "data_type": "ARRAY",
+      "datetime_precision": null
+    },
+    {
+      "column_name": "k",
+      "data_type": "ARRAY",
+      "datetime_precision": null
+    },
+    {
+      "column_name": "l",
+      "data_type": "timestamp without time zone",
+      "datetime_precision": 6
+    },
+    {
+      "column_name": "m",
+      "data_type": "time without time zone",
+      "datetime_precision": 6
+    },
+    {
+      "column_name": "n",
+      "data_type": "interval",
+      "datetime_precision": 6
+    }
+  ],
+  "rowCount": 14
+}

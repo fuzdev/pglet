@@ -1,0 +1,12 @@
+-- The other half of the deferral, and the reason the duplicate scan is **not** hoisted
+-- ahead of the bodies: Postgres raw-parses the whole statement before
+-- `transformWithClause` runs, so a body's syntax error wins. A token-level pre-pass over
+-- the names cannot tell a well-formed body from a malformed one, and would answer
+-- `42712` here.
+-- @expect-error: a body syntax error outranks the duplicate name
+-- @no-error-fields: both engines send a `P` and disagree about which token is wrong —
+-- 18.6 accepts an empty target list (`SELECT FROM x` is grammatical there) and stops at
+-- the *second* `FROM` (41), while pglet's expression parser stops at the first (36).
+-- The SQLSTATE, which is what this fixture asserts, agrees.
+-- @test
+WITH c AS (SELECT 1), c AS (SELECT FROM FROM) SELECT 1 AS only_column;

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P01",
+    "message": "relation \"cvmr_no_such_relation\" does not exist"
+  }
+}

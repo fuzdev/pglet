@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "constraint_name": "isc_child_ck",
+      "constraint_type": "CHECK"
+    },
+    {
+      "constraint_name": "isc_child_fk",
+      "constraint_type": "FOREIGN KEY"
+    }
+  ],
+  "rowCount": 2
+}

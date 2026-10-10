@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "23514",
+    "message": "new row for relation \"atie5\" violates check constraint \"atie5_pos\""
+  }
+}

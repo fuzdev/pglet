@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42804",
+    "message": "argument of IS TRUE must be type boolean, not type text"
+  }
+}

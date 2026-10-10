@@ -1,0 +1,139 @@
+{
+  "rows": [
+    {
+      "escapes": [
+        {
+          "data": [
+            92,
+            49,
+            52,
+            49
+          ],
+          "type": "Buffer"
+        },
+        {
+          "data": [
+            92,
+            92
+          ],
+          "type": "Buffer"
+        },
+        {
+          "data": [
+            92,
+            49,
+            52,
+            49
+          ],
+          "type": "Buffer"
+        }
+      ],
+      "hex_and_not": [
+        {
+          "data": [
+            97,
+            98
+          ],
+          "type": "Buffer"
+        },
+        {
+          "data": [
+            97,
+            98
+          ],
+          "type": "Buffer"
+        },
+        {
+          "data": [
+            120,
+            54,
+            49,
+            54,
+            50
+          ],
+          "type": "Buffer"
+        }
+      ],
+      "plain": [
+        {
+          "data": [
+            97,
+            98,
+            99,
+            100
+          ],
+          "type": "Buffer"
+        },
+        {
+          "data": [
+            99,
+            97,
+            102,
+            101
+          ],
+          "type": "Buffer"
+        },
+        {
+          "data": [
+            104,
+            101,
+            108,
+            108,
+            111
+          ],
+          "type": "Buffer"
+        }
+      ],
+      "quoted": [
+        {
+          "data": [
+            97,
+            32,
+            98
+          ],
+          "type": "Buffer"
+        },
+        {
+          "data": [
+            32
+          ],
+          "type": "Buffer"
+        },
+        {
+          "data": [],
+          "type": "Buffer"
+        },
+        null,
+        {
+          "data": [
+            78,
+            85,
+            76,
+            76
+          ],
+          "type": "Buffer"
+        }
+      ],
+      "whitespace": [
+        {
+          "data": [
+            97,
+            98,
+            32,
+            99,
+            100
+          ],
+          "type": "Buffer"
+        },
+        {
+          "data": [
+            97,
+            98
+          ],
+          "type": "Buffer"
+        }
+      ]
+    }
+  ],
+  "rowCount": 1
+}

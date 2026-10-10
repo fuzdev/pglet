@@ -1,0 +1,10 @@
+{
+  "rows": [
+    {
+      "negated": "1",
+      "not_true": "2",
+      "unknown": "1"
+    }
+  ],
+  "rowCount": 1
+}

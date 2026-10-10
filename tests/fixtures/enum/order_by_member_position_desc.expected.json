@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "id": 3,
+      "label": "happy"
+    },
+    {
+      "id": 2,
+      "label": "ok"
+    },
+    {
+      "id": 1,
+      "label": "sad"
+    }
+  ],
+  "rowCount": 3
+}

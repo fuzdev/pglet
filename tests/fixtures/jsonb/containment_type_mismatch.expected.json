@@ -1,0 +1,15 @@
+{
+  "rows": [
+    {
+      "array_vs_object": false,
+      "bool_is_not_number": false,
+      "from_column": "0",
+      "missing_key": false,
+      "number_is_not_string": false,
+      "numeric_scale_folds": true,
+      "object_vs_array": false,
+      "scalar_vs_array": false
+    }
+  ],
+  "rowCount": 1
+}

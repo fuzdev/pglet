@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P07",
+    "message": "relation \"sln2_tttttttttttttttttttttttt_coooooooooooooooooooooooooooo_seq\" already exists"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "22012",
+    "message": "division by zero"
+  }
+}

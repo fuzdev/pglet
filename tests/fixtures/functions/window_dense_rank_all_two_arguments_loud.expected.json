@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42809",
+    "message": "WITHIN GROUP is required for ordered-set aggregate dense_rank"
+  }
+}

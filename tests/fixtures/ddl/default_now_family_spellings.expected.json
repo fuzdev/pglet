@@ -1,0 +1,33 @@
+{
+  "rows": [
+    {
+      "column_default": "now()",
+      "column_name": "a"
+    },
+    {
+      "column_default": "transaction_timestamp()",
+      "column_name": "b"
+    },
+    {
+      "column_default": "statement_timestamp()",
+      "column_name": "c"
+    },
+    {
+      "column_default": "clock_timestamp()",
+      "column_name": "d"
+    },
+    {
+      "column_default": "CURRENT_TIMESTAMP",
+      "column_name": "e"
+    },
+    {
+      "column_default": "CURRENT_DATE",
+      "column_name": "f"
+    },
+    {
+      "column_default": "CURRENT_TIME",
+      "column_name": "g"
+    }
+  ],
+  "rowCount": 7
+}

@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "conname": "ck_a_check",
+      "def": "CHECK ((mod(a, 2) = 0))"
+    },
+    {
+      "conname": "ck_t_check",
+      "def": "CHECK (((\"left\"(t, 1) <> 'x'::text) AND (\"right\"(t, 1) <> 'y'::text)))"
+    },
+    {
+      "conname": "ck_u_check",
+      "def": "CHECK (((octet_length(u) < 10) AND (md5(u) <> ''::text) AND (substr(u, 1, 1) <> 'q'::text)))"
+    }
+  ],
+  "rowCount": 3
+}

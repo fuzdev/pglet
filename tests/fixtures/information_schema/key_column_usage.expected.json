@@ -1,0 +1,19 @@
+{
+  "rows": [
+    {
+      "column_name": "p",
+      "constraint_name": "kcu_child_p_fkey",
+      "ordinal_position": 1,
+      "position_in_unique_constraint": 1,
+      "table_name": "kcu_child"
+    },
+    {
+      "column_name": "q",
+      "constraint_name": "kcu_child_q_fkey",
+      "ordinal_position": 1,
+      "position_in_unique_constraint": 1,
+      "table_name": "kcu_child"
+    }
+  ],
+  "rowCount": 2
+}

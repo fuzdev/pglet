@@ -1,0 +1,12 @@
+{
+  "rows": [
+    {
+      "len": 1,
+      "long_then_long": true,
+      "long_then_short": true,
+      "short_then_long": true,
+      "short_then_short": true
+    }
+  ],
+  "rowCount": 1
+}

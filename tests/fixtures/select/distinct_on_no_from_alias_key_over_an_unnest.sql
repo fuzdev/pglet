@@ -1,0 +1,12 @@
+-- The false-rejection control for the no-FROM `DISTINCT ON` binding gate. A no-FROM
+-- select has no FROM relations at all, so the *only* thing an ON key may name is one of
+-- its own target-list entries — and a gate that closed over the FROM relations alone
+-- would refuse this ordinary statement (`findTargetlistEntrySQL92` is precisely the rule
+-- that lets a bare single-field key name an output column).
+--
+-- The `unnest` projection is deliberate: it makes the query answer more than one row, so
+-- the dedup is observable rather than a no-op. **Two** things separate it from the
+-- refusing `select/distinct_on_no_from_key_binds_to_nothing_loud.sql`, not one: the key's
+-- spelling, and the array, made non-empty here where that fixture's is `ARRAY[]::int[]`.
+-- @test
+SELECT DISTINCT ON (q) unnest(ARRAY[2, 1]) AS q;

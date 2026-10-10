@@ -1,0 +1,16 @@
+{
+  "rows": [
+    {
+      "a": "infinity",
+      "b": "-infinity",
+      "c": "infinity",
+      "d": "infinity",
+      "e": "-infinity",
+      "f": "infinity",
+      "g": "infinity",
+      "h": "-infinity",
+      "i": "-infinity"
+    }
+  ],
+  "rowCount": 1
+}

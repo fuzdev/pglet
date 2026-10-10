@@ -1,0 +1,29 @@
+-- The comparison gate reads the same `ColumnScope` the coercion pass does, so a
+-- FROM-clause `unnest(…)` registered with an *empty* column map left its column
+-- untypable: the bare literal stayed `text`, the plan-time coercion never ran, and the
+-- gate refused an ordinary predicate as `42883 operator does not exist: integer = text`.
+-- A **false rejection**, on statements 18.6 answers.
+--
+-- The coercion it depends on is plan-time, but the gate that raises is **eval-time**
+-- (`planner/legality.rs`'s rulebook, consumed per row for a `WHERE` predicate), so the
+-- defect is row-count dependent exactly like its two neighbours — measured, the
+-- `unnest(ARRAY[]::int[])` spelling of this statement answered `(0 rows)` on both engines
+-- throughout. That is why the array here carries elements, and why an empty one would
+-- pin nothing.
+--
+-- `build_column_scope` registers the unnest's columns now and both spellings answer.
+-- Both are in the one predicate on purpose: the bare `v` and the qualified `u.v` reach
+-- the scope by different tiers, and each was `42883` on its own before. The range
+-- operator is here for the same reason — `>` is a separate arm of the rulebook and was
+-- `42883 integer > text`.
+--
+-- The rows `2, 3` (over an input of `1, 2, 3`) are what make the *coercion* observable
+-- rather than merely the acceptance: a gate that stopped refusing without also coercing
+-- the literal would compare an integer against text and match differently.
+--
+-- The `LEFT JOIN` spelling of the same shape
+-- (`… FROM (SELECT 1) z LEFT JOIN unnest(ARRAY[1,2]) AS u(v) ON true WHERE v = '2'`) was
+-- `42883` before and answers now on both engines too; it is left unpinned, since it
+-- reaches the same registration through the same `collect_unnest_into` join arm.
+-- @test
+SELECT v FROM unnest(ARRAY[1, 2, 3]) AS u(v) WHERE v = '2' OR u.v > '2';

@@ -1,0 +1,11 @@
+-- The grammar bound at the FROM route. It is the *same* bound the ordinary call route
+-- carries (one `Parser::bound_func_set_quantifier`, called from both), and it is needed
+-- here for a reason the ordinary route does not have: once the quantifier token is eaten,
+-- the argument list parser stops at the `)` and hands back an empty list rather than
+-- failing — measured as a mutation, deleting the bound call from `parse_unnest_table`
+-- turns this fixture from a refusal into a **success** and reddens nothing else. 42601 on
+-- both; the `DISTINCT` spelling of the same statement is 42601 on both too (measured),
+-- through the identical call.
+-- @test
+-- @expect-error: syntax error at or near ")"
+SELECT * FROM unnest(ALL) AS u(x);

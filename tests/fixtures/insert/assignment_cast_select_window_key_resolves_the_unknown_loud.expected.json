@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42804",
+    "message": "column \"bo\" is of type boolean but expression is of type text"
+  }
+}

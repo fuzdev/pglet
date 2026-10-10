@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42883",
+    "message": "function pg_advisory_xact_lock(numeric) does not exist"
+  }
+}

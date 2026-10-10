@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42703",
+    "message": "column bcnj1.nosuch does not exist"
+  }
+}

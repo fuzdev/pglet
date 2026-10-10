@@ -1,0 +1,10 @@
+{
+  "rows": [
+    {
+      "neg_aggregate": -9,
+      "neg_then_shifted": -8,
+      "neg_thrice": -7
+    }
+  ],
+  "rowCount": 1
+}

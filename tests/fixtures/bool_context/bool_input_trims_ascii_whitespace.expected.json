@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "carriage_return": true,
+      "form_feed": true,
+      "newline": true,
+      "space": true,
+      "tab": true,
+      "vertical_tab": true
+    }
+  ],
+  "rowCount": 1
+}

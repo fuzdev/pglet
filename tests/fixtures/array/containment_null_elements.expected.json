@@ -1,0 +1,14 @@
+{
+  "rows": [
+    {
+      "both_null": false,
+      "empty_contained": true,
+      "empty_contained_by": true,
+      "null_contained_by": false,
+      "null_in_contained": false,
+      "null_in_container": true,
+      "null_matches_no_null": false
+    }
+  ],
+  "rowCount": 1
+}

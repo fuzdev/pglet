@@ -1,0 +1,15 @@
+-- A schema-qualified call reaches the same dispatch (the parser strips the qualifier and
+-- dispatches on the final part), so the quantifier verdict is reached through it too.
+-- 42809 on both; pglet answered `A`. 18.6's message names the qualified spelling
+-- (`pg_catalog.upper`) where pglet names the bare one — the SQLSTATE is what an
+-- `@expect-error` fixture compares.
+-- Read this as covering `pg_catalog` and nothing else. The qualifier is *stripped*, never
+-- resolved, so every other spelling diverges on the qualifier rather than the quantifier
+-- and is unpinnable here: `public.upper(DISTINCT 'a')` is 42809 here against 18.6's
+-- 42883, and `public.upper(ALL 'a')` answers `A` against the same 42883. That family is
+-- recorded in `EDGES.md` under the foreign-schema-qualifier
+-- bullet; `pg_catalog` is the schema 18.6 actually holds these functions in, which is
+-- why it is the spelling a fixture can hold.
+-- @test
+-- @expect-error: DISTINCT specified, but pg_catalog.upper is not an aggregate function
+SELECT pg_catalog.upper(DISTINCT 'a');

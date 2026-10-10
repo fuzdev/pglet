@@ -1,0 +1,73 @@
+{
+  "rows": [
+    {
+      "conname": "x01",
+      "definition": "CHECK ((EXTRACT(\"MONTH\" FROM t) > 0.0))"
+    },
+    {
+      "conname": "x02",
+      "definition": "CHECK ((EXTRACT(\"Epoch\" FROM t) > 0.0))"
+    },
+    {
+      "conname": "x03",
+      "definition": "CHECK ((EXTRACT(\"Hour\" FROM t) > 0.0))"
+    },
+    {
+      "conname": "x04",
+      "definition": "CHECK ((EXTRACT(\"select\" FROM t) IS NOT NULL))"
+    },
+    {
+      "conname": "x05",
+      "definition": "CHECK ((EXTRACT(\"user\" FROM t) IS NOT NULL))"
+    },
+    {
+      "conname": "x06",
+      "definition": "CHECK ((EXTRACT(\"left\" FROM t) IS NOT NULL))"
+    },
+    {
+      "conname": "x07",
+      "definition": "CHECK ((EXTRACT(\"between\" FROM t) IS NOT NULL))"
+    },
+    {
+      "conname": "x08",
+      "definition": "CHECK ((EXTRACT(action FROM t) IS NOT NULL))"
+    },
+    {
+      "conname": "x09",
+      "definition": "CHECK ((EXTRACT(\"my\"\"x\" FROM t) IS NOT NULL))"
+    },
+    {
+      "conname": "x10",
+      "definition": "CHECK ((EXTRACT(\"\" FROM t) IS NOT NULL))"
+    },
+    {
+      "conname": "x11",
+      "definition": "CHECK ((EXTRACT(\"é\" FROM t) IS NOT NULL))"
+    },
+    {
+      "conname": "x12",
+      "definition": "CHECK ((EXTRACT(\"1x\" FROM t) IS NOT NULL))"
+    },
+    {
+      "conname": "x13",
+      "definition": "CHECK ((EXTRACT(\"a b\" FROM t) IS NOT NULL))"
+    },
+    {
+      "conname": "x14",
+      "definition": "CHECK ((EXTRACT(_a1 FROM t) IS NOT NULL))"
+    },
+    {
+      "conname": "x15",
+      "definition": "CHECK ((EXTRACT(year FROM t) > 0.0))"
+    },
+    {
+      "conname": "x16",
+      "definition": "CHECK ((EXTRACT(month FROM t) > 0.0))"
+    },
+    {
+      "conname": "x17",
+      "definition": "CHECK ((EXTRACT(dow FROM t) > 0.0))"
+    }
+  ],
+  "rowCount": 17
+}

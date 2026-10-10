@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42701",
+    "message": "column \"a\" of relation \"tmord\" already exists"
+  }
+}

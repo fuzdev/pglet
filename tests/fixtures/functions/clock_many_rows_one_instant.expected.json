@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "clock_not_before_statement": "4096",
+      "local_reads_agree": "4096",
+      "scanned": "4096",
+      "statement_reads_agree": "4096",
+      "transaction_reads_agree": "4096",
+      "transaction_reads_differ": "0"
+    }
+  ],
+  "rowCount": 1
+}

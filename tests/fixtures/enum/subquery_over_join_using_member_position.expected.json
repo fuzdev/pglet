@@ -1,0 +1,9 @@
+{
+  "rows": [
+    {
+      "merged": true,
+      "merged_through_a_derived_table": true
+    }
+  ],
+  "rowCount": 1
+}

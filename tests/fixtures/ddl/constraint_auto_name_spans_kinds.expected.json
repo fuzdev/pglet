@@ -1,0 +1,15 @@
+{
+  "rows": [
+    {
+      "constraint_name": "cansk_b_a_check",
+      "constraint_type": "UNIQUE",
+      "table_name": "cansk_a"
+    },
+    {
+      "constraint_name": "cansk_b_a_check1",
+      "constraint_type": "CHECK",
+      "table_name": "cansk_b"
+    }
+  ],
+  "rowCount": 2
+}

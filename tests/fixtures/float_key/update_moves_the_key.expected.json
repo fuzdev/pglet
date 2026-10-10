@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "id": 4,
+      "probe": "above"
+    },
+    {
+      "id": 7,
+      "probe": "above"
+    },
+    {
+      "id": 11,
+      "probe": "above"
+    },
+    {
+      "id": 1,
+      "probe": "new"
+    }
+  ],
+  "rowCount": 4
+}

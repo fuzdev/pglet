@@ -1,0 +1,12 @@
+{
+  "rows": [
+    {
+      "del_char_key_survives": true,
+      "del_char_length": 3,
+      "del_char_survives": true,
+      "space_inside_a_key": "{\"a b\": 1}",
+      "space_inside_a_value": "{\"k\": \"a b\"}"
+    }
+  ],
+  "rowCount": 1
+}

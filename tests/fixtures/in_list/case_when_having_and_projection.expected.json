@@ -1,0 +1,15 @@
+{
+  "rows": [
+    {
+      "hit": false,
+      "rows": "1",
+      "tenths": "0"
+    },
+    {
+      "hit": true,
+      "rows": "2",
+      "tenths": "1"
+    }
+  ],
+  "rowCount": 2
+}

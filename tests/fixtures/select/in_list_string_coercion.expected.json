@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "bool_in_str": true,
+      "id": 5,
+      "in_str": true,
+      "nested": "other"
+    },
+    {
+      "bool_in_str": false,
+      "id": 6,
+      "in_str": false,
+      "nested": "six"
+    }
+  ],
+  "rowCount": 2
+}

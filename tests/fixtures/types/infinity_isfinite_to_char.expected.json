@@ -1,0 +1,15 @@
+{
+  "rows": [
+    {
+      "a": false,
+      "b": false,
+      "c": true,
+      "d": true,
+      "e": null,
+      "f": null,
+      "g": null,
+      "h": null
+    }
+  ],
+  "rowCount": 1
+}

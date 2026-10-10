@@ -1,0 +1,57 @@
+{
+  "rows": [
+    {
+      "attname": "a",
+      "atttypmod": 3
+    },
+    {
+      "attname": "b",
+      "atttypmod": 2
+    },
+    {
+      "attname": "c",
+      "atttypmod": 1
+    },
+    {
+      "attname": "d",
+      "atttypmod": 2147418116
+    },
+    {
+      "attname": "e",
+      "atttypmod": -1
+    },
+    {
+      "attname": "f",
+      "atttypmod": -1
+    },
+    {
+      "attname": "g",
+      "atttypmod": 3
+    },
+    {
+      "attname": "h",
+      "atttypmod": 2147418115
+    },
+    {
+      "attname": "i",
+      "atttypmod": 6
+    },
+    {
+      "attname": "j",
+      "atttypmod": 6
+    },
+    {
+      "attname": "k",
+      "atttypmod": 6
+    },
+    {
+      "attname": "l",
+      "atttypmod": 2147418118
+    },
+    {
+      "attname": "m",
+      "atttypmod": 6
+    }
+  ],
+  "rowCount": 13
+}

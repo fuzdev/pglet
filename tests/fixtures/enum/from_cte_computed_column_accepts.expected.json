@@ -1,0 +1,23 @@
+{
+  "rows": [
+    {
+      "coalesced": "sad",
+      "eq": false,
+      "gt": false,
+      "id": 1
+    },
+    {
+      "coalesced": "ok",
+      "eq": true,
+      "gt": false,
+      "id": 2
+    },
+    {
+      "coalesced": "happy",
+      "eq": false,
+      "gt": true,
+      "id": 3
+    }
+  ],
+  "rowCount": 3
+}

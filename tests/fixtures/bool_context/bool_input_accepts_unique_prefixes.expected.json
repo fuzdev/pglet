@@ -1,0 +1,18 @@
+{
+  "rows": [
+    {
+      "fa": false,
+      "fal_upper": false,
+      "fals": false,
+      "n_": false,
+      "of_": false,
+      "of_upper": false,
+      "on_": true,
+      "tr": true,
+      "tr_upper": true,
+      "tru": true,
+      "ye": true
+    }
+  ],
+  "rowCount": 1
+}

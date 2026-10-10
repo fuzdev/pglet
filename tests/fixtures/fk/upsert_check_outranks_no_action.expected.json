@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "23514",
+    "message": "new row for relation \"upck_p\" violates check constraint \"upck_p_v_check\""
+  }
+}

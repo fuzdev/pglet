@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "23502",
+    "message": "column \"e\" of relation \"alter_addcol_nn\" contains null values"
+  }
+}

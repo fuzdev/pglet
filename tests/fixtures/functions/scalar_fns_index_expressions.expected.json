@@ -1,0 +1,25 @@
+{
+  "rows": [
+    {
+      "indexdef": "CREATE INDEX ix_l ON public.ix USING btree (\"left\"(t, 2))",
+      "indexname": "ix_l"
+    },
+    {
+      "indexdef": "CREATE INDEX ix_m ON public.ix USING btree (md5(t))",
+      "indexname": "ix_m"
+    },
+    {
+      "indexdef": "CREATE INDEX ix_mod ON public.ix USING btree (mod(a, 3))",
+      "indexname": "ix_mod"
+    },
+    {
+      "indexdef": "CREATE INDEX ix_o ON public.ix USING btree (octet_length(t))",
+      "indexname": "ix_o"
+    },
+    {
+      "indexdef": "CREATE INDEX ix_s ON public.ix USING btree (substr(b, 1, 2))",
+      "indexname": "ix_s"
+    }
+  ],
+  "rowCount": 5
+}

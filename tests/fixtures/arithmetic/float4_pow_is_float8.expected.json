@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "id": 1,
+      "int_pow": 8.0,
+      "numeric_pow": "4.0000000000000000",
+      "real_pow": 8.0
+    }
+  ],
+  "rowCount": 1
+}

@@ -1,0 +1,11 @@
+-- `CharacterWithLength` spells its window with one `Iconst`, so a fractional length is a
+-- **grammar** error on both engines and never reaches `anychar_typmodin`'s `22023` —
+-- which is the point of reading it through the same `Iconst` reader the temporal and
+-- `FLOAT(n)` windows use. Answering the length refusal here would name a bound about a
+-- number nobody could have written.
+-- @no-error-fields: both engines send a `P`, and pglet's reader reports one token later —
+--   it validates the number after consuming it, where 18.6's lexer refuses the `ICONST`
+--   at the number itself. The same offset the `float_precision_malformed` fixture records.
+-- @expect-error: a character length that is not an integer
+-- @test
+SELECT 'ab'::char(3.5) AS never_reached;

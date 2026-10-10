@@ -1,0 +1,23 @@
+{
+  "rows": [
+    {
+      "eq": true,
+      "g": "zzz",
+      "id": 1,
+      "inl": true
+    },
+    {
+      "eq": false,
+      "g": "zzz",
+      "id": 2,
+      "inl": false
+    },
+    {
+      "eq": true,
+      "g": "zzz",
+      "id": 3,
+      "inl": true
+    }
+  ],
+  "rowCount": 3
+}

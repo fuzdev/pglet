@@ -1,0 +1,29 @@
+{
+  "rows": [
+    {
+      "conname": "cell_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "cell"
+    },
+    {
+      "conname": "cell_grant_check",
+      "contype": "c",
+      "definition": "CHECK ((((actor_id IS NOT NULL) AND (role IS NULL) AND (scope_id IS NULL)) OR ((actor_id IS NULL) AND (role IS NOT NULL))))",
+      "table_name": "cell_grant"
+    },
+    {
+      "conname": "cell_grant_level_check",
+      "contype": "c",
+      "definition": "CHECK ((level = ANY (ARRAY['viewer'::text, 'editor'::text])))",
+      "table_name": "cell_grant"
+    },
+    {
+      "conname": "cell_grant_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)",
+      "table_name": "cell_grant"
+    }
+  ],
+  "rowCount": 4
+}

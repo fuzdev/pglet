@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "schemaname": "public",
+      "tablename": "pgt_child"
+    },
+    {
+      "schemaname": "public",
+      "tablename": "pgt_parent"
+    }
+  ],
+  "rowCount": 2
+}

@@ -1,0 +1,126 @@
+[workspace]
+resolver = "2"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/fuzdev/pglet"
+rust-version = "1.89"
+publish = false
+
+[workspace.dependencies]
+# Internal
+# `pglet_core` is the leaf vocabulary (Value/TypeOid/Error/RowId/IndexSpec);
+# everything else depends down on it.
+pglet_core = { path = "crates/pglet_core" }
+# `pglet` is the in-process embed facade (engine assembly + execute + commit).
+# default-features = false so the wasm bindings drop the native `file_store`
+# (std::fs `FileBlockIo`); native consumers opt into the file-backed
+# constructor by re-enabling the `file_store` feature.
+pglet = { path = "crates/pglet", default-features = false }
+# default-features = false so the wasm bindings can drop `index_acceleration` for
+# the stripped "testing" build profile; native consumers (server/bench/tests) and
+# the default wasm build opt back in via their own `index_acceleration` feature.
+pglet_sql = { path = "crates/pglet_sql", default-features = false }
+# default-features = false so wasm consumers can drop the native `file_store`
+# (and its std::fs tail); native consumers opt in via features.
+pglet_storage = { path = "crates/pglet_storage", default-features = false }
+pglet_wire = { path = "crates/pglet_wire" }
+# Test-support crate (doubles, oracle, harness). Dev-dependency only — never a dep
+# of a production binary; `cargo xtask check-release` enforces that.
+pglet_testing = { path = "crates/pglet_testing" }
+
+# External
+# Perfect-hash keyword table for the native SQL lexer (compile-time, O(1) lookup).
+phf = { version = "0.14", features = ["macros"] }
+serde = { version = "1", features = ["derive"] }
+postcard = { version = "1", features = ["alloc"] }
+time = { version = "0.3", default-features = false, features = ["std", "serde", "parsing", "formatting", "macros"] }
+thiserror = "2"
+getrandom = "0.3"
+lru = "0.12"
+crc32fast = "1.5"
+parking_lot = "0.12"
+
+# Test dependencies
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "time"] }
+tokio-postgres = { version = "0.7", features = ["with-time-0_3", "with-uuid-1", "with-serde_json-1"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "warn"
+trivial_casts = "warn"
+trivial_numeric_casts = "warn"
+unused_lifetimes = "warn"
+unused_qualifications = "warn"
+
+[workspace.lints.clippy]
+# Enable lint groups (priority -1 so individual lints can override)
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+cargo = { level = "warn", priority = -1 }
+
+# Pedantic overrides
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+similar_names = "allow"
+too_many_lines = "allow"
+# Panic points carry justified #[allow]s; we don't also require `# Panics`/`# Errors` doc
+# sections on the many small Result-returning fns of a storage + SQL engine.
+missing_panics_doc = "allow"
+missing_errors_doc = "allow"
+# Doc comments carry SQL/OPFS/CamelCase proper nouns (TypeOid, OPFS, B+tree, CoW) that
+# aren't code identifiers, so the missing-backtick lint is pure noise here.
+doc_markdown = "allow"
+# A storage + SQL engine converts between usize/u16/u32/u64/i32/i64 constantly for page
+# offsets, slot indices, page IDs, byte lengths, and SQL numeric coercion. These casts are
+# bounded by page geometry or implement intentional SQL CAST narrowing (see docs/compatibility.md); the
+# cast lints fire on every one.
+cast_possible_truncation = "allow"
+cast_possible_wrap = "allow"
+cast_precision_loss = "allow"
+cast_sign_loss = "allow"
+
+# Nursery overrides
+significant_drop_tightening = "allow"
+
+# Cargo overrides. `cargo_common_metadata` stays allowed because these crates are
+# `publish = false` — the fields it asks for exist for a registry listing, and the
+# ones that carry meaning here (`description`, `license`, `repository`) are set
+# anyway. `multiple_crate_versions` is about the dependency graph, not this manifest.
+cargo_common_metadata = "allow"
+multiple_crate_versions = "allow"
+
+# Restriction lints (panic points need explicit #[allow] with justification)
+clone_on_ref_ptr = "warn"
+dbg_macro = "warn"
+expect_used = "warn"
+panic = "warn"
+todo = "warn"
+unwrap_used = "warn"
+
+# Debug and test builds keep line tables (a backtrace still names file:line) and drop full
+# debuginfo, which roughly halves what a change to a low crate relinks: every test binary
+# embeds the debuginfo of the whole crate graph. Codegen is unchanged, so the debug
+# stack-depth constants measure the same frames.
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+# Speed-tuned profile for the native perf benchmark (pglet_bench). The default
+# `release` profile optimizes for WASM *size* (opt-level = "z" + LTO), which is
+# pglet's whole reason to exist; benchmarking pglet's native speed under those
+# size flags understates it. Run the bench with `--profile bench-perf`.
+[profile.bench-perf]
+inherits = "release"
+opt-level = 3
+lto = false

@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "f8_to_f4": 1.5,
+      "i4_to_i2": 30000,
+      "i8_to_i4": 100000,
+      "round_even_down": 2,
+      "round_even_neg": -2,
+      "round_even_up": 4
+    }
+  ],
+  "rowCount": 1
+}

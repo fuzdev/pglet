@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "amount": "0",
+      "label": "b"
+    },
+    {
+      "amount": "1.25",
+      "label": "c"
+    },
+    {
+      "amount": "100",
+      "label": "d"
+    }
+  ],
+  "rowCount": 3
+}

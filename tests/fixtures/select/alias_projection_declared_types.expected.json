@@ -1,0 +1,12 @@
+{
+  "rows": [
+    {
+      "alias_abs": "5000000000",
+      "alias_qualified": 90000,
+      "alias_same_width": 120000,
+      "alias_unqualified": "5000030000",
+      "alias_wide_plus_lit": "5000000000"
+    }
+  ],
+  "rowCount": 1
+}

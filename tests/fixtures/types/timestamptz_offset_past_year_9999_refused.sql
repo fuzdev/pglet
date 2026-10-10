@@ -1,0 +1,11 @@
+-- An explicit offset carrying a `timestamptz` literal's UTC reading into year 10000:
+-- 18.6 answers `10000-01-01 04:00:00+00` and pglet refuses
+-- `22008 timestamp out of range`. 18.6 accepts, so this fixture holds that pglet errors
+-- and not which code it sends; the code is pinned by
+-- `crates/pglet/tests/temporal_domain.rs`. It also reddens if the literal panics the
+-- reader (a process abort on a release server): the harness scores a dropped
+-- connection as a client fault rather than as the error this directive expects —
+-- measured with the unchecked UTC conversion put back.
+-- @expect-error: pglet refuses a year-10000 timestamp
+-- @test
+SELECT ('9999-12-31 23:00:00-05'::timestamptz)::text;

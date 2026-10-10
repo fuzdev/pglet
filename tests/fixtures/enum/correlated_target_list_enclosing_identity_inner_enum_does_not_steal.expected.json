@@ -1,0 +1,19 @@
+{
+  "rows": [
+    {
+      "eq": false,
+      "folded": "zzz",
+      "gt": true,
+      "in_sub": false,
+      "k": 1
+    },
+    {
+      "eq": true,
+      "folded": "qqq",
+      "gt": true,
+      "in_sub": true,
+      "k": 2
+    }
+  ],
+  "rowCount": 2
+}

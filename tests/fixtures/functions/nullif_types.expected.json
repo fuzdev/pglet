@@ -1,0 +1,23 @@
+{
+  "rows": [
+    {
+      "an": "5",
+      "id": 1,
+      "lit": "5",
+      "widen": null
+    },
+    {
+      "an": null,
+      "id": 2,
+      "lit": "5",
+      "widen": null
+    },
+    {
+      "an": "5",
+      "id": 3,
+      "lit": "5",
+      "widen": null
+    }
+  ],
+  "rowCount": 3
+}

@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "nspname": "pg_catalog",
+      "usable": true
+    },
+    {
+      "nspname": "public",
+      "usable": true
+    }
+  ],
+  "rowCount": 2
+}

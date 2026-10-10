@@ -1,0 +1,8 @@
+{
+  "rows": [
+    {
+      "set_config": "nonexistent_schema"
+    }
+  ],
+  "rowCount": 1
+}

@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "column_default": "'2020-01-02 03:04:05.6789'::timestamp without time zone",
+      "column_name": "a"
+    },
+    {
+      "column_default": "'2020-01-02 03:04:05.6789+00'::timestamp with time zone",
+      "column_name": "b"
+    },
+    {
+      "column_default": "'03:04:05.6789'::time without time zone",
+      "column_name": "c"
+    },
+    {
+      "column_default": "'ab'::character varying",
+      "column_name": "d"
+    }
+  ],
+  "rowCount": 4
+}

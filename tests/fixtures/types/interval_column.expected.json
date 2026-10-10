@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "id": 1,
+      "span": "1 year 2 mons 3 days 04:05:06"
+    },
+    {
+      "id": 2,
+      "span": "30 days"
+    },
+    {
+      "id": 3,
+      "span": "-02:00:00"
+    }
+  ],
+  "rowCount": 3
+}

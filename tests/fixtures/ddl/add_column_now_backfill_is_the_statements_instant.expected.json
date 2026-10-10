@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "backfilled_rows": "5",
+      "day_differs": "0",
+      "expression_differs": "0",
+      "not_the_transaction_start": "0",
+      "statement_after_transaction": true,
+      "statement_values": "1"
+    }
+  ],
+  "rowCount": 1
+}

@@ -1,0 +1,22 @@
+{
+  "rows": [
+    {
+      "current_time_twice": true,
+      "localtime_twice": true,
+      "localtimestamp_twice": true,
+      "now_between": true,
+      "now_current_date": true,
+      "now_current_timestamp": true,
+      "now_ge_now": true,
+      "now_localtimestamp": true,
+      "now_minus_now": "00:00:00",
+      "now_now": true,
+      "now_transaction_timestamp": true,
+      "statement_before_clock": true,
+      "statement_twice": true,
+      "transaction_before_clock": true,
+      "transaction_before_statement": true
+    }
+  ],
+  "rowCount": 1
+}

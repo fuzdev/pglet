@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "above": true,
+      "y": "happy"
+    },
+    {
+      "above": false,
+      "y": "ok"
+    },
+    {
+      "above": false,
+      "y": "sad"
+    }
+  ],
+  "rowCount": 3
+}

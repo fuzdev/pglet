@@ -1,0 +1,62 @@
+{
+  "rows": [
+    {
+      "mixed_case": {
+        "data": [
+          222,
+          173,
+          190,
+          239
+        ],
+        "type": "Buffer"
+      },
+      "no_digits": {
+        "data": [],
+        "type": "Buffer"
+      },
+      "pairs": {
+        "data": [
+          97,
+          98
+        ],
+        "type": "Buffer"
+      },
+      "space_between_pairs": {
+        "data": [
+          97,
+          98,
+          99
+        ],
+        "type": "Buffer"
+      },
+      "spaces_around_pairs": {
+        "data": [
+          97,
+          98
+        ],
+        "type": "Buffer"
+      },
+      "tab_newline_return": {
+        "data": [
+          97,
+          98,
+          99,
+          100
+        ],
+        "type": "Buffer"
+      },
+      "the_prefix_as_bytes": {
+        "data": [
+          92,
+          120
+        ],
+        "type": "Buffer"
+      },
+      "whitespace_only": {
+        "data": [],
+        "type": "Buffer"
+      }
+    }
+  ],
+  "rowCount": 1
+}

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42701",
+    "message": "column \"id\" specified more than once"
+  }
+}

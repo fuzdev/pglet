@@ -1,0 +1,16 @@
+{
+  "rows": [
+    {
+      "doubled_quote": true,
+      "e_long": true,
+      "e_max": true,
+      "e_short": true,
+      "u_backslash": true,
+      "u_long": true,
+      "u_plain": true,
+      "u_short": true,
+      "u_two_escapes": true
+    }
+  ],
+  "rowCount": 1
+}

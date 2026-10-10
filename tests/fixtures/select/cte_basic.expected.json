@@ -1,0 +1,15 @@
+{
+  "rows": [
+    {
+      "id": 1,
+      "name": "Apple",
+      "price": 100
+    },
+    {
+      "id": 3,
+      "name": "Cherry",
+      "price": 200
+    }
+  ],
+  "rowCount": 2
+}

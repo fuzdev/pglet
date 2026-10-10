@@ -1,0 +1,12 @@
+-- A constraint's key list is validated by the **constraint**, not by the index it
+-- builds: `transformIndexConstraint` tests each key against the keys already accepted,
+-- and `CREATE INDEX`'s own key list has no such rule
+-- (`create_index_key_may_repeat_a_column.sql` is that control).
+--
+-- Before this gate pglet accepted the statement and built `CREATE UNIQUE INDEX ctpr_pkey
+-- ON public.ctpr USING btree (a, a)` — a catalog whose dump stock Postgres refuses.
+-- @expect-error: a repeated column in a primary key
+-- @expect-message
+-- @no-profile-lock: the @test is DDL and its setup builds nothing — the refusal lands before any plan, so index acceleration cannot reach it
+-- @test
+CREATE TABLE ctpr (a INT, PRIMARY KEY (a, a));

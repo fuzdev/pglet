@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42710",
+    "message": "type \"aid_c_seq\" already exists"
+  }
+}

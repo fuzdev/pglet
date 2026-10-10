@@ -1,0 +1,12 @@
+-- **The silent half of the no-FROM discard.** `parser::select`'s `SelectLeaf::NoFrom` arm
+-- parsed the trailing `ORDER BY` and `LIMIT`/`OFFSET` and threw both results away, so a
+-- no-FROM select ignored its own bound: this answered **one row** where 18.6 answers
+-- none, with no error on either engine. The `ORDER BY` half was at least loud there; this
+-- one was silent on both, which is why the record that named only the sort key would have
+-- let a reader fix the loud member and ship this.
+--
+-- The bound is applied by `plan_no_from_order_limit` now. The write polarity —
+-- `select/no_from_limit_zero_in_a_delete.sql` — is what makes the class matter: the same
+-- subquery inside a `DELETE` removed a row 18.6 keeps.
+-- @test
+SELECT 1 AS q LIMIT 0;

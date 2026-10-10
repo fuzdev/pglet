@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42710",
+    "message": "check constraint \"n\" already exists"
+  }
+}

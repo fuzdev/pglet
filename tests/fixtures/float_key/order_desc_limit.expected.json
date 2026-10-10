@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "g": 2,
+      "shown": "NaN"
+    },
+    {
+      "g": 6,
+      "shown": "Infinity"
+    },
+    {
+      "g": 1,
+      "shown": "2.5"
+    }
+  ],
+  "rowCount": 3
+}

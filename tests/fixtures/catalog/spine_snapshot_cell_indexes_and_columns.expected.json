@@ -1,0 +1,25 @@
+{
+  "rows": [
+    {
+      "indexdef": "CREATE INDEX idx_spi_cell_moderation ON public.spi_cell USING btree (root_id) WHERE (moderation = 'pending'::text)",
+      "indexname": "idx_spi_cell_moderation",
+      "tablename": "spi_cell"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX spi_cell_pkey ON public.spi_cell USING btree (id)",
+      "indexname": "spi_cell_pkey",
+      "tablename": "spi_cell"
+    },
+    {
+      "indexdef": "CREATE INDEX idx_spi_item_parent_position ON public.spi_item USING btree (parent_id, \"position\")",
+      "indexname": "idx_spi_item_parent_position",
+      "tablename": "spi_item"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX spi_item_pkey ON public.spi_item USING btree (parent_id, \"position\")",
+      "indexname": "spi_item_pkey",
+      "tablename": "spi_item"
+    }
+  ],
+  "rowCount": 4
+}

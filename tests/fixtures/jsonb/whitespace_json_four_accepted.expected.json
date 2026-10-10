@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "around_an_array": "[1, 2]",
+      "empty_array": "[]",
+      "empty_object": "{}",
+      "inside_an_object": "{\"k\": 1, \"kk\": []}"
+    }
+  ],
+  "rowCount": 1
+}

@@ -1,0 +1,11 @@
+-- The **error order** of the no-FROM `DISTINCT ON` binding gate, second half: the same two
+-- faults with their positions swapped, where 18.6 answers `42P10` because the ordinal is
+-- the positionally first wrong key.
+--
+-- Read the pair rather than either alone. `select/distinct_on_no_from_bogus_key_before_a
+-- _bad_position_loud.sql` is `42703` and this one is `42P10`, so the two checks have to be
+-- interleaved per key, in source order — one whole-list binding pass against one
+-- whole-list positional pass gets one of them wrong whichever runs first.
+-- @expect-error: DISTINCT ON position 5 is not in select list (42P10)
+-- @test
+SELECT DISTINCT ON (5, bogusdon) 1 AS q;

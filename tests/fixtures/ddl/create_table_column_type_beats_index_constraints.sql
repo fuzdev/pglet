@@ -1,0 +1,13 @@
+-- Column types are resolved in the `tableElts` walk (`transformColumnDefinition` →
+-- `transformColumnType`), which runs **before** `transformIndexConstraints` in the same
+-- parse-analysis pass — so an unknown type outranks both index-constraint errors at
+-- once: the missing key column on the first PRIMARY KEY and the second PRIMARY KEY
+-- after it.
+--
+-- Not derivable from the "parse analysis beats execution" rule the 42P16 fixtures pin,
+-- because all three of these are parse analysis; what decides is where each sits within
+-- the pass.
+-- @expect-error: type nosuchtype does not exist
+-- @no-profile-lock: the @test is DDL — it takes no query plan, so index acceleration cannot change its outcome
+-- @test
+CREATE TABLE ctct (a nosuchtype, PRIMARY KEY (b), PRIMARY KEY (a));

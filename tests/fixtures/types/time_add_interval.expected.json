@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "days_ignored": "01:00:00",
+      "endpoint_minus": "23:00:00",
+      "endpoint_wrap": "02:00:00",
+      "plus_90m": "13:30:00",
+      "wrap_back": "23:00:00",
+      "wrap_fwd": "01:00:00"
+    }
+  ],
+  "rowCount": 1
+}

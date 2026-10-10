@@ -1,0 +1,13 @@
+-- The **function** spelling of the same request the `SET` statement makes, and the
+-- one a real consumer takes: `SELECT pg_catalog.set_config('search_path', …)` is the
+-- line modern `pg_dump` emits and the CVE-2018-1058 hardening idiom.
+--
+-- Both routes reach one decider (`check_search_path_elements`): a gate on the `SET`
+-- classifier alone lets `set_config('search_path','nosuch',false)` through, the
+-- unqualified read after it answering from `public` where 18.6 answers `42P01`.
+--
+-- 18.6 accepts this and returns the value, so any pglet error passes; the `0A000` is
+-- pinned in `catalog::commands`'s unit tests.
+-- @test
+-- @expect-error: pglet has only the public schema
+SELECT pg_catalog.set_config('search_path', 'nonexistent_schema', false);

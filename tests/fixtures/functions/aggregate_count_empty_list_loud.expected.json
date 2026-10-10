@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42809",
+    "message": "count(*) must be used to call a parameterless aggregate function"
+  }
+}

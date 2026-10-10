@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "id": 12,
+      "name": "Bob",
+      "owner": 2,
+      "revoked": true
+    }
+  ],
+  "rowCount": 1
+}

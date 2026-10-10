@@ -1,0 +1,12 @@
+{
+  "rows": [
+    {
+      "a_values": "1",
+      "columns_differing": "0",
+      "not_this_transaction": "0",
+      "statement_values": "1",
+      "updated_rows": "512"
+    }
+  ],
+  "rowCount": 1
+}

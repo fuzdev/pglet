@@ -1,0 +1,8 @@
+{
+  "rows": [
+    {
+      "constraint_name": "canir_a_fkey"
+    }
+  ],
+  "rowCount": 1
+}

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P10",
+    "message": "table \"t\" has 2 columns available but 3 columns specified"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "category": "electronics",
+      "name": "Gadget"
+    },
+    {
+      "category": "electronics",
+      "name": "Gizmo"
+    },
+    {
+      "category": "tools",
+      "name": "Widget"
+    }
+  ],
+  "rowCount": 3
+}

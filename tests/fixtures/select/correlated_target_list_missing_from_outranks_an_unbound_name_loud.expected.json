@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P01",
+    "message": "relation \"ctr_nosuch\" does not exist"
+  }
+}

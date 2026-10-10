@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "leading_null": 1,
+      "leading_typed": 1
+    },
+    {
+      "leading_null": 2,
+      "leading_typed": 2
+    }
+  ],
+  "rowCount": 2
+}

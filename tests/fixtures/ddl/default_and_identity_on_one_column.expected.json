@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42601",
+    "message": "both default and identity specified for column \"a\" of table \"def_ident\""
+  }
+}

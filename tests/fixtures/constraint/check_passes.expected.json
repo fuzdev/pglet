@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "id": 1,
+      "level": "viewer"
+    },
+    {
+      "id": 2,
+      "level": "editor"
+    }
+  ],
+  "rowCount": 2
+}

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "22003",
+    "message": "\"2e-324\" is out of range for type double precision"
+  }
+}

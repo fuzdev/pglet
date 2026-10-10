@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "22P02",
+    "message": "invalid input syntax for type numeric: \"1e1073741823x\""
+  }
+}

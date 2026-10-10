@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "email": null,
+      "id": 1
+    },
+    {
+      "email": null,
+      "id": 2
+    },
+    {
+      "email": "x@y",
+      "id": 3
+    }
+  ],
+  "rowCount": 3
+}

@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "indexdef": "CREATE INDEX bchain_and3_idx ON public.bchain USING btree (a) WHERE ((a > 0) AND (b > 0) AND (c > 0))",
+      "indexname": "bchain_and3_idx"
+    },
+    {
+      "indexdef": "CREATE INDEX bchain_or3_idx ON public.bchain USING btree (b) WHERE ((a > 0) OR (b > 0) OR (c > 0))",
+      "indexname": "bchain_or3_idx"
+    }
+  ],
+  "rowCount": 2
+}

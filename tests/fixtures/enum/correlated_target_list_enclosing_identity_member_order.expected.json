@@ -1,0 +1,23 @@
+{
+  "rows": [
+    {
+      "between_labels": false,
+      "fold_compared": true,
+      "folded": "happy",
+      "k": 1,
+      "local_text_same_name": true,
+      "no_from": true,
+      "one_column_inner": false
+    },
+    {
+      "between_labels": true,
+      "fold_compared": false,
+      "folded": "ok",
+      "k": 2,
+      "local_text_same_name": false,
+      "no_from": false,
+      "one_column_inner": true
+    }
+  ],
+  "rowCount": 2
+}

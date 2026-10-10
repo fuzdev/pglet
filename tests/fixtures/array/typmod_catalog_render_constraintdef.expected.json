@@ -1,0 +1,15 @@
+{
+  "rows": [
+    {
+      "check_clause": "(a <> '{zzz}'::character varying(3)[])",
+      "conname": "tmcd_a_check",
+      "def": "CHECK ((a <> '{zzz}'::character varying(3)[]))"
+    },
+    {
+      "check_clause": "(b <> '{9.9}'::numeric(4,1)[])",
+      "conname": "tmcd_b_check",
+      "def": "CHECK ((b <> '{9.9}'::numeric(4,1)[]))"
+    }
+  ],
+  "rowCount": 2
+}

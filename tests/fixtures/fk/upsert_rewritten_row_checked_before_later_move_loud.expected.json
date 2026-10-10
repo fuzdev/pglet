@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "23503",
+    "message": "insert or update on table \"p\" violates foreign key constraint \"p_par_fkey\""
+  }
+}

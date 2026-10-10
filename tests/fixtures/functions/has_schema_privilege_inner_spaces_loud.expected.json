@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "22023",
+    "message": "unrecognized privilege type: \"USAGE WITH GRANT  OPTION\""
+  }
+}

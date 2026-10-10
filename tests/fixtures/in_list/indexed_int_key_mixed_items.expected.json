@@ -1,0 +1,23 @@
+{
+  "rows": [
+    {
+      "as_numeric": true,
+      "as_real": false,
+      "id": 1,
+      "string_item": true
+    },
+    {
+      "as_numeric": true,
+      "as_real": false,
+      "id": 2,
+      "string_item": false
+    },
+    {
+      "as_numeric": false,
+      "as_real": true,
+      "id": 3,
+      "string_item": false
+    }
+  ],
+  "rowCount": 3
+}

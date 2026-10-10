@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42809",
+    "message": "gen_random_uuid(*) specified, but gen_random_uuid is not an aggregate function"
+  }
+}

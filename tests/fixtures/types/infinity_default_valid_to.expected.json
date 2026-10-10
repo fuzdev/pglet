@@ -1,0 +1,19 @@
+{
+  "rows": [
+    {
+      "ends": "infinity",
+      "id": 1,
+      "open_date": true,
+      "open_ts": true,
+      "valid_to": "infinity"
+    },
+    {
+      "ends": "2001-01-01T00:00:00Z",
+      "id": 2,
+      "open_date": false,
+      "open_ts": false,
+      "valid_to": "2001-01-01"
+    }
+  ],
+  "rowCount": 2
+}

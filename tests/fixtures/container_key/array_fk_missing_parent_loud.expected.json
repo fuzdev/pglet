@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "23503",
+    "message": "insert or update on table \"ckmc_a\" violates foreign key constraint \"ckmc_a_k_fkey\""
+  }
+}

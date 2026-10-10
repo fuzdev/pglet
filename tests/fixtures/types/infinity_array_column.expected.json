@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "d": [
+        "infinity",
+        "-infinity",
+        "2000-01-01"
+      ],
+      "ts": [
+        "-infinity",
+        "infinity",
+        null
+      ]
+    }
+  ],
+  "rowCount": 1
+}

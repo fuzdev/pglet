@@ -1,0 +1,12 @@
+{
+  "rows": [
+    {
+      "padded": "cat_parent",
+      "plain": "cat_parent",
+      "qualified": "cat_parent",
+      "quoted": "cat_parent",
+      "upper": "cat_parent"
+    }
+  ],
+  "rowCount": 1
+}

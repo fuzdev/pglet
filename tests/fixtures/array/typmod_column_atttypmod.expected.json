@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "attname": "a",
+      "atttypmod": 7
+    },
+    {
+      "attname": "b",
+      "atttypmod": 7
+    },
+    {
+      "attname": "c",
+      "atttypmod": -1
+    }
+  ],
+  "rowCount": 3
+}

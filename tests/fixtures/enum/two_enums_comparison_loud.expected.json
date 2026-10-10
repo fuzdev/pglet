@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42883",
+    "message": "operator does not exist: mood > m3"
+  }
+}

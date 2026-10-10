@@ -1,0 +1,29 @@
+-- A bare name **no** relation at the level carries, over a FROM-clause `unnest(…)`, at
+-- the statement's own level. 18.6 raises `42703` in parse analysis; pglet answered
+-- `(0 rows)`.
+--
+-- The cause was one bit. `build_column_scope` registered an `unnest` FROM item with
+-- `push_partial_relation`, so `level_columns_uncertain` reported the level uncertain and
+-- `binding_bare` answered `Uncertain` after finding no claimant — which
+-- `ColumnScope::check_binding` reads as `Ok(())`. The relation's *columns* had already
+-- been filled in (that closed a declared-type family and three false rejections); what
+-- was left was the exhaustive bit, and `push_relation` is the whole flip.
+--
+-- **The empty array is what makes this a closure rather than a no-op.** With elements,
+-- the eval-time resolver reaches the reference and raises the same `42703` — so the
+-- non-empty spelling of this statement was already green on both engines and would pin
+-- nothing. That is the same shape `select/unnest_ambiguous_bare_name.sql` records for the
+-- claimant-count arm, and the reason both fixtures in this family carry
+-- `ARRAY[]::int[]`.
+--
+-- Its two controls live beside it and are green on either side of the flip:
+-- `select/unnest_bogus_bare_name_one_level_down_loud.sql` (the correlated level, built by
+-- `push_level_relations`, always exhaustive) and
+-- `update/unnest_from_source_bogus_bare_name_loud.sql` (the `UPDATE … FROM` route, built
+-- by `push_plan_relations`). Three builders, one relation kind, and only this one was
+-- open.
+--
+-- There is no `@setup` at all, so nothing can raise the asserted code but the `@test`.
+-- @test
+-- @expect-error: bare `bogus` names nothing at the unnest's level (42703)
+SELECT bogus FROM unnest(ARRAY[]::int[]) AS u(x);

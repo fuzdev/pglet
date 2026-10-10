@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "22023",
+    "message": "SET lock_timeout takes only one argument"
+  }
+}

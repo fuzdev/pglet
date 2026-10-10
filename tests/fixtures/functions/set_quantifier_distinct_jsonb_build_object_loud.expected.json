@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42809",
+    "message": "DISTINCT specified, but jsonb_build_object is not an aggregate function"
+  }
+}

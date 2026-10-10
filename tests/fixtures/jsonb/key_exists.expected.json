@@ -1,0 +1,14 @@
+{
+  "rows": [
+    {
+      "arr_elem": true,
+      "arr_miss": false,
+      "null_operand": true,
+      "num_scalar": false,
+      "obj_key": true,
+      "obj_miss": false,
+      "scalar_quirk": true
+    }
+  ],
+  "rowCount": 1
+}

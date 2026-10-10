@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "eq": true,
+      "id": 1
+    },
+    {
+      "eq": false,
+      "id": 2
+    }
+  ],
+  "rowCount": 2
+}

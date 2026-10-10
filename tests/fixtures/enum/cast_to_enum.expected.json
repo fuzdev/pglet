@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "id": 2,
+      "lit_cast": "public"
+    },
+    {
+      "id": 3,
+      "lit_cast": "public"
+    }
+  ],
+  "rowCount": 2
+}

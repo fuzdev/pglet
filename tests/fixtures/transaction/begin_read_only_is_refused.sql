@@ -1,0 +1,13 @@
+-- `READ ONLY` is the one transaction mode pglet refuses instead of accepting and
+-- ignoring. 18.6 accepts it and then answers `25006` to the write it forbids; pglet
+-- has no read-only block, so accepting the request would let that write succeed
+-- silently — the over-acceptance the engine's correct-or-loud rule forbids. Since
+-- the oracle accepts, any pglet error passes here and the `0A000` is pinned in the
+-- planner's unit tests.
+--
+-- The statement runs inside the harness's isolating block, where 18.6 answers a
+-- `WARNING: there is already a transaction in progress` and succeeds — which is why
+-- the recorded shape is a success and not an error.
+-- @test
+-- @expect-error: READ ONLY transactions are not supported
+START TRANSACTION READ ONLY;

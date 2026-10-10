@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42809",
+    "message": "referenced relation \"arefs_seq\" is not a table"
+  }
+}

@@ -1,0 +1,13 @@
+-- `date_part(field, source)` builds the same `Expr::Extract` node as
+-- `EXTRACT(field FROM source)`, but reached through an ordinary comma call — so
+-- Postgres accepts an arbitrary expression in the *field* slot, and this pair of
+-- fixtures pins the tiebreak when both slots fail for different reasons.
+--
+-- Here the binding error (`bogus`) is positionally first, so it wins over the
+-- operand-type error in the source slot. The sibling
+-- `check_date_part_binding_in_source` is the mirror. Together they lock
+-- `Expr::for_each_child`'s `Extract` arm to source order (field, then source): swap
+-- it and both fixtures report the other one's SQLSTATE.
+-- @test
+-- @expect-error: column "bogus" does not exist
+CREATE TABLE ckdp1 (a INT, CHECK (date_part(bogus, (a -> 'k')) > 0));

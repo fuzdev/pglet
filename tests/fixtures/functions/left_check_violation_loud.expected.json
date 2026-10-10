@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "23514",
+    "message": "new row for relation \"lv\" violates check constraint \"lv_t_check\""
+  }
+}

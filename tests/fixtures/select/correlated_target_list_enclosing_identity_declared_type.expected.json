@@ -1,0 +1,31 @@
+{
+  "rows": [
+    {
+      "a": 1,
+      "bare": 10,
+      "computed": 11,
+      "empty_inner": null,
+      "from_f": 2.5,
+      "from_n": "1.50",
+      "from_v": "ab",
+      "local_text_same_name": 10,
+      "over_unnest": 10,
+      "qualified": 10,
+      "wider_inner": 10
+    },
+    {
+      "a": 2,
+      "bare": 20,
+      "computed": 21,
+      "empty_inner": null,
+      "from_f": 3.5,
+      "from_n": "2.25",
+      "from_v": "cd",
+      "local_text_same_name": 20,
+      "over_unnest": 20,
+      "qualified": 20,
+      "wider_inner": 20
+    }
+  ],
+  "rowCount": 2
+}

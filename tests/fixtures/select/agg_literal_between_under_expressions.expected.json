@@ -1,0 +1,26 @@
+{
+  "rows": [
+    {
+      "btw": true,
+      "co": true,
+      "cs": "y",
+      "g": 1,
+      "nt": false
+    },
+    {
+      "btw": true,
+      "co": false,
+      "cs": "n",
+      "g": 2,
+      "nt": true
+    },
+    {
+      "btw": null,
+      "co": false,
+      "cs": "n",
+      "g": 3,
+      "nt": true
+    }
+  ],
+  "rowCount": 3
+}

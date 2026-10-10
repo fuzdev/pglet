@@ -1,0 +1,50 @@
+{
+  "rows": [
+    {
+      "conname": "cac1_ttttttttttttttttttttttt_dooooooooooooooooooooooooooo_check",
+      "contype": "c",
+      "len": 63
+    },
+    {
+      "conname": "cac1_ttttttttttttttttttttttttttttttttttttttttt_eooooooooo_check",
+      "contype": "c",
+      "len": 63
+    },
+    {
+      "conname": "cac1_tttttttttttttttttttttttttttttttttttttttttttttttttttt_check",
+      "contype": "c",
+      "len": 63
+    },
+    {
+      "conname": "cac1_ttttttttttttttttttttttt_cooooooooooooooooooooooooooo_fkey1",
+      "contype": "f",
+      "len": 63
+    },
+    {
+      "conname": "cac1_tttttttttttttttttttttttt_cooooooooooooooooooooooooooo_fkey",
+      "contype": "f",
+      "len": 63
+    },
+    {
+      "conname": "cac1_ttttttttttttttttttttttttttttttttttttttttttttttttttttt_pkey",
+      "contype": "p",
+      "len": 63
+    },
+    {
+      "conname": "cac1_tttttttttttttttttttttttt_coooooooooooooooooooooooooooo_key",
+      "contype": "u",
+      "len": 63
+    },
+    {
+      "conname": "cac1_tttttttttttttttttttttttt_doooooooooooooooooooooooooooo_key",
+      "contype": "u",
+      "len": 63
+    },
+    {
+      "conname": "cac1_tttttttttttttttttttttttt_eooooooooo_cooooooooooooooooo_key",
+      "contype": "u",
+      "len": 63
+    }
+  ],
+  "rowCount": 9
+}

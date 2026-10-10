@@ -1,0 +1,19 @@
+{
+  "rows": [
+    {
+      "id": 1,
+      "name": "Alice",
+      "oid": 101,
+      "product": "Widget",
+      "uid": 1
+    },
+    {
+      "id": 2,
+      "name": "Bob",
+      "oid": 102,
+      "product": "Gadget",
+      "uid": 2
+    }
+  ],
+  "rowCount": 2
+}

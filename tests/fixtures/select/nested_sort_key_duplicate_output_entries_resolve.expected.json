@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "alias_then_bare": false,
+      "distinct_on_key": false,
+      "grouped_twice": false,
+      "k": 1,
+      "qualified_then_bare": false,
+      "star_then_bare": false
+    },
+    {
+      "alias_then_bare": false,
+      "distinct_on_key": false,
+      "grouped_twice": false,
+      "k": 2,
+      "qualified_then_bare": false,
+      "star_then_bare": false
+    }
+  ],
+  "rowCount": 2
+}

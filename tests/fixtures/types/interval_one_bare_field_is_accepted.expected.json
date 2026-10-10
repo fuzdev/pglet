@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "after_year_month": "1 year 2 mons 00:00:03",
+      "all_labelled": "1 day 03:00:00",
+      "before_a_full_time": "1 day 04:05:06",
+      "before_a_time": "1 day 02:30:00",
+      "lone": "00:00:01",
+      "trailing_bare": "1 day 00:00:02"
+    }
+  ],
+  "rowCount": 1
+}

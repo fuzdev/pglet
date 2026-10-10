@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "arrayed": [
+        "public",
+        "aaa"
+      ],
+      "coalesced": "public",
+      "coalesced_array": [
+        "pg_catalog",
+        "public"
+      ],
+      "greatest_of": "public",
+      "greatest_varchar_first": "public",
+      "least_of": "bbb",
+      "least_varchar_first": "bbb",
+      "text_first": "aaa"
+    }
+  ],
+  "rowCount": 1
+}

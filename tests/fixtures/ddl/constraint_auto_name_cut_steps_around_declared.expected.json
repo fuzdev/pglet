@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "conname": "cac6_ttttttttttttttttttttttttttttttttttttttttttttttttttt_check1",
+      "contype": "c",
+      "len": 63
+    },
+    {
+      "conname": "cac6_ttttttttttttttttttttttttttttttttttttttttttttttttttt_check2",
+      "contype": "c",
+      "len": 63
+    },
+    {
+      "conname": "cac6_tttttttttttttttttttttttttttttttttttttttttttttttttttt_check",
+      "contype": "c",
+      "len": 63
+    }
+  ],
+  "rowCount": 3
+}

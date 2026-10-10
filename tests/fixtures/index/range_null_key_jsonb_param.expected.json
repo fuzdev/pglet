@@ -1,0 +1,14 @@
+{
+  "rows": [
+    {
+      "v": "empty array"
+    },
+    {
+      "v": "json null"
+    },
+    {
+      "v": "one"
+    }
+  ],
+  "rowCount": 3
+}
