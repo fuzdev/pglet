@@ -210,7 +210,9 @@ jobs:
       # From the PostgreSQL project's own apt repository rather than the runner
       # image's default, which carries an older major. `pg_dump` refuses to dump
       # a server newer than itself, so the client major has to be at least the
-      # service's.
+      # service's. Installing it is not enough on its own: the image's
+      # `pg_wrapper` resolves `pg_dump` to the image's own major (measured: 16
+      # beside an 18 `psql`), so the 18 binaries go first on `PATH`.
       - name: Install the Postgres 18 client
         run: |
           sudo install -d /usr/share/postgresql-common/pgdg
@@ -221,6 +223,7 @@ jobs:
             | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends postgresql-client-18
+          echo /usr/lib/postgresql/18/bin >> "$GITHUB_PATH"
 
       # Both clients, by version, before anything runs: `test:dump` and
       # `test:pg-dump` return early and exit 0 when either is absent, so a job
