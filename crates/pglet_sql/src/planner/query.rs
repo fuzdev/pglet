@@ -13,8 +13,8 @@ use crate::types::{ColumnDesc, TypeOid};
 use crate::{CatalogError, Error, Result};
 
 use super::coercion::{
-    AssignmentSource, ColumnScope, OutputEntry, build_column_type_map, certain_entry_type,
-    check_boolean_clause, resolve_entries_gated, resolve_expr_types_gated, validate_const_casts,
+    AssignmentSource, ColumnScope, OutputEntry, certain_entry_type, check_boolean_clause,
+    resolve_entries_gated, resolve_expr_types_gated, validate_const_casts,
 };
 use super::common_type::{ResolvedType, select_common_type};
 use super::correlation::{
@@ -3910,7 +3910,7 @@ fn build_column_scope(
         } else if let Some(t) = schema.get_table(table_name) {
             // A base table, looked up by its **table name** rather than its effective
             // name — `FROM users u` is the catalog's `users` under the scope name `u`.
-            scope.push_base_relation(effective, build_column_type_map(&t.columns));
+            scope.push_stored_relation(effective, t);
         } else {
             // A relation none of the three maps enumerates — a table the schema has no
             // entry for. The FROM item's **name** is known either way; only its columns

@@ -564,6 +564,10 @@ fn probe_literal_input(
 pub(super) fn on_conflict_action_scope(table: &str, schema: &Schema) -> ColumnScope {
     let column_types = column_type_map_for(schema, table);
     let mut scope = ColumnScope::single(table.to_string(), column_types.clone());
+    // the conflicting row is read from the heap
+    if let Some(def) = schema.get_table(table) {
+        scope.mark_stored(def);
+    }
     scope.push_excluded(column_types);
     scope.closed()
 }
@@ -1548,6 +1552,9 @@ pub fn lower_update(
         alias.clone().unwrap_or_else(|| table.clone()),
         column_types.clone(),
     );
+    if let Some(def) = schema.get_table(&table) {
+        scope.mark_stored(def);
+    }
     if let Some(source) = &from {
         push_plan_relations(&mut scope, source, schema);
     }
@@ -2069,7 +2076,11 @@ pub fn lower_delete(
     // reference binding to nothing is an error at plan time. Without that the verdict was
     // row-count-dependent: `DELETE FROM t WHERE zzz.c = 1` over an **empty** table matched
     // nothing, evaluated nothing, and reported `DELETE 0` where 18.6 raises `42P01`.
-    let scope = ColumnScope::single(table.clone(), column_types).closed();
+    let mut scope = ColumnScope::single(table.clone(), column_types);
+    if let Some(def) = schema.get_table(&table) {
+        scope.mark_stored(def);
+    }
+    let scope = scope.closed();
     let filter = filter
         .map(|f| resolve_expr_types_gated(f, &scope, schema))
         .transpose()?;

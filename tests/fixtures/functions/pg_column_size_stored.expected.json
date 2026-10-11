@@ -1,0 +1,43 @@
+{
+  "rows": [
+    {
+      "b": 5,
+      "ba": 37,
+      "bo": 1,
+      "d": 4,
+      "i": 4,
+      "ia": 33,
+      "id": 1,
+      "iv": 16,
+      "j": 50,
+      "la": 37,
+      "long_t": 204,
+      "n": 7,
+      "nb": 37,
+      "t": 6,
+      "ta": 37,
+      "ts": 8,
+      "u": 16
+    },
+    {
+      "b": null,
+      "ba": null,
+      "bo": null,
+      "d": null,
+      "i": null,
+      "ia": null,
+      "id": 2,
+      "iv": null,
+      "j": null,
+      "la": null,
+      "long_t": null,
+      "n": null,
+      "nb": null,
+      "t": null,
+      "ta": null,
+      "ts": null,
+      "u": null
+    }
+  ],
+  "rowCount": 2
+}

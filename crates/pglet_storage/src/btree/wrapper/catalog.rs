@@ -143,6 +143,15 @@ impl BtreeStorageWrapper {
             .ok_or_else(|| StorageError::TableNotFound(name.to_string()))
     }
 
+    /// Take `table_id` out of [`Self::untoasted`] for good: its rows are no longer
+    /// known to be laid out as 18.6 would have stored them untoasted. A poisoned lock
+    /// leaves the set unread as well as unwritten, which is the same answer.
+    pub(super) fn forget_untoasted(&self, table_id: u32) {
+        if let Ok(mut untoasted) = self.untoasted.lock() {
+            untoasted.remove(&table_id);
+        }
+    }
+
     /// Allocate a new table ID.
     pub(super) fn allocate_table_id(&self) -> u32 {
         self.next_table_id.fetch_add(1, Ordering::SeqCst) as u32

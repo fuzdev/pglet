@@ -336,6 +336,7 @@ pub fn expr_enum_with<T: PartialEq>(expr: &Expr, leaf: &EnumLeaves<'_, T>) -> Op
         | Expr::StringFn { .. }
         | Expr::Extract { .. }
         | Expr::Lower(_)
+        | Expr::ColumnSize { .. }
         | Expr::JsonbBuildObject(_)
         | Expr::Builtin(_)
         | Expr::SequenceFn { .. }

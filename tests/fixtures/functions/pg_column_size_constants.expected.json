@@ -1,0 +1,25 @@
+{
+  "rows": [
+    {
+      "bool_c": 1,
+      "bytea_array": 40,
+      "bytea_c": 8,
+      "date_c": 4,
+      "int4_c": 4,
+      "int8_c": 8,
+      "int_array": 36,
+      "interval_c": 16,
+      "jsonb_c": 28,
+      "negated": 4,
+      "null_typed": null,
+      "null_unknown": null,
+      "numeric_c": 10,
+      "numeric_typmod": 10,
+      "text_array": 40,
+      "text_c": 5,
+      "unknown_literal": 4,
+      "varchar_c": 9
+    }
+  ],
+  "rowCount": 1
+}

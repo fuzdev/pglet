@@ -1612,7 +1612,10 @@ impl Inference {
                 }
                 self.walk_expr(inner, schema, table);
             }
-            Expr::Aggregate { arg, .. } => self.walk_expr(arg, schema, table),
+            // `pg_column_size("any")`: the argument position types nothing
+            Expr::Aggregate { arg, .. } | Expr::ColumnSize { arg, .. } => {
+                self.walk_expr(arg, schema, table);
+            }
             Expr::Window {
                 partition_by,
                 order_by,
@@ -2271,16 +2274,20 @@ fn collect_from_aliases(plan: &Plan, out: &mut Vec<(String, String)>) {
 
 /// The single input of a **pass-through** plan node — one that neither adds nor
 /// renames the FROM relations beneath it (projection, filter, sort, limit, distinct,
-/// window, aggregate). `None` for leaves, joins, scope-openers, and DDL.
+/// window, aggregate, a locking clause's `LockRows`). `None` for leaves, joins,
+/// scope-openers, and DDL.
 ///
 /// The two FROM-scope walkers ([`collect_from_aliases`] and [`plan_table`]) both
 /// descend through these wrappers; routing both through this one helper keeps their
 /// transparent-node sets identical, so a newly added wrapper can't be handled by one
 /// and silently dropped by the other (a `Plan::Distinct` missing here once left a
-/// `SELECT DISTINCT`'s FROM-alias map empty → an untyped join-ON array param).
+/// `SELECT DISTINCT`'s FROM-alias map empty → an untyped join-ON array param, and a
+/// `Plan::LockRows` missing typed `a.id = $1` under `FOR SHARE` over an aliased join
+/// as `text` → `42883`).
 fn passthrough_input(plan: &Plan) -> Option<&Plan> {
     match plan {
-        Plan::Filter { input, .. }
+        Plan::LockRows { input }
+        | Plan::Filter { input, .. }
         | Plan::Project { input, .. }
         | Plan::Sort { input, .. }
         | Plan::Limit { input, .. }

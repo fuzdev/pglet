@@ -603,6 +603,8 @@ impl BtreeStorageWrapper {
     /// [`StorageError::NoTransaction`] if `conn_id` has no active transaction.
     pub fn drop_table_in_tx(&mut self, conn_id: i32, name: &str) -> Result<()> {
         let table_id = self.get_table_id(name)?;
+        // a rollback restores the table, and its rows are then not known untoasted
+        self.forget_untoasted(table_id);
         // Remove the name mapping now (RYOW + recreate-same-name) and count this as
         // own catalog DDL.
         self.name_to_id.remove(name);
@@ -1547,6 +1549,10 @@ impl BtreeStorageWrapper {
         if rows.is_empty() {
             return Ok(());
         }
+        // `add_column`'s reason: 18.6 reads these rows' default from `attmissingval`
+        if !default.is_null() {
+            self.forget_untoasted(table_id);
+        }
 
         let tx = self
             .transactions
@@ -1573,6 +1579,8 @@ impl BtreeStorageWrapper {
         column_index: usize,
     ) -> Result<()> {
         let table_id = self.get_table_id(table)?;
+        // `drop_column`'s reason: 18.6's rows keep the dropped column
+        self.forget_untoasted(table_id);
 
         // Get all existing rows (committed + pending)
         let rows = self.scan_in_tx(conn_id, table)?;

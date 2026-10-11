@@ -57,9 +57,7 @@ use std::collections::HashMap;
 use crate::Result;
 use crate::catalog::Schema;
 
-use super::coercion::{
-    ColumnScope, OutputEntry, build_column_type_map, check_boolean_clause, resolve_expr_types_gated,
-};
+use super::coercion::{ColumnScope, OutputEntry, check_boolean_clause, resolve_expr_types_gated};
 use super::dml::{
     insert_returning_relations, lowers_clauses, on_conflict_action_scope, returning_scope,
 };
@@ -1246,10 +1244,7 @@ fn push_level_relations(scope: &mut ColumnScope, plan: &Plan, schema: &Schema) {
         Plan::LockRows { input } => push_level_relations(scope, input, schema),
         Plan::Scan { table, alias } => {
             if let Some(t) = schema.get_table(table) {
-                scope.push_base_relation(
-                    scan_effective_name(table, alias),
-                    build_column_type_map(&t.columns),
-                );
+                scope.push_stored_relation(scan_effective_name(table, alias), t);
             } else {
                 // A scan of a table the schema has no entry for: the *name* is known —
                 // it is the FROM item's — and only the columns are unknowable, so the
@@ -1265,10 +1260,7 @@ fn push_level_relations(scope: &mut ColumnScope, plan: &Plan, schema: &Schema) {
         | Plan::IndexRangeScan { table, alias, .. }
         | Plan::GinScan { table, alias, .. } => {
             if let Some(t) = schema.get_table(table) {
-                scope.push_base_relation(
-                    scan_effective_name(table, alias),
-                    build_column_type_map(&t.columns),
-                );
+                scope.push_stored_relation(scan_effective_name(table, alias), t);
             } else {
                 scope.push_partial_relation(scan_effective_name(table, alias), HashMap::new());
             }
@@ -1414,10 +1406,7 @@ fn push_target_relation(
     schema: &Schema,
 ) {
     if let Some(t) = schema.get_table(table) {
-        scope.push_base_relation(
-            alias.unwrap_or(table).to_string(),
-            build_column_type_map(&t.columns),
-        );
+        scope.push_stored_relation(alias.unwrap_or(table).to_string(), t);
     } else {
         // The target's effective name is known even when the schema has no entry for
         // it; only its columns are not. See the `Plan::Scan` arm.

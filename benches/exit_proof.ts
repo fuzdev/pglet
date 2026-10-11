@@ -50,8 +50,8 @@
  *
  * Knobs (env): PGLET_EXITPROOF_REPS (default 3), PGLET_EXITPROOF_WARMUP (1),
  * PGLET_EXITPROOF_LEGS (comma-separated subset; default all four),
- * PGLET_FUZ_APP_DIR (default ../fuz_app), PGLET_SERVER_BIN / PGLET_WASM_PKG
- * (default the built artifacts), PGLET_EXITPROOF_PG_URL (opt-in pg leg — the
+ * PGLET_FUZ_APP_DIR (default ../fuz_app), PGLET_SERVER_BIN (default the built
+ * release server), PGLET_EXITPROOF_PG_URL (opt-in pg leg — the
  * named database is DROPPED and recreated before every pass; point it at a
  * dedicated scratch database, never at one you keep).
  *
@@ -93,13 +93,19 @@ const WARMUP = num_env('PGLET_EXITPROOF_WARMUP', 1);
 const FUZ_APP_DIR = resolve(Deno.env.get('PGLET_FUZ_APP_DIR') ?? resolve(Deno.cwd(), '../fuz_app'));
 const SERVER_BIN =
 	Deno.env.get('PGLET_SERVER_BIN') ?? resolve(Deno.cwd(), 'target/release/pglet_server');
-// fuz_app's wasm factory imports the npm adapter package (`create_pglet_db` from
-// `index.js`), not the raw wasm-pack `pkg/` — pointing the default there made the
-// leg fail instantly on every run.
-const WASM_PKG = Deno.env.get('PGLET_WASM_PKG') ?? resolve(Deno.cwd(), 'crates/pglet_wasm/pkg-npm');
+// The assembled npm package (`deno task build:npm`), never the raw wasm-pack `pkg/`. fuz_app
+// imports `@fuzdev/pglet-wasm` by name, so the wasm leg measures this build only when fuz_app's
+// install of it is a link to this directory — checked below, before the run.
+const WASM_PKG = resolve(Deno.cwd(), 'crates/pglet_wasm/pkg-npm');
+/** The package name fuz_app imports the wasm leg's engine by. */
+const PGLET_WASM = '@fuzdev/pglet-wasm';
 const PG_URL = Deno.env.get('PGLET_EXITPROOF_PG_URL'); // opt-in production-ceiling leg
 
 // --- artifact / dir preflight (fail loud, never silently skip) ------------
+const fail = (message: string): never => {
+	console.error(`error: ${message}`);
+	Deno.exit(1);
+};
 const require_path = (path: string, hint: string): void => {
 	try {
 		Deno.statSync(path);
@@ -129,8 +135,9 @@ require_path(FUZ_APP_DIR, 'set PGLET_FUZ_APP_DIR to the fuz_app checkout');
 // the tree, not about one run's legs. `create_describe_db` names each suite
 // `<name> (<factory.name>)`, so a single factory passed to it yields suites only that
 // driver's leg's `-t '\(<driver>\)'` selects — `pg_factory` grows the pg leg,
-// `default_db_factory` (named `pglite`, as no leg here installs a substitute) or a local
-// `create_pglite_factory(…)` the pglite leg — and the legs no longer run the same work.
+// `default_db_factory` (named `pglet-wasm`, as no leg here installs another default) or a
+// local `create_default_db_factory(…)` the pglet-wasm leg — and the legs no longer run the
+// same work.
 // Excluding the file would drop its four-leg suites from every leg, and admitting it is
 // unfair, so the fix is fuz_app's: the single-driver suite goes in its own file.
 //
@@ -321,7 +328,7 @@ const reset_pg_database = async (): Promise<void> => {
 
 const legs: Leg[] = [
 	{name: 'pglite', tier: 'L1', driver: 'pglite', env: {}},
-	{name: 'pglet-wasm', tier: 'L1', driver: 'pglet-wasm', env: {PGLET_WASM_PKG: WASM_PKG}},
+	{name: 'pglet-wasm', tier: 'L1', driver: 'pglet-wasm', env: {}},
 	{name: 'pglet-server', tier: 'L2', driver: 'pglet', env: {PGLET_SERVER_BIN: SERVER_BIN}},
 	{
 		name: 'pg',
@@ -363,6 +370,17 @@ if (runs_leg('pglet-wasm')) {
 	// for exactly this reason; running this file directly measures whatever `pkg-npm`
 	// happens to hold, which can be an older engine than the server binary beside it.
 	require_path(`${WASM_PKG}/index.js`, 'run `deno task build:npm` — the wasm leg needs the npm adapter, not the raw wasm-pack pkg');
+	// fuz_app resolves `@fuzdev/pglet-wasm` from its own install; an `npm install` there puts
+	// the published package back over a link, and the leg would then measure that instead.
+	const link_hint =
+		`link this build into fuz_app:\n  rm -rf ${FUZ_APP_DIR}/node_modules/@fuzdev/pglet-wasm && ` +
+		`ln -s ${WASM_PKG} ${FUZ_APP_DIR}/node_modules/@fuzdev/pglet-wasm`;
+	const installed =
+		resolve_package_dir(FUZ_APP_DIR, PGLET_WASM) ??
+		fail(`no ${PGLET_WASM} resolves from ${FUZ_APP_DIR} — ${link_hint}`);
+	if (Deno.realPathSync(installed) !== Deno.realPathSync(WASM_PKG)) {
+		fail(`${FUZ_APP_DIR}'s ${PGLET_WASM} is ${Deno.realPathSync(installed)}, not this build — ${link_hint}`);
+	}
 }
 
 // --- engine provenance ----------------------------------------------------
@@ -372,10 +390,6 @@ if (runs_leg('pglet-wasm')) {
 // there, never assumed to be the one the size comparison weighs and the head-to-head cold
 // inits run. Read before the run, so an unresolvable one refuses now rather than after it;
 // `null` for a leg not run.
-const fail = (message: string): never => {
-	console.error(`error: ${message}`);
-	Deno.exit(1);
-};
 const engine_version = (dir: string): string => {
 	try {
 		return package_version(dir);
@@ -389,7 +403,7 @@ if (runs_leg('pglite') && FUZ_APP_PGLITE === null) {
 }
 /** The pglite the pglite leg loads: fuz_app's install. */
 const PGLITE_VERSION = FUZ_APP_PGLITE === null ? null : engine_version(FUZ_APP_PGLITE);
-/** The npm package the pglet-wasm leg loads. */
+/** The npm package the pglet-wasm leg loads: this build, linked into fuz_app. */
 const PGLET_WASM_VERSION = runs_leg('pglet-wasm') ? engine_version(WASM_PKG) : null;
 /** The fuz_app checkout every leg runs, `-dirty` by `git_commit`'s rule for another checkout. */
 const FUZ_APP_COMMIT = git_commit(FUZ_APP_DIR);

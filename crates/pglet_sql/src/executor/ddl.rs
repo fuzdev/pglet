@@ -1048,10 +1048,10 @@ fn validate_index_exprs(
     Ok(())
 }
 
-/// Refuse an index predicate or key expression that holds a **conversion to an enum** or
-/// a call of **`random()`** — `42P17 functions in index {predicate,expression} must be
-/// marked IMMUTABLE`, 18.6's answer, `enum_in` being `STABLE` there and `random`
-/// `VOLATILE`.
+/// Refuse an index predicate or key expression that holds a **conversion to an enum**, a
+/// call of **`random()`** or one of **`pg_column_size`** — `42P17 functions in index
+/// {predicate,expression} must be marked IMMUTABLE`, 18.6's answer, `enum_in` and
+/// `pg_column_size` being `STABLE` there and `random` `VOLATILE`.
 ///
 /// pglet models no function volatility and accepts an index over `now()` or
 /// `current_user` where 18.6 refuses it (the permissiveness `deparse::render_expr`'s doc
@@ -1059,7 +1059,9 @@ fn validate_index_exprs(
 /// enum conversion because the node persists naming the type — accepted, the index gates
 /// writes on the frozen member list and dumps to a `CREATE INDEX` stock Postgres refuses
 /// on reload — and `random()` because a key drawn afresh at each evaluation is one no
-/// lookup can find again.
+/// lookup can find again — and `pg_column_size` because its answer for a key read from
+/// the row being indexed is one this engine does not hold (an index is formed before
+/// the row is stored).
 ///
 /// A cast whose operand is **already** that enum is a relabel 18.6 plans as no function
 /// at all (`CREATE INDEX … ((m::mood))` over a `mood` column is accepted, measured), so it
@@ -1072,7 +1074,8 @@ fn refuse_mutable_index_functions(
     table: &str,
 ) -> Result<()> {
     let scope = PlannerScope::catalog(schema, Some(table));
-    let mutable = |e: &Expr| holds_enum_conversion(e, &scope) || holds_random(e);
+    let mutable =
+        |e: &Expr| holds_enum_conversion(e, &scope) || holds_random(e) || holds_column_size(e);
     if predicate.is_some_and(mutable) {
         return Err(Error::IndexFunctionNotImmutable {
             position: "predicate",
@@ -1095,6 +1098,16 @@ fn holds_random(expr: &Expr) -> bool {
     }
     let mut found = false;
     expr.for_each_child(|child| found = found || holds_random(child));
+    found
+}
+
+/// Whether `expr` holds a `pg_column_size` call, which 18.6 marks `STABLE`.
+fn holds_column_size(expr: &Expr) -> bool {
+    if matches!(expr, Expr::ColumnSize { .. }) {
+        return true;
+    }
+    let mut found = false;
+    expr.for_each_child(|child| found = found || holds_column_size(child));
     found
 }
 
@@ -3939,6 +3952,8 @@ pub fn execute_alter_table_add_column<S: Storage>(
         for ((id, row), value) in existing.iter().zip(&backfill) {
             let mut new_row = row.clone();
             new_row.push(value.clone());
+            // 18.6 rewrites the table for a volatile default, so each row is a new write
+            super::heap_row::note_row_written_to(&*storage, schema, table_name, &new_row);
             storage.update(table_name, *id, new_row)?;
         }
     } else {

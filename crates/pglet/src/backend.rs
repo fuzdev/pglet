@@ -558,6 +558,23 @@ impl Storage for StorageBackend {
     fn release_savepoint(&mut self) -> Result<(), Error> {
         Err(no_conn_savepoint())
     }
+
+    // The memory backend keeps the default: it does not watch, so it knows no table.
+    fn rows_untoasted(&self, table: &str) -> bool {
+        match self {
+            #[cfg(feature = "memory_storage")]
+            Self::Memory(_) => false,
+            Self::Btree(btree) => btree.rows_untoasted(table),
+        }
+    }
+
+    fn note_toasted_row(&self, table: &str) {
+        match self {
+            #[cfg(feature = "memory_storage")]
+            Self::Memory(_) => {}
+            Self::Btree(btree) => btree.note_toasted_row(table),
+        }
+    }
 }
 
 /// The refusal the connection-less `Storage` dispatch answers with.
@@ -859,6 +876,14 @@ impl Storage for StorageAdapter<'_> {
     fn release_savepoint(&mut self) -> Result<(), Error> {
         self.storage.release_savepoint(self.conn_id)
     }
+
+    fn rows_untoasted(&self, table: &str) -> bool {
+        self.storage.rows_untoasted(table)
+    }
+
+    fn note_toasted_row(&self, table: &str) {
+        self.storage.note_toasted_row(table);
+    }
 }
 
 /// Read-only adapter for lock-free reads using a B+tree snapshot.
@@ -1009,5 +1034,9 @@ impl Storage for SnapshotAdapter<'_> {
         Err(Error::NotImplemented(
             "savepoints are not available on a read-only snapshot".into(),
         ))
+    }
+
+    fn rows_untoasted(&self, table: &str) -> bool {
+        self.snapshot.rows_untoasted(table)
     }
 }

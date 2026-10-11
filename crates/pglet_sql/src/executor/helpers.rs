@@ -1042,6 +1042,8 @@ fn expr_type_oid(expr: &Expr, scope: ProjectionScope<'_>) -> TypeOid {
         }
         // `LOWER(text)` is text.
         Expr::Lower(_) => TypeOid::Text,
+        // `pg_column_size` is int4.
+        Expr::ColumnSize { .. } => TypeOid::Int4,
         Expr::MathFn { func, args } => {
             // A **bare `NULL` literal** argument is Postgres's `unknown`, which overload
             // resolution answers with the numeric category's preferred type, `float8` —

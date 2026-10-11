@@ -14,9 +14,9 @@ use super::string_fn::{eval_enum_in, eval_string_fn, eval_variadic_fn, values_co
 use super::temporal_fn::eval_extract;
 use crate::executor::coerce::coerce_value;
 use crate::planner::{
-    BinaryOp, BoolContext, BuiltinFn, Expr, Literal, Plan, StringFunc, VariadicFunc,
-    arithmetic_legality, arithmetic_symbol, binary_op_result_type, math_fn_arg_legality,
-    negate_legality,
+    BinaryOp, BoolContext, BuiltinFn, ColumnSizeOrigin, Expr, Literal, Plan, StringFunc,
+    VariadicFunc, arithmetic_legality, arithmetic_symbol, binary_op_result_type,
+    math_fn_arg_legality, negate_legality,
 };
 use crate::types::{ArrayValue, JsonbValue, PgNumeric, TypeOid, Value, opt_type_oid_display_name};
 use crate::{CatalogError, Error, Result};
@@ -785,6 +785,14 @@ fn eval_expr_rest<R: ColumnResolver>(
                     opt_type_oid_display_name(other.type_oid())
                 ))),
             }
+        }
+        Expr::ColumnSize { arg, origin } => {
+            let value = eval_expr_full(arg, resolver, row, sub, env)?;
+            let untoasted = match origin {
+                ColumnSizeOrigin::Stored { table, .. } => env.rows_untoasted(table),
+                _ => false,
+            };
+            crate::executor::heap_row::column_size(&value, origin, untoasted)
         }
         Expr::MathFn { func, args } => {
             // `Expr::infer_type` reads the first argument's type and no other, so only

@@ -2003,9 +2003,10 @@ COPY g (id, \"order\", tags, note) FROM stdin;
     ];
 
     /// The [`ROUND_TRIP_CORPUS`] entries no index can hold — a `random()` call is
-    /// `VOLATILE`, refused `42P17` in an index expression or predicate as on 18.6 — so the
-    /// round trip stores them at the `Check` and `ColumnDefault` sites only.
-    const NOT_INDEXABLE_CORPUS: &[&str] = &["a < random()"];
+    /// `VOLATILE` and `pg_column_size` `STABLE`, each refused `42P17` in an index
+    /// expression or predicate as on 18.6 — so the round trip stores them at the `Check`
+    /// and `ColumnDefault` sites only.
+    const NOT_INDEXABLE_CORPUS: &[&str] = &["a < random()", "pg_column_size(s) < 100"];
 
     const ROUND_TRIP_CORPUS: &[&str] = &[
         // Already-covered shapes, kept so a regression in them fails here too.
@@ -2034,6 +2035,7 @@ COPY g (id, \"order\", tags, note) FROM stdin;
         // not folded away on the way into the catalog).
         "COALESCE(a, NULL) > 0",
         "lower(s) <> ''",
+        "pg_column_size(s) < 100",
         "n = 1.50",
         "(a)::text <> ''",
         "(a)::varchar(3) <> ''",
@@ -2310,6 +2312,7 @@ COPY g (id, \"order\", tags, note) FROM stdin;
             // discriminant and each one needs its own corpus line.
             Expr::BooleanTest { expr, test } => (test.sql(), vec![expr.as_ref()]),
             Expr::Lower(e) => ("Lower", vec![e.as_ref()]),
+            Expr::ColumnSize { arg, origin: _ } => ("ColumnSize", vec![arg.as_ref()]),
             Expr::Unnest(e) => ("Unnest", vec![e.as_ref()]),
             // `target_type` picks a *name* (`type_oid_sql`), not an arm.
             Expr::Cast {
@@ -2503,7 +2506,7 @@ COPY g (id, \"order\", tags, note) FROM stdin;
     /// per-entry site tag, plus the sequence its `@setup` needs; the round-trip is the
     /// interesting half, since the two `nextval` spellings deliberately differ by arm
     /// (see [`render_default`]).
-    const RENDERABLE_EXPR_TAGS: [&str; 43] = [
+    const RENDERABLE_EXPR_TAGS: [&str; 44] = [
         "Literal",
         "Column",
         "Column(qualified)",
@@ -2537,6 +2540,7 @@ COPY g (id, \"order\", tags, note) FROM stdin;
         "AnyAll(ANY)",
         "AnyAll(ALL)",
         "Lower",
+        "ColumnSize",
         "Coalesce",
         "Case(searched)",
         "Case(searched+ELSE)",

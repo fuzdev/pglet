@@ -65,7 +65,7 @@ use crate::index_keying::{encode_probe_key, index_range_bounds_for};
 use crate::{RowId, Storage, StorageError};
 use pglet_sql::executor::IndexSpec;
 use pglet_sql::types::Value;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -127,6 +127,17 @@ pub struct BtreeStorageWrapper {
     /// The one connection whose transactions this store takes, for a store built for one
     /// ([`Self::for_one_connection`]); `None` where any connection may.
     pub(super) only_connection: Option<i32>,
+
+    /// The tables this store created and has seen every row write to within 18.6's
+    /// TOAST threshold since — [`Storage::rows_untoasted`]'s answer, by table id, so a
+    /// table dropped and created again under its name is a new entry. Ids leave it and
+    /// never come back while their table lives ([`Self::forget_untoasted`]), and a store
+    /// reopened from disk starts it empty, knowing it of no table.
+    ///
+    /// Shared with every read snapshot, which reads it at the snapshot's own ids: a mark
+    /// made after the snapshot was taken can only make it refuse, never answer. A fork
+    /// copies it, since a fork's writes are its own.
+    pub(super) untoasted: Arc<Mutex<HashSet<u32>>>,
 }
 
 impl std::fmt::Debug for BtreeStorageWrapper {
@@ -179,6 +190,7 @@ impl BtreeStorageWrapper {
             table_indexes: HashMap::new(),
             last_schema: Mutex::new(Arc::new(Vec::new())),
             only_connection: None,
+            untoasted: Arc::default(),
         }
     }
 
@@ -243,6 +255,13 @@ impl BtreeStorageWrapper {
                     .unwrap_or_default(),
             ),
             only_connection: self.only_connection,
+            // the fork's writes are its own, so it watches a copy
+            untoasted: Arc::new(Mutex::new(
+                self.untoasted
+                    .lock()
+                    .map(|untoasted| untoasted.clone())
+                    .unwrap_or_default(),
+            )),
         })
     }
 
@@ -321,6 +340,8 @@ impl BtreeStorageWrapper {
             table_indexes: HashMap::new(),
             last_schema: Mutex::new(Arc::new(schema_bytes.clone())),
             only_connection: None,
+            // the rows on disk were written by a store that is gone, so nothing is known
+            untoasted: Arc::default(),
         };
         Ok((wrapper, schema_bytes))
     }
@@ -406,6 +427,7 @@ impl BtreeStorageWrapper {
             btree: Arc::clone(&self.storage),
             snapshot: self.storage.snapshot(),
             name_to_id: self.name_to_id.clone(),
+            untoasted: Arc::clone(&self.untoasted),
             index_nnd: self
                 .index_defs
                 .iter()
@@ -442,6 +464,10 @@ impl Storage for BtreeStorageWrapper {
         let table_id = self.allocate_table_id();
         self.name_to_id.insert(name.to_string(), table_id);
         self.init_row_id_counter(table_id);
+        // a table with no rows has had none written past the threshold
+        if let Ok(mut untoasted) = self.untoasted.lock() {
+            untoasted.insert(table_id);
+        }
 
         // Write the table's SYS_TABLE directory/counter entry (next_row_id = 0) to
         // the tree so the table is recoverable. DDL is auto-commit (applied
@@ -461,6 +487,7 @@ impl Storage for BtreeStorageWrapper {
 
     fn drop_table(&mut self, name: &str) -> pglet_core::Result<()> {
         let table_id = self.get_table_id(name)?;
+        self.forget_untoasted(table_id);
 
         // Remove from mapping
         self.name_to_id.remove(name);
@@ -601,6 +628,11 @@ impl Storage for BtreeStorageWrapper {
         if entries.is_empty() {
             return Ok(());
         }
+        // 18.6 leaves these rows alone and reads the default from `attmissingval`,
+        // under a four-byte header a stored value would not carry
+        if !default.is_null() {
+            self.forget_untoasted(table_id);
+        }
 
         // Reinsert each row with the new column appended, in one batch (one root
         // swap). The data-row key is unchanged, so this is a pure value overwrite;
@@ -622,6 +654,9 @@ impl Storage for BtreeStorageWrapper {
 
     fn drop_column(&mut self, table: &str, column_index: usize) -> pglet_core::Result<()> {
         let table_id = self.get_table_id(table)?;
+        // 18.6 keeps the dropped column's bytes in its old rows and a NULL for it in
+        // every new one, which this store's rows no longer show
+        self.forget_untoasted(table_id);
 
         // Get all existing rows
         let entries = self
@@ -838,6 +873,29 @@ impl Storage for BtreeStorageWrapper {
     fn release_savepoint(&mut self) -> pglet_core::Result<()> {
         Err(StorageError::NoTransaction(0).into())
     }
+
+    fn rows_untoasted(&self, table: &str) -> bool {
+        untoasted_contains(&self.untoasted, &self.name_to_id, table)
+    }
+
+    fn note_toasted_row(&self, table: &str) {
+        if let Some(&table_id) = self.name_to_id.get(table) {
+            self.forget_untoasted(table_id);
+        }
+    }
+}
+
+/// Whether `table`, by `name_to_id`'s ids, is in the untoasted set `untoasted`
+/// ([`Storage::rows_untoasted`]) — the store's own ids or a snapshot's. A poisoned lock
+/// answers `false`, which is "not known".
+fn untoasted_contains(
+    untoasted: &Mutex<HashSet<u32>>,
+    name_to_id: &HashMap<String, u32>,
+    table: &str,
+) -> bool {
+    name_to_id
+        .get(table)
+        .is_some_and(|id| untoasted.lock().is_ok_and(|set| set.contains(id)))
 }
 
 /// Add `index_id` to `table_id`'s index list, kept ascending — so a list rebuilt by

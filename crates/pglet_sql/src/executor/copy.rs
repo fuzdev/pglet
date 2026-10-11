@@ -496,6 +496,7 @@ pub fn execute_copy_from<S: Storage>(
             &row,
             None,
         )?;
+        super::heap_row::note_row_written(&*storage, &table_def, &row);
         storage.insert(params.table, row)?;
         count += 1;
     }

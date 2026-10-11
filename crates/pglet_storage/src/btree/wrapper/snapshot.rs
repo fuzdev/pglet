@@ -12,8 +12,8 @@ use crate::btree::cow::{CowBtree, Snapshot};
 use crate::index_keying::{encode_probe_key, index_range_bounds_for};
 use crate::{Result, RowId, StorageError};
 use pglet_sql::types::Value;
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::collections::{HashMap, HashSet};
+use std::sync::{Arc, Mutex};
 
 /// Read-only snapshot handle for lock-free reads.
 ///
@@ -30,12 +30,22 @@ pub struct BtreeSnapshot {
     pub(super) snapshot: Snapshot,
     /// Table name → ID mapping at snapshot time.
     pub(super) name_to_id: HashMap<String, u32>,
+    /// The store's live untoasted-table set (`BtreeStorageWrapper::untoasted`), read at
+    /// this snapshot's ids: a table marked since the snapshot was taken only refuses.
+    pub(super) untoasted: Arc<Mutex<HashSet<u32>>>,
     /// Registered index id → `nulls_not_distinct` at snapshot time. Presence is
     /// the probe-validity check; the flag selects the NULL-key probe encoding.
     pub(super) index_nnd: HashMap<u32, bool>,
 }
 
 impl BtreeSnapshot {
+    /// Whether `table`'s every row is known to be within 18.6's TOAST threshold
+    /// (`pglet_core::Storage::rows_untoasted`), by this snapshot's table ids.
+    #[must_use]
+    pub fn rows_untoasted(&self, table: &str) -> bool {
+        super::untoasted_contains(&self.untoasted, &self.name_to_id, table)
+    }
+
     /// Get the snapshot version.
     pub const fn version(&self) -> u64 {
         self.snapshot.version

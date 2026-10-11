@@ -329,6 +329,11 @@ fn render_expr_mode_rest(expr: &Expr, mode: RenderMode<'_>) -> Result<String> {
             let ty = matches!(mode, RenderMode::Catalog(_)).then_some(TypeOid::Text);
             format!("lower({})", render_operand(e, ty, mode)?)
         }
+        // `pg_column_size("any")` — its argument position takes any type, so the
+        // argument renders as written
+        Expr::ColumnSize { arg, .. } => {
+            format!("pg_column_size({})", render_operand(arg, None, mode)?)
+        }
         Expr::Array(items) => render_array(items, None, mode)?,
         Expr::Case {
             operand,

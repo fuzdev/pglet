@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "label": "ok",
+      "size": 4
+    },
+    {
+      "label": "very_unhappy_indeed",
+      "size": 4
+    }
+  ],
+  "rowCount": 2
+}

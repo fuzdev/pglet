@@ -114,8 +114,9 @@ pub fn eval_expr_subquery_with<S: Storage, R: ColumnResolver>(
     // never descend through a plan node, so a catalog-reading expression written there
     // would otherwise be `0A000` while the identical expression in a `SELECT` answered.
     // It goes on the **outer** env, not only on `child`: `child` is the frame a nested
-    // subquery sees, and the expression itself is evaluated against `env`.
-    let env = env.with_schema(schema);
+    // subquery sees, and the expression itself is evaluated against `env`. The store
+    // goes with it, for `pg_column_size` over an `UPDATE` / `DELETE` target's row.
+    let env = env.with_schema(schema).with_toast_status(storage);
     let frame = OuterFrame::over_scope(
         col_names,
         col_types,

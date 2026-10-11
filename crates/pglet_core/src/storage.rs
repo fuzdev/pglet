@@ -341,6 +341,43 @@ pub trait Storage: Send + Sync {
     ///
     /// Returns the backend's error if there is no savepoint to release.
     fn release_savepoint(&mut self) -> Result<()>;
+
+    /// Whether every row of `table` was written within 18.6's TOAST threshold, as far as
+    /// this store has watched — so no value 18.6 would hold for it is compressed or
+    /// stored out of line, and `pg_column_size` can answer from the value alone.
+    ///
+    /// **`false` is "not known", and it is the default.** A store answers `true` only for
+    /// a table it created and has seen every row write to since: a write past the
+    /// threshold ([`Self::note_toasted_row`]), a column added with a non-NULL default
+    /// over existing rows (18.6 reads those rows' values from `attmissingval`, under a
+    /// four-byte header) and a dropped column (whose bytes 18.6's old rows keep) each end
+    /// it for good, and a store reopened from disk knows it of no table. Being
+    /// conservative costs a refusal, never an answer: a store that does not track it
+    /// leaves the default, and `pg_column_size` refuses there.
+    fn rows_untoasted(&self, _table: &str) -> bool {
+        false
+    }
+
+    /// Record that a row of `table` was written whose 18.6 layout is past the TOAST
+    /// threshold — or could not be sized — so [`Self::rows_untoasted`] answers `false`
+    /// for it from now on. Monotonic: nothing but recreating the table clears it, so a
+    /// mark a later rollback strands costs a refusal and never an answer.
+    fn note_toasted_row(&self, _table: &str) {}
+}
+
+/// The one question `pg_column_size` asks of a store.
+///
+/// [`Storage::rows_untoasted`] behind a trait object, so expression evaluation can hold
+/// it without being generic over the store.
+pub trait ToastStatus {
+    /// [`Storage::rows_untoasted`].
+    fn rows_untoasted(&self, table: &str) -> bool;
+}
+
+impl<S: Storage> ToastStatus for S {
+    fn rows_untoasted(&self, table: &str) -> bool {
+        Storage::rows_untoasted(self, table)
+    }
 }
 
 /// No-op storage for tests and the storage-free `execute` entry point.

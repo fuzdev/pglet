@@ -5,6 +5,7 @@ use crate::catalog::Schema;
 use crate::planner::{Expr, Plan, UsingMatch};
 use crate::types::{ColumnDesc, TypeOid, Value};
 use crate::{Error, Result};
+use pglet_core::ToastStatus;
 
 /// Callback type for executing scalar subqueries.
 ///
@@ -143,6 +144,22 @@ pub struct EvalEnv<'a> {
     /// one; `ON CONFLICT DO UPDATE`'s `SET` and `WHERE` are lent (measured — the clause
     /// answers `'oc'::regclass::text` at both) and pinned by nothing.
     schema: Option<&'a Schema>,
+    /// The store's answer to whether a table's rows are all within 18.6's TOAST
+    /// threshold ([`pglet_core::Storage::rows_untoasted`]), which `pg_column_size` needs
+    /// for a stored value. Lent where a plan node runs over a store
+    /// ([`Self::with_toast_status`]); `None` elsewhere, where every table is "not known"
+    /// and a stored value is refused rather than sized.
+    toast: Option<ToastLens<'a>>,
+}
+
+/// A borrowed [`ToastStatus`], `Copy` like the environment that holds it.
+#[derive(Clone, Copy)]
+pub struct ToastLens<'a>(&'a dyn ToastStatus);
+
+impl std::fmt::Debug for ToastLens<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("ToastLens")
+    }
 }
 
 /// One enclosing query scope captured when descending into a subquery: the outer
@@ -389,6 +406,7 @@ impl<'a> EvalEnv<'a> {
         outer: None,
         ctes: &[],
         schema: None,
+        toast: None,
     };
 
     /// Build an environment over the portal's bound parameter values.
@@ -399,6 +417,7 @@ impl<'a> EvalEnv<'a> {
             outer: None,
             ctes: &[],
             schema: None,
+            toast: None,
         }
     }
 
@@ -414,7 +433,32 @@ impl<'a> EvalEnv<'a> {
             outer: self.outer,
             ctes: self.ctes,
             schema: Some(schema),
+            toast: self.toast,
         }
+    }
+
+    /// Derive a child environment that lends `status` — the store the evaluating plan
+    /// node reads — to `pg_column_size` ([`Self::rows_untoasted`]).
+    #[must_use]
+    pub const fn with_toast_status<'b>(&self, status: &'b dyn ToastStatus) -> EvalEnv<'b>
+    where
+        'a: 'b,
+    {
+        EvalEnv {
+            params: self.params,
+            outer: self.outer,
+            ctes: self.ctes,
+            schema: self.schema,
+            toast: Some(ToastLens(status)),
+        }
+    }
+
+    /// Whether `table`'s every row is known to be within 18.6's TOAST threshold — `false`
+    /// where no store is lent, which is "not known".
+    #[must_use]
+    pub fn rows_untoasted(&self, table: &str) -> bool {
+        self.toast
+            .is_some_and(|ToastLens(status)| status.rows_untoasted(table))
     }
 
     /// The live catalog, or `None` where the evaluating context has none.
@@ -442,6 +486,7 @@ impl<'a> EvalEnv<'a> {
             outer: Some(frame),
             ctes: self.ctes,
             schema: self.schema,
+            toast: self.toast,
         }
     }
 
@@ -459,6 +504,7 @@ impl<'a> EvalEnv<'a> {
             outer: self.outer,
             ctes,
             schema: self.schema,
+            toast: self.toast,
         }
     }
 

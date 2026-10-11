@@ -73,6 +73,7 @@ seem to disagree, the record wins.
 | [DATE](#date) | ✅ | A full column type over `0001-01-01` to `9999-12-31` plus `infinity`; no BC dates. |
 | [NUMERIC / DECIMAL](#numeric--decimal) | ✅ | Exact decimal with `NUMERIC(p,s)`, PostgreSQL's scale rules and exact `SUM` / `AVG`; a fractional exponent and numeric `Infinity` are refused. |
 | [Session information functions](#session-information-functions) | ⚠️ | `version()`, `current_user` and the other identity spellings, `current_schema`, `current_setting`; `SET search_path` doesn't change what they return, and there are no roles. |
+| [`pg_column_size`](#pg_column_size) | ⚠️ | 18.6's byte count for a constant and for a column of a table at the query's own level whose rows never reached the TOAST threshold; any other argument, and a table one of whose rows did, is `0A000`. |
 | [SQL typed constants (`DATE '2024-06-15'`, `NUMERIC(5,2) '1.5'`, `DOUBLE PRECISION '…'`)](#sql-typed-constants-date-2024-06-15-numeric52-15-double-precision-) | ✅ | `DATE '…'`, `NUMERIC(5,2) '…'` and the other typed-constant spellings, read as the matching cast. |
 | [`x IS [NOT] TRUE / FALSE / UNKNOWN`](#x-is-not-true--false--unknown) | ✅ | PostgreSQL's boolean test, never `NULL`; a non-boolean operand is `42804`. |
 | [TIME](#time) | ✅ | A full column type with `time(p)`; `timetz` is `42704`, a zone suffix on a time literal is `22007`, and `CURRENT_TIME` is `time`, not `timetz`. |
@@ -2765,6 +2766,42 @@ with exact ½-ulp rounding), `sign`, and digit-group underscores in a numeric **
 (`EDGES.md` row 189). **Gap:** a **fractional** numeric exponent (`2 ^ 0.5`) is `0A000`
 (the ln/exp bignum work is deferred), and numeric `Infinity`/`-Infinity` are still missing
 (a loud `22P02`). Differential-tested against Postgres (`types/numeric_*.sql`).
+
+### `pg_column_size`
+
+18.6's answer is the bytes it holds a value in, which depends on where the value came from
+as well as on what it is. A value read from a heap row carries the one-byte varlena header
+`heap_form_tuple` packed it to, up to 126 data bytes, so a `bytea` column holding
+`'\xdeadbeef'` is 5 where the same constant is 8. A value built in memory has a four-byte
+header. A row longer than 18.6's TOAST threshold (2 032 bytes) goes through its TOAST pass,
+which may compress a value or move it out of line, and a compressed value stays compressed
+through a later `UPDATE` of its row's other columns. pglet stores none of that, so it
+answers where the origin settles the bytes and refuses (`0A000`) everywhere else:
+
+- **A constant** — a literal, a cast written over one, a sign over a number literal, an
+  `ARRAY[…]` of those — is sized as 18.6 folds it: a fixed-length value at its length, a
+  varlena under a four-byte header, a bare string literal as the C string `unknown` is
+  (`pg_column_size('abc')` is 4).
+- **A bare column of a table at the query's own level**, read from its stored row (a
+  `FROM` scan, an `UPDATE` / `DELETE` / `ON CONFLICT` target): a fixed-length value at its
+  length (an enum is its four-byte OID), a varlena under the header 18.6 packed it to —
+  only while the store has seen every row of the table written within the threshold. That
+  watch (`Storage::rows_untoasted`, `executor/heap_row.rs`) sizes each row the executor
+  writes as 18.6's `heap_form_tuple` would, and ends for good at the first row past the
+  threshold, at a `DROP COLUMN`, and at an `ADD COLUMN` with a non-`NULL` default over
+  existing rows (18.6 reads those from `attmissingval`). A store reopened from disk knows
+  it of no table, and the in-memory `--storage memory` backend keeps none.
+
+Refused (`0A000`) where 18.6 answers: a computed argument (`t || ''`), a column read
+through a subquery, a derived table, a CTE or an enclosing query, a column with a character-length cap (it may be a `char(n)`, which pglet stores
+unpadded, `EDGES.md` row 95), a stored enum array, a string literal cast to `text` (an
+enum member literal reaches the planner as exactly that cast, `EDGES.md` row 104), a
+`RETURNING` item, `excluded`'s columns, a varying-length target column read in an
+`UPDATE` or `ON CONFLICT DO UPDATE` `SET` item and one of an `UPDATE … FROM` source
+(their evaluation is lent no store, so only a fixed-length value answers there), a `CHECK` constraint's argument (sized before
+the row is formed), and a varlena of a table the watch has ended for. A NULL is NULL
+everywhere. An index expression or predicate over it is `42P17`, `pg_column_size` being
+`STABLE`. Fixtures: `functions/pg_column_size_*`.
 
 ### Session information functions
 

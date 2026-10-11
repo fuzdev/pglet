@@ -698,7 +698,8 @@ fn expr_is_scan_independent(expr: &Expr, table: &str, alias: Option<&str>) -> bo
         | Expr::Alias { expr: e, .. }
         | Expr::Unnest(e)
         | Expr::BooleanTest { expr: e, .. }
-        | Expr::Lower(e) => indep(e),
+        | Expr::Lower(e)
+        | Expr::ColumnSize { arg: e, .. } => indep(e),
         Expr::BinaryOp { left, right, .. } | Expr::AnyAll { left, right, .. } => {
             indep(left) && indep(right)
         }

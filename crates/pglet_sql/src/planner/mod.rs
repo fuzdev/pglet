@@ -54,12 +54,12 @@ pub use common_type::{
     variadic_common_type_oid,
 };
 pub use expr::{
-    AggregateFunc, ArgCertainty, BinaryOp, BoolContext, BoolTest, BuiltinFn, Expr, ExtractField,
-    Literal, MathFunc, OrderKey, SequenceFunc, SqlValueFunction, StringFunc, Typmod, VariadicFunc,
-    WindowFunc, aggregate_result_type, aggregate_type_of, arith_result_type, binary_op_result_type,
-    build_enum_cast, builtin_fn_result_type, date_trunc_result_type, deserialize_expr,
-    enum_in_arg_parts, enum_in_holds, enum_in_parts, expr_contains_subquery, int_width_result,
-    math_fn_result_type, numeric_family_result, pow_result_type, serialize_expr,
+    AggregateFunc, ArgCertainty, BinaryOp, BoolContext, BoolTest, BuiltinFn, ColumnSizeOrigin,
+    Expr, ExtractField, Literal, MathFunc, OrderKey, SequenceFunc, SqlValueFunction, StringFunc,
+    Typmod, VariadicFunc, WindowFunc, aggregate_result_type, aggregate_type_of, arith_result_type,
+    binary_op_result_type, build_enum_cast, builtin_fn_result_type, date_trunc_result_type,
+    deserialize_expr, enum_in_arg_parts, enum_in_holds, enum_in_parts, expr_contains_subquery,
+    int_width_result, math_fn_result_type, numeric_family_result, pow_result_type, serialize_expr,
     shared_leaf_cell_type, shared_multi_operand_type, string_fn_result_type, temporal_arith_type,
     variadic_fn_result_type,
 };

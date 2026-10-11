@@ -97,6 +97,12 @@ fn aggregate_arm(expr: &Expr) -> AggregateArm {
         Expr::StringFn { .. } => both("upper(max(i)::text)"),
         Expr::VariadicFn { .. } => both("greatest(max(i), min(i))"),
         Expr::Extract { .. } => both("extract(year FROM max(d))"),
+        // A computed argument is refused when it is not NULL (its bytes are not
+        // modelled), so the shape makes it NULL: the aggregates under it still evaluate.
+        Expr::ColumnSize { .. } => Evaluates {
+            projection: "pg_column_size(nullif(max(i), max(i)))",
+            having: Some("pg_column_size(nullif(max(i), max(i))) IS NULL"),
+        },
     }
 }
 
@@ -199,6 +205,10 @@ fn every_variant() -> Vec<Expr> {
         Expr::BooleanTest {
             expr: boxed(lit()),
             test: pglet_sql::planner::BoolTest::True,
+        },
+        Expr::ColumnSize {
+            arg: boxed(lit()),
+            origin: pglet_sql::planner::ColumnSizeOrigin::Unclassified,
         },
     ]
 }

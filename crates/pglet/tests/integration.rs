@@ -61,6 +61,7 @@ mod numeric;
 mod on_conflict_row_affected_twice;
 mod page_fit;
 mod parser_walls;
+mod pg_column_size_toast_watch;
 mod range_null_key;
 mod regclass_cast_target;
 mod returning_from_namespace;

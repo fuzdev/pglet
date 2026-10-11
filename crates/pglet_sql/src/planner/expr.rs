@@ -346,6 +346,83 @@ pub enum Expr {
         expr: Box<Self>,
         test: BoolTest,
     },
+    /// `pg_column_size(arg)` — the bytes 18.6 holds `arg`'s value in, which depends on
+    /// where the value came from as well as on what it is: a value read from a heap row
+    /// carries the one-byte varlena header `heap_form_tuple` packed it to (up to 126 data
+    /// bytes), one built in memory a four-byte header, and a stored value 18.6's TOAST pass
+    /// reached may be compressed or out of line. So the call carries what the coercion
+    /// pass learned about its argument ([`ColumnSizeOrigin`]), and answers only where that
+    /// settles the bytes — `0A000` otherwise, never a guess (`docs/compatibility.md`
+    /// § `pg_column_size`).
+    ///
+    /// Appended **last** so existing postcard-encoded `Expr` IR keeps its variant
+    /// discriminants.
+    ColumnSize {
+        arg: Box<Self>,
+        origin: ColumnSizeOrigin,
+    },
+}
+
+/// Where `pg_column_size`'s argument comes from ([`Expr::ColumnSize`]).
+///
+/// A constant is read off its spelling where the call is built ([`Self::written`]),
+/// anything else by the coercion pass, which sees the argument's scope.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ColumnSizeOrigin {
+    /// Not read: what the call is built with for an argument that is not a constant, and
+    /// what a clause the coercion pass does not reach keeps — a `CHECK`, whose operand
+    /// 18.6 sizes before the row is formed. It answers only a NULL.
+    Unclassified,
+    /// A constant — a literal, a cast written over one, an `ARRAY[…]` of them — which 18.6
+    /// folds to a datum built in memory. `unknown` is a bare string literal, which 18.6
+    /// sizes as the C string `unknown` is (its bytes and a terminator).
+    Constant { unknown: bool },
+    /// A column of the base table `table` at the call's own query level, whose type is
+    /// an enum when `is_enum` — a value read from the table's heap row.
+    Stored { table: String, is_enum: bool },
+    /// Anything else: an expression 18.6 computes, a derived table's or an enclosing
+    /// level's column. It answers only a NULL.
+    Unsupported,
+}
+
+impl ColumnSizeOrigin {
+    /// The origin `arg`'s spelling alone settles: a constant, which 18.6 folds to a datum
+    /// built in memory — a literal, a cast written over one (but not a length cast, which
+    /// may be a `char(n)` whose padding pglet does not hold, `EDGES.md` row 95, nor a
+    /// string's cast to `text`, which may be an enum member literal folded to it), a sign
+    /// over a number literal, an `ARRAY[…]` of those — with a bare string literal (or
+    /// `NULL`) 18.6's `unknown`. [`Self::Unclassified`] for anything else, which only
+    /// the argument's scope can place.
+    #[must_use]
+    pub fn written(arg: &Expr) -> Self {
+        fn constant(e: &Expr) -> bool {
+            match e {
+                Expr::Literal(_) => true,
+                // an enum member literal is folded to exactly this cast, its type's name
+                // dropped (`build_enum_cast`), so a string cast to `text` may be an enum
+                // 18.6 stores as a four-byte OID
+                Expr::Cast {
+                    expr,
+                    target_type: TypeOid::Text,
+                } if matches!(**expr, Expr::Literal(Literal::String(_))) => false,
+                Expr::Cast { expr, .. } => matches!(**expr, Expr::Literal(_)),
+                Expr::CastTypmod { expr, typmod, .. } => {
+                    !matches!(typmod, Typmod::Length(_)) && matches!(**expr, Expr::Literal(_))
+                }
+                Expr::Negate(inner) | Expr::UnaryPlus(inner) => matches!(
+                    **inner,
+                    Expr::Literal(Literal::Int(_) | Literal::Float(_) | Literal::Numeric(_))
+                ),
+                _ => false,
+            }
+        }
+        match arg {
+            Expr::Literal(Literal::String(_) | Literal::Null) => Self::Constant { unknown: true },
+            Expr::Array(items) if items.iter().all(constant) => Self::Constant { unknown: false },
+            e if constant(e) => Self::Constant { unknown: false },
+            _ => Self::Unclassified,
+        }
+    }
 }
 
 /// Which truth value an [`Expr::BooleanTest`] tests for, and whether the test is
@@ -800,7 +877,8 @@ impl Expr {
             Self::Alias { expr: e, .. }
             | Self::Aggregate { arg: e, .. }
             | Self::Unnest(e)
-            | Self::Lower(e) => f(e, None),
+            | Self::Lower(e)
+            | Self::ColumnSize { arg: e, .. } => f(e, None),
             // `EXTRACT(field FROM source)` — the field-name expr, then the source
             // value. **Field first**, matching source order for *both* spellings that
             // build this node: Postgres's own parse node is field-first
@@ -1004,6 +1082,7 @@ impl Expr {
             | Self::Aggregate { arg: e, .. }
             | Self::Unnest(e)
             | Self::Lower(e)
+            | Self::ColumnSize { arg: e, .. }
             | Self::BooleanTest { expr: e, .. }
             | Self::InSubquery { expr: e, .. } => f(e),
             Self::BinaryOp { left, right, .. } | Self::AnyAll { left, right, .. } => {
@@ -3128,6 +3207,20 @@ fn dispatch_call(
         }
         "unnest" => Ok(Expr::Unnest(Box::new(single_arg(args, "unnest")?))),
         "lower" => Ok(Expr::Lower(Box::new(single_arg(args, "lower")?))),
+        // `pg_column_size("any")`: its origin is read by the coercion pass, which sees the
+        // argument's scope (`coercion::classify_column_size`).
+        "pg_column_size" => {
+            let [arg] = <[Expr; 1]>::try_from(args).map_err(|args| {
+                Error::UndefinedFunction(format!(
+                    "pg_column_size expects 1 argument, got {}",
+                    args.len()
+                ))
+            })?;
+            Ok(Expr::ColumnSize {
+                origin: ColumnSizeOrigin::written(&arg),
+                arg: Box::new(arg),
+            })
+        }
         // Numeric math functions. `abs`/`ceil`/`ceiling`/`floor` are unary;
         // `round`/`trunc` accept an optional second scale argument.
         "abs" => math_call(MathFunc::Abs, args, 1..=1),
@@ -4325,6 +4418,7 @@ impl Expr {
             Self::Unnest(inner) => operand(inner).and_then(TypeOid::array_element),
             // `LOWER(text)` is text.
             Self::Lower(_) => Some(TypeOid::Text),
+            Self::ColumnSize { .. } => Some(TypeOid::Int4),
             // Every sequence function returns bigint.
             Self::SequenceFn { .. } => Some(TypeOid::Int8),
         }
@@ -4498,6 +4592,7 @@ impl Expr {
             Self::Unnest(_) => "unnest".to_string(),
             // Postgres names these projections after the function when unaliased.
             Self::Lower(_) => "lower".to_string(),
+            Self::ColumnSize { .. } => "pg_column_size".to_string(),
             Self::MathFn { func, .. } => crate::deparse::math_fn_name(*func).to_string(),
             // Postgres names these projections after the function when unaliased.
             // `POSITION(…)` keeps its own `StringFunc::Position` variant rather than
@@ -5355,7 +5450,15 @@ mod postcard_layout {
                 test: BoolTest::True,
             }),
             33,
-            "Expr::BooleanTest is no longer the last variant (or a variant was \
+            "Expr::BooleanTest tag shifted"
+        );
+        assert_eq!(
+            tag(&Expr::ColumnSize {
+                arg: Box::new(lit.clone()),
+                origin: super::ColumnSizeOrigin::Unclassified,
+            }),
+            34,
+            "Expr::ColumnSize is no longer the last variant (or a variant was \
              inserted mid-enum) — see this test's doc comment before changing this \
              number; persisted CHECK/index expressions decode by position"
         );

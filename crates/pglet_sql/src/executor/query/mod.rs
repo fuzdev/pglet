@@ -334,7 +334,8 @@ pub fn execute_plan_node<S: Storage>(
     env: EvalEnv<'_>,
 ) -> Result<(Vec<Vec<Value>>, Vec<ColumnDesc>)> {
     crate::depth::check_stack()?;
-    let env = env.with_schema(schema);
+    // the store too, for `pg_column_size`'s stored values
+    let env = env.with_schema(schema).with_toast_status(storage);
     // The nodes a plan chain recurses through run their inputs from this frame and do
     // their own work in one of its own, so a chain costs this frame a level
     // (`crate::depth`); every other node is `execute_plan_node_rest`'s.
@@ -522,7 +523,7 @@ fn execute_plan_node_rest<S: Storage>(
     storage: &S,
     env: EvalEnv<'_>,
 ) -> Result<(Vec<Vec<Value>>, Vec<ColumnDesc>)> {
-    let env = env.with_schema(schema);
+    let env = env.with_schema(schema).with_toast_status(storage);
     match plan {
         Plan::Scan { table, alias: _ } => scan::execute_scan(table, schema, storage),
 

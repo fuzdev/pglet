@@ -441,6 +441,7 @@ crates/
                    #   planner/correlation.rs — correlated re-resolution against the level-chained scope
                    #   planner/legality.rs — the one operand-type rulebook
                    #   executor/dependencies.rs — the one DROP-time dependency resolver
+                   #   executor/heap_row.rs — 18.6's heap-row and value sizes: the write-time TOAST watch (Storage::rows_untoasted) and pg_column_size's answers
                    #   deparse.rs — the one Expr deparser: one exhaustive match over two RenderModes, Portable for pglet::dump and the DDL render probe,
                    #     Catalog for column_default / check_clause / pg_get_constraintdef / indexdef, which print 18.6's post-parse-analysis tree (docs/deparse.md)
                    #   catalog/constraints_view.rs — the one constraint enumeration and renderer, feeding pg_constraint's rows, pg_get_constraintdef and the dump's ADD CONSTRAINT
@@ -589,8 +590,9 @@ deno task test:browser            # WASM (pkg/) + OPFS (pkg-opfs/) under Playwri
 deno task fuzz                    # coverage-guided cargo-fuzz recovery target (needs nightly + cargo-fuzz; see fuzz/README.md)
 deno task fuzz:seed               # (re)write the valid seed image into the fuzz corpus
 
-deno task matrix:artifacts        # build release server + wasm pkg, print the fuz_app db-matrix env exports
-deno task matrix:env              # re-print those exports without rebuilding (eval-safe: eval "$(deno task matrix:env)")
+deno task matrix:artifacts        # build release server + wasm pkg, print the fuz_app db-matrix setup
+#                                   (the server export, and the command linking pkg-npm into fuz_app's node_modules)
+deno task matrix:env              # re-print that setup without rebuilding (eval-safe: eval "$(deno task matrix:env)")
 deno task spy:start               # wire-protocol logging proxy, :5434 → :5432 (tools/spy_proxy/main.ts's header);
 #                                   5434 is also the port tests-web's suites spawn their server on
 #                                   (tests-web/lib/server.ts), so stop the proxy before those

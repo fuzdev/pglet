@@ -522,7 +522,7 @@ pub fn execute_insert<S: Storage>(
                                 &col_enums,
                                 &existing_row,
                                 &row,
-                                env.with_schema(&*schema),
+                                env.with_schema(&*schema).with_toast_status(&*storage),
                             )?;
                             if !predicate_holds(&keep, BoolContext::Where)? {
                                 continue;
@@ -564,6 +564,7 @@ pub fn execute_insert<S: Storage>(
                         )?;
 
                         // Update in storage by ID.
+                        super::heap_row::note_row_written(&*storage, &table_def, &updated_row);
                         storage.update(table, conflict_id, updated_row.clone())?;
                         if let Some(written) = &mut written {
                             written.insert(conflict_id);
@@ -637,6 +638,7 @@ pub fn execute_insert<S: Storage>(
         // FK existence: every non-NULL referencing value must have a parent.
         enforce_foreign_keys(storage, schema, table, &row)?;
 
+        super::heap_row::note_row_written(&*storage, &table_def, &row);
         let id = storage.insert(table, row.clone())?;
         if let Some(written) = &mut written {
             written.insert(id);
@@ -1135,6 +1137,7 @@ fn write_updated_row<S: Storage>(
         row,
         Some(id),
     )?;
+    super::heap_row::note_row_written(&*storage, ctx.table_def, row);
     storage.update(ctx.table, id, row.to_vec())?;
     Ok(())
 }
@@ -1404,6 +1407,7 @@ pub fn execute_delete<S: Storage>(
                     row[col] = Value::Null;
                 }
             }
+            super::heap_row::note_row_written_to(&*storage, schema, &edit.table, &row);
             storage.update(&edit.table, edit.id, row)?;
         }
     }
@@ -2342,6 +2346,7 @@ impl<'a> FkTriggerQueue<'a> {
             *slot
         };
         self.queue_row(table, id, old, &image, written_before, Some(version));
+        super::heap_row::note_row_written(&*storage, child_def, &image);
         storage.update(table, id, image)?;
         Ok(())
     }

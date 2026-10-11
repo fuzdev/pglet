@@ -54,7 +54,7 @@ pub const GIN_MAX_ITEM_SIZE: usize = 2712;
 pub const INDEX_SIZE_MASK: usize = 0x1FFF;
 
 /// `MAXALIGN`'s alignment on the platforms 18.6 is measured on.
-const MAXIMUM_ALIGNOF: usize = 8;
+pub(super) const MAXIMUM_ALIGNOF: usize = 8;
 
 /// `sizeof(IndexTupleData)`.
 const INDEX_TUPLE_HEADER: usize = 8;
@@ -63,19 +63,19 @@ const INDEX_TUPLE_HEADER: usize = 8;
 const NULL_BITMAP: usize = 4;
 
 /// A four-byte varlena header.
-const VARHDRSZ: usize = 4;
+pub(super) const VARHDRSZ: usize = 4;
 
 /// The most data a one-byte-header ("short") varlena carries: `VARATT_SHORT_MAX` (127)
 /// less its one-byte header.
-const SHORT_VARLENA_MAX_DATA: usize = 126;
+pub(super) const SHORT_VARLENA_MAX_DATA: usize = 126;
 
 /// Round `n` up to a multiple of `align` (a power of two).
-const fn align_up(n: usize, align: usize) -> usize {
+pub(super) const fn align_up(n: usize, align: usize) -> usize {
     (n + align - 1) & !(align - 1)
 }
 
 /// How 18.6 stores one non-NULL key part.
-enum Layout {
+pub(super) enum Layout {
     /// A fixed-length type: its `typlen` and `typalign` in bytes.
     Fixed { len: usize, align: usize },
     /// A varlena of this many data bytes, header excluded.
@@ -100,7 +100,7 @@ fn numeric_data_len(n: &PgNumeric) -> usize {
 
 /// `value`'s layout, or `None` for a value with none: a NULL, which takes no data.
 /// `is_enum` is the key part's type, which a `Value::Text` cannot carry.
-fn layout(value: &Value, is_enum: bool) -> Option<Layout> {
+pub(super) fn layout(value: &Value, is_enum: bool) -> Option<Layout> {
     let fixed = |len, align| Some(Layout::Fixed { len, align });
     match value {
         Value::Bool(_) => fixed(1, 1),

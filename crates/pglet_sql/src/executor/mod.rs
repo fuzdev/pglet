@@ -22,6 +22,7 @@ mod ddl;
 mod dependencies;
 mod dml;
 mod expr;
+mod heap_row;
 mod helpers;
 pub mod index_row;
 mod md5;

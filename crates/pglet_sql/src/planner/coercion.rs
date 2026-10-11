@@ -16,7 +16,8 @@ use super::common_type::{
 };
 use super::dml::{projects_wildcard, target_list_entry_with_input};
 use super::expr::{
-    AggregateFunc, ArgCertainty, BinaryOp, BoolContext, Expr, Literal, VariadicFunc,
+    AggregateFunc, ArgCertainty, BinaryOp, BoolContext, ColumnSizeOrigin, Expr, Literal,
+    VariadicFunc,
 };
 use super::legality::{
     aggregate_legality, assignment_legality, branch_unification_legality, check_boolean_operand,
@@ -137,6 +138,14 @@ fn resolve_expr_types_rest(expr: Expr, scope: &ColumnScope) -> Result<Expr> {
         | Expr::AnyAll { .. }
         | Expr::InList { .. }
         | Expr::BooleanTest { .. } => resolve_expr_types(expr, scope)?,
+        // read off the argument as written, before this pass rewrites it
+        Expr::ColumnSize { arg, .. } => {
+            let origin = classify_column_size(&arg, scope);
+            Expr::ColumnSize {
+                arg: Box::new(recurse(*arg)?),
+                origin,
+            }
+        }
         Expr::Coalesce(args) => {
             let args: Vec<Expr> = args.into_iter().map(recurse).collect::<Result<_>>()?;
             // `COALESCE` resolves its arguments in source order (`transformCoalesceExpr`).
@@ -409,6 +418,23 @@ fn in_list_array_type(left: TypeOid, list: &[Expr], scope: &ColumnScope) -> Opti
         }
     }
     variadic_common_type_oid(&types)
+}
+
+/// Where `pg_column_size`'s argument `arg`, as written, takes its value from
+/// ([`ColumnSizeOrigin`]), with the argument's scope in reach.
+///
+/// A constant is settled by its spelling ([`ColumnSizeOrigin::written`]). A stored value
+/// is a bare column of one stored relation at this level ([`ColumnScope::stored_column`]).
+/// Every other expression is one 18.6 computes, or reads through a node whose datum
+/// pglet cannot place, and is [`ColumnSizeOrigin::Unsupported`].
+fn classify_column_size(arg: &Expr, scope: &ColumnScope) -> ColumnSizeOrigin {
+    match (arg, ColumnSizeOrigin::written(arg)) {
+        (_, constant @ ColumnSizeOrigin::Constant { .. }) => constant,
+        (Expr::Column { table, name }, _) => scope
+            .stored_column(table.as_deref(), name)
+            .unwrap_or(ColumnSizeOrigin::Unsupported),
+        _ => ColumnSizeOrigin::Unsupported,
+    }
 }
 
 /// Resolve a `CASE` expression, coercing string-literal labels (simple form) and
@@ -2169,6 +2195,25 @@ struct ScopeRelation {
     /// ([`ColumnScope::push_derived_relation`], [`certain_entry_type`]). A base
     /// relation's are all certain.
     certain: std::collections::HashSet<String>,
+    /// The catalog table whose **stored rows** this relation's values are read from — a
+    /// FROM scan of a base table, or an `UPDATE` / `DELETE` target — which
+    /// `pg_column_size` sizes as 18.6's heap holds them ([`ColumnScope::stored_column`]).
+    /// `None` for every other relation, a base one included where its values are not
+    /// read from a stored row: `RETURNING`'s target.
+    stored: Option<StoredTable>,
+}
+
+/// The catalog table a [`ScopeRelation`] reads stored rows of, with the column facts
+/// `pg_column_size` needs that its `ResolvedType`s do not carry.
+#[derive(Debug, Clone)]
+struct StoredTable {
+    /// The catalog name, which keys the store — not the relation's effective name.
+    table: String,
+    /// The columns whose type is an enum: 18.6 stores those as four-byte OIDs.
+    enums: std::collections::HashSet<String>,
+    /// The columns with a character-length cap, which may be a `char(n)` 18.6 pads and
+    /// pglet does not (`EDGES.md` row 95).
+    capped: std::collections::HashSet<String>,
 }
 
 /// What a **closed** [`ColumnScope`] can say about one column reference.
@@ -2461,6 +2506,66 @@ impl ColumnScope {
         }
     }
 
+    /// [`Self::push_base_relation`] for `table` under the effective name `name`, as a
+    /// relation whose values are read from the table's stored rows — a FROM scan, an
+    /// `UPDATE` / `DELETE` target.
+    pub fn push_stored_relation(&mut self, name: String, table: &crate::catalog::Table) {
+        self.push_base_relation(name, build_column_type_map(&table.columns));
+        self.mark_stored(table);
+    }
+
+    /// Record that the relation pushed last reads `table`'s stored rows — for a scope
+    /// whose builder pushed it as a base relation already, the `UPDATE` / `DELETE` /
+    /// `ON CONFLICT` target. `pg_column_size` sizes such a relation's columns as 18.6's
+    /// heap holds them.
+    pub fn mark_stored(&mut self, table: &crate::catalog::Table) {
+        if let Some(relation) = self.relations.last_mut() {
+            let names = |keep: fn(&crate::catalog::Column) -> bool| {
+                table
+                    .columns
+                    .iter()
+                    .filter(|c| keep(c))
+                    .map(|c| c.name.clone())
+                    .collect()
+            };
+            relation.stored = Some(StoredTable {
+                table: table.name.clone(),
+                enums: names(|c| c.enum_type.is_some()),
+                capped: names(|c| c.varchar_length.is_some()),
+            });
+        }
+    }
+
+    /// The origin of `pg_column_size`'s argument `[qualifier.]name` when it is a column
+    /// of exactly one relation at this level, read from that relation's stored rows
+    /// ([`ScopeRelation::stored`]). `None` for anything else — a name no relation of the
+    /// level can be shown to own alone, an enclosing level's, a derived relation's, and a
+    /// length-capped column, which may be a `char(n)` whose padding pglet does not hold.
+    fn stored_column(&self, qualifier: Option<&str>, name: &str) -> Option<ColumnSizeOrigin> {
+        let mut found = None;
+        for relation in &self.relations {
+            if relation.level != 0
+                || (relation.pseudo && qualifier.is_none())
+                || qualifier.is_some_and(|q| relation.name.as_deref() != Some(q))
+            {
+                continue;
+            }
+            if relation.columns.contains_key(name) {
+                if found.is_some() {
+                    return None;
+                }
+                found = Some(relation);
+            } else if !relation.exhaustive {
+                return None;
+            }
+        }
+        let stored = found?.stored.as_ref()?;
+        (!stored.capped.contains(name)).then(|| ColumnSizeOrigin::Stored {
+            table: stored.table.clone(),
+            is_enum: stored.enums.contains(name),
+        })
+    }
+
     /// [`Self::push_relation`] for a relation read off a plan node's output descriptors —
     /// a derived table, a CTE reference, a FROM-clause `unnest` — recording which of its
     /// columns the descriptors call certain ([`Self::column_type_certain`]).
@@ -2550,6 +2655,7 @@ impl ColumnScope {
             level: 0,
             base: false,
             certain: std::collections::HashSet::new(),
+            stored: None,
         });
     }
 

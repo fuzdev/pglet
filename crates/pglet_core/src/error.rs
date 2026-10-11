@@ -1512,6 +1512,14 @@ pub enum Error {
     #[error("functions in index {position} must be marked IMMUTABLE")]
     IndexFunctionNotImmutable { position: &'static str },
 
+    /// `pg_column_size` of a value whose bytes 18.6 holds in a form pglet does not model:
+    /// `0` names which. SQLSTATE `0A000` (`feature_not_supported`), pglet's own — 18.6
+    /// answers. Kept apart from [`Self::NotImplemented`] because the call itself
+    /// resolves for every argument type, so the DDL-time probe that asks whether a stored
+    /// expression resolves (`validate_stored_expr`) must not read it as a refusal.
+    #[error("pg_column_size is not supported for {0}")]
+    ColumnSizeNotModelled(&'static str),
+
     /// An `EXTRACT`/`date_part`/`date_trunc` field name recognized by neither of
     /// Postgres's token tables (`DecodeUnits` then `DecodeSpecial`) — or, for
     /// `date_trunc`, a field only in the special tier (`dow`/`epoch`/…), which
@@ -2097,6 +2105,7 @@ impl Error {
             | Self::TypeRequiredByTable(_)
             | Self::DependentOnType(_) => "2BP01", // dependent_objects_still_exist
             Self::IndexFunctionNotImmutable { .. } => "42P17", // invalid_object_definition
+            Self::ColumnSizeNotModelled(_) => "0A000", // feature_not_supported
             Self::UnrecognizedTimeUnit(_) => "22023", // invalid_parameter_value
             Self::UnsupportedTimeUnit(_) => "0A000", // feature_not_supported
             Self::SequenceNotFound(_) => "42P01", // undefined_table

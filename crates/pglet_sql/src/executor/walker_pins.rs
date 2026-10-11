@@ -171,8 +171,9 @@ use super::helpers::{ProjectionScope, expr_column_info};
 use crate::catalog::Schema;
 use crate::parser::parse;
 use crate::planner::{
-    AggregateFunc, BinaryOp, BoolTest, BuiltinFn, Expr, LeafScope, Literal, MathFunc, Plan,
-    PlannerScope, SequenceFunc, StringFunc, TypeScope, Typmod, VariadicFunc, WindowFunc,
+    AggregateFunc, BinaryOp, BoolTest, BuiltinFn, ColumnSizeOrigin, Expr, LeafScope, Literal,
+    MathFunc, Plan, PlannerScope, SequenceFunc, StringFunc, TypeScope, Typmod, VariadicFunc,
+    WindowFunc,
 };
 use crate::types::{ColumnDesc, TypeOid, Value};
 
@@ -376,6 +377,14 @@ fn variants_with_no_unknown_ness_to_carry_agree_on_both_walks() {
             TypeOid::Int8,
         ),
         ("lower()", Expr::Lower(boxed(lit_null())), TypeOid::Text),
+        (
+            "pg_column_size()",
+            Expr::ColumnSize {
+                arg: boxed(lit_null()),
+                origin: ColumnSizeOrigin::Unclassified,
+            },
+            TypeOid::Int4,
+        ),
         (
             "jsonb_build_object()",
             Expr::JsonbBuildObject(vec![lit_str("k"), lit_int(1)]),
