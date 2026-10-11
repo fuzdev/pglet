@@ -2,8 +2,8 @@
  * pglet WASM init harness.
  *
  * Times the WASM/embedded startup path — the half of the <100ms thesis that
- * actually matters (the native server is sub-ms; the WASM module is the heavy
- * path, and where pglite is disqualifying at over a second). Phases:
+ * actually matters (the native server spawns in ~1 ms; the WASM module is the
+ * heavy path, and where pglite is disqualifying at over a second). Phases:
  *   - cold init      : initSync({module: bytes})  — sync compile + instantiate
  *   - new PgletBtree(): engine/catalog construction (the shipped in-memory class)
  *   - first query    : first exec + query (lazy parser/catalog warmup)

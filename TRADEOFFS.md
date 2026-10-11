@@ -9,14 +9,14 @@ whose whole pitch is size and speed, an unmeasured number is a liability.
 
 | Artifact | Raw | Gzipped (wire) | Gated? |
 |---|---|---|---|
-| WASM (`pglet_wasm_bg.wasm`) | **~1614 KB** | ~647 KB | yes — raw bytes, under the lower of baseline +2% and the 1650 KB (1.65 MB) cap (`benches/size_baseline.json` is the recorded figure) |
+| WASM (`pglet_wasm_bg.wasm`) | **~1613 KB** | ~647 KB | yes — raw bytes, under the lower of baseline +2% and the 1650 KB cap (`benches/size_baseline.json` is the recorded figure) |
 | Native (`pglet_server`) | ~2705 KB | ~1289 KB | no (secondary target) |
 
 The size **gate** is on **raw WASM bytes** (`deno task size:check`) — the size you
 build, deterministic across a fixed toolchain, so a regression is real code growth
 rather than compressor noise. The gzipped figure is the over-the-wire /
 download cost that matters for the embedded/browser use; it's reported alongside but
-not gated. **The cap is 1.65 MB**, moved only by an explicit decision; `size:check` runs
+not gated. **The cap is 1650 KB**, moved only by an explicit decision; `size:check` runs
 second in `cargo xtask gates`, so any full gate run enforces it — still worth running
 deliberately after size-growing work if you are not running the set. The native binary
 is the secondary target, reported only. The per-component breakdown below is estimated
@@ -79,14 +79,14 @@ levers it took stand; the figures describe that pass's tree, not today's.
 ## Where startup stands (measured)
 
 Startup (<100 ms) is half the reason pglet exists, and it is now **measured and
-met**: native spawn→ready is sub-ms p50 across storage modes, and WASM init is
-~2.5 ms on the first-ever compile, ~1.4 ms p50 for a full cold load, and ~0.5 ms
+met**: native spawn→ready is ~1 ms p50 across storage modes, and WASM init is
+~3.3 ms on the first-ever compile, ~3.5 ms p50 for a full cold load, and ~0.5 ms
 to instantiate from a cached module (`benches/wasm_init_results.json`) — all far under
 the target. Those figures include the 4 MiB shadow stack (`crates/pglet_wasm/build.rs`),
 whose three more MiB of initial memory measured side by side on one box at +0.17 ms to
 instantiate and +0.16 ms to a full cold load. Head-to-head (`bench:wasm-compare`, pglet vs pglite vs sqlite-wasm in-memory
 across Deno/Node/Bun, each engine's fresh module load through its first query — for pglet, its npm package's), pglet's cold init
-is ~11–14 ms against pglite's ~1.1–1.2 s (`benches/wasm_compare_results.json`). The
+is ~12–16 ms against pglite's ~1.4 s (`benches/wasm_compare_results.json`). The
 harness is Deno tasks over `fuz_util`'s statistics (`benches/`; reproduced in
 `benches/lib/bench_stats.ts` where it cannot be imported), not `xtask`; the Rust
 `pglet_bench` crate adds the query microbench (point lookup / scan / aggregate)

@@ -34,7 +34,7 @@ const BASELINE = 'benches/size_baseline.json';
 // It is self-enforcing only because `size:check` runs second in `cargo xtask gates` —
 // the cap was once breached and stayed breached while this gate sat in no automated
 // set. Raising it is a deliberate decision, never a tripwire to move quietly.
-const HARD_CAP_BYTES = 1650 * 1024; // 1.65 MB raw
+const HARD_CAP_BYTES = 1650 * 1024; // 1650 KB raw
 const TOLERANCE_PCT = 2; // absorb toolchain noise before failing
 
 interface Artifact {

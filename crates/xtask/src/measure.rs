@@ -30,7 +30,7 @@
 //! # Why the order
 //!
 //! Quiet-sensitive first. Measured on this box, the startup bench read 5–6 ms p50
-//! at 40–60% CV under a concurrent wasm build against 0.76–0.88 ms at 6–9% CV
+//! at 40–60% CV under a concurrent wasm build against ≈1 ms at under 15% CV
 //! with the box idle — so the steps most easily spoiled run while the machine is
 //! most likely still quiet, and the steps that do not care run last: `size-compare`
 //! (byte counts, not timings — though its `build:npm` loads the box for what follows)
@@ -737,7 +737,7 @@ const FIGURES: &[Figure] = &[
         null_means: None,
     },
     Figure {
-        quoted: "README § Goals, TRADEOFFS.md: native spawn→ready, sub-ms p50 across storage modes \
+        quoted: "README § Goals, TRADEOFFS.md: native spawn→ready, ~1 ms p50 across storage modes \
                  — memory",
         step: "startup",
         file: STARTUP_JSON,

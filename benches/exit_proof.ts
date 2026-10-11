@@ -5,7 +5,7 @@
  * *same* suite of database tests takes when the DB is backed by pglet (both
  * legs) versus pglite. This is the payoff measurement for the "fast test-fixture
  * engine" thesis: the micro-benches already prove pglet wins cold-start
- * decisively (`wasm_compare.ts`, ~11–14 ms vs pglite's ~1.1–1.2 s); this proves
+ * decisively (`wasm_compare.ts`, ~12–16 ms vs pglite's ~1.4 s); this proves
  * it — or doesn't — on a real consumer's suite.
  *
  * ## Method (no fuz_app edit for the bench's sake)
@@ -248,8 +248,8 @@ const walk_db_tests = async (dir: string, out: string[] = []): Promise<string[]>
 // Refuses (exit 1) when any file would make the legs run different tests — a four-leg
 // file that also binds a single-driver suite — or carries a fixture import it cannot
 // read, naming each — before any leg runs, whichever legs `PGLET_EXITPROOF_LEGS` selects
-// and whether or not `PGLET_EXITPROOF_PG_URL` is set, since the shared set is a claim about fuz_app's tree, not
-// about this run's legs.
+// and whether or not `PGLET_EXITPROOF_PG_URL` is set, since the shared set is a claim about
+// fuz_app's tree, not about this run's legs.
 const discover_shared_files = async (): Promise<string[]> => {
 	const root = `${FUZ_APP_DIR}/src/test`;
 	const all = (await walk_db_tests(root)).sort();
@@ -653,10 +653,11 @@ console.log(
 console.log(
 	`\nNOTE: fuz_app shares one engine instance across the whole \`db\` run (isolate:false,` +
 		`\n  fileParallelism:false), so each engine's cold boot is paid once and amortized —` +
-		`\n  the per-file spin-up win pglet holds decisively (wasm_compare cold-init ~80–100× vs` +
-		`\n  pglite, runtime-dependent — see wasm_compare_results.json) shows here only as its` +
-		`\n  ~1/${shared_files.length} share. This suite measures steady-state throughput on a real` +
-		`\n  consumer, the complement to wasm_compare's cold-start number.`,
+		`\n  the per-file spin-up win pglet holds decisively (wasm_compare cold-init roughly 80–120×` +
+		`\n  vs pglite, a one-shot sample that swings run to run, runtime-dependent — see` +
+		`\n  wasm_compare_results.json) shows here only as its ~1/${shared_files.length} share.` +
+		`\n  This suite measures steady-state throughput on a real consumer, the` +
+		`\n  complement to wasm_compare's cold-start number.`,
 );
 if (counts.size > 1) {
 	console.log(

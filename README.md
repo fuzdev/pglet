@@ -12,11 +12,11 @@ well under a megabyte over the wire.
 or pglite's second-plus init, and `fork()` branches a migrated, seeded database
 into an isolated copy per test without re-running the setup SQL.
 On [fuz_app](https://github.com/fuzdev/fuz_app)'s database tests,
-pglet runs ~8.4x faster than pglite
+pglet runs ~6.3x faster than pglite
 at ~1/8 the gzipped size of pglite's wasm and data files (wasm-to-wasm, in memory),
-and ~7.8x faster than a real PostgreSQL server
-(pglet in-process versus Postgres over TCP; server-to-server it's ~4.7x) —
-counting the time spent running the tests; vitest's whole run is ~5x faster than on pglite.
+and ~5.9x faster than a real PostgreSQL server
+(pglet in-process versus Postgres over TCP; server-to-server it's ~4.0x) —
+counting the time spent running the tests; vitest's whole run is ~4.4x faster than on pglite.
 
 **Later, embedded and everywhere else.** The same engine is meant to grow into
 a local-first, file-based store for apps and browsers —
@@ -218,16 +218,16 @@ of recorded divergences.
 ## Goals, honestly measured
 
 - **Size:** the WASM artifact — the metric that matters for the embedded use — is
-  ~1614 KB raw / ~647 KB gzipped over the wire — about a tenth of pglite's raw
+  ~1613 KB raw / ~647 KB gzipped over the wire — about a tenth of pglite's raw
   payload and an eighth of its gzipped one (`benches/pglite_size_comparison.json`).
   The gate is on raw bytes (deterministic; gzip is reported, not gated) against the
   recorded baseline +2% and a hard cap, re-validated on every full gate run. The recorded figures are `benches/size_baseline.json`; the budget and
   what has been cut to hold it are `TRADEOFFS.md`.
-- **Startup (<100 ms): measured and met.** Native spawn→ready is sub-ms p50 across
-  storage modes; in-process WASM init is ~1.4 ms p50 for a full cold load
+- **Startup (<100 ms): measured and met.** Native spawn→ready is ~1 ms p50 across
+  storage modes; in-process WASM init is ~3.5 ms p50 for a full cold load
   (`benches/wasm_init_results.json`). On the head-to-head harness, whose cold init is
   each engine's fresh module load through its first query — for pglet, its npm
-  package's — pglet takes ~11–14 ms against pglite's ~1.1–1.2 s across Deno / Node /
+  package's — pglet takes ~12–16 ms against pglite's ~1.4 s across Deno / Node /
   Bun (`benches/wasm_compare_results.json`).
   Run `deno task bench:wasm-init` / `bench:wasm-compare` to re-measure.
 
