@@ -329,7 +329,7 @@ const reset_pg_database = async (): Promise<void> => {
 const legs: Leg[] = [
 	{name: 'pglite', tier: 'L1', driver: 'pglite', env: {}},
 	{name: 'pglet-wasm', tier: 'L1', driver: 'pglet-wasm', env: {}},
-	{name: 'pglet-server', tier: 'L2', driver: 'pglet', env: {PGLET_SERVER_BIN: SERVER_BIN}},
+	{name: 'pglet-server', tier: 'L2', driver: 'pglet-server', env: {PGLET_SERVER_BIN: SERVER_BIN}},
 	{
 		name: 'pg',
 		tier: 'L2',
