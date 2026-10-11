@@ -59,10 +59,10 @@ export const git_fetch_and_compare_origin_main = async (): Promise<Result<{ahead
 	const fetched = await command_capture('git', ['fetch', 'origin', 'main']);
 	if (!fetched.success) return {ok: false, error: `git fetch origin main failed: ${fetched.err}`};
 	const counts = await command_capture('git', ['rev-list', '--left-right', '--count', 'origin/main...HEAD']);
+	const failed = {ok: false, error: `could not compare HEAD with origin/main: ${counts.err}`} as const;
+	if (!counts.success) return failed;
 	const [behind, ahead] = counts.out.split(/\s+/).map(Number);
-	if (!counts.success || Number.isNaN(behind) || Number.isNaN(ahead)) {
-		return {ok: false, error: `could not compare HEAD with origin/main: ${counts.err}`};
-	}
+	if (behind === undefined || ahead === undefined || Number.isNaN(behind) || Number.isNaN(ahead)) return failed;
 	return {ok: true, ahead, behind};
 };
 

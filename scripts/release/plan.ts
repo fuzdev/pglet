@@ -53,7 +53,7 @@ export type ReleasePlan =
  */
 export const release_plan = (input: ReleasePlanInput): ReleasePlan => {
 	const {version, bump, sentinel, changelog} = input;
-	if (sentinel !== null && sentinel === version) {
+	if (sentinel === version) {
 		return {
 			kind: 'resume',
 			version,
