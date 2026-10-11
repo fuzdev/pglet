@@ -18,7 +18,7 @@ and ~5.9x faster than a real PostgreSQL server
 (pglet in-process versus Postgres over TCP; server-to-server it's ~4.0x) —
 counting the time spent running the tests; vitest's whole run is ~4.4x faster than on pglite.
 
-**Later, embedded and everywhere else.** The same engine is meant to grow into
+**Later, embedded and in other places.** The same engine is meant to grow into
 a local-first, file-based store for apps and browsers —
 it already persists to a file (or to OPFS in the browser, in an opt-in build) —
 but you should not trust pglet with your production data, not yet.
@@ -59,7 +59,7 @@ browsers, and embedded/local-first apps. It is not a replacement for upstream
 PostgreSQL behind an app server and never will be — it's the same dialect made
 cheap enough to start that a database can be a throwaway value.
 
-Two audiences, on two clocks:
+Two audiences:
 
 - **A fast test-fixture engine — this release.** pglet starts in milliseconds
   where pglite takes over a second (and Docker Postgres pays a container boot on top),
@@ -70,8 +70,8 @@ Two audiences, on two clocks:
   migrate and seed a base once, then fork a fresh database per test instead of
   re-running the setup SQL (see `docs/storage.md` § Fork).
 - **An embedded engine for production data — medium-term.** The same engine as
-  a local-first, file-based store, once it earns the system-of-record trust bar
-  (accrued maturity and soak time; the mechanism is built and torture-tested).
+  a local-first, file-based store, once it's mature enough to trust with real data
+  (it needs more soak time; the durability mechanism is built and crash-tested).
   It was born as the embedded backend for [fuz](https://github.com/fuzdev)'s
   data layer, and fuz_app's test suite is the production-shaped consumer it's
   proven on today.
@@ -161,8 +161,8 @@ and composite, with both `ON DELETE` and `ON UPDATE` actions) — each decided a
 state no other connection is moving, since one connection's block writes at a time
 (below).
 
-**Concurrency** is many lock-free MVCC snapshot readers plus a single writer, by design
-(the closest cousins are SQLite and LMDB) — not a stopgap toward multi-writer. A block
+**Concurrency** is many lock-free MVCC snapshot readers plus a single writer, like SQLite
+and LMDB; multi-writer is not planned. A block
 takes the writer at its first write and holds it until it ends; an autocommit write holds
 it for its statement. On the native server a second writer waits, bounded by
 `lock_timeout` (pglet's default `1s`, not PostgreSQL's `0`), then answers `55P03`; the
@@ -208,22 +208,21 @@ and an uncast string beside a `jsonb` or `bytea` operand of `||`, joined as text
 `generate_series` beyond its integer form in `FROM`, `CREATE TABLE … AS SELECT`, the aggregates beyond the basics,
 `lag` / `lead` and window frames, views, domains, functions and triggers, array
 subscripting (`a[1]`), general regular expressions. The npm package's README lists that
-SQL in plain words, as
+SQL as
 [Not supported yet](crates/pglet_wasm/npm/README.md#not-supported-yet), beside the
 answers pglet gives differently with no error,
 [Known differences from PostgreSQL](crates/pglet_wasm/npm/README.md#known-differences-from-postgresql).
 `docs/compatibility.md` carries the rest per feature, and `EDGES.md` is the full ledger
 of recorded divergences.
 
-## Goals, honestly measured
+## Size and startup
 
-- **Size:** the WASM artifact — the metric that matters for the embedded use — is
-  ~1613 KB raw / ~647 KB gzipped over the wire — about a tenth of pglite's raw
+- **Size:** the WASM artifact is ~1613 KB raw / ~647 KB gzipped over the wire — about a tenth of pglite's raw
   payload and an eighth of its gzipped one (`benches/pglite_size_comparison.json`).
   The gate is on raw bytes (deterministic; gzip is reported, not gated) against the
   recorded baseline +2% and a hard cap, re-validated on every full gate run. The recorded figures are `benches/size_baseline.json`; the budget and
   what has been cut to hold it are `TRADEOFFS.md`.
-- **Startup (<100 ms): measured and met.** Native spawn→ready is ~1 ms p50 across
+- **Startup (target <100 ms):** native spawn→ready is ~1 ms p50 across
   storage modes; in-process WASM init is ~3.5 ms p50 for a full cold load
   (`benches/wasm_init_results.json`). On the head-to-head harness, whose cold init is
   each engine's fresh module load through its first query — for pglet, its npm
@@ -233,9 +232,8 @@ of recorded divergences.
 
 ## Milestones
 
-pglet ships **test-time-first**: a fast, throwaway test-fixture engine now, a
-production-data store later, full-but-optional PostgreSQL conformance as the long
-arc.
+A test-fixture engine first, a production-data store later, and full-but-optional
+PostgreSQL conformance over time.
 
 - [x] **0.1 — the test-fixture engine** (this release): a real production app's
       full SQL surface (fuz_app — auth, sessions, and a fact/cell data layer) runs
@@ -244,14 +242,14 @@ arc.
       differential fixtures compared byte-for-byte against a live Postgres, in both
       wire formats. Constraints enforced, the durability mechanism built and
       crash-tested (open residuals in `EDGES.md`), `fork()` per-test isolation, the
-      size and startup thesis proven, index acceleration as a compile-time size lever, the wider generic types (DATE / TIME / INTERVAL /
+      size and startup targets met, index acceleration as a compile-time size lever, the wider generic types (DATE / TIME / INTERVAL /
       NUMERIC), the generic-conformance bar of `PLAN.md` § 7, and the published
       **`@fuzdev/pglet-wasm`** adapter.
 - [ ] **Embedded production data** — a trustworthy system of record; medium-term
   - [ ] Accrued large-dataset soak time
   - [ ] Accrued maturity on a young, hand-rolled engine
   - [x] Overflow pages for large values — a row is not bounded by one ~4 KB page
-- [ ] **Toward full, optional PostgreSQL conformance** — the long arc
+- [ ] **Toward full, optional PostgreSQL conformance**
   - [ ] Broader Postgres coverage as opt-in, compile-time-additive layers (more
         types, PL/pgSQL, …) with the minimal build staying the gated floor —
         so a build carries only what its consumer needs
@@ -278,7 +276,7 @@ arc.
   silent-wrong edge or divergence the differential harness does not hold
 - `TRADEOFFS.md` — what's cut and kept, weighed against the size/perf goal
 - `CLAUDE.md` — architecture, crate map, conventions, dev workflow (also the
-  AI-agent context, which is a first-class audience here)
+  context file for AI agents)
 - `docs/` — design references: [storage](docs/storage.md) (single-file
   double-meta, no WAL), [parser](docs/parser.md) (native, Postgres-only),
   [parameter binding](docs/param_binding.md), [numeric](docs/numeric.md) (the

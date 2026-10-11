@@ -5,7 +5,7 @@
 //!   durability tier "T1", compared against SQLite (bundled, compiled from
 //!   source), over two schema axes: `indexfree` (the optimistic ceiling — no
 //!   PK, no index) and `enforcing` (a PRIMARY KEY probed per insert + a
-//!   secondary index — the honest write cost). Also reports fsyncs / writes /
+//!   secondary index — the real write cost). Also reports fsyncs / writes /
 //!   bytes per commit (write amplification) and a write/fsync/CPU breakdown.
 //! - **reads** — read-concurrency scaling: cache-warm point-gets across N
 //!   threads, isolating the sharded per-page cache (no SQLite comparison).

@@ -322,7 +322,7 @@ pub fn values_compare_ordered(
             }
         }
         // Mixed/unhandled type pair: well-typed SQL never reaches here. Compare by
-        // text rendering so the result stays deterministic and equality-honest
+        // text rendering so the result stays deterministic and consistent with equality
         // rather than collapsing distinct values to `Equal`.
         _ => render_for_compare(left).cmp(&render_for_compare(right)),
     })

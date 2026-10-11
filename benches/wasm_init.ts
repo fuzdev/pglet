@@ -11,7 +11,7 @@
  *   - cached inst.   : initSync({module: precompiled}) — instantiate only
  * plus a one-shot true-cold `WebAssembly.compile` of the bytes.
  *
- * Caveat (honest framing): V8 may serve cached compiled code for byte-identical
+ * Caveat: V8 may serve cached compiled code for byte-identical
  * input, so the per-sample "cold init" compile trends toward *warm* compile
  * after the first sample. The genuine first-compile cost is reported separately
  * as `compile (cold, one-shot)`; the delta `cold init − cached inst.` is the

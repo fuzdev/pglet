@@ -604,7 +604,7 @@ fn check_default_expr_nodes(expr: &Expr) -> Result<()> {
 ///    outcome this synthetic row has no business deciding (a bad cast, an overflow,
 ///    a division by zero), so it is swallowed and left to real writes.
 ///
-/// **The guarantee, stated honestly.** The static check catches what values cannot
+/// **What the guarantee covers.** The static check catches what values cannot
 /// reveal: an intermediate that yields SQL NULL makes every downstream gate
 /// NULL-propagate, so the probe never fires for `WHERE data->'k' LIKE 'x%'` — `->`
 /// on an object lacking key `k` is NULL for *every* representative `data`, and no

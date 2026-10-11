@@ -369,7 +369,7 @@ capability land without regenerating a single recorded error — verified: a ful
 **The scoring rule is asymmetric**, and the asymmetry is the design (`docs/errors.md`):
 
 - pglet **omits** a field 18.6 sends → agreement. Omitting what it cannot fill truthfully
-  is pglet's declared posture, and scoring it red would make the honest answer
+  is pglet's declared posture, and scoring it red would make the correct answer
   indistinguishable from a wrong one.
 - pglet sends a field 18.6 omits, or sends it with a different value → **failure**. That
   is the invention the comparison exists to catch.

@@ -886,7 +886,7 @@ impl BtreeStorageWrapper {
     ///
     /// [`StorageError::NoTransaction`] if `conn_id` has no active transaction. That
     /// is not reachable from SQL — `SAVEPOINT` outside a block is `25P01` from the
-    /// session, which never calls this — but is the honest answer for the embed and
+    /// session, which never calls this — but is the right answer for the embed and
     /// `DO`-block callers.
     pub fn savepoint(&mut self, conn_id: i32) -> Result<()> {
         let name_to_id = self.name_to_id.clone();

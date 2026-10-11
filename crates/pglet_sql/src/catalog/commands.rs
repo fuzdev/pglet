@@ -6,7 +6,7 @@
 //! the whole module exists to keep is that each of those statements **answers what
 //! PostgreSQL answers, or fails loud** — never a third thing quietly. `SET`'s
 //! GUC-echo family is the accepted-no-op part of that (`SET application_name = …`
-//! changes nothing pglet models and reporting `SET` is honest), and
+//! changes nothing pglet models and reporting `SET` is accurate), and
 //! [`execute_set_command`]'s two refusals are the part that would otherwise lie.
 //!
 //! `SET`/`SHOW` are client configuration commands that don't touch the database.
@@ -84,7 +84,7 @@ const ONLY_SCHEMA: &str = "public";
 
 /// Postgres's own `search_path` default, which pglet reports verbatim.
 ///
-/// It is the honest value for this engine and not a borrowed string: `$user` names
+/// It is the true value for this engine and not a borrowed string: `$user` names
 /// a schema called after the session user, which a fresh Postgres database does not
 /// have either, so 18.6 resolves this list to `public` alone exactly as pglet does.
 /// Measured on 18.6 — `SHOW search_path`, the startup `ParameterStatus`, and what a
@@ -219,7 +219,7 @@ pub fn setting_value(name: &str, settings: &SessionSettings) -> Option<String> {
 ///
 /// Everything else [`ShowVariable`] models is a fact about this engine —
 /// UTC-only, UTF8-only, integer-datetimes-on — that no statement can move, so a
-/// fixed string is the honest answer for it. `application_name` is not: Postgres
+/// fixed string is the right answer for it. `application_name` is not: Postgres
 /// carries it in the startup packet, reports it as a `GUC_REPORT` parameter, and
 /// lets `SET` move it, so a fixed value here would be a claim about the client that
 /// pglet has no business making. This is the one home for those, threaded to
@@ -653,7 +653,7 @@ impl SessionSettings {
     /// Read the current thread's ambient session — see [`Self::install_ambient`].
     ///
     /// A thread that has installed none reads [`SessionSettings::default`], which is
-    /// the honest answer for a caller with no session (a test constructing an
+    /// the right answer for a caller with no session (a test constructing an
     /// executor directly, a stored-expression probe).
     #[must_use]
     pub fn ambient() -> Self {
@@ -1807,7 +1807,7 @@ fn check_client_encoding(value: Option<&str>) -> Result<()> {
 /// spelling and the [`IGNORABLE_SEARCH_PATH_ELEMENTS`] pass; anything else is
 /// refused. 18.6 accepts every one of these — a schema may be created later, and a
 /// missing one is skipped at resolution — so the refusal is deliberately
-/// pglet-stricter, and it is the honest answer for an engine with one schema:
+/// pglet-stricter, and it is the right answer for an engine with one schema:
 /// accepting `search_path = test_1` would leave every later statement reading and
 /// writing `public` while the session believed it was isolated.
 ///
@@ -2098,7 +2098,7 @@ impl ShowVariable {
     /// This parameter's value for `settings`' session.
     ///
     /// Most are facts about the build that no statement moves — pglet is UTC-only,
-    /// UTF8-only, integer-datetimes-on — so a fixed string is the honest answer.
+    /// UTF8-only, integer-datetimes-on — so a fixed string is the right answer.
     /// `application_name`, `lock_timeout`, `transaction_isolation` and
     /// `default_transaction_isolation` are the session's ([`SessionSettings`]).
     ///
@@ -2143,7 +2143,7 @@ impl ShowVariable {
 /// moves — measured: a second identical `SET search_path TO public` sends nothing,
 /// and `SET client_encoding TO 'UTF8'` on a UTF8 connection sends nothing).
 ///
-/// Most of these are fixed values pglet can honestly assert — a client keying off
+/// Most of these are fixed values pglet can truthfully report — a client keying off
 /// `standard_conforming_strings` for literal escaping, `integer_datetimes` for the
 /// binary timestamp format, or `DateStyle` for date parsing no longer has to guess.
 /// `application_name` is the session's, so this takes [`SessionSettings`] rather
@@ -2668,7 +2668,7 @@ pub fn parse_discard(sql: &str) -> Result<DiscardTarget> {
 ///
 /// `RESET` is otherwise the GUC family's other spelling and takes the family's
 /// posture: every GUC pglet models with a fixed value is one it never moves, so
-/// restoring it is a no-op that honestly reports tag `RESET` (18.6 reports `RESET`
+/// restoring it is a no-op that reports tag `RESET` (18.6 reports `RESET`
 /// for `RESET ALL` too, measured — not `RESET ALL`). What is *not* a no-op is the
 /// shape check, and the session settings the caller then restores.
 ///

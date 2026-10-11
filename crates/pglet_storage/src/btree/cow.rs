@@ -385,7 +385,7 @@ impl BatchWorkingSet {
 }
 
 /// The pages one tree walk has entered, so a page reached twice — a page naming an
-/// ancestor, or two pages naming one child, which no honest tree holds — is refused
+/// ancestor, or two pages naming one child, which no well-formed tree holds — is refused
 /// where the walk meets it rather than followed. That bounds every walk by the pages
 /// the store holds: a descent cannot loop, and a scan cannot emit a subtree twice.
 ///

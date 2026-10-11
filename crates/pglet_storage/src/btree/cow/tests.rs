@@ -1853,7 +1853,7 @@ fn a_tree_page_naming_an_ancestor_is_refused_by_every_walk() {
     assert!(is_corrupt_tree(&tree.scan_table(1), 0));
 }
 
-/// Two pages naming one child — a DAG, which no honest tree holds — is refused by a
+/// Two pages naming one child — a DAG, which no well-formed tree holds — is refused by a
 /// scan rather than emitting the shared subtree twice; the control, the same shape
 /// with two distinct leaves, reads every row once.
 #[test]
@@ -1862,12 +1862,12 @@ fn a_child_two_pages_name_is_refused_by_a_scan() {
     let scan = shared.scan_table(1);
     assert!(is_corrupt_tree(&scan, 1), "{scan:?}");
 
-    let honest = crafted_tree(vec![
+    let well_formed = crafted_tree(vec![
         internal_over(0, &[1, 2]),
         leaf_of(1, &[1, 2]),
         leaf_of(2, &[11, 12]),
     ]);
-    let keys: Vec<u64> = honest
+    let keys: Vec<u64> = well_formed
         .scan_table(1)
         .unwrap()
         .iter()
@@ -1876,7 +1876,7 @@ fn a_child_two_pages_name_is_refused_by_a_scan() {
     assert_eq!(keys, vec![1, 2, 11, 12]);
 }
 
-/// A chain of single-child internal pages deeper than any honest tree — the walks
+/// A chain of single-child internal pages deeper than any well-formed tree — the walks
 /// run from their own stack, not the thread's, so a scan and a point read over it
 /// answer rather than overflow the test thread's stack.
 #[test]

@@ -12,7 +12,7 @@
 //! needs **root** + device-mapper, so this driver is only ever invoked by
 //! `tools/durability/power_loss_test.sh` (the privileged half), which sets up a
 //! loopback + `dm-flakey` device on a throwaway VM and drives this binary around a
-//! simulated power cut. Run directly with no setup, it **honestly skips** (prints
+//! simulated power cut. Run directly with no setup, it **skips** (prints
 //! why, exits 0) rather than faking a pass.
 //!
 //! ## Modes
@@ -48,8 +48,8 @@ use pglet_tests::{DYNAMIC_PORT_END, PGLET_TEST_PORT};
 use tokio_postgres::Client;
 
 /// Printed (then exit 0) when the driver is run without the privileged device
-/// setup — an honest skip, never a fake pass.
-const HONEST_SKIP: &str = "[power-loss] SKIP: this driver needs root + a fault-injecting block \
+/// setup — a skip, never a fake pass.
+const SKIP_MESSAGE: &str = "[power-loss] SKIP: this driver needs root + a fault-injecting block \
 device (dm-flakey), so it is invoked by `tools/durability/power_loss_test.sh` on a throwaway VM \
 (which sets up the loopback + dm-flakey device and passes --data-dir/--record). Running this \
 binary directly is a no-op — run the script as root instead.";
@@ -82,11 +82,11 @@ fn flag_value(args: &[String], name: &str) -> Option<String> {
 
 /// Parse argv into a [`Cmd`], or `None` when the invocation isn't the
 /// script-driven one (no recognized mode, or `--data-dir`/`--record` absent) — the
-/// signal to skip honestly rather than touch a non-existent device.
+/// signal to skip rather than touch a non-existent device.
 fn parse_args(args: &[String]) -> Option<Cmd> {
     let mode = args.get(1)?;
     // Both flags are required in every real (script-driven) invocation; their
-    // absence is what distinguishes "run directly by a human / CI" → honest skip.
+    // absence is what distinguishes "run directly by a human / CI" → skip.
     let data_dir = PathBuf::from(flag_value(args, "--data-dir")?);
     let record = PathBuf::from(flag_value(args, "--record")?);
     match mode.as_str() {
@@ -287,8 +287,8 @@ async fn mode_verify(data_dir: &Path, record: &Path) -> Result<(), String> {
 async fn main() {
     let args: Vec<String> = std::env::args().collect();
     let Some(cmd) = parse_args(&args) else {
-        // No device / not under the script → honest skip (exit 0), never a fake pass.
-        println!("{HONEST_SKIP}");
+        // No device / not under the script → skip (exit 0), never a fake pass.
+        println!("{SKIP_MESSAGE}");
         return;
     };
 

@@ -256,7 +256,7 @@ fn bench_pglet(conn_id: i32, n: u64, prepopulate: u64, schema: BenchSchema) -> R
         note,
     };
     if row.commits == 0 {
-        // Not even one commit succeeded; zero the stats so JSON stays honest.
+        // Not even one commit succeeded; zero the stats so the JSON stays accurate.
         row.p50_us = 0.0;
         row.p95_us = 0.0;
     }
@@ -413,7 +413,7 @@ fn bench_sqlite(cfg: &SqliteConfig, n: u64, prepopulate: u64, schema: BenchSchem
 // `CountingBlockIo`. Then micro-time serialize / clone / full-`put` on a
 // representative dirtied page pulled back out of the store; checksum falls out
 // of `put_total − serialize − write_at − clone − cache` by difference (the CRC
-// crate isn't a bench dep, so difference is the honest isolation). The apply
+// crate isn't a bench dep, so difference is the only isolation). The apply
 // loop is the residual `commit_cpu − (serialize+checksum+clone+write_at)`.
 // ---------------------------------------------------------------------------
 
@@ -857,7 +857,7 @@ prepopulate={prepopulate} rows; batch sizes={BATCH_SIZES:?}; schemas=[indexfree,
     let mut conn_id: i32 = 1;
 
     // Two schema axes: the index-free ceiling and the enforcing (PK + secondary
-    // index) shape, so the honest write cost is measured alongside its delta.
+    // index) shape, so the real write cost is measured alongside its delta.
     for &schema in BENCH_SCHEMAS {
         for &n in BATCH_SIZES {
             eprintln!("  pglet  schema={} N={n} ...", schema.label());

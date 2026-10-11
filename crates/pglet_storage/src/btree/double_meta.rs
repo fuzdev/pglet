@@ -730,7 +730,7 @@ impl DoubleMetaStore {
         // An id is handed out once: a listed repeat, or an id one of the chains is
         // written into, would be handed out while it is still in use. The store never
         // writes either; the check keeps a damaged list from acting on it. A sorted copy
-        // answers whether either is there, so an honest list pays one sort, and only a
+        // answers whether either is there, so a well-formed list pays one sort, and only a
         // damaged one is rebuilt.
         let chain_pages: Vec<PageId> = active_chain
             .iter()
@@ -1356,12 +1356,13 @@ fn read_retired_log(
     mut free: Option<&mut Vec<PageId>>,
 ) -> PageStoreResult<Vec<(PageId, u64)>> {
     let (next_page_id, version, floor) = (meta.next_page_id, meta.version, meta.retired_floor);
-    let honest = |&(id, freed_version): &RetiredEntry| id < next_page_id && freed_version < version;
+    let well_formed =
+        |&(id, freed_version): &RetiredEntry| id < next_page_id && freed_version < version;
     if let Some(free) = free.as_deref_mut() {
         free.extend(
             inline
                 .iter()
-                .filter(|e| honest(e) && e.1 >= floor)
+                .filter(|e| well_formed(e) && e.1 >= floor)
                 .map(|&(id, _)| id),
         );
     }
@@ -1380,7 +1381,7 @@ fn read_retired_log(
             break;
         };
         let max = entries.iter().map(|&(_, v)| v).max().unwrap_or(0);
-        if buf.1 != expected || max != cur_max || !entries.iter().all(honest) {
+        if buf.1 != expected || max != cur_max || !entries.iter().all(well_formed) {
             break;
         }
         reach.push((cur, max));
@@ -1818,7 +1819,7 @@ mod tests {
 
     /// An image whose committed tree is one leaf holding key `(1, 1)` with its value
     /// out of line — a chain of one link, page 1, the leaf naming `head` as that link —
-    /// committed honestly into slot B (version 1, `next_page_id` 2), and slot A then
+    /// committed normally into slot B (version 1, `next_page_id` 2), and slot A then
     /// overwritten with `crafted` at version 99, CRC valid.
     fn image_with_crafted_slot(head: PageId, crafted: &PageStoreMetadata) -> Vec<u8> {
         use crate::btree::BtreeKey;
@@ -1849,8 +1850,8 @@ mod tests {
         store_bytes(&store)
     }
 
-    /// The honest slot [`image_with_crafted_slot`] commits.
-    const HONEST: PageStoreMetadata = PageStoreMetadata {
+    /// The well-formed slot [`image_with_crafted_slot`] commits.
+    const WELL_FORMED: PageStoreMetadata = PageStoreMetadata {
         next_page_id: 2,
         root: 0,
         version: 1,
@@ -1874,28 +1875,28 @@ mod tests {
                 "next_page_id one past the limit",
                 PageStoreMetadata {
                     next_page_id: PAGE_ID_LIMIT + 1,
-                    ..HONEST
+                    ..WELL_FORMED
                 },
             ),
             (
                 "next_page_id at the null link",
                 PageStoreMetadata {
                     next_page_id: u64::MAX,
-                    ..HONEST
+                    ..WELL_FORMED
                 },
             ),
             (
                 "a root never allocated",
                 PageStoreMetadata {
-                    root: HONEST.next_page_id,
-                    ..HONEST
+                    root: WELL_FORMED.next_page_id,
+                    ..WELL_FORMED
                 },
             ),
             (
                 "a free-list head never allocated",
                 PageStoreMetadata {
-                    freelist_head: HONEST.next_page_id,
-                    ..HONEST
+                    freelist_head: WELL_FORMED.next_page_id,
+                    ..WELL_FORMED
                 },
             ),
         ];
@@ -1906,12 +1907,12 @@ mod tests {
             assert_eq!(
                 (got.version, got.next_page_id, got.root, got.freelist_head),
                 (
-                    HONEST.version,
-                    HONEST.next_page_id,
-                    HONEST.root,
-                    HONEST.freelist_head
+                    WELL_FORMED.version,
+                    WELL_FORMED.next_page_id,
+                    WELL_FORMED.root,
+                    WELL_FORMED.freelist_head
                 ),
-                "{name}: open did not fall back to the honest slot"
+                "{name}: open did not fall back to the well-formed slot"
             );
 
             // The same slot in both places: nothing valid to fall back to.
@@ -1933,7 +1934,7 @@ mod tests {
     fn a_slot_at_the_page_id_limit_opens_and_writes_nothing_past_it() {
         let at_limit = PageStoreMetadata {
             next_page_id: PAGE_ID_LIMIT,
-            ..HONEST
+            ..WELL_FORMED
         };
         let io = MemBlockIo::from_bytes(image_with_crafted_slot(1, &at_limit));
         write_slot(&io, 1, 100, &at_limit, &[]).unwrap();
@@ -1958,7 +1959,7 @@ mod tests {
     fn a_commit_past_the_page_id_limit_is_refused_not_written() {
         let at_limit = PageStoreMetadata {
             next_page_id: PAGE_ID_LIMIT,
-            ..HONEST
+            ..WELL_FORMED
         };
         let io = MemBlockIo::from_bytes(image_with_crafted_slot(1, &at_limit));
         write_slot(&io, 1, 100, &at_limit, &[]).unwrap();
@@ -1994,7 +1995,7 @@ mod tests {
     /// another page's bytes, and a write of one is refused before a byte moves.
     #[test]
     fn a_page_id_past_the_store_is_refused_not_wrapped() {
-        let bytes = image_with_crafted_slot(1, &HONEST);
+        let bytes = image_with_crafted_slot(1, &WELL_FORMED);
         let (store, _) = DoubleMetaStore::open(Box::new(MemBlockIo::from_bytes(bytes))).unwrap();
         assert!(store.get(1).unwrap().is_some());
         for id in [PAGE_ID_LIMIT, 1 + (1 << 52), NULL_PAGE_ID - 1, NULL_PAGE_ID] {
@@ -2010,7 +2011,7 @@ mod tests {
     }
 
     /// A crafted slot claiming every id is allocated (`next_page_id` at the null link,
-    /// CRC valid, the newer version) is refused at open and the honest slot read, so a
+    /// CRC valid, the newer version) is refused at open and the well-formed slot read, so a
     /// chain link past the page-offset domain is a corrupt chain and an insert reads
     /// back beside the committed row. Read as the store's word, that slot passes such a
     /// link through the walk's allocated-id check — with `page_offset` unchecked too, a
@@ -2023,13 +2024,13 @@ mod tests {
         use pglet_sql::types::Value;
         let crafted = PageStoreMetadata {
             next_page_id: u64::MAX,
-            ..HONEST
+            ..WELL_FORMED
         };
         let open_tree = |head: PageId| {
             let bytes = image_with_crafted_slot(head, &crafted);
             let (store, meta) =
                 DoubleMetaStore::open(Box::new(MemBlockIo::from_bytes(bytes))).unwrap();
-            assert_eq!(meta.next_page_id, HONEST.next_page_id);
+            assert_eq!(meta.next_page_id, WELL_FORMED.next_page_id);
             CowBtree::with_store(Box::new(store), meta.root, meta.version, 100)
         };
         for link in [1 + (1 << 52), NULL_PAGE_ID - 1] {
@@ -2830,7 +2831,7 @@ mod tests {
         }
     }
 
-    /// An honest store's `next_page_id` can pass the end of its file: a batch can
+    /// A well-formed store's `next_page_id` can pass the end of its file: a batch can
     /// allocate an id it never writes (a chain it writes and drops again in the same
     /// batch is never written, and `discard_created` hands the id straight back), so a
     /// slot can record ids past every page the file holds. So open bounds the slot by
@@ -2839,7 +2840,7 @@ mod tests {
     /// out and handed back unwritten, and a save whose free-list chain reuses the page
     /// its slot held, so nothing past the fresh id is written either.
     #[test]
-    fn an_honest_store_can_allocate_past_its_file_and_reopens() {
+    fn a_well_formed_store_can_allocate_past_its_file_and_reopens() {
         let io = std::sync::Arc::new(MemBlockIo::new());
         let (store, _) =
             DoubleMetaStore::open(Box::new(SharedIo(std::sync::Arc::clone(&io)))).unwrap();

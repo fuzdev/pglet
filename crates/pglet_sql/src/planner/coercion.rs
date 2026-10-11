@@ -5459,7 +5459,7 @@ mod tests {
     fn an_uncertain_level_stops_the_walk_outward() {
         // A level holding a relation the scope builder could not enumerate must not let
         // a name escape to an enclosing level that happens to share it — that is how a
-        // chained resolution would turn an honest over-rejection into a wrong cast.
+        // chained resolution would turn a safe over-rejection into a wrong cast.
         let mut inner = named_scope("inner", &[("a", TypeOid::Int4)]);
         inner.push_opaque_relation();
         let chained = inner.nested_in(&named_scope("outer", &[("b", TypeOid::Uuid)]));

@@ -92,7 +92,7 @@ pub fn prepopulate_pglet(db: &mut Database, conn_id: i32, rows: u64) -> u64 {
     next_id
 }
 
-/// Which table shape a write-path bench builds — the schema axis of the honest
+/// Which table shape a write-path bench builds — the schema axis of the real
 /// re-baseline. `IndexFree` is the optimistic ceiling (no uniqueness probe, no
 /// index B+tree maintenance per insert); `Enforcing` adds a PRIMARY KEY (an
 /// enforced unique index probed on every insert) plus a secondary index — the

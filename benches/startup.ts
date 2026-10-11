@@ -77,7 +77,7 @@ const spawn_to_ready = async (args: string[]): Promise<number> => {
 	}
 };
 
-/** Each scenario yields fresh args per spawn (so "fresh dir" stays honest). */
+/** Each scenario yields fresh args per spawn (so "fresh dir" really is fresh). */
 interface Scenario {
 	name: string;
 	make_args: () => Promise<{args: string[]; dispose?: () => Promise<void>}>;

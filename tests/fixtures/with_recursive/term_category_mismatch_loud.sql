@@ -1,4 +1,4 @@
--- The category-mismatch leg of the recursive-CTE type check, and an honest note about
+-- The category-mismatch leg of the recursive-CTE type check, and a note about
 -- what it is worth: **it is a conformance assertion, not a regression lock.** Reverting
 -- the change that routes this check through `select_common_type` leaves it green,
 -- because the raw fold also produced `42804` here — only the *message* differed

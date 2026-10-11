@@ -573,7 +573,7 @@ pub struct QueryError {
 /// The structured `ErrorResponse` fields a server sent, by `pg`'s property names.
 ///
 /// Read off tokio-postgres's `DbError` accessors, which cover every field either
-/// engine sends. `None` means the field was **absent**, which for pglet is the honest
+/// engine sends. `None` means the field was **absent**, which for pglet is the correct
 /// posture for anything it cannot fill truthfully — [`ErrorFields::divergences`]
 /// scores an absence as agreement and a *different value* as a failure.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -602,7 +602,7 @@ impl ErrorFields {
     ///
     /// - pglet omits a field 18.6 sends → **not** a divergence. Omission is the
     ///   declared posture for a field pglet cannot fill truthfully, and scoring it red
-    ///   would make the honest answer indistinguishable from a wrong one.
+    ///   would make the correct answer indistinguishable from a wrong one.
     /// - pglet sends a field 18.6 omits → a divergence. That is an *invention*, the
     ///   failure this comparison exists to catch.
     /// - both send it and the values differ → a divergence.

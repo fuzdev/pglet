@@ -601,7 +601,7 @@ impl Database {
     /// a wider descriptor than its rows carry, which breaks every `SELECT *` at the
     /// wire. Since this is the seed-once/fork-per-test primitive, a caller that
     /// seeds inside an uncommitted block would get well-formed-looking empty
-    /// fixtures. So the refusal is the honest answer, and `25001` is the SQLSTATE
+    /// fixtures. So the refusal is the right answer, and `25001` is the SQLSTATE
     /// Postgres uses for it.
     ///
     /// [`with_btree`]: Self::with_btree

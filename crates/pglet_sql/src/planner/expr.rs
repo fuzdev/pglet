@@ -2534,7 +2534,7 @@ pub fn variadic_fn_result_type(func: VariadicFunc, arg_types: &[Option<TypeOid>]
         // meant a `nullif(time_col, timestamp_col)` that slipped past the gate declared
         // `text` (OID 25) over eight bytes of `time` microseconds; falling back to
         // argument one keeps the declaration equal to what `eval_nullif` returns, so the
-        // worst case is a wrong-but-honest type rather than a mis-decode.
+        // worst case is a wrong but well-formed type rather than a mis-decode.
         VariadicFunc::NullIf => {
             let first = arg_types.first().copied().flatten();
             let second = arg_types.get(1).copied().flatten();

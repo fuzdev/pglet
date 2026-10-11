@@ -3,7 +3,7 @@
 -- second entry, so the first stays Postgres's `unknown` and assigns into a `BOOL`
 -- column; the `ORDER BY 1, n` spelling next door is `42804`. Accepted on 18.6.
 --
--- It also holds the layout's own rewrite honest. Sort-below carries a naming key down
+-- It also keeps the layout's own rewrite correct. Sort-below carries a naming key down
 -- as the projection expression that produced it, and here that expression is the bare
 -- integer `5` — which is *also* the plan's spelling of a positional reference. Carried
 -- raw, the Sort read base column 5 of a one-column source and this statement was

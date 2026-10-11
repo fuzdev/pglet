@@ -2,10 +2,9 @@
 
 pglet optimizes for **size** and **startup** over feature completeness. This is
 the decision log for what's cut, what's kept, and where the budget actually
-stands. Every claim here is measured or labeled an estimate — for an engine
-whose whole pitch is size and speed, an unmeasured number is a liability.
+stands. Every number here is measured or labeled an estimate.
 
-## Where size actually stands (measured)
+## Size (measured)
 
 | Artifact | Raw | Gzipped (wire) | Gated? |
 |---|---|---|---|
@@ -76,7 +75,7 @@ levers it took stand; the figures describe that pass's tree, not today's.
 | `wasm-opt --low-memory-unused` (the layout argument: `crates/pglet_wasm/Cargo.toml`) | −10 588 B | −4 674 B |
 | **result** | **1 514 781 B** | **606 828 B** |
 
-## Where startup stands (measured)
+## Startup (measured)
 
 Startup (<100 ms) is half the reason pglet exists, and it is now **measured and
 met**: native spawn→ready is ~1 ms p50 across storage modes, and WASM init is
@@ -143,7 +142,7 @@ What the acceleration drop removes is query index selection plus the
 query's speed, never its result — index objects stay built, maintained and introspectable,
 PK/UNIQUE/FK enforcement is an independent probe, and a probe value substitutes only when
 exactly equivalent. That equivalence is a property the accelerated read paths must uphold,
-checked against a genuinely stripped build: a `@profile-lock` fixture subset on every
+checked against a stripped build: a `@profile-lock` fixture subset on every
 `test`, a stripped compile in `check`, and the full suite stripped by hand. Its measured
 exceptions, the byte pair, the invocations and what the lock does and does not detect are
 `docs/indexes.md` § Build profiles. The cost of the acceleration paths, as
@@ -151,7 +150,7 @@ exceptions, the byte pair, the invocations and what the lock does and does not d
 the wasm**, and ~3.0% of the native server (a one-off measurement), startup and runtime
 memory flat. It is a **size** lever, **not** a test-speed one — acceleration measured
 ~1.8–2.0× faster on reads from ~200 rows up — so the fixture/test audience keeps it on,
-and the strip is for a genuinely size-constrained consumer that accepts slower reads.
+and the strip is for a size-constrained consumer that accepts slower reads.
 
 So the heavy rows above (general PL/pgSQL, full-text search, one day richer types) are
 cut from the *minimal* build, not ruled out forever — the direction is to make them
@@ -159,10 +158,10 @@ cut from the *minimal* build, not ruled out forever — the direction is to make
 **runtime** Extensions: a plugin ABI / dynamic-dispatch registry / open type system
 would cost the minimal build indirection *even when unused* (defeating
 LTO/dead-code-elimination), which is the opposite axis from a compile-time feature.
-A gate only earns its keep if it truly elides — a feature gated off but still
-*linked* is worse than none.
+A gate is only worth having if gating off removes the code — a feature gated off but
+still *linked* is worse than none.
 
-What keeps "minimal stays tiny" enforceable rather than aspirational: the size gate
+How the minimal build is kept small: the size gate
 tracks the minimal profile (each layer asserts marginal-cost-when-off ≈ 0), a small
 fixed set of *supported* build profiles each gets its own differential-test coverage
 (the rest are "compiles, unsupported"), and core never references feature-gated code.
@@ -232,7 +231,7 @@ and the 50 000-row integer read faster.
 
 ## Simplified behaviors (differ from Postgres)
 
-Some of these are deliberate size tradeoffs; some are honest gaps not yet
+Some of these are deliberate size tradeoffs; some are gaps not yet
 closed. Both are flagged because they surprise callers either way.
 
 | Behavior | pglet | Postgres | Status |
@@ -258,17 +257,16 @@ then (`docs/storage.md` § Why Single-Writer?).
 - **vs SQLite WAL mode:** the same class — WAL also gives readers a consistent snapshot
   concurrent with one writer, and holds its writer lock from a transaction's first write
   to its end, as pglet's writer is held. SQLite's busy timeout is pglet's `lock_timeout`.
-  pglet's narrow edges are purely lock-free reads (no WAL-index read-mark), a single file
+  pglet's advantages are lock-free reads (no WAL-index read-mark), a single file
   (no `-wal`/`-shm` sidecars), and no checkpoint stalls; it pays instead in CoW
   write-amplification and old-version retention until GC.
 - **vs Postgres:** behind — Postgres is multi-writer MVCC and locks rows; pglet (like
   SQLite) is single-writer, so unrelated writes serialize and a leaked written block
   stalls every writer until the bound. Acceptable for the audiences pglet serves (a test
-  harness or a gateway is normally the one writer) — and single-writer is a **permanent,
-  load-bearing axiom** here, not a stopgap: the CoW/root-versioned base exists to
-  *exploit* it (commit path, page layout), not to relax it later.
+  harness or a gateway is normally the one writer) — and single-writer is **permanent**: the CoW/root-versioned design is built around
+  it (commit path, page layout).
 
-## What pglet is genuinely good for today
+## What pglet is good for today
 
 Fast ORM/SQL test fixtures (spin up far quicker than Docker Postgres), in-process SQL in
 the browser or Node from a small WASM, prototypes and scratch space. It is

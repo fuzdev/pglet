@@ -671,7 +671,7 @@ const FIGURES: &[Figure] = &[
         null_means: RATIO_NULL,
     },
     Figure {
-        quoted: "README intro + § Goals, npm README lead: the gzipped size, as a fraction of \
+        quoted: "README intro + § Size and startup, npm README lead: the gzipped size, as a fraction of \
                  pglite's (pglite / pglet)",
         step: "size-compare",
         file: SIZE_COMPARISON_JSON,
@@ -681,7 +681,7 @@ const FIGURES: &[Figure] = &[
         null_means: None,
     },
     Figure {
-        quoted: "README § Goals: the raw payload, as a fraction of pglite's (pglite / pglet)",
+        quoted: "README § Size and startup: the raw payload, as a fraction of pglite's (pglite / pglet)",
         step: "size-compare",
         file: SIZE_COMPARISON_JSON,
         path: &[Key("ratios_pglite_over_pglet"), Key("raw_total")],
@@ -690,7 +690,7 @@ const FIGURES: &[Figure] = &[
         null_means: None,
     },
     Figure {
-        quoted: "README intro (\"well under a megabyte over the wire\") + § Goals, npm README lead, \
+        quoted: "README intro (\"well under a megabyte over the wire\") + § Size and startup, npm README lead, \
                  TRADEOFFS.md's size table: pglet's wasm, gzipped",
         step: "size-compare",
         file: SIZE_COMPARISON_JSON,
@@ -700,7 +700,7 @@ const FIGURES: &[Figure] = &[
         null_means: None,
     },
     Figure {
-        quoted: "README § Goals, TRADEOFFS.md's size table: pglet's wasm, raw",
+        quoted: "README § Size and startup, TRADEOFFS.md's size table: pglet's wasm, raw",
         step: "size-compare",
         file: SIZE_COMPARISON_JSON,
         path: &[Key("pglet"), Key("wasm_raw_bytes")],
@@ -737,7 +737,7 @@ const FIGURES: &[Figure] = &[
         null_means: None,
     },
     Figure {
-        quoted: "README § Goals, TRADEOFFS.md: native spawn→ready, ~1 ms p50 across storage modes \
+        quoted: "README § Size and startup, TRADEOFFS.md: native spawn→ready, ~1 ms p50 across storage modes \
                  — memory",
         step: "startup",
         file: STARTUP_JSON,
@@ -747,7 +747,7 @@ const FIGURES: &[Figure] = &[
         null_means: None,
     },
     Figure {
-        quoted: "README § Goals, TRADEOFFS.md: native spawn→ready — btree (in-mem)",
+        quoted: "README § Size and startup, TRADEOFFS.md: native spawn→ready — btree (in-mem)",
         step: "startup",
         file: STARTUP_JSON,
         path: &[
@@ -760,7 +760,7 @@ const FIGURES: &[Figure] = &[
         null_means: None,
     },
     Figure {
-        quoted: "README § Goals, TRADEOFFS.md: native spawn→ready — btree (file, fresh)",
+        quoted: "README § Size and startup, TRADEOFFS.md: native spawn→ready — btree (file, fresh)",
         step: "startup",
         file: STARTUP_JSON,
         path: &[
@@ -773,7 +773,7 @@ const FIGURES: &[Figure] = &[
         null_means: None,
     },
     Figure {
-        quoted: "README § Goals, TRADEOFFS.md: native spawn→ready — btree (file, reopen)",
+        quoted: "README § Size and startup, TRADEOFFS.md: native spawn→ready — btree (file, reopen)",
         step: "startup",
         file: STARTUP_JSON,
         path: &[
@@ -786,7 +786,7 @@ const FIGURES: &[Figure] = &[
         null_means: None,
     },
     Figure {
-        quoted: "README § Goals, TRADEOFFS.md: in-process wasm init, a full cold load (p50)",
+        quoted: "README § Size and startup, TRADEOFFS.md: in-process wasm init, a full cold load (p50)",
         step: "wasm-init",
         file: WASM_INIT_JSON,
         path: &[
@@ -821,7 +821,7 @@ const FIGURES: &[Figure] = &[
         null_means: None,
     },
     Figure {
-        quoted: "README § Goals, TRADEOFFS.md: pglet's head-to-head cold init — Deno",
+        quoted: "README § Size and startup, TRADEOFFS.md: pglet's head-to-head cold init — Deno",
         step: "wasm-compare",
         file: WASM_COMPARE_JSON,
         path: &[
@@ -836,7 +836,7 @@ const FIGURES: &[Figure] = &[
         null_means: None,
     },
     Figure {
-        quoted: "README § Goals, TRADEOFFS.md: pglet's head-to-head cold init — Node",
+        quoted: "README § Size and startup, TRADEOFFS.md: pglet's head-to-head cold init — Node",
         step: "wasm-compare",
         file: WASM_COMPARE_JSON,
         path: &[
@@ -851,7 +851,7 @@ const FIGURES: &[Figure] = &[
         null_means: None,
     },
     Figure {
-        quoted: "README § Goals, TRADEOFFS.md: pglet's head-to-head cold init — Bun",
+        quoted: "README § Size and startup, TRADEOFFS.md: pglet's head-to-head cold init — Bun",
         step: "wasm-compare",
         file: WASM_COMPARE_JSON,
         path: &[
@@ -867,7 +867,7 @@ const FIGURES: &[Figure] = &[
     },
     Figure {
         quoted: "README intro (\"pglite's second-plus init\") + § What it's for (\"pglite takes \
-                 over a second\") + § Goals, TRADEOFFS.md: pglite's head-to-head cold init — Deno",
+                 over a second\") + § Size and startup, TRADEOFFS.md: pglite's head-to-head cold init — Deno",
         step: "wasm-compare",
         file: WASM_COMPARE_JSON,
         path: &[

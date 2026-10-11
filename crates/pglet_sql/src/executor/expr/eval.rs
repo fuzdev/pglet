@@ -129,7 +129,7 @@ impl<R: ColumnResolver> crate::planner::LeafScope for EvalLeafScope<'_, R> {
     /// `Plan::output_columns` — the same route `ProjectionScope` takes, and the same
     /// answer `Describe` reports.
     ///
-    /// `None` when this evaluation was lent no catalog: the honest state, and safe,
+    /// `None` when this evaluation was lent no catalog: the correct state, and safe,
     /// since `None` is what an un-inferable operand is spelled as on this walk.
     fn subquery_type(&self, plan: &Plan) -> Option<TypeOid> {
         let cols = plan.output_columns(self.env.schema()?);

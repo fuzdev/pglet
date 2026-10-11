@@ -86,7 +86,7 @@ name = "test_crash"
 path = "src/bin/test_crash.rs"
 
 # True power-loss (page-cache-bypassing) durability driver. Root-only + opt-in: the
-# binary itself honestly skips without the dm-flakey device set up by
+# binary itself skips without the dm-flakey device set up by
 # `tools/durability/power_loss_test.sh`, so it is NOT chained into `deno task test`.
 [[bin]]
 name = "test_power_loss"
@@ -109,7 +109,7 @@ path = "src/bin/test_soak.rs"
 # Concurrent/MVCC tests are in `test_concurrent` binary (self-contained).
 # Crash / kill -9 durability tests are in `test_crash` (self-contained).
 # True power-loss durability is in `test_power_loss` (root-only; driven by
-# `tools/durability/power_loss_test.sh`, honestly skips without the device).
+# `tools/durability/power_loss_test.sh`, skips without the device).
 
 [lints]
 workspace = true

@@ -3,7 +3,7 @@
 -- command tag `RESET` — not `RESET ALL`, measured on 18.6.
 --
 -- Every GUC pglet models is a fixed value it never moves, so restoring one to its
--- default is honestly a no-op; the shape check is not (`RESET` alone and
+-- default really is a no-op; the shape check is not (`RESET` alone and
 -- `RESET ALL x` are `42601`).
 -- @test
 RESET ALL;

@@ -12,8 +12,8 @@ at **~1/8.2 the gzipped size** (~647 KB vs pglite 0.5.8's ~5.2 MB wasm + data).
 > Early-maturity: great for tests and scratch DBs, **not yet a store of record**. pglet's
 > internals are largely LLM-generated from PostgreSQL's documented behavior, held to a
 > differential harness that compares every feature against a live PostgreSQL — the
-> [project README](https://github.com/fuzdev/pglet) carries the full provenance and
-> status story, and whatever isn't implemented aims to fail loud rather than approximate.
+> [project README](https://github.com/fuzdev/pglet) has the full background and
+> status, and whatever isn't implemented aims to fail loud rather than approximate.
 
 ## Install
 
@@ -58,7 +58,7 @@ Vite and webpack 5 emit that file with the bundle; esbuild does not — copy
 
 ## Test fixtures — fork per test
 
-The reason pglet fits tests: **`fork()`** is a cheap copy-on-write branch of the committed
+**`fork()`** is a cheap copy-on-write branch of the committed
 state, so migrate/seed a base **once** and hand each test an isolated copy — no re-running
 schema SQL, no cross-test leakage.
 
@@ -90,7 +90,7 @@ whole suite of fixtures would come out well-formed and empty.
 ## Value coercion
 
 The wasm boundary hands JS the natural shapes; the adapter applies **one tested policy**,
-recursing into array elements (the gap every hand-rolled adapter had). A query that carries `pg`
+recursing into array elements. A query that carries `pg`
 type parsers takes those instead (next section):
 
 | pglet type | JS value | note |
@@ -255,18 +255,18 @@ What still differs:
   it by running it on a second connection. Use `transaction()` where an outside write must survive,
   or `fork()` a separate instance for it.
 - **One transaction callback at a time** — a `db.transaction()` called while another
-  `transaction()` **callback is running** throws loudly. A **second, genuinely top-level**
+  `transaction()` **callback is running** throws loudly. A **second, top-level**
   `transaction()`
   serializes behind the first only if it is called before the first's callback begins (in
   practice, the same synchronous turn); after that it hits the same rejection, because the two
-  cannot be told apart at call time — a browser has no `AsyncLocalStorage`. Being unable to tell
-  them apart leaves a choice, and pglet takes the loud one: PGlite serializes both instead and
-  hangs on a genuinely nested call, and a silent hang is a worse thing to ship than a refusal.
+  cannot be told apart at call time — a browser has no `AsyncLocalStorage`. pglet refuses rather
+  than guess: PGlite serializes both instead and hangs on a nested call, and a silent hang is
+  worse than a refusal.
   Start concurrent lanes up front, or `fork()` an instance per lane.
 - **Single-connection contract** — one connection, so **one open block at a time**. A raw
   `query('BEGIN')` while a block is already open — the way kysely and drizzle drive transactions —
   **fails loud** with SQLSTATE `25001` instead of silently joining and clobbering shared state.
-  For genuinely concurrent transactions, `fork()` a separate instance per lane (the per-test
+  For concurrent transactions, `fork()` a separate instance per lane (the per-test
   primitive above).
 - **`transaction()` under an open block is a savepoint** — it issues `SAVEPOINT` / `RELEASE` /
   `ROLLBACK TO` rather than `BEGIN` / `COMMIT` / `ROLLBACK`, so a throw unwinds only its own level
@@ -277,7 +277,7 @@ What still differs:
   Whether a block is open is read from the engine, so this holds for any spelling of it,
   comment-prefixed ones included.
 - **Savepoints in SQL** — `SAVEPOINT n`, `ROLLBACK TO [SAVEPOINT] n` and `RELEASE [SAVEPOINT] n`
-  work as on Postgres. Two rules worth knowing: `ROLLBACK TO` is **repeatable** (it keeps the
+  work as on Postgres. Two rules: `ROLLBACK TO` is **repeatable** (it keeps the
   savepoint it names), and it is the one statement an **aborted** block still admits — so a failed
   statement can be rewound and the block carried on, instead of losing the whole thing.
 - **Refusals that are not SQL errors** — a statement whose tree is deeper than the wasm

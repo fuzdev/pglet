@@ -2249,7 +2249,7 @@ mod tests {
     fn set_and_show_still_parse_bind_and_execute() {
         // `execute_query_core` services SET/SHOW ahead of the parser, which rejects
         // both `0A000` — so Parse must NOT plan them. They are the entire exception
-        // list, and this is the test that keeps `runs_outside_the_planner` honest: if
+        // list, and this is the test that keeps `runs_outside_the_planner` correct: if
         // it ever stops covering one, that statement starts erroring at Parse.
         for (sql, tag) in [
             ("SET client_encoding = 'UTF8'", "SET"),
@@ -2397,7 +2397,7 @@ mod tests {
             assert_eq!(tags(&e), vec![tag.to_string()], "{sql:?}: {e:?}");
             handle_message(&mut c, FrontendMessage::Sync);
         }
-        // The control that keeps the count honest: two statements are still two.
+        // The control that keeps the count accurate: two statements are still two.
         let r = parse(
             &mut c,
             "SET search_path TO public; SELECT 1 -- c",

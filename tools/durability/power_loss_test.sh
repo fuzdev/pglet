@@ -23,8 +23,8 @@
 #
 # WHAT IT DOES (the established sketch)
 # -------------------------------------
-#   1. Honest preconditions: root + dm_flakey + the device tools, else SKIP (exit
-#      0) — a skip is honest; a fake pass is not.
+#   1. Preconditions: root + dm_flakey + the device tools, else SKIP (exit
+#      0) — a skip is fine; a fake pass is not.
 #   2. Back a 256M file with a loop device.
 #   3. Wrap it in a dm-flakey device (created in always-up / pass-through mode).
 #   4. mkfs.ext4 + mount it.
@@ -79,14 +79,14 @@ SECTORS=""
 
 log() { printf '[power-loss] %s\n' "$*"; }
 
-# Honest refusal: explain why, then exit 0. A SKIP is not a failure and is NEVER a
+# Refusal: explain why, then exit 0. A SKIP is not a failure and is NEVER a
 # fake pass — it leaves the device-backed assertions un-run, by design.
 skip() {
   printf '[power-loss] SKIP: %s\n' "$*"
   exit 0
 }
 
-# ---- 1. preconditions / honest refusal (FIRST, before touching anything) ----
+# ---- 1. preconditions / refusal (FIRST, before touching anything) ----
 
 require_root_and_tools() {
   if [ "$(id -u)" -ne 0 ]; then

@@ -3647,7 +3647,7 @@ inside a table.
     answers `1700` `93.75`. `sum(t.f + u.i)` over a `float8` is the same (18.6 `94.5`), and
     the order-lines idiom `(SELECT COALESCE(sum(t.n * u.i), 0) FROM u WHERE u.k = t.k)`
     answered `0` where 18.6 answers `12.50` and is now `0A000`. No accumulator can answer
-    18.6's value under the guessed `int8` declaration, so the refusal is the honest close
+    18.6's value under the guessed `int8` declaration, so the refusal is the right close
     short of typing the enclosing column.
   - **A nested aggregate 18.6 refuses for its outer signature first — loud, wrong code.**
     18.6 resolves the outer call's function and its argument's operators before it checks
@@ -3957,7 +3957,7 @@ inside a table.
   so a value expectation cannot be recorded and `@expect-error` is red — and the
   profile-divergent members (`docs/indexes.md` § The starved-leaf exception) cannot be
   pinned by the `@profile-lock` run either,
-  since a fixture can hold one profile's answer or the other's, never both. The honest
+  since a fixture can hold one profile's answer or the other's, never both. The right
   close is a plan-time binding arm for both leaves, which reorders statement-level error
   precedence and is therefore its own change. It is the same row-count-dependent family as
   the two bullets below, one leaf-kind further out.
@@ -6677,7 +6677,7 @@ inside a table.
   `DROP TABLE` hid a committed table *and its committed rows* (`42P01`), a pending
   `ADD COLUMN` gave a wider descriptor than the rows carry (the wire-breaking phantom, made
   by `fork()` alone). On the advertised seed-once/fork-per-test workflow that yields
-  well-formed empty fixtures, so the gate is the honest answer rather than a catalog
+  well-formed empty fixtures, so the gate is the right answer rather than a catalog
   snapshot at the `Database` layer. Sequence counters ride the same `schema.clone()`, so
   sibling forks emit the same `SERIAL` ids — correct per-test behaviour, but a suite
   asserting id uniqueness across databases would fail.
@@ -10345,7 +10345,7 @@ inside a table.
   the text declared leg (`Postgres oid=700 vs pglet oid=701`) and a candidate
   `SELECT NULL ^ n` one on the extended leg (`Postgres oid=1700 vs pglet oid=701`), each
   green on the other, and `-- @no-declared-types:` waives both legs by design. All three
-  members and their controls are pinned by `executor::walker_pins`. The honest close is
+  members and their controls are pinned by `executor::walker_pins`. The right close is
   18.6's own answer per member — a `42883` for the first, the surviving operand's type for
   the other two.
 
@@ -10397,7 +10397,7 @@ inside a table.
   and `COALESCE(COALESCE(NULL, NULL), length('ab'))` still declare `25` against
   `Describe`'s `23` — and 18.6 refuses all three rather than answering the other branch
   (`42725` for the first, `42804 COALESCE types text and integer cannot be matched` for
-  the two whose untyped branch resolves to `text`), so their honest close is a refusal.
+  the two whose untyped branch resolves to `text`), so their right close is a refusal.
   The all-untyped shapes are the controls and did not move: `COALESCE(NULL, NULL)`,
   `greatest(NULL, NULL)`, `nullif(NULL, NULL)` and `CASE WHEN true THEN NULL END` are `25`
   on both legs and on 18.6, `ARRAY[NULL, NULL]` `1009`, and a genuinely `text` branch
@@ -10627,7 +10627,7 @@ inside a table.
   fold band's close, the literal adopts `integer` as 18.6's does and every one of those
   spellings agrees on both legs (`select/coalesce_computed_branch_literal_band*.sql`). The
   band is **open** beside a branch the readers still do not type — `COALESCE('7', 1 +
-  (SELECT 1))` answers `7` on both engines, but as `text` here — and its honest close is
+  (SELECT 1))` answers `7` on both engines, but as `text` here — and its right close is
   the one `docs/compatibility.md`'s `COALESCE`/`CASE` row names: resolving a bare literal
   against the surrounding claimant set rather than typing it `text` where it is read.
 
@@ -10681,7 +10681,7 @@ inside a table.
     residuals below belong to it: what the members share is being invisible to *this*
     reader, and two of them are perfectly visible to `certain_operand_type`. So **the two
     `Expr::Unnest` arms are kept rather than merged**: they are still reachable, they
-    still disagree, and there is no right answer to merge them onto. The honest close is
+    still disagree, and there is no right answer to merge them onto. The right close is
     the reader's — widening `arg_known_type`/`concrete_branch_type` past these arms,
     which is row 65's close and takes this with it.
 
@@ -12280,7 +12280,7 @@ inside a table.
     **It is not binary-only either**: on the simple leg the same NULL row is `oid=23`
     over the text `5000000000` against 18.6's `oid=20`, a value no int4 holds — so a
     text client that decodes by declared OID overflows there too.
-    That pair is why row 54's honest close cannot be "fold the walkers to `int8`": this
+    That pair is why row 54's right close cannot be "fold the walkers to `int8`": this
     encoder is **value**-driven, so a walker-only fold repairs the NULL row and breaks
     the other. The close has to insert the coercing casts.
   - **Row 65's gate skip, through a client-declared parameter type — no longer a member.**
@@ -17896,7 +17896,7 @@ inside a table.
 - **207 · The recovered free list is trusted not to hold live ids.** Read in
   the source: `read_freelist_chain` appends every id a checksum-valid chain page lists, below
   `next_page_id`, with no check for an id listed twice or one the adopted tree reaches;
-  `allocate` then hands each out. An honest store does not write either. A crafted image
+  `allocate` then hands each out. A well-formed store does not write either. A crafted image
   can, since the page checksum vouches for the bytes and not for what they claim — the same
   gap row 202's stale page falls through. Not measured.
 

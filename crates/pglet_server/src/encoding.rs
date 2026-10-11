@@ -235,7 +235,7 @@ pub fn extended_error(err: &Error) -> Vec<BackendMessage> {
 /// unservable encoding the same way (`FATAL 22023 invalid value for parameter
 /// "client_encoding": "…"`, measured with a raw v3 client, connection closed); the
 /// alternative here is not a statement error but silent corruption of every string on the
-/// connection, so the severity is the honest one.
+/// connection, so the severity is the accurate one.
 pub fn fatal_with_code(code: &str, message: &str) -> Vec<BackendMessage> {
     vec![BackendMessage::ErrorResponse {
         fields: plain_wire_fields(Severity::Fatal, code, message),

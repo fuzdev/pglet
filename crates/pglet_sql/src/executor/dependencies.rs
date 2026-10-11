@@ -770,7 +770,7 @@ fn identity_owner(schema: &Schema, target: DropTarget<'_>) -> Option<IdentitySeq
 /// that must not drift: the `DROP SEQUENCE` refusal ([`identity_owner`]), the
 /// `pg_attrdef` exemption ([`is_identity_implementation`]), and the
 /// `ALTER SEQUENCE … OWNED BY` gate (`executor::ddl::execute_alter_sequence`). The
-/// last is what keeps the other two honest — it is the reason a live catalog answers
+/// last is what keeps the other two true — it is the reason a live catalog answers
 /// "yes" for every identity column, so the exemption really is Postgres's "no
 /// `pg_attrdef` row" rather than a name for a state that can be broken apart.
 ///

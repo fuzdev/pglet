@@ -94,7 +94,7 @@ other than the one `package-lock.json` pins (`lib/pglite_install.ts`). A failed
 engine row is printed, and the run then exits 1 without writing.
 
 > **Caveat (also printed by the bench).** pglet's WASM is built `opt-level = "z"`
-> + LTO — tuned for *size*, which is its whole thesis, not query speed. Read a
+> + LTO — tuned for *size*, not query speed. Read a
 > slow pglet query number as "the build is small," not "the engine is slow."
 > pglite is full Postgres compiled to WASM (startup-heavy, over a second cold);
 > sqlite-wasm is the official SQLite build. Single-process, in-memory, rough
@@ -164,4 +164,4 @@ cargo run -p pglet_bench -- memory   # native surface only, no Deno
 > delta**, never the committed absolute (perf memory isn't a gated baseline — only
 > `size:check` gates). `current≈peak` on the native surface is expected — glibc
 > retains freed pages, so the peak is the load's *allocation* high-water, not a
-> leak. These are runtime-memory numbers, **orthogonal to the binary size thesis**.
+> leak. These are runtime-memory numbers, **separate from the binary size figures**.

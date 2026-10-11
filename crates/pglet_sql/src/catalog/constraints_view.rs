@@ -18,7 +18,7 @@
 //! Postgres, so nothing could see the split — and the fuz spine compares these strings
 //! *across backends*, which is exactly where a cosmetic split reads as schema drift.
 //!
-//! # The OID is synthesized, and that is this module's one honest limit
+//! # The OID is synthesized, and that is this module's one limit
 //!
 //! pglet does not store a constraint OID. Three of the five kinds are catalog records
 //! (`CheckConstraint`, `ForeignKey`, and a constraint-marked `Index`) and could carry

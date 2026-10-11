@@ -10,7 +10,7 @@ harness; `--update`, patterns, `-v`, and `--profile-lock` — the stripped-build
 regression lock with its two tag-completeness checks), `test_binary`
 (documented below), `test_keywords`, `test_concurrent`, `test_copy`,
 `test_pg_dump`, `test_dump`, `test_crash` (kill -9 + soak durability),
-`test_power_loss` (root-only; honestly skips without the dm-flakey device from
+`test_power_loss` (root-only; skips without the dm-flakey device from
 `tools/durability/power_loss_test.sh`; `PGLET_POWER_LOSS_N` sets the round
 count), `test_soak` (opt-in large-dataset churn), and `run_sql` (ad-hoc;
 autodiscovered rather than a `[[bin]]` stanza). `PGLET_NO_INDEX_ACCEL=1` makes

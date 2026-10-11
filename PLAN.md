@@ -1,14 +1,13 @@
 # pglet plan
 
-Roadmap and honest status. pglet is a small Postgres-compatible-ish engine; see
+Roadmap and status. pglet is a small Postgres-compatible-ish engine; see
 `README.md` for the pitch and `CLAUDE.md` for architecture. The long-term aim is
 **full PostgreSQL conformance, delivered as optional compile-time layers** — a
 build carries only what its consumer needs, and pglet is never positioned as a
 replacement for upstream PostgreSQL (it serves the places a real server doesn't
 fit: test suites, browsers, embedded/local-first apps). The short version of
 where that stands:
-the **size** and **startup** goals are both measured and met (the size/perf
-thesis holds — see § 1), the fuz-stack Rust conformance is in place
+the **size** and **startup** goals are both measured and met (see § 1), the fuz-stack Rust conformance is in place
 (deps + lints + edition; see § 2), the durability and constraint mechanisms
 (§ 3–4) are built, their open residuals recorded in `EDGES.md`, and the spine-compat SQL
 surface (§ 5) backs the fuz data layer end-to-end on both pglet legs. The § 7
@@ -38,10 +37,10 @@ counts live.
 
 ## Roadmap
 
-### 1. Prove the thesis — benchmarking + size lock-in
+### 1. Size and startup — benchmarking + size lock-in
 
-Size and startup are **measured and the thesis holds**. The headline figures are
-`README.md` (intro and § Goals, honestly measured) and `TRADEOFFS.md` (size, release
+Size and startup are **measured and meet their targets**. The headline figures are
+`README.md` (intro and § Size and startup) and `TRADEOFFS.md` (size, release
 profile, startup, the `index_acceleration` size-floor lever); the recorded numbers are
 `benches/*_results.json`, `benches/size_baseline.json` and
 `benches/pglite_size_comparison.json`, and what each bench may and may not be read as is

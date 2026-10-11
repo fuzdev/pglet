@@ -523,7 +523,7 @@ allocated — refused with a fallback to the other slot, and open refused when b
 it; a slot at the limit opening and refusing the write past it; under such a slot, a
 chain link that would wrap onto page 1 refused as a corrupt chain and an allocation that
 would wrap to the null link not handed out; a read or write of an id past the store refused rather than wrapped; a free-list
-page naming an unallocated id not recovered; and an honest store whose `next_page_id`
+page naming an unallocated id not recovered; and a well-formed store whose `next_page_id`
 has passed its file's end reopening, the reason the slot is not checked against the
 file; a slot landing over a stale chain page, head or tail, recovering no id it lists;
 creation cut short opening as a new store, and a store that held a page refused when

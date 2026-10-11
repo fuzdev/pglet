@@ -785,7 +785,7 @@ const fn information_schema_data_type(type_oid: TypeOid) -> &'static str {
         | TypeOid::NameArray => "ARRAY",
         // Unreachable through a user column: `name` / `oid` / `"char"` / `void` have no
         // DDL spelling (`type_oid_from_name` maps none of them), so no `CREATE TABLE` can
-        // declare one. Spelled rather than folded into a wildcard so they stay honest
+        // declare one. Spelled rather than folded into a wildcard so they stay accurate
         // if a catalog column is ever declared with one here.
         TypeOid::Name => "name",
         TypeOid::Oid => "oid",

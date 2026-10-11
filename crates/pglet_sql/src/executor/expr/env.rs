@@ -124,7 +124,7 @@ pub struct EvalEnv<'a> {
     ///
     /// Two expressions are functions **of the catalog** rather than of the row —
     /// `pg_get_constraintdef(oid)` and the `::regclass` cast — and neither can be
-    /// answered from a `Value`. `None` is the honest state for a context that has no
+    /// answered from a `Value`. `None` is the correct state for a context that has no
     /// catalog to lend rather than a default: those two then fail loud (`0A000`)
     /// instead of guessing.
     ///

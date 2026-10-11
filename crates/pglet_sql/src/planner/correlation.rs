@@ -818,7 +818,7 @@ fn walk_level_rest(
         // BY zzz)` wrote its row and the no-conflict `ON CONFLICT (id) DO UPDATE SET v =
         // (SELECT b FROM et ORDER BY zzz)` inserted, both `42703` on 18.6.
         //
-        // **`rewrite` is ignored here**, unlike every other arm, and the honest reason is
+        // **`rewrite` is ignored here**, unlike every other arm, and the real reason is
         // narrower than "only the descent is wanted". Passing the caller's `rewrite`
         // through is *indistinguishable* from hard-coding `false`: the only live entry to
         // this arm is `resolve_correlated_subplans`'s own `walk_level`, which passes
@@ -837,7 +837,7 @@ fn walk_level_rest(
         // A target the catalog does not hold is skipped for [`lowers_clauses`]'s reason:
         // its columns are not derivable, and a closed scope over an empty relation would
         // answer `42703` in front of the executor's `42P01` for the table itself. **That
-        // branch is unguarded**, and honestly so: `lower_insert` tests the same predicate
+        // branch is unguarded**, and safely so: `lower_insert` tests the same predicate
         // before calling, and the only other route to this arm — a data-modifying CTE's
         // `INSERT` through `Plan::With`'s `resolve_level` — is not live, because
         // `wrap_with_ctes` builds the `Plan::With` *after* the body's own
@@ -1232,7 +1232,7 @@ fn expr_contains_subplan(expr: &Expr) -> bool {
 /// **non-exhaustively** — under its name where there is one, opaque where there is not —
 /// so a name it might carry stops here instead of
 /// escaping to an enclosing level and binding to a same-named relation there. That is
-/// the whole guard against the chaining turning an honest over-rejection into a
+/// the whole guard against the chaining turning a safe over-rejection into a
 /// silently wrong cast, so the conservative arms below are load-bearing, not filler.
 fn level_scope(plan: &Plan, schema: &Schema) -> ColumnScope {
     let mut scope = ColumnScope::default();

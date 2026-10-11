@@ -736,7 +736,7 @@ Deno.test('an ignored failing query() still reports its rejection — fire-and-f
 	// Both polarities in one listener, filtered by the sentinel table NAME rather than counted:
 	// `unhandledrejection` is global and asynchronous, so a bare count passes for the wrong reason
 	// the moment any other rejection lands in the window — and a rejection this listener does not
-	// claim is left to the runner, which is what keeps the test honest about its own scope.
+	// claim is left to the runner, which is what keeps the test accurate about its own scope.
 	//
 	// The near-miss it rejects: dropping the tail handler (`tx_chain = result; return result`)
 	// rather than adding the fresh promise. That passes a single-statement reproduction and fails

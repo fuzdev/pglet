@@ -331,7 +331,7 @@ fn without_null_default(default: ColumnDefault) -> Option<ColumnDefault> {
 /// already consumed a recognized form and more of an expression follows
 /// (`DEFAULT 5 + a`). The tree is then discarded: either the loop consumed nothing
 /// and the classifier's own `ColumnDefault` is returned, or it consumed something and
-/// the whole expression is normalized afresh. It is built honestly rather than as a
+/// the whole expression is normalized afresh. It is built in full rather than as a
 /// placeholder anyway, because the extended tree is what
 /// `executor::ddl`'s `check_default_expr_nodes` later reads, and a placeholder would
 /// be a verdict about a node the source never wrote.

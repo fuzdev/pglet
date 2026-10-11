@@ -37,7 +37,7 @@
  *                    marshaling, which is what an app actually pays)
  *   - aggregate    : `SELECT count(*), sum(a)` (median)
  *
- * HONEST CAVEAT (printed in output): pglet's WASM is built `opt-level = "z"` +
+ * CAVEAT (printed in output): pglet's WASM is built `opt-level = "z"` +
  * LTO — tuned for *size*, which is its whole thesis, not query speed. Read a
  * slow pglet query number as "the small build is small," not "the engine is
  * slow." pglite is full Postgres compiled to WASM (startup is its weak spot,

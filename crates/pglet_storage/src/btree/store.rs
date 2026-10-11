@@ -36,7 +36,7 @@ pub enum PageStoreError {
         page: PageId,
     },
     /// A tree walk reached one page twice: a page names an ancestor, or two pages
-    /// name one child, which no honest tree does. Refused where the walk meets it,
+    /// name one child, which no well-formed tree does. Refused where the walk meets it,
     /// so a damaged tree cannot make a read loop or a write grow without bound.
     CorruptTree {
         /// The page the walk reached a second time.

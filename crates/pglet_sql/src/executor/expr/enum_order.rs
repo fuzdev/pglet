@@ -96,7 +96,7 @@ pub(super) fn operands_enum_order<'x, 'e, R: ColumnResolver>(
         operands,
         &EnumLeaves {
             column: &|table, name| column_enum_order(resolver, env, table, name),
-            // The catalog this evaluation was lent, or `None` — the honest state, and
+            // The catalog this evaluation was lent, or `None` — the correct state, and
             // the same one `EvalLeafScope::subquery_type` answers with.
             subquery: &|plan| subquery_enum_order(plan, env.schema()?),
         },

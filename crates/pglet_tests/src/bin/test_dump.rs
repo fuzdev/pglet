@@ -1277,7 +1277,7 @@ async fn restore_and_compare(
 /// the *other* orphan direction (a sequence outliving its owner) had seeds and
 /// assertions, and its symmetric twin had neither.
 ///
-/// **It is not discriminating today, and that is the honest statement of its worth.**
+/// **It is not discriminating today, and that limits its worth.**
 /// Every route into the state is now refused (`ALTER SEQUENCE … OWNED BY` and
 /// `ALTER COLUMN … SET/DROP DEFAULT` on an identity column), so no catalog this
 /// engine's own DDL can build reaches it — the same standing as

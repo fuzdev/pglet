@@ -1873,7 +1873,7 @@ impl Parser<'_> {
         // `zip` encodes that as a silent truncation: one short answer would drop the last
         // column from the relation the body resolves against, which is the half-added-column
         // shape — every `SELECT *` over the CTE losing a field at the wire with no error
-        // anywhere. Indexing degrades to `-1`, which is the honest modifier for a column
+        // anywhere. Indexing degrades to `-1`, which is the correct modifier for a column
         // nothing decided, and keeps the list whole. The column's certainty rides with
         // its modifier, and degrades to not certain.
         let columns: Vec<ColumnDesc> = columns

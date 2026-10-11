@@ -896,7 +896,7 @@ fn the_two_walks_answer_an_untypable_aggregate_argument_alike_under_either_scope
 /// route and this cell's split at once (`EDGES.md` row 55's residual carries it, with the
 /// taken-branch, `WHERE false` and cast controls). So the two arms are **kept, not
 /// merged**: neither answer is right, there is
-/// nothing to merge them onto, and the honest close is the reader's — widening
+/// nothing to merge them onto, and the right close is the reader's — widening
 /// `arg_known_type` past those arms, which is `EDGES.md` row 65's close and would take
 /// this residual with it.
 ///
@@ -1071,7 +1071,7 @@ fn the_multi_operand_arms_take_the_first_inferable_operand_on_both_walks() {
 /// *transitively* untyped keeps W1's total `Text`, and `abs`'s rule passes an argument
 /// type through, so the two legs declare 25 against 701 for one statement whose value is
 /// NULL either way. 18.6 refuses all three (`42725`, then `42883` twice), so neither
-/// answer is right and the honest close is a refusal — its own rung.
+/// answer is right and the right close is a refusal — its own rung.
 #[test]
 fn the_recorded_abs_residual_family_splits_the_two_walks() {
     let abs = |arg: Expr| Expr::MathFn {
@@ -1157,7 +1157,7 @@ fn the_recorded_abs_residual_family_splits_the_two_walks() {
 /// would assert nothing about the OIDs at all. Member 1 is out for a different reason,
 /// the same one cell F is out for: 18.6 refuses the statement and pglet answers rows, so
 /// the fixture is red on the values before a declared type is compared, and
-/// `@expect-error` cannot hold it either. All three are recorded in `EDGES.md`. The honest close
+/// `@expect-error` cannot hold it either. All three are recorded in `EDGES.md`. The right close
 /// for each is 18.6's own answer — a `42883` for
 /// member 1, the surviving operand's type for members 2 and 3 — which is this cell's own
 /// rung.

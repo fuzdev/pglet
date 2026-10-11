@@ -336,7 +336,7 @@ fn a_conforming_recursive_ctes_descriptors_carry_the_seeds_typmod_and_enum() {
 /// `RowDescription` whose next `DataRow` is eight characters. 18.6 never has to answer
 /// that question because it refuses the pair (`42804 … has type character varying(5) in
 /// non-recursive term but type character varying overall`, measured at every spelling
-/// below); pglet accepts it, so what it declares has to be honest.
+/// below); pglet accepts it, so what it declares has to be accurate.
 ///
 /// So the modifier is **resolved** by `select_common_typmod` — the seed's while both
 /// terms declare it, `-1` otherwise — and this pins both directions. The conforming case
@@ -503,7 +503,7 @@ fn a_column_typed_recursive_term_folds_what_pglet_reads_exactly() {
         db.execute(sql).unwrap();
     }
     let unbounded: Facts = vec![(-1, None, false)];
-    let honest = |db: &mut Database, seed: &str, term: &str, until: &str| {
+    let check_modifier = |db: &mut Database, seed: &str, term: &str, until: &str| {
         let sql = format!(
             "WITH RECURSIVE r(a) AS (SELECT {seed} FROM rk UNION ALL SELECT {term} FROM rk, r WHERE {until}) SELECT a FROM r"
         );
@@ -517,7 +517,7 @@ fn a_column_typed_recursive_term_folds_what_pglet_reads_exactly() {
 
     // The widening pair first, and its rows: the second is eight characters long, which is
     // what a declared `varchar(5)` would misdescribe.
-    if honest(&mut db, "v", "v8", "a = 'ab'") {
+    if check_modifier(&mut db, "v", "v8", "a = 'ab'") {
         let rows = db
             .execute(
                 "WITH RECURSIVE r(a) AS (SELECT v FROM rk UNION ALL SELECT v8 FROM rk, r WHERE a = 'ab') SELECT a FROM r",
@@ -533,9 +533,9 @@ fn a_column_typed_recursive_term_folds_what_pglet_reads_exactly() {
             ]
         );
     }
-    honest(&mut db, "v", "c3", "a = 'ab'");
-    honest(&mut db, "n", "n10", "a = 1.25");
-    honest(&mut db, "tz", "ts", "false");
+    check_modifier(&mut db, "v", "c3", "a = 'ab'");
+    check_modifier(&mut db, "n", "n10", "a = 1.25");
+    check_modifier(&mut db, "tz", "ts", "false");
 
     // The conforming control: both terms read the same `varchar(5)` column, and 18.6
     // answers with `9`.

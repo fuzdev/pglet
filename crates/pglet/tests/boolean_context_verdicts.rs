@@ -587,7 +587,7 @@ fn every_gated_position_names_its_own_construct() {
     // empty input is never reached at all, which is the data dependence the plan-time
     // gate exists to close. Measured — with these removed the eval-time half reaches no
     // site and `bound_refused_construct` panics on a statement that did not refuse, so
-    // the seed is what lets that half assert rather than what keeps it honest.
+    // the seed is what lets that half assert rather than what keeps it valid.
     db.execute("INSERT INTO rcx VALUES (1)").expect("seeds");
     db.execute("INSERT INTO rcy VALUES (1)").expect("seeds");
     db.execute("INSERT INTO rcu VALUES (1, 1)").expect("seeds");
