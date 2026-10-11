@@ -52,7 +52,10 @@ This release is an early proof of concept:
 speeding up fuz_app's tests makes pglet plausibly-real software,
 so it's public despite being full of holes that your workloads may fail on.
 
-AI disclosure: Claude did the coding, and there is a human that cares, but it's not _not_ slop.
+AI disclosure: architecture was designed by a human and then initially guided closely,
+but Claude did the coding and the author has not read most of it.
+PostgreSQL is the source of truth for this project;
+this is a know-nothing re-implementation with different architectural tradeoffs.
 
 ## What it's for
 
