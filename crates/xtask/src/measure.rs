@@ -1621,12 +1621,8 @@ mod tests {
     /// The key-drift guard: each figure's key path, and its envelope's `timestamp` and
     /// `git_commit`, resolve in the file its bench last committed — so a renamed key or a
     /// mistyped selector fails here rather than printing "unreadable" at the end of a long
-    /// run. It covers every figure whose committed file already has the figure's shape;
-    /// `exit_proof_results.json` predates `ratios` and `engines`, so its figures are not
-    /// asked yet.
-    // TODO: in the commit that records the user's refreshed `exit_proof_results.json`, add an
-    // `EXIT_PROOF_JSON => include_str!("../../../benches/exit_proof_results.json")` arm to
-    // `committed` and drop the `EXIT_PROOF_JSON` filter, so `ratios` and `engines` join it.
+    /// run. It covers every figure, `ratios` and `engines` in `exit_proof_results.json`
+    /// included.
     #[test]
     fn every_figure_resolves_in_its_committed_file() {
         let committed = |file: &str| match file {
@@ -1634,9 +1630,10 @@ mod tests {
             STARTUP_JSON => include_str!("../../../benches/startup_results.json"),
             WASM_INIT_JSON => include_str!("../../../benches/wasm_init_results.json"),
             WASM_COMPARE_JSON => include_str!("../../../benches/wasm_compare_results.json"),
+            EXIT_PROOF_JSON => include_str!("../../../benches/exit_proof_results.json"),
             other => panic!("no committed file listed for {other}"),
         };
-        for figure in FIGURES.iter().filter(|f| f.file != EXIT_PROOF_JSON) {
+        for figure in FIGURES {
             let doc = parse_jsonb(committed(figure.file)).expect("committed JSON parses");
             for path in [
                 figure.path,
