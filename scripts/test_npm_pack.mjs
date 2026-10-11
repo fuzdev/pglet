@@ -36,7 +36,8 @@ import {tmpdir} from 'node:os';
 import {dirname, join, resolve} from 'node:path';
 
 const PKG_DIR = resolve(process.env.PKG_DIR ?? 'crates/pglet_wasm/pkg-npm');
-const NAME = '@fuzdev/pglet-wasm';
+// read from the built package, so the bare specifier is whatever name it was assembled under
+const NAME = JSON.parse(readFileSync(join(PKG_DIR, 'package.json'), 'utf8')).name;
 
 let scratch;
 let installed;

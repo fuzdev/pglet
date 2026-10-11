@@ -96,7 +96,9 @@ The other ports in play: 5433 for the dev server (`cargo run -p pglet_server`),
   (`check:wasm-features`), `cargo fmt --check`, the rustdoc
   broken-link check (`check:docs`, run with `--document-private-items` because most of
   the engine is private items; `private_intra_doc_links` and `redundant_explicit_links`
-  stay at warn by choice), and the release audit. Needs no Postgres and runs anywhere.
+  stay at warn by choice), `deno check` of the release scripts (`check:scripts`, which
+  nothing else typechecks before a release runs them), and the release audit. Needs no
+  Postgres and runs anywhere.
   The narrower `cargo clippy --workspace` you are likelier to type covers neither tests
   nor benches and fails on nothing, so it passes locally where `check` does not.
 - `cargo xtask gates` — the full gate set, in a fixed order. Run it
@@ -148,18 +150,26 @@ figure for that is recorded.
 
 `@fuzdev/pglet-wasm` is published by the maintainer with `deno task publish:npm`
 (`scripts/publish.ts`). The version is `Cargo.toml`'s `[workspace.package].version`, which
-the script reads and never bumps.
+the script reads and never bumps. `CHANGELOG.md` gets the version's section when you bump
+it; the script does not read or write it.
 
-- `deno task publish:npm` — a dry run. It warns on a dirty tree, a branch other than
-  `main` and a failing `npm whoami`; runs `deno task check`, `deno task test:npm` (which
-  builds `crates/pglet_wasm/pkg-npm` and ends in the packed-tarball smoke over that same
-  directory) and the size gate on the wasm it built; then runs `npm publish --dry-run` in
-  `pkg-npm`, which prints the tarball's `name@version` and file list, and prints the tag
-  command.
+- `deno task publish:npm` — a dry run. Its preflight refuses outright on a missing tool
+  (`node` below the package's `engines` floor, `wasm-pack`, `gzip`) or a failed registry
+  lookup, and warns on a dirty tree, a branch other than `main`, a `HEAD` that is not
+  exactly `origin/main` (after a `git fetch origin main`), an existing `v<version>` tag
+  (locally or on `origin`) and a failing `npm whoami`. It then runs `deno task check`,
+  `deno task test:rust`, `deno task test:wasm`, `deno task test:npm` (which builds
+  `crates/pglet_wasm/pkg-npm` and ends in the packed-tarball smoke over that same
+  directory), checks the built `name@version`, and runs the size gate on the wasm it built;
+  then runs `npm publish --dry-run` in `pkg-npm`, which prints the tarball's
+  `name@version` and file list, and prints the tag command. None of its gates needs
+  Postgres; the differential gates are CI's and `cargo xtask gates`'.
 - `deno task publish:npm --wetrun` — the same run, except that the preflight warnings refuse
   before any gate runs, a checkout that changed while the gates ran refuses after them, and
   the last step is `npm publish`.
-- A version already on npm ends either run before its publish step, exit `0`.
+- A version already on npm ends either run in the preflight, exit `0`.
+- A prerelease version (`0.2.0-alpha.1`) publishes under the `next` dist-tag, never
+  `latest`.
 - Tagging is yours, after the publish: the run prints the command for the annotated tag
   `v<version>` (`v0.1.0`) on the commit it built, and its push. The script neither tags nor
   pushes.

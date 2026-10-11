@@ -1,9 +1,10 @@
 /**
- * Assemble the publishable @fuzdev/pglet-wasm npm package from wasm-pack's `pkg/` output.
+ * Assemble the publishable @fuzdev/pglet-wasm npm package from wasm-pack's output.
  *
- * Run right after `wasm-pack build crates/pglet_wasm --target web` (see `deno task
- * build:npm`). Operates in place on the given pkg dir (default `crates/pglet_wasm/pkg`),
- * which is gitignored — nothing here is tracked; the tracked source is `crates/pglet_wasm/
+ * Run right after `wasm-pack build crates/pglet_wasm --target web --out-dir pkg-npm` (see
+ * `deno task build:npm`). Operates in place on the given pkg dir, which is required: patching
+ * the plain `wasm:build` output (`pkg`) would rewrite the build `size:check` and `test:wasm`
+ * read. The dir is gitignored — nothing here is tracked; the tracked source is `crates/pglet_wasm/
  * npm/*` (the hand-written ergonomic layer) + this script.
  *
  * Follows the tsv/blake3 pattern:
@@ -14,12 +15,16 @@
  * `scripts/npm_metadata.ts`, and `main`/`types` pointing at the Node facade for resolvers that
  * predate `exports` (`exports` stays authoritative wherever it is read).
  *
- *   deno run --allow-read --allow-write scripts/patch_npm_package.ts [pkg-dir]
+ *   deno run --allow-read --allow-write scripts/patch_npm_package.ts <pkg-dir>
  */
 
 import {NPM_SHARED_METADATA} from './npm_metadata.ts';
 
-const pkg_dir = Deno.args[0] ?? 'crates/pglet_wasm/pkg';
+if (Deno.args.length !== 1) {
+	console.error('usage: patch_npm_package.ts <pkg-dir>');
+	Deno.exit(1);
+}
+const pkg_dir = Deno.args[0];
 const npm_src = 'crates/pglet_wasm/npm';
 
 const NAME = NPM_SHARED_METADATA.name;
@@ -94,7 +99,8 @@ const copy = async (from: string, to: string): Promise<boolean> => {
 	try {
 		await Deno.copyFile(from, at(to));
 		return true;
-	} catch {
+	} catch (error) {
+		if (!(error instanceof Deno.errors.NotFound)) throw error;
 		return false;
 	}
 };
