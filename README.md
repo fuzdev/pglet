@@ -223,10 +223,10 @@ of recorded divergences.
   recorded baseline +2% and a hard cap, re-validated on every full gate run. The recorded figures are `benches/size_baseline.json`; the budget and
   what has been cut to hold it are `TRADEOFFS.md`.
 - **Startup (target <100 ms):** native spawn→ready is ~1 ms p50 across
-  storage modes; in-process WASM init is ~3.5 ms p50 for a full cold load
+  storage modes; in-process WASM init is ~3.6 ms p50 for a full cold load
   (`benches/wasm_init_results.json`). On the head-to-head harness, whose cold init is
   each engine's fresh module load through its first query — for pglet, its npm
-  package's — pglet takes ~12–16 ms against pglite's ~1.4 s across Deno / Node /
+  package's — pglet takes ~12–19 ms against pglite's ~1.3–1.4 s across Deno / Node /
   Bun (`benches/wasm_compare_results.json`).
   Run `deno task bench:wasm-init` / `bench:wasm-compare` to re-measure.
 

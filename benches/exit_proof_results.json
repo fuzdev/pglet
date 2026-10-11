@@ -1,8 +1,8 @@
 {
 	"schema": "exit_proof",
 	"note": "fuz_app `db` suite wall-time per engine leg, isolated by testNamePattern over the shared four-leg files. L1 (pglite, pglet-wasm) in-process; L2 (pglet-server, pg) out-of-process — never compared across the line but by a `ratios` entry marked `crosses_tiers`, which is quoted only labelled as in-process vs over TCP. `ratios` holds the figures the README quotes, each a numerator leg p50 over a denominator leg p50 in one bucket, `null` with a `null_reason` where either leg failed or was not run or the two passed different test counts. `engines` records what the legs ran: `pglite` is the pglite fuz_app's install resolves (not benches/'), `pglet_wasm` the npm package's version, `fuz_app` the checkout's commit. Ratios are the durable signal; absolute seconds flap with the box. Engine boot is amortized over the file set (see wasm_compare_results.json for the cold-start number).",
-	"timestamp": "2026-10-11T13:59:32.043Z",
-	"git_commit": "92fcf60",
+	"timestamp": "2026-10-11T15:03:23.125Z",
+	"git_commit": "f617241",
 	"reps": 2,
 	"warmup": 1,
 	"shared_files": 50,
@@ -15,20 +15,20 @@
 			"files": 50,
 			"leg_failed": false,
 			"total": {
-				"p50": 17400,
-				"p95": 17490,
-				"mean": 17400,
-				"min": 17300,
-				"max": 17500,
-				"cv": 0.005747126436781609
+				"p50": 16785,
+				"p95": 16807.5,
+				"mean": 16785,
+				"min": 16760,
+				"max": 16810,
+				"cv": 0.0014894250819183796
 			},
 			"tests": {
-				"p50": 15960.532250499997,
-				"p95": 16037.917845549997,
-				"mean": 15960.532250499997,
-				"min": 15874.548255999998,
-				"max": 16046.516244999997,
-				"cv": 0.005387288666222631
+				"p50": 15372.238885499997,
+				"p95": 15386.18231145,
+				"mean": 15372.238885499997,
+				"min": 15356.746189999994,
+				"max": 15387.731581,
+				"cv": 0.0010078359837756904
 			}
 		},
 		{
@@ -39,20 +39,20 @@
 			"files": 50,
 			"leg_failed": false,
 			"total": {
-				"p50": 3935,
-				"p95": 3948.5,
-				"mean": 3935,
-				"min": 3920,
-				"max": 3950,
-				"cv": 0.0038119440914866584
+				"p50": 3460,
+				"p95": 3478,
+				"mean": 3460,
+				"min": 3440,
+				"max": 3480,
+				"cv": 0.005780346820809248
 			},
 			"tests": {
-				"p50": 2549.356092,
-				"p95": 2563.8930432,
-				"mean": 2549.356092,
-				"min": 2533.2039239999995,
-				"max": 2565.50826,
-				"cv": 0.006335783396712044
+				"p50": 2061.4084704999996,
+				"p95": 2065.1384642500007,
+				"mean": 2061.4084704999996,
+				"min": 2057.2640329999986,
+				"max": 2065.5529080000006,
+				"cv": 0.002010488245930105
 			}
 		},
 		{
@@ -63,20 +63,20 @@
 			"files": 50,
 			"leg_failed": false,
 			"total": {
-				"p50": 5150,
-				"p95": 5177,
-				"mean": 5150,
-				"min": 5120,
-				"max": 5180,
-				"cv": 0.005825242718446602
+				"p50": 4620,
+				"p95": 4638,
+				"mean": 4620,
+				"min": 4600,
+				"max": 4640,
+				"cv": 0.004329004329004329
 			},
 			"tests": {
-				"p50": 3761.047012000001,
-				"p95": 3785.187648100001,
-				"mean": 3761.047012000001,
-				"min": 3734.224083000001,
-				"max": 3787.869941000001,
-				"cv": 0.007131771795039696
+				"p50": 3263.944663500001,
+				"p95": 3285.942213749999,
+				"mean": 3263.944663500001,
+				"min": 3239.502941000003,
+				"max": 3288.3863859999988,
+				"cv": 0.007488399779973144
 			}
 		},
 		{
@@ -87,20 +87,20 @@
 			"files": 50,
 			"leg_failed": false,
 			"total": {
-				"p50": 16540,
-				"p95": 17233,
-				"mean": 16540,
-				"min": 15770,
-				"max": 17310,
-				"cv": 0.046553808948004836
+				"p50": 16970,
+				"p95": 16979,
+				"mean": 16970,
+				"min": 16960,
+				"max": 16980,
+				"cv": 0.0005892751915144372
 			},
 			"tests": {
-				"p50": 15132.424073999999,
-				"p95": 15826.889214599998,
-				"mean": 15132.424073999999,
-				"min": 14360.79614,
-				"max": 15904.052007999999,
-				"cv": 0.050991693744942244
+				"p50": 15530.293200500002,
+				"p95": 15542.638041049995,
+				"mean": 15530.293200500002,
+				"min": 15516.57671100001,
+				"max": 15544.009689999993,
+				"cv": 0.0008832086634107998
 			}
 		}
 	],
@@ -110,7 +110,7 @@
 			"denominator": "pglet-wasm",
 			"bucket": "tests",
 			"crosses_tiers": false,
-			"value": 6.260613140935824,
+			"value": 7.457153254915763,
 			"null_reason": null
 		},
 		"pg_over_pglet_wasm_tests": {
@@ -118,7 +118,7 @@
 			"denominator": "pglet-wasm",
 			"bucket": "tests",
 			"crosses_tiers": true,
-			"value": 5.93578281256442,
+			"value": 7.533826227430361,
 			"null_reason": null
 		},
 		"pg_over_pglet_server_tests": {
@@ -126,7 +126,7 @@
 			"denominator": "pglet-server",
 			"bucket": "tests",
 			"crosses_tiers": false,
-			"value": 4.023460495366973,
+			"value": 4.758136182323177,
 			"null_reason": null
 		},
 		"pglite_over_pglet_wasm_total": {
@@ -134,13 +134,13 @@
 			"denominator": "pglet-wasm",
 			"bucket": "total",
 			"crosses_tiers": false,
-			"value": 4.421855146124524,
+			"value": 4.851156069364162,
 			"null_reason": null
 		}
 	},
 	"engines": {
 		"pglite": "0.5.8",
 		"pglet_wasm": "0.1.0",
-		"fuz_app": "5dd3cb8f"
+		"fuz_app": "0cc513a9"
 	}
 }

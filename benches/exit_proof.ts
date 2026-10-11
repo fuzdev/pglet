@@ -5,7 +5,7 @@
  * *same* suite of database tests takes when the DB is backed by pglet (both
  * legs) versus pglite. This is the payoff measurement for the "fast test-fixture
  * engine" thesis: the micro-benches already prove pglet wins cold-start
- * decisively (`wasm_compare.ts`, ~12–16 ms vs pglite's ~1.4 s); this proves
+ * decisively (`wasm_compare.ts`, ~12–19 ms vs pglite's ~1.3–1.4 s); this proves
  * it — or doesn't — on a real consumer's suite.
  *
  * ## Method (no fuz_app edit for the bench's sake)
@@ -653,7 +653,7 @@ console.log(
 console.log(
 	`\nNOTE: fuz_app shares one engine instance across the whole \`db\` run (isolate:false,` +
 		`\n  fileParallelism:false), so each engine's cold boot is paid once and amortized —` +
-		`\n  the per-file spin-up win pglet holds decisively (wasm_compare cold-init roughly 80–120×` +
+		`\n  the per-file spin-up win pglet holds decisively (wasm_compare cold-init roughly 70–120×` +
 		`\n  vs pglite, a one-shot sample that swings run to run, runtime-dependent — see` +
 		`\n  wasm_compare_results.json) shows here only as its ~1/${shared_files.length} share.` +
 		`\n  This suite measures steady-state throughput on a real consumer, the` +

@@ -1,8 +1,8 @@
 {
 	"schema": "pglite_size_comparison",
 	"note": "Written by benches/size_compare.ts (`deno task bench:size-compare:update`, a step of `cargo xtask measure`). pglet: the wasm the npm package ships (crates/pglet_wasm/pkg-npm/pglet_wasm_bg.wasm, `deno task build:npm`) — the file a consumer downloads, the size_baseline.json build up to embedded metadata. pglite: pglite.wasm + pglite.data + initdb.wasm from benches/node_modules/@electric-sql/pglite/dist at the version benches/package-lock.json pins. gzip is `gzip -c` at its default level, as size.ts measures. Compares the runtime payload a browser/Node consumer downloads; JS glue is excluded from both sides.",
-	"timestamp": "2026-10-11T14:01:19.752Z",
-	"git_commit": "92fcf60",
+	"timestamp": "2026-10-11T15:05:10.919Z",
+	"git_commit": "f617241",
 	"pglet": {
 		"version": "0.1.0",
 		"wasm_raw_bytes": 1652183,

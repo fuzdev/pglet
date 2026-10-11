@@ -79,13 +79,13 @@ levers it took stand; the figures describe that pass's tree, not today's.
 
 Startup (<100 ms) is half the reason pglet exists, and it is now **measured and
 met**: native spawn→ready is ~1 ms p50 across storage modes, and WASM init is
-~3.3 ms on the first-ever compile, ~3.5 ms p50 for a full cold load, and ~0.5 ms
+~3.3 ms on the first-ever compile, ~3.6 ms p50 for a full cold load, and ~0.5 ms
 to instantiate from a cached module (`benches/wasm_init_results.json`) — all far under
 the target. Those figures include the 4 MiB shadow stack (`crates/pglet_wasm/build.rs`),
 whose three more MiB of initial memory measured side by side on one box at +0.17 ms to
 instantiate and +0.16 ms to a full cold load. Head-to-head (`bench:wasm-compare`, pglet vs pglite vs sqlite-wasm in-memory
 across Deno/Node/Bun, each engine's fresh module load through its first query — for pglet, its npm package's), pglet's cold init
-is ~12–16 ms against pglite's ~1.4 s (`benches/wasm_compare_results.json`). The
+is ~12–19 ms against pglite's ~1.3–1.4 s (`benches/wasm_compare_results.json`). The
 harness is Deno tasks over `fuz_util`'s statistics (`benches/`; reproduced in
 `benches/lib/bench_stats.ts` where it cannot be imported), not `xtask`; the Rust
 `pglet_bench` crate adds the query microbench (point lookup / scan / aggregate)
