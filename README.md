@@ -12,11 +12,11 @@ well under a megabyte over the wire.
 or pglite's second-plus init, and `fork()` branches a migrated, seeded database
 into an isolated copy per test without re-running the setup SQL.
 On [fuz_app](https://github.com/fuzdev/fuz_app)'s database tests,
-pglet runs ~6.3x faster than pglite
+pglet runs ~7.5x faster than pglite
 at ~1/8 the gzipped size of pglite's wasm and data files (wasm-to-wasm, in memory),
-and ~5.9x faster than a real PostgreSQL server
-(pglet in-process versus Postgres over TCP; server-to-server it's ~4.0x) —
-counting the time spent running the tests; vitest's whole run is ~4.4x faster than on pglite.
+and ~7.5x faster than a real PostgreSQL server
+(pglet in-process versus Postgres over TCP; server-to-server it's ~4.8x) —
+counting the time spent running the tests; vitest's whole run is ~4.9x faster than on pglite.
 
 **Later, embedded and in other places.** The same engine is meant to grow into
 a local-first, file-based store for apps and browsers —
