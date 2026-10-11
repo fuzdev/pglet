@@ -18,8 +18,9 @@
  * afterAll lifecycle), on the **shared subset of files that bind all four legs**
  * (discovered below — the single-driver files are excluded so every leg does
  * identical work; that cuts *both* ways, since a pg-only file inflates the pg
- * leg alone). Wall-time is read from vitest's own Duration summary; the
- * `tests` bucket (engine work, excluding the fixed transform/import overhead) is the sum of
+ * leg alone — and a file mixing a single-driver suite into its four-leg ones is
+ * refused before any leg runs). Wall-time is read from vitest's own Duration summary;
+ * the `tests` bucket (engine work, excluding the fixed transform/import overhead) is the sum of
  * the test files' run times, each file's `beforeAll`/`afterAll` hooks included — fuz_app's `db`
  * project runs its files one at a time in one worker (`fileParallelism: false`), so the sum is
  * serial time, the run's wall less its transform/import/setup — written by a reporter of this
@@ -113,32 +114,126 @@ require_path(FUZ_APP_DIR, 'set PGLET_FUZ_APP_DIR to the fuz_app checkout');
 
 // --- discover the shared (all-four-legs) test files -----------------------
 // A `*.db.test.ts` file exercises all four legs iff its suites are bound to the
-// four-leg factory set. Two shapes qualify: it imports the four-leg `describe_db`
-// (or `db_factories`) from `db_fixture.ts` / `auth/cell_test_helpers.ts`, or it
-// builds the four-leg array inline (the fact_store suites — `create_pglet_wasm_factory(`
-// is the tell). Discovered, not hardcoded, so it tracks fuz_app as suites are added.
+// four-leg factory set: it imports the four-leg `describe_db` (or `db_factories`) from a
+// fixture module — `db_fixture.ts` or a sibling built by `create_db_fixture.ts`
+// (`cell_db_fixture.ts`, `fact_db_fixture.ts`). Discovered, not hardcoded, so it tracks
+// fuz_app as suites are added.
 //
-// Matching the *module name* alone is not enough, and the two ways it fails are
-// not symmetric. A file that imports a single **named** factory from `db_fixture.ts`
-// is single-driver: `pglite_factory` (`testing/integration_tests`,
-// `testing/test_app_server`) contributes no `(driver)`-named suite at all, so it is
-// merely dead weight in the set — but `pg_factory` (`auth/password_change.race`,
-// `auth/role_grant_offer_queries.concurrent`, which need connection-level concurrency
-// pglite cannot give) adds tests to the **pg leg alone**, and then the legs are no
-// longer running the same work and the ratios stop meaning anything. The `⚠ FAIRNESS`
-// check below is the backstop for whatever this predicate still gets wrong.
-const INLINE_FOUR_LEG = /create_pglet_wasm_factory\(/;
-const FOUR_LEG_IMPORT = /import\s*\{([^}]*)\}\s*from\s*'[^']*(?:db_fixture|cell_test_helpers)\.ts'/g;
+// Matching the *module name* alone is not enough. A file that imports only a single
+// **named** factory from a fixture module (`pg_factory`, `default_db_factory`) is
+// single-driver and excluded: the pg-only suites need connection-level concurrency
+// pglite cannot give, and admitting one would add tests to the pg leg alone.
+//
+// A four-leg file whose every `create_describe_db` is not passed the imported `db_factories`
+// is refused, before any leg runs, whichever legs are selected — "shared" is a claim about
+// the tree, not about one run's legs. `create_describe_db` names each suite
+// `<name> (<factory.name>)`, so a single factory passed to it yields suites only that
+// driver's leg's `-t '\(<driver>\)'` selects — `pg_factory` grows the pg leg,
+// `default_db_factory` (named `pglite`, as no leg here installs a substitute) or a local
+// `create_pglite_factory(…)` the pglite leg — and the legs no longer run the same work.
+// Excluding the file would drop its four-leg suites from every leg, and admitting it is
+// unfair, so the fix is fuz_app's: the single-driver suite goes in its own file.
+//
+// The check is an allow-list over every *mention* of `create_describe_db` in a four-leg
+// file, comments and strings read as code: a mention is allowed only as a specifier
+// inside a braced `import` (not renamed away — `create_describe_db as …` is refused), or
+// as a call whose first argument is exactly the imported `db_factories`' local name.
+// Anything else is refused, naming the line — a mention in a comment, a type argument, an aliased import, a value reference or one passed
+// in an argument list, a factory set it cannot see through (a local alias of `db_factories`,
+// a `.filter(…)` of it) — loudly rather than guessed at; a comment mention is a trivial
+// rewording. A fixture-module import this read cannot parse (a namespace import, a `}`
+// inside the braces) beside a four-leg name is refused too, so a four-leg file is never
+// silently dropped as single-driver. A single factory that never
+// reaches `create_describe_db` (a `.create()` inside a plain `describe`) names no
+// `(<driver>)` suite, so no leg selects it and it is not refused. The `⚠ FAIRNESS` check
+// below is the backstop for what a static read of one file cannot see — a
+// `create_describe_db` reached through a helper module, a hand-written `(<driver>)` name.
+const FIXTURE_IMPORT = /import\s*\{([^}]*)\}\s*from\s*['"]([^'"]*db_fixture\.ts)['"]/g;
+/** A fixture module named anywhere, parsed by `FIXTURE_IMPORT` or not. */
+const FIXTURE_MODULE = /db_fixture\.ts['"]/g;
+/** Any module's braced import — where a `create_describe_db` specifier may stand. */
+const BRACED_IMPORT = /import\s*\{[^}]*\}\s*from\s*['"][^'"]*['"]/g;
 /** The four-leg bindings; a named single factory (`pg_factory`, …) is not one. */
 const FOUR_LEG_BINDINGS = ['describe_db', 'db_factories'];
+const FOUR_LEG_NAME = /\b(?:describe_db|db_factories)\b/;
+/**
+ * Every mention of `create_describe_db`; group 1 is set where it stands as a specifier
+ * (`,`/`}` follows) or a call with a bare identifier first argument, group 2 is that
+ * argument.
+ */
+const DESCRIBE_DB_MENTION = /\bcreate_describe_db\b(\s*[,}]|\s*\(\s*([\w$]+)\s*[,)])?/g;
 
-const binds_four_legs = (text: string): boolean => {
-	if (INLINE_FOUR_LEG.test(text)) return true;
-	for (const m of text.matchAll(FOUR_LEG_IMPORT)) {
-		const names = m[1].split(',').map((n) => n.trim().split(/\s+as\s+/)[0].trim());
-		if (names.some((n) => FOUR_LEG_BINDINGS.includes(n))) return true;
+interface FixtureImport {
+	/** the exported name */
+	name: string;
+	/** the local binding (`name as local`) */
+	local: string;
+}
+
+const parse_fixture_imports = (text: string): FixtureImport[] => {
+	const out: FixtureImport[] = [];
+	for (const m of text.matchAll(FIXTURE_IMPORT)) {
+		for (const spec of m[1].split(',')) {
+			const [name, local] = spec
+				.trim()
+				.replace(/^type\s+/, '')
+				.split(/\s+as\s+/)
+				.map((s) => s.trim());
+			if (name) out.push({name, local: local ?? name});
+		}
 	}
-	return false;
+	return out;
+};
+
+/** The `[start, end)` spans of every match of `pattern` (a global regex) in `text`. */
+const match_spans = (text: string, pattern: RegExp): Array<[number, number]> =>
+	Array.from(text.matchAll(pattern), (m): [number, number] => [m.index, m.index + m[0].length]);
+
+const within = (spans: Array<[number, number]>, index: number): boolean =>
+	spans.some(([start, end]) => index >= start && index < end);
+
+type DbTestVerdict =
+	| {kind: 'shared'}
+	| {kind: 'single_driver'}
+	| {kind: 'refused'; offenses: string[]};
+
+/**
+ * Classifies one `*.db.test.ts` file's text: shared by all four legs, single-driver
+ * (excluded), or refused — a four-leg name beside a fixture import this read cannot parse,
+ * or four-leg bindings beside a `create_describe_db` mention the allow-list does not admit.
+ */
+const classify_db_test = (text: string): DbTestVerdict => {
+	const lines = text.split('\n');
+	const at = (index: number): string => {
+		const line = text.slice(0, index).split('\n').length;
+		return `line ${line}: \`${lines[line - 1].trim()}\``;
+	};
+	const offenses: string[] = [];
+	if (FOUR_LEG_NAME.test(text)) {
+		const parsed = match_spans(text, FIXTURE_IMPORT);
+		for (const m of text.matchAll(FIXTURE_MODULE)) {
+			if (within(parsed, m.index)) continue;
+			offenses.push(
+				`${at(m.index)} — a fixture import this read cannot parse, beside a four-leg name`,
+			);
+		}
+	}
+	const imports = parse_fixture_imports(text);
+	if (!imports.some((i) => FOUR_LEG_BINDINGS.includes(i.name))) {
+		return offenses.length ? {kind: 'refused', offenses} : {kind: 'single_driver'};
+	}
+	const factories = imports.find((i) => i.name === 'db_factories')?.local;
+	const braced_imports = match_spans(text, BRACED_IMPORT);
+	for (const m of text.matchAll(DESCRIBE_DB_MENTION)) {
+		if (m[1] !== undefined) {
+			if (m[2] === undefined ? within(braced_imports, m.index) : m[2] === factories) continue;
+		}
+		offenses.push(
+			`${at(m.index)} — a four-leg file binds its suites through \`describe_db\` /` +
+				` \`db_factories\` only`,
+		);
+	}
+	return offenses.length ? {kind: 'refused', offenses} : {kind: 'shared'};
 };
 
 const walk_db_tests = async (dir: string, out: string[] = []): Promise<string[]> => {
@@ -150,18 +245,39 @@ const walk_db_tests = async (dir: string, out: string[] = []): Promise<string[]>
 	return out;
 };
 
+// Refuses (exit 1) when any file would make the legs run different tests — a four-leg
+// file that also binds a single-driver suite — or carries a fixture import it cannot
+// read, naming each — before any leg runs, whichever legs `PGLET_EXITPROOF_LEGS` selects
+// and whether or not `PGLET_EXITPROOF_PG_URL` is set, since the shared set is a claim about fuz_app's tree, not
+// about this run's legs.
 const discover_shared_files = async (): Promise<string[]> => {
 	const root = `${FUZ_APP_DIR}/src/test`;
 	const all = (await walk_db_tests(root)).sort();
 	const shared: string[] = [];
+	const refused: string[] = [];
 	for (const abs of all) {
-		const text = await Deno.readTextFile(abs);
-		if (binds_four_legs(text)) {
-			shared.push(abs.slice(FUZ_APP_DIR.length + 1)); // relative to fuz_app cwd
+		const rel = abs.slice(FUZ_APP_DIR.length + 1); // relative to fuz_app cwd
+		const verdict = classify_db_test(await Deno.readTextFile(abs));
+		if (verdict.kind === 'shared') shared.push(rel);
+		else if (verdict.kind === 'refused') {
+			refused.push(`  ${rel}\n${verdict.offenses.map((o) => `    ${o}`).join('\n')}`);
 		}
+	}
+	if (refused.length) {
+		console.error(
+			`error: fuz_app file(s) the shared-set discovery refuses — each would make the legs run` +
+				` different tests, or its fixture import cannot be read:\n` +
+				refused.join('\n') +
+				`\n  hint: split a single-driver suite into its own *.db.test.ts file; write a fixture` +
+					` import as \`import {…} from '…db_fixture.ts'\``,
+		);
+		Deno.exit(1);
 	}
 	return shared;
 };
+
+// Discovered now, ahead of the artifact checks and every leg, so a refusal costs nothing.
+const shared_files = await discover_shared_files();
 
 // --- legs -----------------------------------------------------------------
 interface Leg {
@@ -413,7 +529,6 @@ const active_legs = legs.filter((l) => !l.skip);
 const skipped_legs = legs.filter((l) => l.skip);
 
 console.log(`\npglet exit proof — fuz_app \`db\` suite wall-time, pglet (both legs) vs pglite`);
-const shared_files = await discover_shared_files();
 console.log(
 	`\nshared files (all four legs bind these): ${shared_files.length}` +
 		`  ·  reps=${REPS} (+${WARMUP} warmup)  ·  legs: ${active_legs.map((l) => l.name).join(', ')}` +
@@ -548,8 +663,8 @@ if (counts.size > 1) {
 		`\n⚠ FAIRNESS: green legs ran different passed-counts (${green.map((r) => `${r.name}:${r.passed}`).join(', ')})` +
 			` — the comparison is only valid on an identical test set, so each ratio over two of them is` +
 			` recorded null and this run is FATAL (exit 1 below).` +
-			`\n  A leg running extra tests is the discovery predicate letting a single-driver file into the` +
-			`\n  shared set (see \`binds_four_legs\`); fix that rather than the ratio.`,
+			`\n  A leg running extra tests is a single-driver suite discovery did not catch reaching the` +
+			`\n  shared set (see \`classify_db_test\`); fix that rather than the ratio.`,
 	);
 }
 if (any_failed) {
