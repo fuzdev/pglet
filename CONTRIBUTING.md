@@ -148,31 +148,40 @@ figure for that is recorded.
 
 ## Releasing
 
-`@fuzdev/pglet-wasm` is published by the maintainer with `deno task publish:npm`
-(`scripts/publish.ts`). The version is `Cargo.toml`'s `[workspace.package].version`, which
-the script reads and never bumps. `CHANGELOG.md` gets the version's section when you bump
-it; the script does not read or write it.
+`@fuzdev/pglet-wasm` is released by the maintainer with `deno task publish:npm`
+(`scripts/publish.ts`, over the `scripts/release/` modules). The version is `Cargo.toml`'s
+`[workspace.package].version`. Between releases, changes are noted under `CHANGELOG.md`'s
+`## Unreleased`, whose next line declares the release's level (`<!-- bump: patch -->`; raise it
+to `minor` or `major` when a change calls for it).
 
-- `deno task publish:npm` — a dry run. Its preflight refuses outright on a missing tool
-  (`node` below the package's `engines` floor, `wasm-pack`, `gzip`) or a failed registry
-  lookup, and warns on a dirty tree, a branch other than `main`, a `HEAD` that is not
-  exactly `origin/main` (after a `git fetch origin main`), an existing `v<version>` tag
-  (locally or on `origin`) and a failing `npm whoami`. It then runs `deno task check`,
+- `deno task publish:npm --bump <level>` — a dry run, which changes nothing. Its preflight
+  refuses outright on a missing tool (`node` below the package's `engines` floor, `wasm-pack`,
+  `gzip`, `cargo`), a failed registry lookup, or a target version already on npm, and warns on
+  everything a wetrun refuses: an empty or missing `## Unreleased`, a `--bump` missing or
+  disagreeing with the marker, a dirty tree, a branch other than `main`, a `HEAD` that is not
+  exactly `origin/main` (after a `git fetch origin main`), an existing `v<version>` tag (locally
+  or on `origin`) and a failing `npm whoami`. It then runs `deno task check`,
   `deno task test:rust`, `deno task test:wasm`, `deno task test:npm` (which builds
-  `crates/pglet_wasm/pkg-npm` and ends in the packed-tarball smoke over that same
-  directory), checks the built `name@version`, and runs the size gate on the wasm it built;
-  then runs `npm publish --dry-run` in `pkg-npm`, which prints the tarball's
-  `name@version` and file list, and prints the tag command. None of its gates needs
-  Postgres; the differential gates are CI's and `cargo xtask gates`'.
-- `deno task publish:npm --wetrun` — the same run, except that the preflight warnings refuse
-  before any gate runs, a checkout that changed while the gates ran refuses after them, and
-  the last step is `npm publish`.
-- A version already on npm ends either run in the preflight, exit `0`.
-- A prerelease version (`0.2.0-alpha.1`) publishes under the `next` dist-tag, never
-  `latest`.
-- Tagging is yours, after the publish: the run prints the command for the annotated tag
-  `v<version>` (`v0.1.0`) on the commit it built, and its push. The script neither tags nor
-  pushes.
+  `crates/pglet_wasm/pkg-npm` and ends in the packed-tarball smoke over that same directory),
+  checks the built `name@version`, runs the size gate on the wasm it built, and runs
+  `npm publish --dry-run` in `pkg-npm`. None of its gates needs Postgres; the differential gates
+  are CI's and `cargo xtask gates`'.
+- `deno task publish:npm --wetrun --bump <level>` — the release. The preflight's warnings
+  refuse before anything changes. It then bumps `Cargo.toml`, moves both lockfiles' workspace
+  members (the root's and `fuzz/`'s), stamps `## Unreleased` as `## <version>` under a fresh
+  `## Unreleased`, runs the same gates over the bumped checkout, refuses if the checkout changed
+  while they ran, runs `npm publish` (streamed, so npm's browser auth reaches you), commits
+  exactly those files as `chore: release v<version>`, creates the annotated tag
+  `v<version>`, and runs `git push --follow-tags origin main`.
+- `--no-git` stops after the publish and prints the commit, tag and push instead.
+- **Resuming.** The bump writes `.publish-in-progress` (gitignored), which is removed only once
+  the push lands. If a wetrun fails after the bump, fix the cause and run
+  `deno task publish:npm --wetrun`: it resumes the bumped version, accepting a tree dirty with
+  only the release files, or one release commit ahead of `origin/main`. Every later step is
+  idempotent, and a version already on npm skips the gates and the publish and only finishes
+  git. To abandon a release instead, discard the release files' changes and delete the
+  sentinel.
+- `--bump` takes `patch`, `minor` or `major`; a prerelease version has no level.
 
-Any other argument is refused — `--` included, so pass `--wetrun` straight after the task
+Any other argument is refused — `--` included, so pass the flags straight after the task
 name.

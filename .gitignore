@@ -18,6 +18,9 @@ crates/pglet_wasm/pkg-opfs/
 *.pem
 id_rsa
 
+# A release in progress (scripts/release/sentinel.ts)
+.publish-in-progress
+
 # Local (per-machine, never shared)
 *.local
 *.local.*

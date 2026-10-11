@@ -549,10 +549,10 @@ cargo xtask gates --skip test:pg-dump   # ...minus named tasks (--skip beats --o
 deno task gates:check             # cargo xtask gates --check, through deno (gates:update likewise)
 deno task size:check              # wasm size gate: raw bytes under the lower of baseline +2% and the 1650 KB hard cap (needs wasm-pack, gzip)
 deno task size:update             # ...and record this build as the new baseline
-deno task check                   # clippy -D warnings + stripped + wasm-features + fmt + docs + scripts typecheck + release audit
-deno task check:stripped | check:wasm-features | check:scripts | check:release   # check's own steps, runnable alone
-#                                   (check:scripts is `deno check` of scripts/*.ts, the release scripts' only typecheck;
-#                                   check:release is cargo xtask check-release)
+deno task check                   # clippy -D warnings + stripped + wasm-features + fmt + docs + scripts typecheck + tests + release audit
+deno task check:stripped | check:wasm-features | check:scripts | test:scripts | check:release   # check's own steps, runnable alone
+#                                   (check:scripts is `deno check` of scripts/*.ts and scripts/release/*.ts, the release scripts'
+#                                   only typecheck; test:scripts their unit tests; check:release is cargo xtask check-release)
 deno task fmt                     # cargo fmt (check runs cargo fmt --check)
 deno task check:docs              # rustdoc: every doc-comment link resolves (see below)
 deno task dump --data-dir <dir>   # print a portable SQL dump of a persisted database
@@ -608,11 +608,13 @@ deno task test:npm                # build:npm + the adapter suite (coercion cont
 #                                   installed offline and imported by bare specifier (scripts/test_npm_pack.mjs);
 #                                   the registry identity fields live in scripts/npm_metadata.ts;
 #                                   test:npm:node is build:npm + the Node smoke and pack legs alone
-deno task publish:npm             # publish @fuzdev/pglet-wasm — USER-RUN, dry-run default; a preflight (tools, clean tree,
+deno task publish:npm --bump patch   # release @fuzdev/pglet-wasm — USER-RUN, dry-run default; `--bump` must repeat
+#                                   CHANGELOG.md's `## Unreleased` marker. A preflight (tools, changelog, clean tree,
 #                                   HEAD == origin/main, no existing tag, not yet on npm), then gates on check, test:rust,
-#                                   test:wasm, test:npm and the shipped wasm's size,
-#                                   then `npm publish --dry-run` (`--wetrun`: the publish) and prints the `v<version>` tag command;
-#                                   any other flag is refused (CONTRIBUTING.md § Releasing)
+#                                   test:wasm, test:npm and the shipped wasm's size, then `npm publish --dry-run`.
+#                                   `--wetrun` bumps Cargo.toml + both lockfiles + the changelog first, publishes, then
+#                                   commits, tags and pushes; an interrupted wetrun resumes with a bare `--wetrun`
+#                                   (`.publish-in-progress`); scripts/release/ is its library (CONTRIBUTING.md § Releasing)
 
 deno task bench:commit            # commit-latency + write-amp sweep vs SQLite (prints)
 deno task bench:commit:update     # ...and refresh benches/phase1_results.json

@@ -33,11 +33,12 @@
     "test:browser:install": "deno run -A npm:playwright install chromium",
 
     "lint:edges": "deno run --allow-read tools/edges_lint.ts",
-    "check": "cargo clippy --workspace --all-targets -- -D warnings && deno task check:stripped && deno task check:wasm-features && cargo fmt --check && deno task check:docs && deno task check:scripts && deno task check:release",
+    "check": "cargo clippy --workspace --all-targets -- -D warnings && deno task check:stripped && deno task check:wasm-features && cargo fmt --check && deno task check:docs && deno task check:scripts && deno task test:scripts && deno task check:release",
     "check:stripped": "cargo check --workspace --all-targets --no-default-features",
     "check:wasm-features": "cargo clippy -p pglet -p pglet_wasm --target wasm32-unknown-unknown --no-default-features --features pglet_wasm/default -- -D warnings && cargo clippy -p pglet -p pglet_wasm --target wasm32-unknown-unknown --no-default-features -- -D warnings && cargo clippy -p pglet -p pglet_wasm --target wasm32-unknown-unknown --no-default-features --features pglet_wasm/default,pglet_wasm/opfs -- -D warnings && cargo clippy -p pglet_wasm --all-targets --features opfs -- -D warnings",
     "check:docs": "RUSTDOCFLAGS='-D rustdoc::broken_intra_doc_links -D rustdoc::invalid_html_tags' cargo doc --workspace --no-deps --document-private-items --features pglet_wasm/opfs",
-    "check:scripts": "deno check --frozen scripts/*.ts",
+    "check:scripts": "deno check --frozen scripts/*.ts scripts/release/*.ts",
+    "test:scripts": "deno test --frozen scripts/release/",
     "check:release": "cargo xtask check-release",
     "gates": "cargo xtask gates",
     "gates:check": "cargo xtask gates --check",
@@ -102,7 +103,7 @@
     "build:npm": "rm -rf crates/pglet_wasm/pkg-npm && wasm-pack build crates/pglet_wasm --target web --scope fuzdev --out-dir pkg-npm && deno run --allow-read --allow-write scripts/patch_npm_package.ts crates/pglet_wasm/pkg-npm",
     "test:npm": "deno task build:npm && deno test --frozen -A tests-web/npm/ && node --test scripts/test_npm_node.mjs scripts/test_npm_pack.mjs",
     "test:npm:node": "deno task build:npm && node --test scripts/test_npm_node.mjs scripts/test_npm_pack.mjs",
-    "publish:npm": "deno run --frozen --allow-read --allow-run=git,npm,deno,node,wasm-pack,gzip scripts/publish.ts",
+    "publish:npm": "deno run --frozen --allow-read --allow-write=Cargo.toml,CHANGELOG.md,.publish-in-progress --allow-run=git,npm,deno,node,wasm-pack,gzip,cargo scripts/publish.ts",
     "wasm:test": "deno run --allow-read examples/browser/test.ts",
     "wasm:serve": "cd examples/browser && deno run --allow-net --allow-read serve.ts"
   },
