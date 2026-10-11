@@ -48,4 +48,3 @@ tests/captures/*.jsonl
 
 # per-machine agent settings
 .claude/
-/package-lock.json
