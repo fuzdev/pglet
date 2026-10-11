@@ -3,7 +3,7 @@
 Covers `@fuzdev/pglet-wasm`, the npm package published from this repo, at the
 `Cargo.toml [workspace.package]` version.
 
-## Unreleased (0.1.1)
+## 0.1.1
 
 - fix: a `$N` compared with an aliased join column under `FOR SHARE` / `FOR UPDATE` is
   typed from the column, not `text`

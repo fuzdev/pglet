@@ -272,7 +272,7 @@ dependencies = [
 
 [[package]]
 name = "pglet"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "pglet_core",
  "pglet_sql",
@@ -289,7 +289,7 @@ dependencies = [
 
 [[package]]
 name = "pglet_core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde",
  "thiserror",
@@ -298,7 +298,7 @@ dependencies = [
 
 [[package]]
 name = "pglet_sql"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "getrandom",
  "js-sys",
@@ -312,7 +312,7 @@ dependencies = [
 
 [[package]]
 name = "pglet_storage"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "crc32fast",
  "lru",
@@ -325,7 +325,7 @@ dependencies = [
 
 [[package]]
 name = "pglet_testing"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "pglet",
  "pglet_sql",
