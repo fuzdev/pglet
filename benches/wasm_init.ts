@@ -150,7 +150,9 @@ if (Deno.args.includes('--update')) {
 		samples: SAMPLES,
 		warmup: WARMUP,
 		target_ms: TARGET_MS,
-		note: 'per-iteration fresh module; cold-init compile trends warm after sample 1 (V8 code cache)',
+		note:
+			'per-iteration fresh module; whether cold-init compile trends warm after sample 1 (V8 code cache) ' +
+			'depends on the runtime version — Deno 2.8.3 warmed, 2.9.7 does not',
 		compile_cold_one_shot_ms: cold_compile_ms,
 		wasm_bytes: bytes.length,
 		// reported beside the timings, never their gate: a gzip failure records -1 rather than
