@@ -40,7 +40,7 @@ postcard = { version = "1", features = ["alloc"] }
 time = { version = "0.3", default-features = false, features = ["std", "serde", "parsing", "formatting", "macros"] }
 thiserror = "2"
 getrandom = "0.3"
-lru = "0.12"
+lru = "0.16"
 crc32fast = "1.5"
 parking_lot = "0.12"
 
