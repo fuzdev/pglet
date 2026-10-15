@@ -15,7 +15,7 @@
  */
 export const NPM_SHARED_METADATA = {
 	name: '@fuzdev/pglet-wasm',
-	license: 'MIT',
+	license: '0BSD',
 	homepage: 'https://github.com/fuzdev/pglet',
 	author: {
 		name: 'Ryan Atkinson',

@@ -588,4 +588,4 @@ statement over an empty table is refused too, except where an item says otherwis
 
 ## License
 
-MIT — the package's `LICENSE` file.
+0BSD — the package's `LICENSE` file.
