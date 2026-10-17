@@ -109,7 +109,7 @@
     "wasm:serve": "cd examples/browser && deno run --allow-net --allow-read serve.ts"
   },
   "imports": {
-    "@fuzdev/fuz_util": "npm:@fuzdev/fuz_util@0.76.0",
+    "@fuzdev/fuz_util": "npm:@fuzdev/fuz_util@0.77.0",
     "pg": "npm:pg@8.16.3",
     "@types/pg": "npm:@types/pg@8.16.0",
     "postgres": "npm:postgres@3.4.7",
