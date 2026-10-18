@@ -17,6 +17,9 @@ at ~1/8 the gzipped size of pglite's wasm and data files (wasm-to-wasm, in memor
 and ~7.5x faster than a real PostgreSQL server
 (pglet in-process versus Postgres over TCP; server-to-server it's ~4.8x) —
 counting the time spent running the tests; vitest's whole run is ~4.9x faster than on pglite.
+pglite and Postgres land within about 1% of each other on this suite: most of both legs' database time is
+the `TRUNCATE` between tests, which costs each of them about the same
+([TRADEOFFS.md](TRADEOFFS.md) § Where the suite's time goes).
 
 **Later, embedded and in other places.** The same engine is meant to grow into
 a local-first, file-based store for apps and browsers —

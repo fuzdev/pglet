@@ -92,6 +92,36 @@ harness is Deno tasks over `fuz_util`'s statistics (`benches/`; reproduced in
 alongside the rest of its scenario set (commit / reads / attribute / gin / parse /
 memory — enumerated in `benches/README.md`).
 
+### Where the suite's time goes (measured)
+
+The README's fuz_app figures put pglite and a real Postgres at nearly the same multiple of
+pglet. That is a property of the suite, not a sign the two engines are equally fast.
+pglite is the whole Postgres backend compiled to wasm. Running in-process saves it the round
+trip and the commit fsync, and running as wasm costs it CPU on everything else. One
+instrumented run timed every query by statement kind (pglite 0.5.8, Postgres
+18.6 with `synchronous_commit=on`, the published `@fuzdev/pglet-wasm` 0.1.1). It found
+these costs per statement:
+
+| statement | pglite | Postgres (TCP) | pglet-wasm |
+| --- | --- | --- | --- |
+| `TRUNCATE … CASCADE` before each test | ~8 ms | ~8 ms | ~0.1 ms |
+| `DROP SCHEMA public CASCADE` per suite | ~33 ms | ~13 ms | — |
+| `INSERT` (autocommit) | ~0.5 ms | ~0.9 ms | ~0.3 ms |
+| `SELECT` | ~0.4 ms | ~0.25 ms | ~0.07 ms |
+
+The truncation is about 40% of the database time on both of the other legs. Postgres
+truncates by swapping each table's storage files, which is real file and catalog work, and
+pglite runs the same code against its in-memory filesystem. pglite's cheaper commits and
+Postgres's faster native execution then come out nearly even, so the two totals land within
+about 1%. A suite of many small committed writes would favor pglite, and one heavy on
+queries or DDL would favor Postgres.
+
+Two limits on what this run shows. Each figure is a wall-clock time measured at fuz_app's
+`Db.query`, so it includes time spent waiting behind another query on the same connection.
+That inflates the fire-and-forget audit `INSERT`s most, and an isolated probe of that statement
+runs about 8x faster than its in-suite average. The legs also ran slightly different
+test sets, so compare the per-statement costs, not the totals.
+
 ## What's cut (and why)
 
 Whole feature categories are excluded because the size/complexity cost dwarfs the
