@@ -11,6 +11,8 @@ released version under a fresh `## Unreleased` declaring a patch.
 ## Unreleased
 <!-- bump: patch -->
 
+## 0.1.2
+
 - fix: on Node, Deno and Bun, a `transaction()` called while another one's callback runs
   queues behind it instead of being rejected; only a call from inside a running callback is
   refused, as nested. `fork()` and `close()` called from outside a running callback no longer
