@@ -18,6 +18,7 @@ released version under a fresh `## Unreleased` declaring a patch.
   and for any `db.query()` the callback still makes — before freeing. Called from inside one,
   `fork()` and `close()` still reject `25001` rather than deadlock. The browser entry, which has no
   `AsyncLocalStorage`, still refuses all three while any callback runs
+- the license is now 0BSD (was MIT)
 
 ## 0.1.1
 
