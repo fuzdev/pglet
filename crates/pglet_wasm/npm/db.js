@@ -113,13 +113,44 @@ const derive_unhandled = (promise) =>
 const as_error = (e) => (e instanceof Error ? e : new Error(`@fuzdev/pglet-wasm: ${String(e)}`));
 
 /**
+ * An async-context store, the slice of `AsyncLocalStorage` this file uses.
+ * @typedef {{run: <R>(store: TxContext, fn: () => R) => R, getStore: () => TxContext | undefined}} TxContextStore
+ */
+/**
+ * What the store holds inside a `transaction()` callback: that callback's transaction, which is
+ * running until `settled`, the `owner` token of the instance it belongs to, and the context that
+ * was current when the callback began (`outer`, the enclosing callback of some other instance, or
+ * `undefined`), so a callback of one instance run inside a callback of another still reads as
+ * inside both.
+ * @typedef {{settled: boolean, owner?: object, outer?: TxContext}} TxContext
+ */
+
+/**
  * Wrap a `PgletBtree` instance as an ergonomic `PgletDb`.
+ *
+ * `shared_store` is how the entry hands this file an async-context store without this file
+ * importing one: the Node entry (which Node, Deno and Bun all resolve, through the `node` export
+ * condition) passes its one `AsyncLocalStorage` from `node:async_hooks`, and the browser entry
+ * passes nothing, since a browser has no such store.
+ *
+ * The store is ONE for every instance, never one per instance: on Node 22's async-hooks
+ * implementation every `AsyncLocalStorage` ever entered stays registered and is paid for on every
+ * promise the process makes, so a store per instance made a suite that creates and closes many
+ * instances slower with each one, for the life of the process. Instances tell their callbacks
+ * apart by an `owner` token instead (see `called_inside_callback`), so a fork never reads its
+ * parent's callback as its own, and a callback of one instance never reads as a callback of
+ * another.
  * @param {any} btree a constructed `PgletBtree` (or `PgletBtree.fork()` result)
  * @param {{coercion?: import('./coerce.js').CoercionOptions}} [options]
+ * @param {TxContextStore} [shared_store] the entry's async-context store, shared by every instance
  * @returns {import('./index.d.ts').PgletDb}
  */
-export const wrap_pglet_db = (btree, options = {}) => {
+export const wrap_pglet_db = (btree, options = {}, shared_store) => {
 	const coercion = options.coercion ?? {};
+	/** `null` where the runtime has no async-context store (a browser). */
+	const context_store = shared_store ?? null;
+	/** This instance's identity in the shared store: a context is this instance's when it carries this. */
+	const owner = {};
 	// Two flags, because `close()` drains the lane before it frees: `closing` refuses new public
 	// work from the moment `close()` is called, `freed` is the wasm handle gone. Work queued before
 	// the `close()` still runs, and so does the `tx` handle of a transaction already running.
@@ -143,8 +174,8 @@ export const wrap_pglet_db = (btree, options = {}) => {
 	// The same collision is why the binding itself dispatches the lifecycle on a carried signal
 	// rather than the tag; reading its count is the adapter's version of that fix.
 	//
-	// `in_managed_tx`: currently inside a `transaction()` callback (for its distinct
-	// nested-call message). `tx_chain` is the connection's single lane — the tail of every
+	// `in_managed_tx`: some `transaction()` callback is running — whose, it cannot say; that is
+	// `called_inside_callback`'s job. `tx_chain` is the connection's single lane — the tail of every
 	// `enqueue`d entry, which is every `transaction()` and every public `query()`; the `tx`
 	// handle's own `query` is the one thing deliberately outside it.
 	let tx_chain = Promise.resolve();
@@ -244,6 +275,27 @@ export const wrap_pglet_db = (btree, options = {}) => {
 		});
 	};
 	let in_managed_tx = false;
+	/**
+	 * Whether this call waits on a `transaction()` callback it is part of — which is what makes
+	 * queueing it a deadlock, and what `transaction()`, `fork()` and `close()` refuse on.
+	 *
+	 * With an async-context store it is decided: the call is inside when its async context, or
+	 * one it is nested in (the `outer` chain, through callbacks of other instances), is that of a
+	 * callback of THIS instance (`owner`) whose transaction has not settled. A call made anywhere
+	 * else — a concurrent request handler, another test's body — is outside and simply queues.
+	 * The `settled` read keeps a context that outlives its callback (a timer it started, a
+	 * promise it left behind) from refusing work once the transaction is over.
+	 *
+	 * Without one (a browser) it cannot be decided, and the answer is the conservative one: any
+	 * running callback counts, so a concurrent top-level call is refused along with a nested one.
+	 */
+	const called_inside_callback = () => {
+		if (!context_store) return in_managed_tx;
+		for (let c = context_store.getStore(); c; c = c.outer) {
+			if (c.owner === owner && !c.settled) return true;
+		}
+		return false;
+	};
 	/** Levels open on the connection right now, straight from the engine. */
 	const tx_depth = () => btree.transactionDepth();
 	/** Distinct savepoint names for the managed nested `transaction()`. */
@@ -345,25 +397,28 @@ export const wrap_pglet_db = (btree, options = {}) => {
 	 * deadlock the callback against its own transaction. It works until that transaction
 	 * settles and is refused after — called then, it would run outside any transaction and ahead
 	 * of the queue. Checked at the call and again when the statement runs.
-	 * @returns {{handle: import('./index.d.ts').PgletTx, settle: () => void}}
+	 * The same `context` is what the async-context store holds while the callback runs.
+	 * @returns {{handle: import('./index.d.ts').PgletTx, context: TxContext, settle: () => void}}
 	 */
 	const make_tx_handle = () => {
-		let settled = false;
+		/** @type {TxContext} */
+		const context = {settled: false};
 		const ended = () => new Error('@fuzdev/pglet-wasm: this transaction has ended; its tx handle is no longer usable');
 		const handle = {
 			query: (sql, params, opts) =>
-				settled
+				context.settled
 					? Promise.reject(ended())
 					: Promise.resolve().then(() => {
-							if (settled) throw ended();
+							if (context.settled) throw ended();
 							ensure_open();
 							return run_query(sql, params, opts);
 						}),
 		};
 		return {
 			handle,
+			context,
 			settle: () => {
-				settled = true;
+				context.settled = true;
 			},
 		};
 	};
@@ -400,11 +455,17 @@ export const wrap_pglet_db = (btree, options = {}) => {
 	// The cost is PGlite's too, and it is the reason this cannot instead be a loud refusal:
 	// a callback that AWAITS an outside `db.query()` deadlocks (the queue is held by the
 	// transaction the callback is inside), because nothing at call time can tell that
-	// fire-and-forget audit write — the shape being rescued — from an awaited one. Use the
-	// `tx` handle for work that belongs to the transaction. What CAN be told apart at call time is
-	// only that SOME `transaction()` callback is running — not whose — so a `db.transaction()` made
-	// then is rejected below rather than queued, and a concurrent top-level one is rejected with it
-	// (see the note above `transaction`).
+	// fire-and-forget audit write — the shape being rescued — from an awaited one. An
+	// async-context store does not change that: it says the call was made INSIDE the callback,
+	// which both shapes are, and not whether the callback will wait for it. Refusing every
+	// `db.query()` made inside would refuse the audit write; running it on the transaction would
+	// lose it with the rollback. So it queues, on every runtime. Use the `tx` handle for work that
+	// belongs to the transaction.
+	//
+	// `transaction()`, `fork()` and `close()` are different: their whole point is a result the
+	// caller waits for — a queued nested transaction, a fork or a drain that runs after the
+	// transaction ends is no use to a callback that cannot end until it has it — so one made inside
+	// a callback is refused instead (see `called_inside_callback`).
 	//
 	// What that deadlock LOOKS like, since the docs owe a consumer the symptom. No runtime warning
 	// is armed for it — a timer cannot tell a deadlocked transaction from a slow healthy one
@@ -433,9 +494,16 @@ export const wrap_pglet_db = (btree, options = {}) => {
 	// The returned promise is `derive_unhandled`'d (see the top of this file): the fire-and-forget
 	// call above is a recommendation, so its rejection must still reach the host rather than being
 	// swallowed by the queue's own bookkeeping.
+	//
+	// A `close()` does not refuse a running callback's own later `db.query()`: the callback was
+	// admitted before the close, and its fire-and-forget audit write is the shape recommended above
+	// — refusing it would reject a promise nobody awaits, an unhandled rejection that kills Node.
+	// `close()` drains until the lane stops growing, so the write lands before the free. Only an
+	// async-context store can tell that call from an outside one, so without one (a browser) the
+	// exemption is not made and a `close()` refuses every later `query()`, as documented.
 	/** @type {import('./index.d.ts').PgletDb['query']} */
 	const query = (sql, params, opts) =>
-		closing
+		closing && !(context_store && called_inside_callback())
 			? Promise.reject(closed_error())
 			: enqueue(() => {
 					ensure_open();
@@ -448,45 +516,45 @@ export const wrap_pglet_db = (btree, options = {}) => {
 	// already holds the queue), so a raw `BEGIN` that overlaps a managed txn (or vice-versa)
 	// hits the loud guard above.
 	//
-	// A second `transaction()` serializes only when it is called BEFORE the first one's callback
-	// begins — in practice the same synchronous turn, since `in_managed_tx` is set as soon as the
-	// queued entry runs its `BEGIN`. That is measurably narrower than "overlapping top-level calls
-	// serialize": with the first callback already running, a
-	// genuinely top-level `db.transaction()` from elsewhere in the program is REJECTED below as
-	// nested and its work does not run at all.
+	// A second `transaction()` made while a callback is running is one of two things, and they need
+	// opposite answers: a call from INSIDE that callback (nested) would wait on the lane its own
+	// transaction holds, so queueing it deadlocks; a concurrent TOP-LEVEL call from anywhere else is
+	// ordinary server behaviour and should just wait its turn, as on PGlite and a `pg` pool.
 	//
-	// A plain flag read at call time cannot separate a lexically nested call from a concurrent
-	// top-level one; that needs an async-context store (`AsyncLocalStorage`), which browsers do not
-	// have. What follows is that the two readings are indistinguishable — NOT that rejecting is the
-	// only available resolution. PGlite is the
-	// counter-example and it has the same constraints (one connection, browser-targeted, no
-	// `AsyncLocalStorage`): measured on 0.4.5 and 0.5.4, two concurrent top-level `transaction()`
-	// calls are both FULFILLED with both rows landing, while a genuinely nested one does not settle
-	// at all. `query()` one function above takes that same trade inside pglet — it queues, and
-	// accepts the deadlock. So this is a choice between two undecidable readings, made this way
-	// because the deadlock's symptom set is the bad one: the ordinary `main()`-at-module-bottom
-	// entry exits 0 having silently done nothing (the enumeration above `query`). A loud refusal
-	// naming both readings beats that, and the message names both rather than assuming the nested
-	// one.
+	// Where the entry handed this instance an async-context store (`AsyncLocalStorage`; the Node
+	// entry, which Node, Deno and Bun resolve) the two are told apart: the callback runs inside the
+	// store, a nested call reads it and is refused loudly, and every other call queues behind the
+	// running transaction. A queued one reads the depth when it starts, after the one ahead of it
+	// has ended, so it opens its own block rather than a savepoint inside somebody else's.
+	//
+	// Without a store (the browser entry, until the platform has a standard `AsyncContext`) a flag
+	// read at call time can only say that SOME callback is running, so a concurrent top-level call
+	// is refused along with a nested one, and only a call made before the running callback began
+	// (in practice, the same synchronous turn) serializes. That is a choice between two readings
+	// that cannot be separated, not the only resolution: PGlite has the same constraints and
+	// serializes both, hanging on the nested one. It is made this way because the deadlock's symptom
+	// set is the bad one — the ordinary `main()`-at-module-bottom entry exits 0 having silently done
+	// nothing (the enumeration above `query`) — and a loud refusal naming both readings beats that.
 	/** @type {import('./index.d.ts').PgletDb['transaction']} */
 	const transaction = (fn) => {
 		if (closing) return Promise.reject(closed_error());
-		// A `db.transaction()` made while another `transaction()` CALLBACK is running would
-		// deadlock the single-flight queue, so it is rejected loudly. A concurrent TOP-LEVEL call
-		// reaches this same branch (see above) and is rejected with it — a divergence from a `pg`
-		// pool, which would give it its own connection, and from PGlite, which serializes both on
-		// its one connection (measured).
-		//
 		// This is **not** the "a block is already open" case, which savepoints made decidable: see
-		// the note in `run` below for why that one runs as a savepoint and this one still cannot.
-		if (in_managed_tx) {
+		// the note in `run` below for why that one runs as a savepoint and this one is refused.
+		if (called_inside_callback()) {
 			return Promise.reject(
 				new Error(
-					'@fuzdev/pglet-wasm: a transaction() callback is already running on this ' +
-						'connection. If this call is inside that callback, use the tx handle it was ' +
-						'passed; if it is a concurrent top-level transaction(), start it before the ' +
-						'other one begins or fork() a separate instance for it (the two cannot be told ' +
-						'apart at call time).',
+					context_store
+						? '@fuzdev/pglet-wasm: db.transaction() was called inside a running transaction() ' +
+								'callback on this PgletDb, where it would wait for that transaction to end and ' +
+								'deadlock. Run the work on the tx handle the callback was passed (a nested level ' +
+								'is tx.query(\'SAVEPOINT …\')), or run it on a separate instance forked before this ' +
+								'transaction began.'
+						: '@fuzdev/pglet-wasm: a transaction() callback is already running on this ' +
+								'connection. If this call is inside that callback, use the tx handle it was ' +
+								'passed; if it is a concurrent top-level transaction(), start it before the ' +
+								'other one begins or run it on a separate instance forked beforehand (the two ' +
+								'cannot be told apart at call time without AsyncLocalStorage, which a browser ' +
+								'does not have).',
 				),
 			);
 		}
@@ -500,12 +568,12 @@ export const wrap_pglet_db = (btree, options = {}) => {
 			// opened any way at all — a raw `query('BEGIN')`, a kysely or drizzle driver's own
 			// begin, a `/* c */ BEGIN`.
 			//
-			// **This is not the `in_managed_tx` case above and must not be conflated with it.**
-			// That one is rejected because a lexically nested call and a concurrent top-level one
-			// are indistinguishable at call time, and turning a *concurrent top-level* transaction
-			// into a savepoint inside somebody else's would be a silent wrong: its `RELEASE` would
-			// report success while the outer block still decided whether the rows lived. Here no
-			// callback is running, so there is no second reading to be wrong about.
+			// **This is not the running-callback case above and must not be conflated with it.**
+			// Turning a *concurrent top-level* transaction into a savepoint inside somebody else's
+			// would be a silent wrong: its `RELEASE` would report success while the outer block
+			// still decided whether the rows lived. Here no callback is running — a queued call
+			// starts only once the one ahead of it has ended — so the open block is the caller's
+			// own.
 			const nested = tx_depth() > 0;
 			const savepoint = nested ? `pglet_tx_${(savepoint_seq += 1)}` : null;
 			// `BEGIN` throws loud (25001) if a block is somehow already open; the savepoint path
@@ -514,7 +582,16 @@ export const wrap_pglet_db = (btree, options = {}) => {
 			in_managed_tx = true;
 			const tx = make_tx_handle();
 			try {
-				const out = await fn(tx.handle);
+				// The callback runs inside the store, under a context this instance owns that keeps the
+				// one it was called from as `outer`, so a call it makes — through awaits, timers and
+				// helpers it calls — reads as inside; nothing outside it does. The callback is wrapped in
+				// an `async` function so a thenable it returns is adopted inside the context: its `then`
+				// runs there too, rather than in the context of the `await` below.
+				const out = await (context_store
+					? context_store.run(Object.assign(tx.context, {owner, outer: context_store.getStore()}), async () =>
+							fn(tx.handle),
+						)
+					: fn(tx.handle));
 				// A callback that CATCHES its own statement error and returns normally reaches this
 				// `COMMIT` inside an aborted block, where the engine converts it to a rollback (tag
 				// `ROLLBACK`) and publishes nothing — so `out` is returned over a transaction that
@@ -559,15 +636,21 @@ export const wrap_pglet_db = (btree, options = {}) => {
 	/**
 	 * An error for a call made while a `transaction()` callback is running, which would wait on the
 	 * lane that callback holds. Made inside the callback, awaiting it would deadlock — the failure
-	 * `query()`'s docs enumerate; made from outside, it cannot be told apart from that (the same
-	 * undecidability `transaction()` refuses on), so both readings are refused and named.
+	 * `query()`'s docs enumerate. With an async-context store only a call made inside is refused;
+	 * without one a call from outside cannot be told apart from it (the same undecidability
+	 * `transaction()` refuses on), so both readings are refused and named.
 	 * @param {string} what
 	 */
 	const in_callback_error = (what) => {
 		const err = new Error(
-			`@fuzdev/pglet-wasm: ${what} was called while a transaction() callback is running. If it ` +
-				'is inside that callback, it would wait for the transaction to end; if it is outside ' +
-				'it, await the transaction first (the two cannot be told apart at call time).',
+			context_store
+				? `@fuzdev/pglet-wasm: ${what} was called inside a running transaction() callback on this ` +
+						'PgletDb, where it would wait for that transaction to end and deadlock. Call it after ' +
+						'the transaction settles.'
+				: `@fuzdev/pglet-wasm: ${what} was called while a transaction() callback is running. If it ` +
+						'is inside that callback, it would wait for the transaction to end; if it is outside ' +
+						'it, await the transaction first (the two cannot be told apart at call time without ' +
+						'AsyncLocalStorage, which a browser does not have).',
 		);
 		// @ts-expect-error augment with the Postgres SQLSTATE, like a real driver error
 		err.code = '25001'; // active_sql_transaction: the callback's block is open
@@ -579,10 +662,11 @@ export const wrap_pglet_db = (btree, options = {}) => {
 	/** @type {import('./index.d.ts').PgletDb['fork']} */
 	const fork = () => {
 		if (closing) return Promise.reject(closed_error());
-		if (in_managed_tx) return Promise.reject(in_callback_error('fork()'));
+		if (called_inside_callback()) return Promise.reject(in_callback_error('fork()'));
 		// Otherwise queued, so a fork sees every statement issued before it — `db.query(<write>);
-		// await db.fork()` carries the write — and a block opened by a raw `BEGIN` is refused
-		// `25001` by the engine (a fork branches committed state).
+		// await db.fork()` carries the write, and one called from outside a running transaction
+		// branches after it ends — and a block opened by a raw `BEGIN` is refused `25001` by the
+		// engine (a fork branches committed state).
 		return enqueue(() => {
 			ensure_open();
 			let branch;
@@ -591,20 +675,30 @@ export const wrap_pglet_db = (btree, options = {}) => {
 			} catch (e) {
 				throw as_error(e);
 			}
-			return wrap_pglet_db(branch, options);
+			// the fork shares the store but has an owner token of its own, so this one's callbacks are not its
+			return wrap_pglet_db(branch, options, context_store ?? undefined);
 		});
 	};
 
 	/** @type {import('./index.d.ts').PgletDb['close']} */
 	const close = () => {
-		// Checked first: a call made while a callback runs must not be handed a pending drain, which
-		// waits on that callback's own transaction — awaited inside it, that never settles.
-		if (in_managed_tx) return Promise.reject(in_callback_error('close()'));
+		// Checked first: a call made inside a running callback must not be handed a pending drain,
+		// which waits on that callback's own transaction — awaited inside it, that never settles. One
+		// from outside (decidable only with an async-context store) drains behind the transaction.
+		if (called_inside_callback()) return Promise.reject(in_callback_error('close()'));
 		if (close_promise) return close_promise; // idempotent: every other call answers the one drain
 		closing = true;
 		// Drain the lane, then free: whatever was queued before this call runs first, so
-		// `db.query(<write>); await db.close();` keeps the write. The tail never rejects.
-		close_promise = tx_chain.then(() => {
+		// `db.query(<write>); await db.close();` keeps the write. A callback already admitted may
+		// still enqueue its own `db.query()` (exempt from `closing`, above). Every such callback was
+		// queued before this close, so it settles before the tail read here does, and one re-read
+		// catches all of its writes. The loop repeats until the tail is stable anyway, defensively,
+		// so it does not lean on that ordering. The tail never rejects.
+		const drain = () => {
+			const tail = tx_chain;
+			return tail.then(() => (tail === tx_chain ? undefined : drain()));
+		};
+		close_promise = drain().then(() => {
 			freed = true;
 			btree.free();
 		});

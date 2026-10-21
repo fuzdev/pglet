@@ -822,22 +822,71 @@ Deno.test('a raw BEGIN gets NO outside-query protection — the transaction() gu
 	await db.close();
 });
 
-Deno.test('transaction: nested db.transaction throws, never deadlocks', async () => {
+/**
+ * `promise`, or a rejection naming `what` once `ms` pass — so a regression that deadlocks the lane
+ * fails the test with a reason instead of hanging it. The timer is cleared either way.
+ */
+const within = <T,>(promise: Promise<T>, what: string, ms = 2000): Promise<T> => {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const timeout = new Promise<never>((_, reject) => {
+		timer = setTimeout(() => reject(new Error(`timed out: ${what}`)), ms);
+	});
+	return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+};
+
+/** The ids in `t`, in order. */
+const ids_of = async (db: ReturnType<typeof create_pglet_db>): Promise<number[]> =>
+	(await db.query<{id: number}>('SELECT id FROM t ORDER BY id')).rows.map((r) => r.id);
+
+Deno.test('transaction: a nested db.transaction() is refused loudly as nested, never deadlocks', async () => {
+	// The Node entry hands the adapter an `AsyncLocalStorage`, so the call is KNOWN to be inside the
+	// callback, and the message says so and points at the tx handle. Queued, it would wait on the
+	// lane its own transaction holds — the timeout is what turns that regression into a failure.
 	const db = create_pglet_db();
 	await db.query('CREATE TABLE t (id INT)');
-	await assertRejects(
-		() => db.transaction(async () => db.transaction(async () => 1)),
-		Error,
-		'a transaction() callback is already running',
+	let inner: unknown;
+	const outer = db.transaction(async (tx) => {
+		await tx.query('INSERT INTO t VALUES (1)');
+		inner = await db.transaction(async (tx2) => tx2.query('INSERT INTO t VALUES (2)')).then(
+			() => 'fulfilled',
+			(e) => e,
+		);
+		return 'outer done';
+	});
+	assertEquals(await within(outer, 'the outer transaction'), 'outer done');
+	assertInstanceOf(inner, Error);
+	assert(inner.message.includes('inside a running transaction() callback'), inner.message);
+	assert(inner.message.includes('tx handle'), inner.message);
+	// known nested, so the message no longer sends a nested caller looking for a concurrent one
+	assert(!inner.message.includes('top-level'), inner.message);
+	assertEquals(await ids_of(db), [1]); // the outer one committed; the refused one wrote nothing
+	await db.close();
+});
+
+Deno.test('transaction: a nested call in a deeper async frame of the callback is still nested', async () => {
+	// The store follows the callback across awaits, timers and helper functions, not just its
+	// lexical body — a refusal that only saw the first synchronous stretch would hang here.
+	const db = create_pglet_db();
+	await db.query('CREATE TABLE t (id INT)');
+	const helper = async () => {
+		await new Promise((r) => setTimeout(r, 1));
+		return db.transaction(async () => 'never');
+	};
+	const err = await within(
+		db.transaction(async () => {
+			await Promise.resolve();
+			return await helper();
+		}).then(() => null, (e) => e),
+		'the outer transaction',
 	);
+	assertInstanceOf(err, Error);
+	assert(err.message.includes('inside a running transaction() callback'), err.message);
 	await db.close();
 });
 
 Deno.test('transaction: two calls made before either callback begins serialize (single-flight)', async () => {
-	// The scope of this test is in its name and is narrower than "overlapping top-level calls
-	// serialize", which is not the guarantee: BOTH calls happen in one synchronous turn here, so
-	// `in_managed_tx` is still false when each is made and both are queued. The later-turn
-	// spelling is the test below, and it is rejected rather than serialized.
+	// Both calls in one synchronous turn: both are queued before either callback runs. The
+	// later-turn spelling is the test below.
 	const db = create_pglet_db();
 	await db.query('CREATE TABLE t (id INT)');
 	// a yields the event loop mid-transaction; single-flight must keep b out until a commits
@@ -850,54 +899,189 @@ Deno.test('transaction: two calls made before either callback begins serialize (
 		await tx.query('INSERT INTO t VALUES (3)');
 	});
 	await Promise.all([a, b]);
-	const ids = (await db.query<{id: number}>('SELECT id FROM t ORDER BY id')).rows.map((r) => r.id);
-	assertEquals(ids, [1, 2, 3]); // no interleave, no lost write
+	assertEquals(await ids_of(db), [1, 2, 3]); // no interleave, no lost write
 	await db.close();
 });
 
-Deno.test('a concurrent top-level transaction() is REJECTED as nested — the divergence, not a queue', async () => {
-	// The other spelling of the test above, and the realistic one: the second call is made in a
-	// later turn, after the first callback has begun. `in_managed_tx` is a plain flag read at call
-	// time, so every `transaction()` from that moment on takes the nested rejection — a genuinely
-	// top-level one included — and that caller's work does not run at all. A `pg` pool would give
-	// it its own connection; PGlite serializes both on its one connection (measured: two
-	// concurrent top-level `transaction()` calls both fulfil, on 0.4.5 and 0.5.4).
-	//
-	// The undecidability is inherent — separating a lexically nested call from a concurrent
-	// top-level one needs an async-context store (`AsyncLocalStorage`), which browsers do not have
-	// — but the resolution is a CHOICE, and PGlite is the proof: same single connection, same
-	// missing store, and it serializes instead, hanging on a genuinely nested call rather than on
-	// this one. pglet refuses loudly because that hang is largely silent (an ordinary `main()`
-	// entry exits 0 with no output; see the deadlock note on `PgletDb.query`). Pinned as a
-	// divergence — invert this if the rejection is ever narrowed to real nesting.
+Deno.test('a concurrent top-level transaction() made while a callback runs QUEUES behind it', async () => {
+	// The realistic spelling, and the shape a server's concurrent requests take: the second call is
+	// made in a later turn, after the first callback has begun, from an async context that is not
+	// the callback's. It waits its turn — as on PGlite and a `pg` pool — and both rows land, in
+	// order. (The browser entry has no `AsyncLocalStorage` and still refuses this; see
+	// `browser_entry_test.ts`.)
 	const db = create_pglet_db();
 	await db.query('CREATE TABLE t (id INT)');
 	let release = () => {};
 	const first_callback_running = new Promise<void>((r) => {
 		release = r;
 	});
+	const order: string[] = [];
 	const first = db.transaction(async (tx) => {
 		await tx.query('INSERT INTO t VALUES (1)');
 		release();
 		await new Promise((r) => setTimeout(r, 10)); // hold the lane across a macrotask
 		await tx.query('INSERT INTO t VALUES (2)');
+		order.push('first:end');
+		return 'first';
 	});
 	await first_callback_running; // a later turn — this call is top-level by every measure
 	const second = db.transaction(async (tx) => {
+		order.push('second:start');
+		// it runs after the first COMMITTED, so it reads both of the first's rows
+		assertEquals((await tx.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 2);
+		await tx.query('INSERT INTO t VALUES (3)');
+		return 'second';
+	});
+	assertEquals(await within(Promise.all([first, second]), 'both transactions'), ['first', 'second']);
+	assertEquals(order, ['first:end', 'second:start']); // serialized, not interleaved
+	assertEquals(await ids_of(db), [1, 2, 3]);
+	await db.close();
+});
+
+Deno.test('N concurrent top-level transaction() calls, each from its own context, all land in call order', async () => {
+	// The fuz_app shape that found the refusal: concurrent request handlers, each putting its row in
+	// a transaction. Every call after the first is made while an earlier callback is running.
+	const db = create_pglet_db();
+	await db.query('CREATE TABLE t (id INT)');
+	const calls: Array<Promise<number>> = [];
+	for (let i = 1; i <= 8; i++) {
+		calls.push(
+			db.transaction(async (tx) => {
+				await new Promise((r) => setTimeout(r, 1)); // yield across a macrotask mid-callback
+				await tx.query('INSERT INTO t VALUES ($1)', [i]);
+				return i;
+			}),
+		);
+		await new Promise((r) => setTimeout(r, 0)); // the next call is made in a later turn
+	}
+	assertEquals(await within(Promise.all(calls), 'every transaction'), [1, 2, 3, 4, 5, 6, 7, 8]);
+	assertEquals(await ids_of(db), [1, 2, 3, 4, 5, 6, 7, 8]);
+	await db.close();
+});
+
+Deno.test('a queued transaction() that rolls back costs the one queued behind it nothing', async () => {
+	const db = create_pglet_db();
+	await db.query('CREATE TABLE t (id INT)');
+	let release = () => {};
+	const running = new Promise<void>((r) => {
+		release = r;
+	});
+	const first = db.transaction(async (tx) => {
+		await tx.query('INSERT INTO t VALUES (1)');
+		release();
+		await new Promise((r) => setTimeout(r, 5));
+	});
+	await running;
+	// both queued while the first callback runs: the middle one throws, the last one commits
+	const failing = db.transaction(async (tx) => {
+		await tx.query('INSERT INTO t VALUES (2)');
+		throw new Error('boom');
+	});
+	const last = db.transaction(async (tx) => {
+		// a fresh block, not a savepoint inside a leftover one
+		assertEquals((await tx.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 1);
 		await tx.query('INSERT INTO t VALUES (3)');
 	});
-	const [a, b] = await Promise.allSettled([first, second]);
-	assertEquals(a.status, 'fulfilled');
-	assertEquals(b.status, 'rejected');
-	const err = (b as PromiseRejectedResult).reason;
-	assertInstanceOf(err, Error);
-	assert(err.message.includes('a transaction() callback is already running'), err.message);
-	// and the message must name the top-level reading too, or it sends this caller looking for a
-	// callback that exists nowhere in its scope
-	assert(err.message.includes('top-level'), err.message);
-	// the second caller's write is simply gone — loud, but gone
-	assertEquals((await db.query<{id: number}>('SELECT id FROM t ORDER BY id')).rows.map((r) => r.id), [1, 2]);
+	const [a, b, c] = await within(Promise.allSettled([first, failing, last]), 'all three');
+	assertEquals([a.status, b.status, c.status], ['fulfilled', 'rejected', 'fulfilled']);
+	assertEquals(((b as PromiseRejectedResult).reason as Error).message, 'boom');
+	assertEquals(await ids_of(db), [1, 3]); // only the failing one's row is gone
+	assertEquals((await db.query('BEGIN')).command, 'BEGIN'); // and no block is left open
+	await db.query('ROLLBACK');
 	await db.close();
+});
+
+Deno.test('an outside query() from another async context waits for a running transaction', async () => {
+	// The other-context twin of the audit-log tests above, which issue their outside write from
+	// inside the callback: a concurrent handler's plain `db.query()` must neither join the running
+	// transaction nor be refused — it queues, and lands after the rollback.
+	const db = create_pglet_db();
+	await db.query('CREATE TABLE t (id INT)');
+	await db.query('CREATE TABLE audit (m TEXT)');
+	let release = () => {};
+	const running = new Promise<void>((r) => {
+		release = r;
+	});
+	const txn = db.transaction(async (tx) => {
+		await tx.query('INSERT INTO t VALUES (1)');
+		release();
+		await new Promise((r) => setTimeout(r, 5));
+		// the outside write has been issued by now; queued, the transaction does not see it
+		assertEquals((await tx.query('SELECT count(*)::int AS c FROM audit')).rows[0].c, 0);
+		throw new Error('boom');
+	});
+	await running;
+	const outside = db.query(`INSERT INTO audit VALUES ('outside')`);
+	const [t, o] = await within(Promise.allSettled([txn, outside]), 'the transaction and the outside write');
+	assertEquals([t.status, o.status], ['rejected', 'fulfilled']);
+	assertEquals((await db.query('SELECT count(*)::int AS c FROM audit')).rows[0].c, 1); // survived
+	assertEquals((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 0); // txn reverted
+	await db.close();
+});
+
+Deno.test('a context that outlives its callback does not refuse work once the transaction ends', async () => {
+	// A timer started inside a callback carries the callback's async context, but the transaction
+	// it named is over by the time the timer fires — so a `transaction()` made there is outside
+	// every running callback and runs.
+	const db = create_pglet_db();
+	await db.query('CREATE TABLE t (id INT)');
+	let later!: Promise<unknown>;
+	const fired = new Promise<void>((resolve) => {
+		void db.transaction(async (tx) => {
+			await tx.query('INSERT INTO t VALUES (1)');
+			setTimeout(() => {
+				later = db.transaction(async (tx2) => tx2.query('INSERT INTO t VALUES (2)'));
+				resolve();
+			}, 10);
+		});
+	});
+	await fired;
+	await within(later, 'the transaction made from the leftover timer');
+	assertEquals(await ids_of(db), [1, 2]);
+	await db.close();
+});
+
+Deno.test('a fork does not read its parent\'s callback as its own, nor the parent a fork\'s', async () => {
+	// Instances share the entry's one store but own their contexts by token, so a callback of one
+	// instance is outside every other instance: inside the parent's callback a fork's
+	// `transaction()` runs (on its own lane), and inside the fork's callback so does the parent's —
+	// neither is refused as nested.
+	const parent = create_pglet_db();
+	await parent.query('CREATE TABLE t (id INT)');
+	const child = await parent.fork();
+	const from_parent = await within(
+		parent.transaction(async (tx) => {
+			await tx.query('INSERT INTO t VALUES (1)');
+			return child.transaction(async (ctx) => {
+				await ctx.query('INSERT INTO t VALUES (10)');
+				return 'child ran';
+			});
+		}),
+		'a fork transaction inside the parent callback',
+	);
+	assertEquals(from_parent, 'child ran');
+	const from_child = await within(
+		child.transaction(async (ctx) => {
+			await ctx.query('INSERT INTO t VALUES (11)');
+			return parent.transaction(async (tx) => {
+				await tx.query('INSERT INTO t VALUES (2)');
+				return 'parent ran';
+			});
+		}),
+		'a parent transaction inside the fork callback',
+	);
+	assertEquals(from_child, 'parent ran');
+	assertEquals(await ids_of(parent), [1, 2]);
+	assertEquals(await ids_of(child), [10, 11]);
+	// and the fork still refuses a call nested in its own callback
+	const err = await within(
+		child.transaction(async () => child.transaction(async () => 1)).then(() => null, (e) => e),
+		'the fork transaction',
+	);
+	assertInstanceOf(err, Error);
+	assert(err.message.includes('inside a running transaction() callback'), err.message);
+	await child.close();
+	await parent.close();
 });
 
 Deno.test('raw BEGIN/COMMIT (the kysely/drizzle path) works sequentially', async () => {
@@ -1125,12 +1309,15 @@ Deno.test('close() drains the lane: a fire-and-forget write issued before it lan
 Deno.test('fork() and close() inside a transaction() callback reject rather than deadlock', async () => {
 	const db = create_pglet_db();
 	await db.query('CREATE TABLE t (id INT)');
-	await db.transaction(async (tx) => {
-		await tx.query('INSERT INTO t VALUES (1)');
-		const fork_err = await assertRejects(() => db.fork(), Error, 'while a transaction() callback is running');
-		assertEquals((fork_err as {code?: string}).code, '25001');
-		await assertRejects(() => db.close(), Error, 'while a transaction() callback is running');
-	});
+	await within(
+		db.transaction(async (tx) => {
+			await tx.query('INSERT INTO t VALUES (1)');
+			const fork_err = await assertRejects(() => db.fork(), Error, 'inside a running transaction() callback');
+			assertEquals((fork_err as {code?: string}).code, '25001');
+			await assertRejects(() => db.close(), Error, 'inside a running transaction() callback');
+		}),
+		'the transaction',
+	);
 	// the rejected close() did not close it
 	assertEquals((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 1);
 	await db.close();
@@ -1145,13 +1332,15 @@ Deno.test('a close() pending before a callback starts still refuses a close() ma
 		inner = await db.close().then(() => 'settled', (e) => (e as {code?: string}).code);
 	});
 	const outer = db.close(); // accepted: the transaction is queued, its callback not yet running
-	await done;
+	await within(done, 'the transaction');
 	await outer;
 	assertEquals(inner, '25001');
 });
 
-Deno.test('close() from outside a running transaction() callback is refused, the db left open', async () => {
-	// The undecidable case: a call made while a callback runs cannot be told from one inside it.
+Deno.test('fork() and close() from outside a running transaction() callback wait for it', async () => {
+	// Decidable with the Node entry's `AsyncLocalStorage`: a call from another async context is not
+	// the callback's, so it queues — the fork branches the transaction's committed rows, and the
+	// close drains behind it. (The browser entry still refuses both; see `browser_entry_test.ts`.)
 	const db = create_pglet_db();
 	await db.query('CREATE TABLE t (id INT)');
 	let release!: () => void;
@@ -1162,15 +1351,81 @@ Deno.test('close() from outside a running transaction() callback is refused, the
 		await tx.query('INSERT INTO t VALUES (1)');
 		entered();
 		await gate;
+		await tx.query('INSERT INTO t VALUES (2)'); // the tx handle still works after the close() call
 	});
 	await inside;
-	const err = await assertRejects(() => db.close(), Error, 'cannot be told apart');
-	assertEquals((err as {code?: string; severity?: string}).code, '25001');
-	assertEquals((err as {code?: string; severity?: string}).severity, 'ERROR');
-	await assertRejects(() => db.fork(), Error, 'cannot be told apart');
+	const forked = db.fork();
+	const closed = db.close();
+	await assertRejects(() => db.query('SELECT 1'), Error, 'this PgletDb is closed'); // refused at once
 	release();
-	await running;
-	assertEquals((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 1); // still open
+	await within(running, 'the transaction');
+	const f = await within(forked, 'the fork');
+	await within(closed, 'the close');
+	assertEquals((await f.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 2); // branched after the commit
+	await f.close();
+});
+
+Deno.test('a close() from outside keeps a running callback\'s fire-and-forget write, unrejected', async () => {
+	// The audit-write idiom under a close: the callback was admitted before the close, so its later
+	// `db.query()` is not refused as closed (a rejection nobody awaits, which kills Node) — it is
+	// queued, and the close drains until the lane stops growing, so the row lands before the free.
+	const refused: string[] = [];
+	const on_rejection = (e: Event) => {
+		const {reason} = e as PromiseRejectionEvent;
+		const message = (reason as Error | undefined)?.message ?? '';
+		if (!message.includes('this PgletDb is closed')) return; // not ours — leave it to the runner
+		e.preventDefault();
+		refused.push(message);
+	};
+	globalThis.addEventListener('unhandledrejection', on_rejection);
+	try {
+		const db = create_pglet_db();
+		await db.query('CREATE TABLE audit (m TEXT)');
+		let entered!: () => void;
+		const inside = new Promise<void>((r) => (entered = r));
+		let audit_landed!: Promise<unknown>;
+		const running = db.transaction(async (tx) => {
+			await tx.query('SELECT 1');
+			entered();
+			await new Promise((r) => setTimeout(r, 5)); // the close() arrives here
+			// fire-and-forget, two deep: the second is enqueued behind the first, past the tail close()
+			// first waited on
+			audit_landed = Promise.all([
+				db.query(`INSERT INTO audit VALUES ('x')`),
+				db.query(`INSERT INTO audit VALUES ('y')`),
+			]);
+			return 'tx ok';
+		});
+		await inside;
+		const closed = db.close();
+		assertEquals(await within(running, 'the transaction'), 'tx ok');
+		await within(closed, 'the close');
+		// the row landed before the free; nothing after the close can read it, so its result is the witness
+		assertEquals(((await audit_landed) as Array<{rowCount: number}>).map((r) => r.rowCount), [1, 1]);
+		await new Promise((r) => setTimeout(r, 20)); // give an unhandled rejection time to report
+		assertEquals(refused, []);
+	} finally {
+		globalThis.removeEventListener('unhandledrejection', on_rejection);
+	}
+});
+
+Deno.test('a thenable a callback returns runs inside it: its nested transaction() is refused, not hung', async () => {
+	// The callback is run as `async () => fn(tx)`, so a thenable it returns is adopted inside the
+	// callback's context. Without that wrapping, its `then` ran in the context of the adapter's own
+	// `await` — outside the callback — so a `transaction()` there queued behind the transaction
+	// waiting on it.
+	const db = create_pglet_db();
+	const thenable = {
+		then(resolve: (v: unknown) => void, reject: (e: unknown) => void) {
+			db.transaction(async () => 1).then(resolve, reject);
+		},
+	};
+	const err = await within(
+		db.transaction(() => thenable as unknown as Promise<unknown>).then(() => null, (e) => e),
+		'the transaction returning a thenable',
+	);
+	assertInstanceOf(err, Error);
+	assert(err.message.includes('inside a running transaction() callback'), err.message);
 	await db.close();
 });
 

@@ -15,7 +15,7 @@ import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {existsSync, readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
-import {pathToFileURL} from 'node:url';
+import {fileURLToPath, pathToFileURL} from 'node:url';
 
 const PKG_DIR = process.env.PKG_DIR ?? 'crates/pglet_wasm/pkg-npm';
 const pkg = JSON.parse(readFileSync(resolve(PKG_DIR, 'package.json'), 'utf8'));
@@ -351,6 +351,108 @@ test('a frozen Object.prototype drops no key: every data key is defined, not set
 		assert.deepEqual(out.raw, ['toString', 'constructor', 'z']);
 		assert.deepEqual(out.raw_values, [1, 2, 3]);
 	}
+});
+
+/** `promise`, or a rejection naming `what` once `ms` pass, so a deadlock fails rather than hangs. */
+const within = (promise, what, ms = 2000) => {
+	let timer;
+	const timeout = new Promise((_, reject) => {
+		timer = setTimeout(() => reject(new Error(`timed out: ${what}`)), ms);
+	});
+	return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+};
+
+test('concurrent top-level transaction() calls queue on the Node entry, and all land in call order', async () => {
+	// Every call after the first is made in a later turn, while an earlier callback is running, from
+	// an async context that is not that callback's — the Node entry's AsyncLocalStorage tells it
+	// apart from a nested call, so it waits its turn rather than being refused.
+	const db = create_pglet_db();
+	await db.query('CREATE TABLE t (id INT)');
+	const calls = [];
+	for (let i = 1; i <= 8; i++) {
+		calls.push(
+			db.transaction(async (tx) => {
+				await new Promise((r) => setTimeout(r, 1));
+				await tx.query('INSERT INTO t VALUES ($1)', [i]);
+				return i;
+			}),
+		);
+		await new Promise((r) => setTimeout(r, 0));
+	}
+	assert.deepEqual(await within(Promise.all(calls), 'every transaction'), [1, 2, 3, 4, 5, 6, 7, 8]);
+	assert.deepEqual((await db.query('SELECT id FROM t ORDER BY id')).rows.map((r) => r.id), [1, 2, 3, 4, 5, 6, 7, 8]);
+	await db.close();
+});
+
+test('a nested transaction() on the Node entry is refused as nested, never deadlocks', async () => {
+	const db = create_pglet_db();
+	const err = await within(
+		db.transaction(async () => db.transaction(async () => 1)).then(() => null, (e) => e),
+		'the outer transaction',
+	);
+	assert.ok(err instanceof Error);
+	assert.match(err.message, /inside a running transaction\(\) callback/);
+	assert.match(err.message, /tx handle/);
+	await db.close();
+});
+
+const STORE_TAX_TEST = 'instances that ran a transaction and closed leave no per-promise cost behind';
+// The `AsyncLocalStorage` implementation this process runs. Node 24+ defaults to the
+// async-context-frame one and selects the async-hooks one with `--no-async-context-frame`; Node 22
+// defaults to async hooks and opts into frames with `--experimental-async-context-frame`. Node
+// expands every option it was started with into `execArgv`, the test runner's per-file child
+// included, so that is where the choice is read.
+const NO_FRAME_FLAG = '--no-async-context-frame';
+const on_async_hooks_store = () =>
+	process.execArgv.includes(NO_FRAME_FLAG) ||
+	(!process.allowedNodeEnvironmentFlags.has(NO_FRAME_FLAG) &&
+		!process.execArgv.includes('--experimental-async-context-frame'));
+
+test(STORE_TAX_TEST, async (t) => {
+	// The Node entry shares ONE `AsyncLocalStorage` across instances. On the async-hooks
+	// implementation (Node 22's default, the `engines` floor) every store ever entered stays
+	// registered and is paid for on every promise, so a store per instance made each closed instance
+	// a permanent tax on every later `await` in the process. Measured on that implementation with
+	// a store per instance, the loop below took ~1.9 s after these instances against ~4 ms before
+	// them; with the shared store it stays at the baseline. The bound sits far from both, so neither
+	// a loaded machine nor a fast one makes it flaky. The async-context-frame implementation never
+	// had the cost, so on it the check proves nothing, and it runs on async hooks or not at all.
+	if (!on_async_hooks_store()) {
+		if (!process.allowedNodeEnvironmentFlags.has(NO_FRAME_FLAG)) {
+			t.skip('this Node has neither the async-hooks store nor the flag to select it');
+			return;
+		}
+		// This one test again, in a child on the async-hooks store, which must report it run and passed.
+		const child = spawnSync(
+			process.execPath,
+			[
+				NO_FRAME_FLAG,
+				'--test',
+				'--test-reporter=tap',
+				`--test-name-pattern=^${STORE_TAX_TEST.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
+				fileURLToPath(import.meta.url),
+			],
+			// without the runner's marker for a file it spawned, which would make the child's runner
+			// refuse to run files as a recursive call
+			{encoding: 'utf8', timeout: 120_000, env: {...process.env, NODE_TEST_CONTEXT: undefined}},
+		);
+		const output = `${child.stdout}\n${child.stderr}`;
+		assert.equal(child.error, undefined, output);
+		assert.equal(child.status, 0, output);
+		assert.match(child.stdout, /^# tests 1$/m, output);
+		assert.match(child.stdout, /^# pass 1$/m, output);
+		assert.match(child.stdout, /^# skipped 0$/m, output);
+		return;
+	}
+	for (let i = 0; i < 300; i++) {
+		const db = create_pglet_db();
+		await db.transaction(async (tx) => tx.query('SELECT 1'));
+		await db.close();
+	}
+	const start = performance.now();
+	for (let i = 0; i < 100_000; i++) await null;
+	const elapsed = performance.now() - start;
+	assert.ok(elapsed < 500, `100k awaits took ${elapsed.toFixed(0)} ms after 300 closed instances`);
 });
 
 test('overlapping raw BEGIN (the kysely/drizzle path) fails loud (25001), never silently corrupts', async () => {

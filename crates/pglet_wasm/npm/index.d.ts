@@ -199,10 +199,13 @@ export interface PgletDb {
 	 * its own level unwinds on a throw; a nested level's success merges into the enclosing block,
 	 * which can still discard it. That is the rollback-per-test harness idiom.
 	 *
-	 * A `transaction()` called while another `transaction()` **callback is running** is rejected:
-	 * a nested call and a concurrent top-level one cannot be told apart at call time, and queueing
-	 * the nested one would deadlock. One called before the running callback began serializes
-	 * behind it. Inside a callback, use the `tx` handle; for concurrent lanes, `fork()`.
+	 * A `transaction()` called while another one's callback is running **queues** behind it and
+	 * runs as its own block once that one ends. One called from **inside** a running callback
+	 * (through awaits, timers and helpers the callback calls) is rejected instead, since it would
+	 * wait on its own transaction: use the `tx` handle there. Telling the two apart needs
+	 * `AsyncLocalStorage`, which the Node entry (Node, Deno, Bun) has; the browser entry does not,
+	 * so there any `transaction()` called while a callback is running is rejected, unless it was
+	 * called before that callback began.
 	 */
 	transaction<T>(fn: (tx: PgletTx) => Promise<T>): Promise<T>;
 	/**
@@ -210,16 +213,21 @@ export interface PgletDb {
 	 * (in-memory). It runs on the lane after every statement issued before it, so it carries them.
 	 *
 	 * Rejects `25001` while a block is open on this instance (a branch of committed state cannot
-	 * carry a block's catalog writes over a heap without its rows), and while a `transaction()`
-	 * callback is running — inside the callback, waiting for the lane would deadlock, and a call
-	 * from outside it cannot be told apart.
+	 * carry a block's catalog writes over a heap without its rows), and when called from inside a
+	 * running `transaction()` callback, where waiting for the lane would deadlock. Called from
+	 * outside one it branches after that transaction ends — except on the browser entry, which
+	 * cannot tell the two apart and rejects both.
 	 */
 	fork(): Promise<PgletDb>;
 	/**
 	 * Free the underlying wasm instance once everything queued before this call has run;
 	 * resolves when it is freed. A call made after it (`query`, `transaction`, `fork`) rejects as
-	 * closed. Rejects `25001` while a `transaction()` callback is running, as `fork()` does, and
-	 * leaves the instance as it was; every other call answers the same promise.
+	 * closed — except, outside the browser entry, a `query()` made by a `transaction()` callback
+	 * that was already running, which is queued and drained before the free, so its
+	 * fire-and-forget write lands rather than rejecting unhandled. Rejects `25001` when called
+	 * from inside a running `transaction()` callback (on the browser entry, while any callback is
+	 * running), as `fork()` does, and leaves the instance as it was; every other call answers the
+	 * same promise.
 	 */
 	close(): Promise<void>;
 	// The runtime also sets `[Symbol.asyncDispose]` to `close` where the runtime has the symbol.

@@ -64,7 +64,7 @@ tests-web/              # TypeScript interface tests (this directory)
 │
 ├── integration/        # Behavioral tests (pglet_test.ts, server_test.ts, pglet_wasm_test.ts + its child scripts; see its README)
 │
-├── npm/                # @fuzdev/pglet-wasm adapter suite (coercion, dx, kysely, package, adapter)
+├── npm/                # @fuzdev/pglet-wasm adapter suite (coercion, dx, kysely, package, adapter, browser entry)
 │
 └── browser/            # Playwright browser tests
     ├── run.ts          # Test runner

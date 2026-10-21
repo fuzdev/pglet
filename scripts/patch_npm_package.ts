@@ -39,16 +39,27 @@ const RAW_SNIPPETS = 'snippets/';
 // ergonomic factory only — the raw `PgletBtree` binding and `wrap_pglet_db` are the adapter's
 // internals, not the package's API. `init` / `init_sync` are the browser entry's, answered here
 // as no-ops so code written for both entries runs on either.
+//
+// It is also the entry every server runtime resolves (Node, Deno and Bun all match the `node`
+// export condition), so it is the one that hands the adapter an `AsyncLocalStorage`: that is what
+// lets `transaction()` queue a concurrent top-level call and refuse only a nested one. It is ONE
+// store for every instance — on Node 22's async-hooks implementation each store ever entered stays
+// registered and costs on every promise, so a store per instance slows a long suite with each
+// instance it creates (`db.js` tells instances apart by an owner token). The browser entry must
+// never import `node:async_hooks`, so it passes none.
 const index_js = `import { readFileSync } from 'node:fs';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { initSync, PgletBtree } from './${RAW_JS}';
 import { wrap_pglet_db } from './db.js';
 
 const wasm = readFileSync(new URL('./${RAW_WASM}', import.meta.url));
 initSync({ module: wasm });
 
+const context_store = new AsyncLocalStorage();
+
 export async function init(_options) {}
 export function init_sync(_options) {}
-export const create_pglet_db = (options) => wrap_pglet_db(new PgletBtree(), options);
+export const create_pglet_db = (options) => wrap_pglet_db(new PgletBtree(), options, context_store);
 `;
 
 // The browser/default entry: async `init()` guarded by `_ready`; `create_pglet_db` throws

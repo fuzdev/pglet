@@ -11,6 +11,14 @@ released version under a fresh `## Unreleased` declaring a patch.
 ## Unreleased
 <!-- bump: patch -->
 
+- fix: on Node, Deno and Bun, a `transaction()` called while another one's callback runs
+  queues behind it instead of being rejected; only a call from inside a running callback is
+  refused, as nested. `fork()` and `close()` called from outside a running callback no longer
+  reject either: the fork branches after that transaction ends, and the close waits for it —
+  and for any `db.query()` the callback still makes — before freeing. Called from inside one,
+  `fork()` and `close()` still reject `25001` rather than deadlock. The browser entry, which has no
+  `AsyncLocalStorage`, still refuses all three while any callback runs
+
 ## 0.1.1
 
 - fix: a `$N` compared with an aliased join column under `FOR SHARE` / `FOR UPDATE` is

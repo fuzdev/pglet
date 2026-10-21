@@ -79,7 +79,7 @@ await db.close(); // base is untouched, still forkable
 
 A fork can be forked, and forks are independent; `close()`ing one never disturbs the base.
 `fork()` runs on the instance's lane after every statement issued before it, awaited or not, so it carries them.
-While a `transaction()` callback is running it rejects `25001` instead (see *Behavior*).
+Called from inside a running `transaction()` callback it rejects `25001` instead (see *Behavior*).
 
 `fork()` branches **committed** state, so it rejects `25001` while a block is open on the
 instance — commit or roll back the seed first. Serving it instead would hand the fork the
@@ -246,6 +246,12 @@ What still differs:
   - a live handle open (a server, a poller): hangs with no output (measured on node).
   - under a test runner: `deno test` fails in ~10 ms (*"Promise resolution is still pending but the
     event loop has already resolved"*); `node --test` cancels at the test timeout.
+- **Deadlocks no refusal can see** — the same symptoms follow two more shapes:
+  - a callback that awaits work which runs `db.transaction()` on the same instance from a context
+    set up outside it — a job queue, a shared in-flight promise, a listener registered earlier, a
+    request to your own server — waits forever, as on PGlite; no refusal can see it.
+  - across two instances, A's callback awaiting `B.transaction()` while B's callback awaits
+    `A.transaction()` waits forever, the lock-order deadlock of any two locks.
 - **That queueing is `transaction()`'s only** — a transaction driven by a raw `query('BEGIN')`,
   the way kysely and drizzle drive them, presents no boundary `query()` can see: its statements
   and an outside one are the same `query()` on the same lane. An outside write issued between such a
@@ -254,15 +260,21 @@ What still differs:
   `transaction()`, the same boundary, and a single `pg.Client` loses it too; a `pg` **pool** keeps
   it by running it on a second connection. Use `transaction()` where an outside write must survive,
   or `fork()` a separate instance for it.
-- **One transaction callback at a time** — a `db.transaction()` called while another
-  `transaction()` **callback is running** throws loudly. A **second, top-level**
-  `transaction()`
-  serializes behind the first only if it is called before the first's callback begins (in
-  practice, the same synchronous turn); after that it hits the same rejection, because the two
-  cannot be told apart at call time — a browser has no `AsyncLocalStorage`. pglet refuses rather
-  than guess: PGlite serializes both instead and hangs on a nested call, and a silent hang is
-  worse than a refusal.
-  Start concurrent lanes up front, or `fork()` an instance per lane.
+- **Concurrent `transaction()` calls queue; a nested one is refused** — a `db.transaction()`
+  made while another one's callback is running waits for it and then runs, its own block after
+  the first one's commit or rollback, as on PGlite or a `pg` pool — so concurrent request handlers
+  that each run a transaction all succeed, in call order. One made from **inside** a running
+  callback (through awaits, timers and helpers the callback calls) is refused loudly instead, since
+  it would wait for the transaction it is part of and never run: use the `tx` handle for that work
+  (`tx.query('SAVEPOINT …')` for a nested level), or a separate instance forked beforehand. Telling
+  the two apart takes `AsyncLocalStorage`, which the Node entry — the one Node, Deno and Bun
+  resolve — provides. **In a browser** there is none, so there a `transaction()` made while any
+  callback runs is refused, nested or not, unless it was called before that callback began (in
+  practice, the same synchronous turn); pglet refuses rather than guess, since a nested call that
+  queued would hang silently. Start concurrent lanes up front there, or `fork()` an instance per
+  lane. Which behaviour you get follows the `node` export condition: a bundle resolved without it
+  (esbuild `--platform=browser`/`neutral`, a Workers target) gets the browser entry's refusal even
+  where `AsyncLocalStorage` exists.
 - **Single-connection contract** — one connection, so **one open block at a time**. A raw
   `query('BEGIN')` while a block is already open — the way kysely and drizzle drive transactions —
   **fails loud** with SQLSTATE `25001` instead of silently joining and clobbering shared state.
@@ -326,10 +338,16 @@ What still differs:
   moved under it.
 - **`close()`** — runs everything queued before it, then frees the wasm instance, and resolves
   once it is freed; `db.query(sql); await db.close();` keeps the write. It is idempotent, and any
-  call after it rejects with a clear error (not a wasm panic). While a `transaction()` callback is
-  running it rejects `25001` and leaves the instance as it was, as `fork()` does: inside the callback,
-  waiting for the lane would deadlock, and a call from outside it cannot be told apart — so await
-  a running transaction before closing.
+  call after it rejects with a clear error (not a wasm panic). Called from outside a running
+  `transaction()` callback it drains behind that transaction, as `fork()` branches after it. Called
+  from inside one it rejects `25001` and leaves the instance as it was, as `fork()` does, since
+  waiting for the lane there would deadlock. A callback still running when an outside `close()`
+  arrives may go on calling `db.query()` — its fire-and-forget write is queued and lands before
+  the free, rather than rejecting with nobody to catch it. On the browser entry, a `close()`
+  accepted before a callback began gives that callback no such exemption: its write rejects as
+  closed, reported as an `unhandledrejection` — so there, await a running transaction before
+  closing. In a browser the two cannot be told apart, so there both
+  reject while any callback is running.
 - **The `tx` handle ends with its transaction** — called after the transaction settles, its
   `query` rejects rather than running outside any transaction.
 - **Async shape** — every method returns a Promise to match `pg`/PGlite, though the engine is

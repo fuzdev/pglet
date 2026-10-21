@@ -314,7 +314,7 @@ inside a table.
 | 11 | a **base column**'s `RowDescription` on the `Describe` leg where the planner builds it through `to_column_desc` — a `RETURNING` item; a grouped query's column is closed | `table_oid`, `attnum` **and `atttypmod`** are all dropped — `0`/`0`/`-1` — where the same statement's simple-query leg carries all three | the real three, identical on both legs | silent (metadata), and a **two-producer split**: pglet's two legs disagree with each other, not only with 18.6 | — the harness compares none of the three fields | reports no base-table provenance |
 | 12 | a `$N` compared with an outer level's aliased column, or with a column of a relation a FROM alias collides with | `ParameterDescription` reports OID `0`, or another relation's type | the real OID | silent in the report; loud on the value path once a text bind runs it — `42883` for the OID-`0` half, `22P02` for the wrong-OID half | — a throwaway fixture was written, run, and is red | reports OID 0 on |
 | ~~145~~ | **closed** — a bare `$N` whose type the client declared at `Parse`, projected as a result column — alone, or under an operator, a function, `ARRAY[$1]`, `unnest`, a derived table, `COALESCE` or `CASE` | was typed `text` (under an operator the other operand's type, `text[]`, `701`) over the declared type's bytes, a `timestamptz` rendered without `+00`; now the type 18.6 resolves | the declared type, and a `timestamptz` rendered with `+00` | closed class; the residual is row 146's | `params/declared_*_result_*` + `crates/pglet_sql/tests/engine_declared_params.rs`, both walks | A bare `$N` whose type the client declared |
-| 16 | an outside `query()` beside a raw-`BEGIN` transaction on the npm adapter, and a concurrent top-level `db.transaction()` | the outside write joins the transaction and vanishes with its `ROLLBACK`; the second `transaction()` is rejected as nested and never runs | the reference is a driver, not the oracle: a `pg` **pool** keeps the outside write, on a second connection | silent for the lost write; loud for the rejected transaction | `tests-web/npm/dx_test.ts` pins both as divergences, so invert them if either closes | one of them still loses a write |
+| 16 | an outside `query()` beside a raw-`BEGIN` transaction on the npm adapter, and a concurrent top-level `db.transaction()` on its browser entry | the outside write joins the transaction and vanishes with its `ROLLBACK`; in a browser the second `transaction()` is rejected as nested and never runs | the reference is a driver, not the oracle: a `pg` **pool** keeps the outside write, on a second connection | silent for the lost write; loud for the rejected transaction | `tests-web/npm/dx_test.ts` pins both as divergences, so invert them if either closes | one of them still loses a write |
 | 19 | `Describe(portal)` after an all-binary `Bind` | reports format code `0` for every column, then sends binary bytes | reports `1` | silent (metadata) | — tokio-postgres reads `Describe(statement)`, where `0` is correct | reports result format code |
 | 34 | the declared type of an `information_schema` catalog column and of `min`/`max` over a `varchar` | `text` and `varchar` | the domain's **base** type (`name` `19`, `varchar` `1043`) and `text` | silent — a client typing its output by the `RowDescription` reads the wrong type with no error | — the first is waived per fixture by `-- @no-declared-types:`, which waives **both** legs, and no fixture takes `min`/`max` over a `varchar`; what the legs pin is every other column, live against 18.6 | Declared types across the two protocols |
 | 36 | a column the planner declares one type for and eval produces another, in the multi-operand cells (`COALESCE`/`CASE`) — two confirmed routes | streams the runtime value under the declared OID | the two match; `42804` at `Parse` for the row-65 route | silent, and **not** binary-only — the text leg reaches both routes | — | Plan-declared type ≠ runtime value |
@@ -6621,7 +6621,7 @@ inside a table.
 
 - **16 · Divergences no fixture reaches, and one of them still loses a write: an outside `query()`
   joining a raw-`BEGIN` transaction on the npm adapter, and a concurrent top-level
-  `db.transaction()`.** The adapter's public
+  `db.transaction()` on the browser entry.** The adapter's public
   `query()` queues behind an open `transaction()`, so the audit-log shape — a telemetry write
   that must outlive a failed business transaction — survives a rollback there, and
   `tests-web/npm/` plus `scripts/test_npm_node.mjs` pin it. But the queue is `transaction()`'s
@@ -6650,25 +6650,24 @@ inside a table.
   inside `kysely.js` — a fresh `PgletConnection` per `acquireConnection` (it is a shared singleton
   today, and that aliasing is what makes the limitation look inherent) and routing the
   transactional connection through the held `tx` handle. What the prototype did **not** cover, and
-  a real pass owes: kysely's savepoint hooks, the concurrent-transaction error changing from
-  `25001` to `transaction()`'s nested rejection, and running `kysely_test.ts` against it. A
-  hand-rolled
-  raw-`BEGIN` consumer has no boundary either way. Beside it and **loud**
-  rather than silent: a second `db.transaction()` called while a callback is running is rejected
-  as *nested* whatever its lexical position, because the flag is read at call time and a browser
-  has no `AsyncLocalStorage` to separate the readings — so a genuinely top-level concurrent
-  transaction does not run at all, where a `pg` pool would give it its own connection and PGlite
-  serializes it (measured: both callbacks fulfil and both rows land, while a genuinely *nested*
-  PGlite `transaction()` does not settle at all). The undecidability is shared; the resolution
-  is pglet's own choice, taken because the deadlock it declines to risk is largely silent — an
-  ordinary `main()`-at-module-bottom entry exits **0** with no output at all, on node, deno and
-  bun alike. Both are
-  documented on `PgletDb` and in the package README, and `dx_test.ts` pins both as divergences.
-  The same undecidability reaches `fork()` and `close()`: called while a `transaction()` callback
-  is running, each is refused rather than queued, since awaiting it inside that callback would
-  deadlock and a call from outside it cannot be told apart — so a teardown `close()` racing a
-  running callback is refused and changes nothing (the db stays as it was: open, or draining
-  toward an earlier `close()`).
+  a real pass owes: kysely's savepoint hooks, a concurrent kysely transaction changing from a
+  `25001` refusal to queueing (to `transaction()`'s nested rejection on the browser entry), and
+  running `kysely_test.ts` against it. A hand-rolled raw-`BEGIN` consumer has no boundary either way. Beside it and **loud** rather than silent, on
+  the **browser entry only**: a second `db.transaction()` called while a callback is running is
+  rejected as *nested* whatever its lexical position, because without `AsyncLocalStorage` the call
+  can only see that some callback is running — so a genuinely top-level concurrent transaction
+  does not run at all, where a `pg` pool would give it its own connection and PGlite serializes it
+  (measured: both callbacks fulfil and both rows land, while a genuinely *nested* PGlite
+  `transaction()` does not settle at all). The resolution is pglet's own choice, taken because the
+  deadlock it declines to risk is largely silent — an ordinary `main()`-at-module-bottom entry
+  exits **0** with no output at all, on node, deno and bun alike. The Node entry, which Node, Deno
+  and Bun resolve, hands the adapter an `AsyncLocalStorage`, so there the readings are separated:
+  a call from inside a running callback is refused as nested, and a concurrent top-level one
+  queues and runs after it, as on PGlite. `fork()` and `close()` follow the same split — refused
+  from inside a callback on every entry, queued from outside on the Node entry, and refused while
+  any callback runs on the browser entry. All of it is documented on `PgletDb` and in the package
+  README; `dx_test.ts` pins the Node entry's queue and the raw-`BEGIN` loss, and
+  `browser_entry_test.ts` pins the browser entry's refusal as a divergence.
 
 - **~~17~~ · Closed — `fork()` branches the committed tree and clones the live catalog, so it refuses while a
   block is open (`25001`).** `Database::fork` takes `schema.clone()` while the storage fork
