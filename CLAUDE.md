@@ -766,5 +766,5 @@ artifact (`pglet_server`, `pglet_wasm`, `pglet_bench`) reaches the dev-only
 `pglet_testing`.
 
 The workspace is edition 2024, `rust-version = 1.89` (the floor `std::fs::File::try_lock`
-sets), `publish = false`, built with the toolchain `rust-toolchain.toml` pins (1.98.0);
+sets), `publish = false`, built with the toolchain `rust-toolchain.toml` pins (1.99.1);
 the wasm size baseline is that toolchain's output, so moving it moves the size gate.

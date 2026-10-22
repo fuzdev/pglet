@@ -111,7 +111,7 @@ The other ports in play: 5433 for the dev server (`cargo run -p pglet_server`),
 
 The gate set's prerequisites, read off `deno.json`'s task bodies: `deno` throughout
 (every gate is a `deno task`) and `cargo`, with `check` also wanting the `clippy` and
-`rustfmt` rustup components and the `wasm32-unknown-unknown` target; **Rust 1.98.0**,
+`rustfmt` rustup components and the `wasm32-unknown-unknown` target; **Rust 1.99.1**,
 which `rust-toolchain.toml` pins together with those two components and that target — the
 wasm size gate is calibrated against that toolchain, so a different one moves `size:check`
 (`Cargo.toml`'s `rust-version`, 1.89, is the declared floor, not the toolchain the gates

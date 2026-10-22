@@ -388,6 +388,10 @@ impl Default for MemBlockIo {
 }
 
 impl BlockIo for MemBlockIo {
+    #[allow(
+        deprecated,
+        reason = "`fetch_update`'s replacement `try_update` is newer than the workspace's `rust-version`"
+    )]
     fn read_at(&self, offset: u64, buf: &mut [u8]) -> std::io::Result<usize> {
         if offset >= DATA_REGION_START
             && self

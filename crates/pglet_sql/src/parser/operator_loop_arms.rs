@@ -341,10 +341,8 @@ fn driven_by(file: &str) -> BTreeSet<String> {
     }
     assert!(pieces.len() > 10, "{file}: {} pieces", pieces.len());
     let mut schema = Schema::new();
-    for ddl in ["CREATE TABLE t (a INT)"] {
-        if let Ok(Some(plan)) = super::parse_single(ddl, &schema) {
-            let _ = crate::executor::execute(&plan, &mut schema);
-        }
+    if let Ok(Some(plan)) = super::parse_single("CREATE TABLE t (a INT)", &schema) {
+        let _ = crate::executor::execute(&plan, &mut schema);
     }
     record(|| {
         for piece in &pieces {

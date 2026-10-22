@@ -923,12 +923,18 @@ pub fn interval_scale(span: &PgInterval, factor: f64, is_mul: bool) -> Result<Pg
     if sec_remainder.abs() >= 86_400.0 {
         let extra = (sec_remainder / 86_400.0) as i32;
         day = day.checked_add(extra).ok_or_else(oor)?;
-        sec_remainder -= f64::from(extra) * 86_400.0;
+        // not `mul_add`: `timestamp.c` rounds the product before the subtraction
+        #[allow(clippy::suboptimal_flops)]
+        {
+            sec_remainder -= f64::from(extra) * 86_400.0;
+        }
     }
     day = day
         .checked_add(month_remainder_days as i32)
         .ok_or_else(oor)?;
 
+    // not `mul_add`: `timestamp.c` rounds the product before the addition
+    #[allow(clippy::suboptimal_flops)]
     let time_d = (apply(span.micros as f64) + sec_remainder * 1_000_000.0).round_ties_even();
     if !time_d.is_finite() || !fits_i64(time_d) {
         return Err(oor());
