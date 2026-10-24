@@ -486,12 +486,12 @@ rules do it. **Collection frees no page the durable version reaches** (`CowBtree
 bounded by `PageStore::durable_version`, which moves only once a slot's fsync returns).
 So a statement that publishes several versions before its slot write (a DDL statement's
 batches) loses none of the durable version's pages to collection. **The slot
-authenticates the free-list chain**: the slot records the head chain page's checksum, and
-each page records its successor's. So a chain page that a power cut didn't land, still
-holding another commit's list, ends the walk. That leaks the unread ids but never hands
-out a live page, unless a stale page's CRC32 happens to match. The walk still trusts an
-authentic page's ids: open drops a repeat and a chain page's own id, and checks no id
-against the tree (`EDGES.md` row 207).
+checksum-links the free-list chain**: the slot records the head chain page's checksum,
+and each page records its successor's. So a chain page that a power cut didn't land,
+still holding another commit's list, ends the walk. That leaks the unread ids but never
+hands out a live page, unless a stale page's CRC32 happens to match. The walk still
+trusts a linked page's ids: open drops a repeat and a chain page's own id, and checks no
+id against the tree (`EDGES.md` row 207).
 
 A page that's superseded but not yet collected is still logged by the save, since no root
 of the saved version reaches it, so a close or a kill doesn't leak it. The log is kept
