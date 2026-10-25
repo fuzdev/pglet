@@ -1,66 +1,75 @@
 # pglet
 
-> fast and small embeddable postgres for speeding up your tests
+> vibecoded embeddable postgres for going places the elephant can't fit, and faster db tests
 
-pglet is a Postgres-compatible-ish database engine in Rust, built to start fast and stay small.
+pglet is a Postgres-compatible database engine in Rust, built to start fast and stay small.
 It speaks the Postgres wire protocol and a growing subset of the Postgres SQL dialect,
-and runs in-process as WebAssembly ([`@fuzdev/pglet-wasm`](https://www.npmjs.com/package/@fuzdev/pglet-wasm))
-or as a native server you build from source —
-well under a megabyte over the wire.
+and runs in-process as wasm ([`@fuzdev/pglet-wasm`](https://www.npmjs.com/package/@fuzdev/pglet-wasm))
+or as a native server. The wasm is published to npm and used daily for tests in some projects,
+but it's not ready for embedding in production,
+and the native server must be built from source for now.
 
-**Today it's for tests.** A fresh database costs milliseconds, not a container boot
-or pglite's second-plus init, and `fork()` branches a migrated, seeded database
-into an isolated copy per test without re-running the setup SQL.
+**Today pglet is for tests.**
 On [fuz_app](https://github.com/fuzdev/fuz_app)'s database tests,
-pglet runs ~7.5x faster than pglite
-at ~1/8 the gzipped size of pglite's wasm and data files (wasm-to-wasm, in memory),
+pglet runs ~7.5x faster than PGlite
+at ~1/8 the gzipped size of PGlite's wasm,
 and ~7.5x faster than a real PostgreSQL server
-(pglet in-process versus Postgres over TCP; server-to-server it's ~4.8x) —
-counting the time spent running the tests; vitest's whole run is ~4.9x faster than on pglite.
-pglite and Postgres land within about 1% of each other on this suite: most of both legs' database time is
+(pglet in-process versus PostgreSQL over TCP; server-to-server it's ~4.8x).
+The whole Vitest run including non-database tests is ~4.9x faster than on PGlite.
+PGlite and PostgreSQL land within about 1% of each other on this suite: most of both legs' database time is
 the `TRUNCATE` between tests, which costs each of them about the same
-([TRADEOFFS.md](TRADEOFFS.md) § Where the suite's time goes).
+([TRADEOFFS.md](TRADEOFFS.md) § Where the suite's time goes) -
+and these measurements will change with optimizations.
+Like sqlite, a fresh pglet database costs milliseconds, compared to PGlite's second-plus startup, two orders of magnitude slower.
+pglet's `fork()` branches a migrated, seeded database
+into an isolated copy per test without re-running the setup SQL,
+and we'll explore other optimizations and features for testing as the priority
+before embedded usage in production, which has a much higher robustness bar.
 
 **Later, embedded and in other places.** The same engine is meant to grow into
-a local-first, file-based store for apps and browsers —
-it already persists to a file (or to OPFS in the browser, in an opt-in build) —
-but you should not trust pglet with your production data, not yet.
+a local-first, file-based store for apps and browsers,
+but it will be a long road to trusting a vibecoded database with production data.
+pglet already persists to a file, or to OPFS in the browser in an opt-in build,
+but it is immature and should not be deployed to production.
 Tests don't need this trust, they just gotta go fast.
 
-pglet's position is that reimplementing Postgres is hubris -
-PostgreSQL is more than its code,
-it's a community of people with the collective design and implementation power
-to maintain the software and steward its design.
-Conformance is pglet's goal, and everything pglet supports
-is differential-tested against a running PostgreSQL oracle.
-Much of PostgreSQL is not supported yet, and what isn't aims to fail loudly
-(so it should be obvious when pglet is at fault).
+pglet is not an alternative to PostgresSQL, nor PGlite in the cases where its size and startup are acceptable.
+The project is a serious engineering effort
+but its maintainers have zero database expertise, only user experience; all of that is deferred upstream.
+PostgreSQL is a community of people with the collective design and implementation power
+to maintain the software and steward its design, and pglet is a dependent.
+Conformance is pglet's goal; it differs only in implementation tradeoffs
+for the cases it targets, embedding and tests.
+Much of PostgreSQL is not supported yet, and what isn't aims to fail loudly,
+so it should be obvious when pglet is at fault - which will be often, as the project is immature.
+
 The strategy from here is to fill out the PostgreSQL featureset as optional layers,
-measuring everything along the way —
-a build carries only what its consumer needs,
-so browsers and other size-sensitive hosts can take trimmer builds
-that trade compatibility for file size and startup time.
+so browsers and other size-sensitive hosts can use trimmer builds
+that trade features for file size and startup time.
 
 pglet is derived from PostgreSQL's behavior by LLM;
 it's a high-effort project but it may stink to high heaven, in spots.
 It was made using the [fuz-stack skill](https://docs.fuz.dev/skills/fuz-stack),
 which bakes in a lot of human opinions about good Rust projects and patterns.
-pglet is as close to a "vibe coded" project as [@fuzdev](https://github.com/fuzdev) has -
-a human did think through the high level architecture and design in detail
-but as a dev-user not a db designer/developer.
-The internals are LLM-generated from a running PostgreSQL and
-the [official postgres](https://github.com/postgres/postgres) docs
-in sometimes-slop unevenly-reviewed Rust.
+pglet is vibecoded, not reviewed to any acceptable degree -
+a human did think through the high level architecture and closely guided the repo's early growth,
+but as a user, not a database developer with relevant expertise.
+pglet has not been porting source code - the internals are LLM-generated from a running PostgreSQL and
+the [official postgres](https://github.com/postgres/postgres) docs in sometimes-slop unevenly-reviewed Rust.
+
 This release is an early proof of concept:
 speeding up fuz_app's tests makes pglet plausibly-real software,
 so it's public despite being full of holes that your workloads may fail on.
 
+The code and most of the docs past this point are generated by AI;
+it's a blurry, error-filled codebase that should get sharper over time.
+
 ## What it's for
 
-pglet is for the places you wouldn't run a real Postgres server: test suites,
-browsers, and embedded/local-first apps. It is not a replacement for upstream
-PostgreSQL behind an app server and never will be — it's the same dialect made
-cheap enough to start that a database can be a throwaway value.
+pglet is for cases where you wouldn't run a real PostgreSQL server or where PGlite is too big,
+like test suites, browsers, and embedded/local-first apps that are sensitive to startup-time or size.
+It is not a replacement for upstream PostgreSQL and never will be.
+The idea is to support the protocol as cheaply as possible in places where the elephant doesn't fit.
 
 Two audiences:
 
