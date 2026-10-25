@@ -50,12 +50,12 @@ that trade features for file size and startup time.
 pglet is derived from PostgreSQL's behavior by LLM;
 it's a high-effort project but it may stink to high heaven, in spots.
 It was made using the [fuz-stack skill](https://docs.fuz.dev/skills/fuz-stack),
-which bakes in a lot of human opinions about good Rust projects and patterns.
+which bakes in a lot of its author's opinions about good Rust patterns.
 pglet is vibecoded, not reviewed to any acceptable degree -
 a human did think through the high level architecture and closely guided the repo's early growth,
-but as a user, not a database developer with relevant expertise.
-pglet has not been porting source code - the internals are LLM-generated from a running PostgreSQL and
-the [official postgres](https://github.com/postgres/postgres) docs in sometimes-slop unevenly-reviewed Rust.
+but as a user and outsider, not a database developer with relevant expertise.
+pglet has not been porting source code - the internals are derived from a running PostgreSQL and
+the [official docs](https://github.com/postgres/postgres).
 
 This release is an early proof of concept:
 speeding up fuz_app's tests makes pglet plausibly-real software,
