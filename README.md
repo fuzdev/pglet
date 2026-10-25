@@ -1,6 +1,6 @@
 # pglet
 
-> vibecoded embeddable postgres for going places the elephant can't fit, and faster db tests
+> vibecoded embeddable postgres for going places the elephant can't fit, and faster tests
 
 pglet is a Postgres-compatible database engine in Rust, built to start fast and stay small.
 It speaks the Postgres wire protocol and a growing subset of its SQL dialect,
