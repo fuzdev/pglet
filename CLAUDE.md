@@ -572,7 +572,7 @@ npm run check:stripped | check:wasm-features | check:ts | check:release   # chec
 npm run fmt                       # cargo fmt (check runs cargo fmt --check)
 npm run check:docs                # rustdoc: every doc-comment link resolves (see below)
 npm run dump -- --data-dir <dir>  # print a portable SQL dump of a persisted database
-deno task lint:edges              # EDGES.md's structural invariants (tools/edges_lint.ts's header lists them)
+npm run lint:edges                # EDGES.md's structural invariants (src/lib/edges_lint.ts's header lists them)
 npm run size                      # print the release server's size; size:wasm the wasm's, size:gzip the server's gzipped — ungated
 
 deno task test                    # the suites deno.json's "test" chains (auto-spawn servers) — not every test:*;
@@ -606,9 +606,10 @@ deno task test:browser            # WASM (pkg/) + OPFS (pkg-opfs/) under Playwri
 deno task fuzz                    # coverage-guided cargo-fuzz recovery target (needs nightly + cargo-fuzz; see fuzz/README.md)
 npm run fuzz:seed                 # (re)write the valid seed image into the fuzz corpus
 
-deno task matrix:artifacts        # build release server + wasm pkg, print the fuz_app db-matrix setup
+npm run matrix:artifacts          # build release server + wasm pkg, print the fuz_app db-matrix setup
 #                                   (the server export, and the command linking pkg-npm into fuz_app's node_modules)
-deno task matrix:env              # re-print that setup without rebuilding (eval-safe: eval "$(deno task matrix:env)")
+npm run matrix:env                # re-print that setup without rebuilding (eval-safe with npm's --silent:
+#                                   eval "$(npm run --silent matrix:env)"; it runs gro at PUBLIC_LOG_LEVEL=error)
 deno task spy:start               # wire-protocol logging proxy, :5434 → :5432 (tools/spy_proxy/main.ts's header);
 #                                   5434 is also the port tests-web's suites spawn their server on
 #                                   (tests-web/lib/server.ts), so stop the proxy before those

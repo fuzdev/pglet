@@ -45,8 +45,8 @@ oracle says so in the cell. `find it` is a phrase from the bullet's own text —
 it. Every cell is a summary, the bullet is the record, and where the two differ the bullet
 wins.
 
-**Every row has a bullet, and a cell aims at one screen-line** — `deno task lint:edges`
-bounds it at 300 characters (`MAX_CELL_CHARS`). The row answers *is this my
+**Every row has a bullet, and a cell aims at one screen-line** — `npm run lint:edges`
+bounds it at 300 characters (`EDGES_MAX_CELL_CHARS`). The row answers *is this my
 edge?* — the shape as a noun phrase, the two answers, the triage word, what pins it, and
 the phrase to search for. The bullet answers *what exactly?* — the measured members, the
 mechanism and the reader it lives in, the controls that bound the rule, and the argument

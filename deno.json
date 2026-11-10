@@ -17,8 +17,6 @@
     "test:browser:headed": "deno run -A tests-web/browser/run.ts --headed",
     "test:browser:install": "deno run -A npm:playwright install chromium",
 
-    "lint:edges": "deno run --allow-read tools/edges_lint.ts",
-
     "server": "deno run --allow-read=crates --allow-run=cargo tools/dev_server.ts",
 
     "spy:start": "deno run --allow-net=127.0.0.1:5432,127.0.0.1:5434 --allow-read=tests/captures --allow-write=tests/captures tools/spy_proxy/main.ts",
@@ -49,9 +47,6 @@
 
     "bench:memory": "cargo build --release -p pglet_bench && deno task wasm:build && deno run --config deno.json -A benches/memory.ts",
     "bench:memory:update": "cargo build --release -p pglet_bench && deno task wasm:build && deno run --config deno.json -A benches/memory.ts --update",
-
-    "matrix:artifacts": "cargo build --release -p pglet_server && deno task build:npm && deno run --allow-read tools/matrix_env.ts",
-    "matrix:env": "deno run --allow-read tools/matrix_env.ts",
 
     "test:npm": "deno task build:npm && deno test --frozen -A tests-web/npm/ && node --test scripts/test_npm_node.mjs scripts/test_npm_pack.mjs",
     "test:npm:node": "deno task build:npm && node --test scripts/test_npm_node.mjs scripts/test_npm_pack.mjs",
