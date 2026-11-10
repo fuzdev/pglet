@@ -305,7 +305,7 @@ Deno.test('query refuses a callback, a non-array values and a Submittable, as Ty
 });
 
 // The `pg` result contract, field for field. Every expectation below was MEASURED on
-// node-postgres 8.16.3 — the version `deno.json` pins; 8.20.0's `lib/result.js` is
+// node-postgres 8.16.3 — the version `package.json` pins; 8.20.0's `lib/result.js` is
 // byte-identical, diffed — against PostgreSQL 18.6 (a scratch database, same statement text),
 // not derived from `pg`'s regex. The regex is in `db.js`; this is the oracle it must reproduce.
 //

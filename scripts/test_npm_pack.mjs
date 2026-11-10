@@ -18,8 +18,8 @@
  *
  * **Offline.** `npm pack` and `npm install --offline` of a dependency-free tarball reach no
  * registry. `./kysely` imports `kysely`, an optional peer the scratch project does not install
- * from a registry: it links the copy Deno already holds for the pinned version (`deno.json`'s
- * `kysely` import, which `test:npm`'s Deno suite loads first), found through `deno info --json`.
+ * from a registry: it links the repo's own copy, the version `package.json` pins and `npm ci`
+ * installs in the root `node_modules` (the one `test:npm`'s Deno suite loads too).
  * What that does not prove: that npm itself installs or resolves `kysely` as a peer, and that the
  * subpath works with any `kysely` but the pinned one.
  *
@@ -34,6 +34,7 @@ import {execFileSync} from 'node:child_process';
 import {existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {dirname, join, resolve} from 'node:path';
+import {fileURLToPath} from 'node:url';
 
 const PKG_DIR = resolve(process.env.PKG_DIR ?? 'crates/pglet_wasm/pkg-npm');
 // read from the built package, so the bare specifier is whatever name it was assembled under
@@ -50,17 +51,14 @@ const npm = (args, cwd) =>
 		env: {...process.env, npm_config_cache: join(scratch, 'npm-cache'), npm_config_update_notifier: 'false'},
 	});
 
-/** The pinned `kysely` in Deno's npm cache, the copy `test:npm`'s Deno suite loaded. */
-const deno_kysely = () => {
-	const deno_json = JSON.parse(readFileSync(resolve('deno.json'), 'utf8'));
-	const version = /^npm:kysely@(.+)$/.exec(deno_json.imports?.kysely ?? '')?.[1];
-	assert.ok(version, 'deno.json pins no `npm:kysely@<version>` import');
-	const {npmCache} = JSON.parse(execFileSync('deno', ['info', '--json'], {encoding: 'utf8'}));
-	const dir = join(npmCache, 'registry.npmjs.org', 'kysely', version);
-	assert.ok(
-		existsSync(join(dir, 'package.json')),
-		`kysely ${version} is not in Deno's npm cache (${dir}); run the Deno half of \`deno task test:npm\` first`,
-	);
+/** The pinned `kysely` in the repo's own `node_modules`, the copy `test:npm`'s Deno suite loads. */
+const repo_kysely = () => {
+	const pinned = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).devDependencies?.kysely;
+	assert.ok(pinned, 'package.json pins no `kysely` devDependency');
+	const dir = fileURLToPath(new URL('../node_modules/kysely/', import.meta.url));
+	const manifest = join(dir, 'package.json');
+	const version = existsSync(manifest) ? JSON.parse(readFileSync(manifest, 'utf8')).version : undefined;
+	assert.equal(version, pinned, `${dir} holds kysely ${version ?? '(none)'}, not the pinned ${pinned}; run \`npm ci\``);
 	return dir;
 };
 
@@ -75,7 +73,7 @@ before(() => {
 	npm(['install', join(scratch, tgz)], scratch);
 	installed = join(scratch, 'node_modules', ...NAME.split('/'));
 	mkdirSync(join(scratch, 'node_modules'), {recursive: true});
-	symlinkSync(deno_kysely(), join(scratch, 'node_modules', 'kysely'), 'dir');
+	symlinkSync(repo_kysely(), join(scratch, 'node_modules', 'kysely'), 'dir');
 });
 
 after(() => {

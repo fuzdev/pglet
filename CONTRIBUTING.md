@@ -12,10 +12,10 @@ oracle resets it**, by issuing `DROP SCHEMA public CASCADE; CREATE SCHEMA public
 the database those binaries connect to — the `postgres` database on `127.0.0.1:5432`
 unless `PGLET_PG_URL` names another. Anything you keep in that database's `public` schema
 is destroyed. Among the gates those are `test:fixtures`, `test:fixtures:profile-lock`,
-`test:dump` and `test:copy` (read the set off `deno.json` rather than memorising it).
+`test:dump` and `test:copy` (read the set off `package.json` rather than memorising it).
 `--profile-lock` only narrows the fixture list, so
 `cargo xtask gates --only test:fixtures:profile-lock`, the obvious cheap subset, drops the
-schema too, and so does the non-gate `deno task test:fixtures:update`. `test:pg-dump` drops
+schema too, and so does the non-gate `npm run test:fixtures:update`. `test:pg-dump` drops
 tables of fixed names in the same database.
 
 **The knob is `PGLET_PG_URL`.** Set it to a libpq `postgres://` URL (or a `key=value`
@@ -89,6 +89,13 @@ The other ports in play: 5433 for the dev server (`cargo run -p pglet_server`),
 
 ## Running the checks
 
+`npm ci` first: it installs the JS dependencies `package-lock.json` pins into
+`node_modules`, which the Deno suites read too (`deno.json`'s `"nodeModulesDir": "manual"`;
+`.npmrc` turns install scripts off). A task is either a `package.json` script, run as
+`npm run <name> -- <flags>`, or a `deno.json` task, run as `deno task <name> <flags>`;
+`deno task` runs a `package.json` script too when `deno.json` has no task of that name, so
+`deno task <name>` works for every one.
+
 - `deno task check` — the hermetic bar: clippy with `-D warnings`, a
   `--no-default-features` `cargo check`, clippy over `pglet` and `pglet_wasm` for the
   wasm target with the wasm build's features, default, stripped and with the opt-in
@@ -109,8 +116,8 @@ The other ports in play: 5433 for the dev server (`cargo run -p pglet_server`),
   task's status and elapsed time in its closing summary.
   `--check` compares the run's counters against `tests/gates_baseline.txt`.
 
-The gate set's prerequisites, read off `deno.json`'s task bodies: `deno` throughout
-(every gate is a `deno task`) and `cargo`, with `check` also wanting the `clippy` and
+The gate set's prerequisites, read off the task bodies in `deno.json` and `package.json`:
+`deno` throughout (the runner invokes every gate as `deno task <name>`) and `cargo`, with `check` also wanting the `clippy` and
 `rustfmt` rustup components and the `wasm32-unknown-unknown` target; **Rust 1.99.1**,
 which `rust-toolchain.toml` pins together with those two components and that target — the
 wasm size gate is calibrated against that toolchain, so a different one moves `size:check`
@@ -123,8 +130,8 @@ its cache on the first `wasm:build`; `gzip` for
 rather than skipping without it; `git` for `size:check --update` **only**, which stamps
 the commit into the baseline it writes; and the `psql`/`pg_dump` client binaries
 (`test:dump` runs `psql`, `test:pg-dump` both), which those two gates **skip, exit 0**
-without. A cold clone also fetches cargo's registry dependencies and deno's jsr/npm
-imports.
+without. A cold clone also fetches cargo's registry dependencies and deno's jsr
+imports, and `npm ci` its npm ones.
 
 Under `--check` a gate that skipped is **red**: a counter the baseline records and the
 run did not report is a failure, because a gate that ran nothing proves nothing — which
@@ -137,7 +144,7 @@ directory.
 
 `.github/workflows/check.yml` runs the same three tiers on every push and pull
 request — the hermetic bar, the published wasm/npm package, and the six differential
-gates against a `postgres:18.6` service. It invokes the `deno task` bodies rather than
+gates against a `postgres:18.6` service. It invokes the tasks by name rather than
 re-listing their steps, so what CI runs is what you run.
 
 A warm run (cargo cache populated, `pkg/` built) takes minutes, not seconds — `test:wasm`

@@ -12,7 +12,7 @@ import {coerce_params, coerce_rows} from './coerce.js';
 // rather than approximated — `{command, rowCount, oid}` is the adapter's `pg`-shaped
 // promise, and a consumer branching on it (kysely's stock Postgres driver does, on
 // `command === 'INSERT' | 'UPDATE' | 'DELETE' | 'MERGE'`) reads a *different* field set
-// if this drifts. Measured against pg **8.16.3** — the version this repo pins in `deno.json` —
+// if this drifts. Measured against pg **8.16.3** — the version this repo pins in `package.json` —
 // and PostgreSQL 18.6. (`pg` 8.20.0's `lib/result.js` is byte-identical to 8.16.3's, diffed, so
 // the rule is the same one either version applies; cite the pin, not a version nothing here
 // resolves.) Quoted from that file rather than paraphrased:

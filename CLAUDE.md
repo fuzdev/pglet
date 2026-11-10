@@ -525,9 +525,16 @@ type explicitly.
 
 ## Commands
 
+Tasks live in `package.json` (`npm run <name> -- <flags>`) and `deno.json`
+(`deno task <name> <flags>`); `deno task` falls through to the `package.json` script when
+`deno.json` has no task of that name, so `deno task <name>` runs either. `npm ci` installs
+the JS dependencies `package-lock.json` pins into `node_modules`, which Deno reads too
+(`"nodeModulesDir": "manual"`); `.npmrc` turns install scripts off.
+
 ```bash
+npm ci                            # the JS dependencies, before any JS task
 cargo build                       # build all crates
-deno task build                   # cargo build --release
+npm run build                     # cargo build --release
 cargo clippy --workspace --all-targets -- -D warnings   # lint (what `check` runs)
 cargo run -p pglet_server         # server on :5433 (btree storage)
 cargo run -p pglet_server -- --storage memory   # MemoryStorage: no MVCC, no persistence;
@@ -546,49 +553,49 @@ cargo xtask gates --update        # ...and record this run's counters as the bas
 cargo xtask gates --only test:fixtures,test:rust   # ...restricted to named tasks
 cargo xtask gates --skip test:pg-dump   # ...minus named tasks (--skip beats --only; an unselected
 #                                         gate's baseline counters are not asked for)
-deno task gates:check             # cargo xtask gates --check, through deno (gates:update likewise)
+npm run gates:check               # cargo xtask gates --check (gates:update likewise)
 deno task size:check              # wasm size gate: raw bytes under the lower of baseline +2% and the 1650 KB hard cap (needs wasm-pack, gzip)
 deno task size:update             # ...and record this build as the new baseline
 deno task check                   # clippy -D warnings + stripped + wasm-features + fmt + docs + scripts typecheck + tests + release audit
 deno task check:stripped | check:wasm-features | check:scripts | test:scripts | check:release   # check's own steps, runnable alone
 #                                   (check:scripts is `deno check` of scripts/*.ts and scripts/release/*.ts, the release scripts'
 #                                   only typecheck; test:scripts their unit tests; check:release is cargo xtask check-release)
-deno task fmt                     # cargo fmt (check runs cargo fmt --check)
-deno task check:docs              # rustdoc: every doc-comment link resolves (see below)
-deno task dump --data-dir <dir>   # print a portable SQL dump of a persisted database
+npm run fmt                       # cargo fmt (check runs cargo fmt --check)
+npm run check:docs                # rustdoc: every doc-comment link resolves (see below)
+npm run dump -- --data-dir <dir>  # print a portable SQL dump of a persisted database
 deno task lint:edges              # EDGES.md's structural invariants (tools/edges_lint.ts's header lists them)
-deno task size                    # print the release server's size; size:wasm the wasm's, size:gzip the server's gzipped — ungated
+npm run size                      # print the release server's size; size:wasm the wasm's, size:gzip the server's gzipped — ungated
 
 deno task test                    # the suites deno.json's "test" chains (auto-spawn servers) — not every test:*;
 #                                   test:binary, test:integration:server, test:power-loss, test:soak are among those outside it
 cargo test --workspace            # Rust unit + integration tests (incl. crash fuzz); without `--features pglet_wasm/opfs`
 #                                   it skips the persistent binding's host tests, which test:rust runs
-deno task test:fixtures           # SQL fixtures vs real Postgres
-deno task test:fixtures:update    # regenerate expected output from Postgres
-deno task test:fixtures:profile-lock  # stripped-profile regression lock (the `@profile-lock` subset)
-deno task test:rust               # cargo test --workspace --features pglet_wasm/opfs (the gate wrapper)
-deno task test:binary             # binary-format wire tests (self-spawning server; in no aggregate or gate)
-deno task test:dump               # portable SQL dump: pglet-vs-psql round-trip (needs psql)
-deno task test:pg-dump            # pg_dump round-trip (needs psql + pg_dump)
-deno task test:copy               # COPY FROM/TO fixtures vs Postgres
-deno task test:keywords           # keyword-probe sweep vs Postgres
+npm run test:fixtures             # SQL fixtures vs real Postgres
+npm run test:fixtures:update      # regenerate expected output from Postgres
+npm run test:fixtures:profile-lock    # stripped-profile regression lock (the `@profile-lock` subset)
+npm run test:rust                 # cargo test --workspace --features pglet_wasm/opfs (the gate wrapper)
+npm run test:binary               # binary-format wire tests (self-spawning server; in no aggregate or gate)
+npm run test:dump                 # portable SQL dump: pglet-vs-psql round-trip (needs psql)
+npm run test:pg-dump              # pg_dump round-trip (needs psql + pg_dump)
+npm run test:copy                 # COPY FROM/TO fixtures vs Postgres
+npm run test:keywords             # keyword-probe sweep vs Postgres
 deno task test:wasm               # wasm build + the Deno wasm integration suite (needs wasm-pack)
-deno task wasm:build              # the wasm build: wasm-pack of crates/pglet_wasm into its pkg/ (what test:wasm and
+npm run wasm:build                # the wasm build: wasm-pack of crates/pglet_wasm into its pkg/ (what test:wasm and
 #                                   size:check run first; the npm package is build:npm)
-deno task wasm:build:opfs         # the same with the `opfs` feature on, into pkg-opfs/ — the one build exporting
+npm run wasm:build:opfs           # the same with the `opfs` feature on, into pkg-opfs/ — the one build exporting
 #                                   PgletBtreePersistent (examples/browser's persistent page, test:browser's OPFS worker)
 deno task test:web                # the driver/ORM/npm suites (spy-proxy parsers, integration, drizzle, kysely, postgres, pg, npm);
 #                                   each is its own task (test:spy, test:integration, test:drizzle, test:kysely,
 #                                   test:postgres, test:pg, test:npm) — tests-web/README.md
-deno task test:power-loss         # dm-flakey power-loss rounds (root-only; skips without the device)
-deno task test:concurrent         # concurrency / MVCC isolation (spawns a server)
-deno task test:crash              # real-process kill -9 + soak durability test
-deno task test:soak               # large-dataset soak: churn + kill -9 + in-process audit, plus a re-migration/index-OID-desync regression-lock leg (opt-in; PGLET_SOAK_ROWS / _DURATION_SECS / _SEED / _CYCLES / _KILL_CYCLES, --long, which test:soak:long runs in release)
+npm run test:power-loss           # dm-flakey power-loss rounds (root-only; skips without the device)
+npm run test:concurrent           # concurrency / MVCC isolation (spawns a server)
+npm run test:crash                # real-process kill -9 + soak durability test
+npm run test:soak                 # large-dataset soak: churn + kill -9 + in-process audit, plus a re-migration/index-OID-desync regression-lock leg (opt-in; PGLET_SOAK_ROWS / _DURATION_SECS / _SEED / _CYCLES / _KILL_CYCLES, --long, which test:soak:long runs in release)
 deno task test:browser            # WASM (pkg/) + OPFS (pkg-opfs/) under Playwright, building either when missing or
 #                                   older than the newest .rs it links;
 #                                   `test:browser:install` fetches its chromium once; test:browser:headed shows the browser
 deno task fuzz                    # coverage-guided cargo-fuzz recovery target (needs nightly + cargo-fuzz; see fuzz/README.md)
-deno task fuzz:seed               # (re)write the valid seed image into the fuzz corpus
+npm run fuzz:seed                 # (re)write the valid seed image into the fuzz corpus
 
 deno task matrix:artifacts        # build release server + wasm pkg, print the fuz_app db-matrix setup
 #                                   (the server export, and the command linking pkg-npm into fuz_app's node_modules)
@@ -616,11 +623,11 @@ deno task publish:npm --bump patch   # release @fuzdev/pglet-wasm — USER-RUN, 
 #                                   commits, tags and pushes; an interrupted wetrun resumes with a bare `--wetrun`
 #                                   (`.publish-in-progress`); scripts/release/ is its library (CONTRIBUTING.md § Releasing)
 
-deno task bench:commit            # commit-latency + write-amp sweep vs SQLite (prints)
-deno task bench:commit:update     # ...and refresh benches/phase1_results.json
-deno task bench:reads             # read-concurrency scaling (page-cache contention)
-deno task bench:query             # query/scan latency vs SQLite (point lookup / scan / aggregate)
-deno task bench:gin               # GIN-accelerated `@>` vs full-scan containment latency (pglet-vs-pglet)
+npm run bench:commit              # commit-latency + write-amp sweep vs SQLite (prints)
+npm run bench:commit:update       # ...and refresh benches/phase1_results.json
+npm run bench:reads               # read-concurrency scaling (page-cache contention)
+npm run bench:query               # query/scan latency vs SQLite (point lookup / scan / aggregate)
+npm run bench:gin                 # GIN-accelerated `@>` vs full-scan containment latency (pglet-vs-pglet)
 deno task bench:index-accel       # index acceleration ON vs OFF (wasm): size delta + read-latency ratio across table sizes (builds both profiles)
 deno task bench:memory            # peak RSS (native embed, /proc VmHWM) + WASM linear-memory high-water — pglet-internal longitudinal
 deno task bench:wasm-compare      # in-memory wasm startup+query: pglet vs pglite vs sqlite-wasm (Deno/Node/Bun;
@@ -631,10 +638,10 @@ deno task bench:size-compare      # pglet-vs-pglite payload bytes, raw + gzip: t
 deno task bench:exit-proof        # the four-leg fuz_app `db` suite macro (pglite, pglet-wasm, pglet-server, pg)
 deno task bench:startup           # native server spawn→ready latency
 deno task bench:wasm-init         # wasm init phases (compile / construct / first query)
-deno task bench:parse             # fused parse+plan latency (pglet-vs-pglet)
-deno task bench:attribute         # commit-CPU attribution
+npm run bench:parse               # fused parse+plan latency (pglet-vs-pglet)
+npm run bench:attribute           # commit-CPU attribution
 
-deno task measure:release         # the whole quiet-box measurement set behind the README's figures
+npm run measure:release           # the whole quiet-box measurement set behind the README's figures
 ```
 
 **`measure:release` (`cargo xtask measure`) is the counterpart to `cargo xtask gates`**
@@ -701,7 +708,7 @@ which moves an error's construct word, and row 38's legacy-store residual, where
 answer and the accelerated build leaves a row out — are named in `EDGES.md`'s header; they
 are the measured members, not a bound.
 The strip is a **size-floor lever, not a fixture-speed one**, so the test-fixture audience
-keeps acceleration ON. Run the full stripped pass (`PGLET_NO_INDEX_ACCEL=1 deno task
+keeps acceleration ON. Run the full stripped pass (`PGLET_NO_INDEX_ACCEL=1 npm run
 test:fixtures`) by hand when a change touches index selection, the `IndexScan` /
 `IndexRangeScan` / `GinScan` read paths, or a gate one profile reaches and the other
 cannot; what a green `@profile-lock` run does and does not prove is `docs/indexes.md`
@@ -724,7 +731,7 @@ directive is a hard parse error**, not inert comment text; an `@expect-error:<la
 fixture must match Postgres's SQLSTATE wherever Postgres also errors (where Postgres
 accepts, any error passes); and the `@test`'s last statement's rows are compared in both
 wire formats unless `@text`/`@param` narrows it to one, with each column's declared type
-OID compared on both legs (`docs/declared_types.md`). `deno task test:fixtures:update`
+OID compared on both legs (`docs/declared_types.md`). `npm run test:fixtures:update`
 regenerates expected output from the Postgres on :5432. This differential harness is
 pglet's strongest correctness asset.
 
