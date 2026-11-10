@@ -12,7 +12,7 @@ before running it against a Postgres you keep.
 deno task test                 # The chained suites (Rust + TypeScript + Browser) — not every test:* task
 deno task test:rust            # Rust unit tests only
 deno task test:fixtures        # SQL fixture tests (in tests/fixtures/)
-deno task test:web             # The driver/ORM/npm suites (spy-proxy parsers, integration, drizzle, kysely, postgres, pg, npm)
+deno task test:web             # The driver/ORM/npm suites (integration, drizzle, kysely, postgres, pg, npm)
 deno task test:integration     # Behavioral tests
 deno task test:drizzle         # Drizzle ORM tests
 deno task test:kysely          # Kysely ORM tests

@@ -9,7 +9,7 @@ Captured from `drizzle-kit push` via spy proxy.
 
 **Related files:**
 
-- `tools/spy_proxy/main.ts` - Proxy that captured these queries
+- `src/lib/spy_proxy/` - Proxy that captured these queries (`npm run spy:start`)
 - `tests-web/orms/drizzle/schema.ts` - Schema that triggered these queries
 - `tests-web/orms/drizzle/drizzle_test.ts` - Drizzle ORM integration test
 - `crates/pglet_sql/src/catalog/virtual_tables.rs` - CatalogTable enum + column schemas

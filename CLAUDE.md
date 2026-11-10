@@ -593,8 +593,8 @@ npm run wasm:build                # the wasm build: wasm-pack of crates/pglet_wa
 #                                   size:check run first; the npm package is build:npm)
 npm run wasm:build:opfs           # the same with the `opfs` feature on, into pkg-opfs/ — the one build exporting
 #                                   PgletBtreePersistent (examples/browser's persistent page, test:browser's OPFS worker)
-deno task test:web                # the driver/ORM/npm suites (spy-proxy parsers, integration, drizzle, kysely, postgres, pg, npm);
-#                                   each is its own task (test:spy, test:integration, test:drizzle, test:kysely,
+deno task test:web                # the driver/ORM/npm suites (integration, drizzle, kysely, postgres, pg, npm);
+#                                   each is its own task (test:integration, test:drizzle, test:kysely,
 #                                   test:postgres, test:pg, test:npm) — tests-web/README.md
 npm run test:power-loss           # dm-flakey power-loss rounds (root-only; skips without the device)
 npm run test:concurrent           # concurrency / MVCC isolation (spawns a server)
@@ -610,10 +610,12 @@ npm run matrix:artifacts          # build release server + wasm pkg, print the f
 #                                   (the server export, and the command linking pkg-npm into fuz_app's node_modules)
 npm run matrix:env                # re-print that setup without rebuilding (eval-safe with npm's --silent:
 #                                   eval "$(npm run --silent matrix:env)"; it runs gro at PUBLIC_LOG_LEVEL=error)
-deno task spy:start               # wire-protocol logging proxy, :5434 → :5432 (tools/spy_proxy/main.ts's header);
+npm run spy:start                 # wire-protocol logging proxy on loopback, :5434 → :5432, appending to
+#                                   tests/captures/session.jsonl (`-- <listen_port> <server_port> <tests/captures/…>`;
+#                                   listen port 0 binds a free one and prints it; src/lib/spy_proxy/proxy.ts);
 #                                   5434 is also the port tests-web's suites spawn their server on
 #                                   (tests-web/lib/server.ts), so stop the proxy before those
-deno task spy:spine:cell | spy:spine:fact   # the proxy recording to tests/captures/spine_{cell,fact}.jsonl
+npm run spy:spine:cell | spy:spine:fact   # the proxy recording to tests/captures/spine_{cell,fact}.jsonl
 deno task wasm:serve | wasm:test  # examples/browser's static server on :8001 and its Deno smoke test
 #                                   (examples/browser/README.md)
 

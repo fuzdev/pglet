@@ -5,7 +5,7 @@
  * NOT run in CI - this is a development tool.
  *
  * Usage:
- *   Terminal 1: deno task spy:start
+ *   Terminal 1: npm run spy:start
  *   Terminal 2: deno run -A tests-web/orms/kysely/capture.ts
  *
  * Check tests/captures/ for captured queries.

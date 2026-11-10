@@ -109,10 +109,9 @@ rather than generalizing over "the harness":
   one other appearance is `cargo xtask measure`, which *sets* it to that run's own
   scratch database for the exit-proof step; no Rust code reads it (`measure.rs`
   only writes it), and the two knobs never resolve each other.
-- **Not reached at all, and not the harness's.** `tools/spy_proxy`'s forward target
-  (an argument), and `deno.json`'s `--allow-net=127.0.0.1:5432` literals on the
-  `spy:*` tasks, which are Deno *sandbox* permissions: an override pointing
-  elsewhere is refused by the sandbox, a different failure from a connection error.
+- **Not reached at all, and not the harness's.** The spy proxy's forward target
+  (`src/lib/spy_proxy/`), the second positional argument of the `spy:*` scripts,
+  always a port on `127.0.0.1`: the proxy connects to no other host.
 
 The override moves the host, the port and the cluster freely. Two things it does not move
 freely — the session identity (fixtures that snapshot `postgres`/`postgres`; `--update`

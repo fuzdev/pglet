@@ -60,7 +60,10 @@
     "publish:npm": "gro task src/tasks/publish_npm.task.ts",
     "lint:edges": "gro task src/tasks/edges_lint.task.ts",
     "matrix:artifacts": "cargo build --release -p pglet_server && npm run build:npm && npm run --silent matrix:env",
-    "matrix:env": "PUBLIC_LOG_LEVEL=error gro task src/tasks/matrix_env.task.ts"
+    "matrix:env": "PUBLIC_LOG_LEVEL=error gro task src/tasks/matrix_env.task.ts",
+    "spy:start": "gro task src/tasks/spy_proxy.task.ts",
+    "spy:spine:cell": "gro task src/tasks/spy_proxy.task.ts 5434 5432 tests/captures/spine_cell.jsonl",
+    "spy:spine:fact": "gro task src/tasks/spy_proxy.task.ts 5434 5432 tests/captures/spine_fact.jsonl"
   },
   "devDependencies": {
     "@fuzdev/fuz_util": "0.81.0",

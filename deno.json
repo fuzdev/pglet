@@ -3,10 +3,9 @@
   "minimumDependencyAge": { "age": "P1D", "exclude": ["npm:@fuzdev/*", "npm:@ryanatkn/*"] },
   "tasks": {
     "test": "deno task test:rust && deno task test:fixtures && deno task test:fixtures:profile-lock && deno task test:keywords && deno task test:concurrent && deno task test:copy && deno task test:pg-dump && deno task test:dump && deno task test:crash && deno task test:web && deno task test:wasm && deno task test:browser",
-    "test:web": "deno task test:spy && deno task test:integration && deno task test:drizzle && deno task test:kysely && deno task test:postgres && deno task test:pg && deno task test:npm",
+    "test:web": "deno task test:integration && deno task test:drizzle && deno task test:kysely && deno task test:postgres && deno task test:pg && deno task test:npm",
     "fuzz": "deno task fuzz:seed && cargo +nightly fuzz run double_meta_reopen -- -max_total_time=60 -rss_limit_mb=4096",
     "test:integration": "deno test -A tests-web/integration/pglet_test.ts",
-    "test:spy": "deno test -A tools/spy_proxy/",
     "test:integration:server": "deno test -A tests-web/integration/server_test.ts",
     "test:drizzle": "deno test -A --no-check tests-web/orms/drizzle/drizzle_test.ts",
     "test:kysely": "deno test -A tests-web/orms/kysely/kysely_test.ts",
@@ -18,10 +17,6 @@
     "test:browser:install": "deno run -A npm:playwright install chromium",
 
     "server": "deno run --allow-read=crates --allow-run=cargo tools/dev_server.ts",
-
-    "spy:start": "deno run --allow-net=127.0.0.1:5432,127.0.0.1:5434 --allow-read=tests/captures --allow-write=tests/captures tools/spy_proxy/main.ts",
-    "spy:spine:cell": "deno run --allow-net=127.0.0.1:5432,127.0.0.1:5434 --allow-read=tests/captures --allow-write=tests/captures tools/spy_proxy/main.ts 5434 5432 tests/captures/spine_cell.jsonl",
-    "spy:spine:fact": "deno run --allow-net=127.0.0.1:5432,127.0.0.1:5434 --allow-read=tests/captures --allow-write=tests/captures tools/spy_proxy/main.ts 5434 5432 tests/captures/spine_fact.jsonl",
 
     "size:wasm": "deno task wasm:build && ls -lh crates/pglet_wasm/pkg/pglet_wasm_bg.wasm",
     "size:check": "deno task wasm:build && deno run --config deno.json --allow-read --allow-env --allow-run=gzip,git benches/size.ts --check",

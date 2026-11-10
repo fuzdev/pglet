@@ -46,7 +46,7 @@ tmp/
 .DS_Store
 Thumbs.db
 
-# spy-proxy wire captures (`deno task spy:spine:*`)
+# spy-proxy wire captures (`npm run spy:start`, `npm run spy:spine:*`)
 tests/captures/*.jsonl
 
 # per-machine agent settings

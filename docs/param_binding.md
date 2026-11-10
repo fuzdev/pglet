@@ -601,8 +601,8 @@ matches nothing.
   `DELETE`/`INSERT`/`UPDATE` write shapes, a declared parameter beside an undeclared one,
   the result-column types, and `@profile-lock` index probes.
 - `spy_proxy` parses Parse/Bind/ParameterDescription off a live extended-protocol
-  client's traffic (`deno task spy:spine:{cell,fact}` are the recording tasks), and is
-  unit-tested in `tools/spy_proxy/main_test.ts`.
+  client's traffic (`npm run spy:spine:{cell,fact}` are the recording scripts), and is
+  unit-tested in `src/test/spy_proxy/messages.test.ts`.
 
 ## Deferred / known gaps
 
