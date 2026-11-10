@@ -19,7 +19,7 @@
  * **Offline.** `npm pack` and `npm install --offline` of a dependency-free tarball reach no
  * registry. `./kysely` imports `kysely`, an optional peer the scratch project does not install
  * from a registry: it links the repo's own copy, the version `package.json` pins and `npm ci`
- * installs in the root `node_modules` (the one `test:npm`'s Deno suite loads too).
+ * installs in the root `node_modules` (the one `test:npm`'s vitest suite loads too).
  * What that does not prove: that npm itself installs or resolves `kysely` as a peer, and that the
  * subpath works with any `kysely` but the pinned one.
  *
@@ -51,7 +51,7 @@ const npm = (args, cwd) =>
 		env: {...process.env, npm_config_cache: join(scratch, 'npm-cache'), npm_config_update_notifier: 'false'},
 	});
 
-/** The pinned `kysely` in the repo's own `node_modules`, the copy `test:npm`'s Deno suite loads. */
+/** The pinned `kysely` in the repo's own `node_modules`, the copy `test:npm`'s vitest suite loads. */
 const repo_kysely = () => {
 	const pinned = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).devDependencies?.kysely;
 	assert.ok(pinned, 'package.json pins no `kysely` devDependency');

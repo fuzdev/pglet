@@ -137,7 +137,7 @@ Under `--check` a gate that skipped is **red**: a counter the baseline records a
 run did not report is a failure, because a gate that ran nothing proves nothing — which
 is what makes a missing `psql` a loud hole rather than a quiet one.
 
-`deno task test:npm` sits outside the gate set; beside `wasm-pack` it needs `node` and
+`npm run test:npm` sits outside the gate set; beside `wasm-pack` it needs `node` and
 `npm` at or above the package's `engines` floor (`src/lib/npm_metadata.ts`) — its Node leg
 refuses to run below it — and it packs and installs the package offline, in the OS temp
 directory.
@@ -168,7 +168,7 @@ to `minor` or `major` when a change calls for it).
   disagreeing with the marker, a dirty tree, a branch other than `main`, a `HEAD` that is not
   exactly `origin/main` (after a `git fetch origin main`), an existing `v<version>` tag (locally
   or on `origin`) and a failing `npm whoami`. It then runs `npm run check`,
-  `npm run test:rust`, `deno task test:wasm`, `deno task test:npm` (which builds
+  `npm run test:rust`, `deno task test:wasm`, `npm run test:npm` (which builds
   `crates/pglet_wasm/pkg-npm` and ends in the packed-tarball smoke over that same directory),
   checks the built `name@version`, runs the size gate on the wasm it built, and runs
   `npm publish --dry-run` in `pkg-npm`. None of its gates needs Postgres; the differential gates

@@ -203,7 +203,7 @@ export interface PgletDb {
 	 * runs as its own block once that one ends. One called from **inside** a running callback
 	 * (through awaits, timers and helpers the callback calls) is rejected instead, since it would
 	 * wait on its own transaction: use the `tx` handle there. Telling the two apart needs
-	 * `AsyncLocalStorage`, which the Node entry (Node, Deno, Bun) has; the browser entry does not,
+	 * `AsyncLocalStorage`, which the Node entry (Node, Bun) has; the browser entry does not,
 	 * so there any `transaction()` called while a callback is running is rejected, unless it was
 	 * called before that callback began.
 	 */

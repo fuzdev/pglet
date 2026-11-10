@@ -48,7 +48,7 @@ export interface ReleaseWorld {
 	stderr: Array<string>;
 }
 
-/** Answers each call, given the world so a fake can act on the checkout, as `deno task test:npm` builds `pkg-npm`. */
+/** Answers each call, given the world so a fake can act on the checkout, as `npm run test:npm` builds `pkg-npm`. */
 export type ReleaseScript = (
 	call: ReleaseCall,
 	world: ReleaseWorld
@@ -124,9 +124,7 @@ export const happy_release_script: ReleaseScript = async (call, world) => {
 					stderr: 'npm notice Tarball Contents\n'
 				};
 			}
-			return undefined;
-		case 'deno':
-			if (line === 'deno task test:npm') {
+			if (line === 'npm run test:npm') {
 				// the gate builds pkg-npm, stamped with the checkout's version
 				await world.checkout.mkdir('crates/pglet_wasm/pkg-npm', { recursive: true });
 				await world.checkout.write(

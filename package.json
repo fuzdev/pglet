@@ -57,6 +57,8 @@
     "wasm:build": "wasm-pack build crates/pglet_wasm --target web",
     "wasm:build:opfs": "wasm-pack build crates/pglet_wasm --target web --out-dir pkg-opfs --features opfs",
     "build:npm": "rm -rf crates/pglet_wasm/pkg-npm && wasm-pack build crates/pglet_wasm --target web --scope fuzdev --out-dir pkg-npm && gro task src/tasks/patch_npm_package.task.ts",
+    "test:npm": "npm run build:npm && tsc -p tests-web/npm/tsconfig.json && vitest run --config tests-web/vitest.config.ts tests-web/npm/ && node --test scripts/test_npm_node.mjs scripts/test_npm_pack.mjs",
+    "test:npm:node": "npm run build:npm && node --test scripts/test_npm_node.mjs scripts/test_npm_pack.mjs",
     "publish:npm": "gro task src/tasks/publish_npm.task.ts",
     "lint:edges": "gro task src/tasks/edges_lint.task.ts",
     "matrix:artifacts": "cargo build --release -p pglet_server && npm run build:npm && npm run --silent matrix:env",

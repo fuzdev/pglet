@@ -622,7 +622,7 @@ deno task wasm:serve | wasm:test  # examples/browser's static server on :8001 an
 npm run build:npm                 # assemble @fuzdev/pglet-wasm (pkg-npm/ emptied → wasm-pack → src/lib/npm_package.ts)
 #                                   the npm name is kebab (`-wasm`, like `@fuzdev/tsv-wasm`); the crate and its generated
 #                                   `pglet_wasm.js` / `pglet_wasm_bg.wasm` stay snake_case — npm_package.ts sets the name
-deno task test:npm                # build:npm + the adapter suite (coercion contract, shape, DX) + a Node smoke run
+npm run test:npm                  # build:npm + the adapter suite (coercion contract, shape, DX; typechecked, then vitest) + a Node smoke run
 #                                   (refusing a Node below the package's `engines` floor) + the packed tarball
 #                                   installed offline and imported by bare specifier (scripts/test_npm_pack.mjs);
 #                                   the registry identity fields live in src/lib/npm_metadata.ts;

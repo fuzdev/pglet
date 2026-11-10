@@ -11,6 +11,9 @@ released version under a fresh `## Unreleased` declaring a patch.
 ## Unreleased
 <!-- bump: patch -->
 
+- the package no longer claims Deno support: the README and the `db.js` and `index.d.ts`
+  comments name Node and Bun as the runtimes the Node entry serves
+
 ## 0.1.2
 
 - fix: on Node, Deno and Bun, a `transaction()` called while another one's callback runs

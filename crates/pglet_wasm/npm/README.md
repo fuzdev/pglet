@@ -239,13 +239,12 @@ What still differs:
   deadlocked transaction from a slow healthy one holding a fire-and-forget write), so these are the
   measured symptoms, and the first one is the one to know:
   - `main()` called at the bottom of a module, no top-level `await`, no live handle: the process
-    **exits 0 with no output at all**, on node, deno and bun. It does not hang — it stops mid-way,
+    **exits 0 with no output at all**, on node and bun. It does not hang — it stops mid-way,
     every statement after the deadlock goes unrun, and the shell reads success.
-  - a top-level `await`: node warns *"Detected unsettled top-level await"* and exits 13; deno errors
-    *"Top-level await promise never resolved"* and exits 1; bun hangs silently.
+  - a top-level `await`: node warns *"Detected unsettled top-level await"* and exits 13; bun hangs
+    silently.
   - a live handle open (a server, a poller): hangs with no output (measured on node).
-  - under a test runner: `deno test` fails in ~10 ms (*"Promise resolution is still pending but the
-    event loop has already resolved"*); `node --test` cancels at the test timeout.
+  - under a test runner: `node --test` cancels at the test timeout.
 - **Deadlocks no refusal can see** — the same symptoms follow two more shapes:
   - a callback that awaits work which runs `db.transaction()` on the same instance from a context
     set up outside it — a job queue, a shared in-flight promise, a listener registered earlier, a
@@ -267,7 +266,7 @@ What still differs:
   callback (through awaits, timers and helpers the callback calls) is refused loudly instead, since
   it would wait for the transaction it is part of and never run: use the `tx` handle for that work
   (`tx.query('SAVEPOINT …')` for a nested level), or a separate instance forked beforehand. Telling
-  the two apart takes `AsyncLocalStorage`, which the Node entry — the one Node, Deno and Bun
+  the two apart takes `AsyncLocalStorage`, which the Node entry — the one Node and Bun
   resolve — provides. **In a browser** there is none, so there a `transaction()` made while any
   callback runs is refused, nested or not, unless it was called before that callback began (in
   practice, the same synchronous turn); pglet refuses rather than guess, since a nested call that

@@ -64,7 +64,7 @@ const parse_command_tag = (tag) => {
 	return {command: m[1], rowCount: null, oid: null};
 };
 
-// A rejected promise reaches the host — Node's `unhandledRejection`, the browser's and Deno's
+// A rejected promise reaches the host — Node's `unhandledRejection`, the browser's
 // `unhandledrejection` event — only while NOTHING has handled it (the spec's
 // HostPromiseRejectionTracker). `enqueue` below must attach a handler to every entry to keep the
 // lane's tail settled, and that attachment is itself what silences the caller's copy: the promise
@@ -129,7 +129,7 @@ const as_error = (e) => (e instanceof Error ? e : new Error(`@fuzdev/pglet-wasm:
  * Wrap a `PgletBtree` instance as an ergonomic `PgletDb`.
  *
  * `shared_store` is how the entry hands this file an async-context store without this file
- * importing one: the Node entry (which Node, Deno and Bun all resolve, through the `node` export
+ * importing one: the Node entry (which Node and Bun both resolve, through the `node` export
  * condition) passes its one `AsyncLocalStorage` from `node:async_hooks`, and the browser entry
  * passes nothing, since a browser has no such store.
  *
@@ -470,20 +470,18 @@ export const wrap_pglet_db = (btree, options = {}, shared_store) => {
 	// What that deadlock LOOKS like, since the docs owe a consumer the symptom. No runtime warning
 	// is armed for it — a timer cannot tell a deadlocked transaction from a slow healthy one
 	// holding a fire-and-forget write, which is the recommended shape — so the measured shapes are
-	// the whole lookup. Measured on node 24 / deno 2.8 / bun 1.3, and the one that matters most is
+	// the whole lookup. Measured on node 24 / bun 1.3, and the one that matters most is
 	// the quiet one, which is also the ordinary Node entry idiom:
 	//
 	//   * `main()` called at the bottom of the module, no top-level `await`, no live handle: the
-	//     process **exits 0 with no output whatsoever** — measured on node, deno and bun. It does
+	//     process **exits 0 with no output whatsoever** — measured on node and bun. It does
 	//     not hang; the program stops mid-way, every statement after the deadlock goes unrun, and
 	//     the shell reads success. A consumer in this shape has no symptom to match against at all.
 	//   * a top-level `await`: node warns "Detected unsettled top-level await" naming the
-	//     `db.transaction(` line and exits 13; deno errors "Top-level await promise never resolved"
-	//     and exits 1; **bun hangs** with no output, with no live handle anywhere in the program.
+	//     `db.transaction(` line and exits 13; **bun hangs** with no output, with no live handle
+	//     anywhere in the program.
 	//   * a live handle open (a server, a poller): hangs with no output (measured on node).
-	//   * under a test runner: `deno test` fails it in ~10 ms with "Promise resolution is still
-	//     pending but the event loop has already resolved"; `node --test` cancels it at the test
-	//     timeout.
+	//   * under a test runner: `node --test` cancels it at the test timeout.
 	//
 	// Nothing in any of those names pglet as the cause, and the quiet ones name nothing at all —
 	// this comment and `PgletDb.query`'s doc are what a consumer has to find. Do NOT re-close this
@@ -522,7 +520,7 @@ export const wrap_pglet_db = (btree, options = {}, shared_store) => {
 	// ordinary server behaviour and should just wait its turn, as on PGlite and a `pg` pool.
 	//
 	// Where the entry handed this instance an async-context store (`AsyncLocalStorage`; the Node
-	// entry, which Node, Deno and Bun resolve) the two are told apart: the callback runs inside the
+	// entry, which Node and Bun resolve) the two are told apart: the callback runs inside the
 	// store, a nested call reads it and is refused loudly, and every other call queues behind the
 	// running transaction. A queued one reads the depth when it starts, after the one ahead of it
 	// has ended, so it opens its own block rather than a savepoint inside somebody else's.

@@ -6,11 +6,31 @@
  * nesting under an open block, single-flight, and an outside `query()` queueing behind an open
  * transaction rather than joining it), close safety, and the headline **fork-per-test** pattern.
  */
-import {assert, assertEquals, assertInstanceOf, assertRejects} from '@std/assert';
-// deno-lint-ignore no-import-prefix
+import {assert, test} from 'vitest';
+import {assert_equal, assert_rejects} from '../lib/assert.ts';
 import {create_pglet_db} from '../../crates/pglet_wasm/pkg-npm/index.js';
 
-Deno.test('params round-trip: bigint in AND out, Date → timestamp, arrays recurse', async () => {
+/**
+ * Claims each unhandled rejection `claim` returns `true` for until the returned function is
+ * called, as a web `unhandledrejection` listener's `preventDefault` does: the process's own
+ * listeners (the test runner's) are set aside meanwhile and get every rejection it doesn't claim.
+ */
+const claim_unhandled_rejections = (claim: (reason: unknown) => boolean): (() => void) => {
+	const runner = process.listeners('unhandledRejection');
+	const on_rejection = (reason: unknown, promise: Promise<unknown>): void => {
+		if (claim(reason)) return;
+		if (runner.length === 0) throw reason;
+		for (const listener of runner) listener(reason, promise);
+	};
+	process.removeAllListeners('unhandledRejection');
+	process.on('unhandledRejection', on_rejection);
+	return () => {
+		process.off('unhandledRejection', on_rejection);
+		for (const listener of runner) process.on('unhandledRejection', listener);
+	};
+};
+
+test('params round-trip: bigint in AND out, Date → timestamp, arrays recurse', async () => {
 	const db = create_pglet_db();
 	await db.query('CREATE TABLE t (big BIGINT, ts TIMESTAMP, tags BIGINT[])');
 	const big = 9007199254740993n; // > Number.MAX_SAFE_INTEGER
@@ -18,21 +38,21 @@ Deno.test('params round-trip: bigint in AND out, Date → timestamp, arrays recu
 	await db.query('INSERT INTO t VALUES ($1, $2, $3)', [big, when, [1n, 2n]]);
 
 	const {rows} = await db.query('SELECT big, ts, tags FROM t');
-	assertEquals(rows[0].big, big); // bigint out
-	assertInstanceOf(rows[0].ts, Date);
-	assertEquals((rows[0].ts as Date).toISOString(), when.toISOString());
-	assertEquals(rows[0].tags, [1n, 2n]);
+	assert_equal(rows[0].big, big); // bigint out
+	assert.instanceOf(rows[0].ts, Date);
+	assert_equal((rows[0].ts as Date).toISOString(), when.toISOString());
+	assert_equal(rows[0].tags, [1n, 2n]);
 
 	// the actual round-trip a consumer does: read a bigint/Date, pass it straight back as a param
 	const back = await db.query('SELECT 1 FROM t WHERE big = $1 AND ts = $2', [rows[0].big, rows[0].ts]);
-	assertEquals(back.rowCount, 1);
+	assert_equal(back.rowCount, 1);
 	await db.close();
 });
 
 // A `Date` in the engine's first century goes in with its four-digit year and comes back the
 // same instant: the text is what the binder sends, the `Date`s read back are what the coercion
 // answers (`Date.UTC` reads a year of 0 through 99 as 1900 through 1999).
-Deno.test('params round-trip: a Date in years 0001–0099 reads back as the instant it was bound as', async () => {
+test('params round-trip: a Date in years 0001–0099 reads back as the instant it was bound as', async () => {
 	const db = create_pglet_db();
 	await db.query('CREATE TABLE early (id INT, tsz TIMESTAMPTZ, ts TIMESTAMP, list TIMESTAMPTZ[])');
 	const whens = ['0001-01-01T00:00:00.000Z', '0050-06-15T12:30:45.123Z', '0099-12-31T23:59:59.999Z', '0100-01-01T00:00:00.000Z'];
@@ -40,29 +60,29 @@ Deno.test('params round-trip: a Date in years 0001–0099 reads back as the inst
 		const when = new Date(iso);
 		await db.query('INSERT INTO early VALUES ($1, $2, $3, $4)', [id, when, when, [when, null]]);
 		const {rows} = await db.query('SELECT tsz, ts, list, tsz::text AS text FROM early WHERE id = $1', [id]);
-		assertEquals(rows[0].text, `${iso.replace('T', ' ').replace(/\.000Z$|Z$/, '')}+00`, iso);
-		assertEquals((rows[0].tsz as Date).getTime(), when.getTime(), iso);
-		assertEquals((rows[0].ts as Date).getTime(), when.getTime(), iso);
-		assertEquals((rows[0].list as (Date | null)[]).map((d) => d && d.getTime()), [when.getTime(), null], iso);
+		assert_equal(rows[0].text, `${iso.replace('T', ' ').replace(/\.000Z$|Z$/, '')}+00`, iso);
+		assert_equal((rows[0].tsz as Date).getTime(), when.getTime(), iso);
+		assert_equal((rows[0].ts as Date).getTime(), when.getTime(), iso);
+		assert_equal((rows[0].list as (Date | null)[]).map((d) => d && d.getTime()), [when.getTime(), null], iso);
 		// read it, pass it straight back
 		const back = await db.query('SELECT 1 FROM early WHERE tsz = $1 AND ts = $2 AND list = $3', [rows[0].tsz, rows[0].ts, rows[0].list]);
-		assertEquals(back.rowCount, 1, iso);
+		assert_equal(back.rowCount, 1, iso);
 	}
 	await db.close();
 });
 
-Deno.test('params round-trip: a ±Infinity read from a date or timestamp binds back', async () => {
+test('params round-trip: a ±Infinity read from a date or timestamp binds back', async () => {
 	const db = create_pglet_db();
 	await db.query('CREATE TABLE ti (ts TIMESTAMPTZ, d DATE)');
 	await db.query('INSERT INTO ti VALUES ($1, $2)', [Infinity, -Infinity]);
 	const {rows} = await db.query('SELECT ts FROM ti');
-	assertEquals(rows[0].ts, Infinity);
+	assert_equal(rows[0].ts, Infinity);
 	const back = await db.query('SELECT 1 FROM ti WHERE ts = $1 AND d = $2', [rows[0].ts, -Infinity]);
-	assertEquals(back.rowCount, 1);
+	assert_equal(back.rowCount, 1);
 	await db.close();
 });
 
-Deno.test('params: a non-finite number binds as each target type reads it', async () => {
+test('params: a non-finite number binds as each target type reads it', async () => {
 	// A date or timestamp target reads `Infinity` as its infinity (the readers take the word
 	// in any case); a float8 target keeps the number; a text target stores the spelling
 	// node-postgres sends (`String(Infinity)`); and a jsonb target serializes the whole value
@@ -77,16 +97,16 @@ Deno.test('params: a non-finite number binds as each target type reads it', asyn
 		[1, Infinity, {a: -Infinity}],
 	]);
 	const {rows} = await db.query('SELECT d::text AS d, ds::text AS ds, f, t, j::text AS j FROM nf');
-	assertEquals(rows[0], {d: '-infinity', ds: '{infinity,NULL}', f: Infinity, t: 'Infinity', j: '[1, null, {"a": null}]'});
+	assert_equal(rows[0], {d: '-infinity', ds: '{infinity,NULL}', f: Infinity, t: 'Infinity', j: '[1, null, {"a": null}]'});
 	// A bare select-list parameter is `text`, as PostgreSQL resolves it, so it reads the
 	// spelling too: `pg` against PostgreSQL returns the string `'-Infinity'` here.
 	const bare = await db.query('SELECT $1 AS x', [-Infinity]);
-	assertEquals(bare.rows[0].x, '-Infinity');
+	assert_equal(bare.rows[0].x, '-Infinity');
 	// A parameter the statement types but this engine reports no type for is decoded by
 	// its JS runtime type, so a non-finite number stays a float8 — the adapter does not
 	// turn it into text first.
 	const untyped = await db.query('SELECT $1 + 1.5::float8 AS x', [-Infinity]);
-	assertEquals(untyped.rows[0].x, -Infinity);
+	assert_equal(untyped.rows[0].x, -Infinity);
 	await db.close();
 });
 
@@ -96,55 +116,55 @@ Deno.test('params: a non-finite number binds as each target type reads it', asyn
 // pglet error unchanged. The wasm host and the native server derive them from **one**
 // builder (`Error::wire_fields`), so this suite and the server's fixture harness are
 // asserting the same derivation from two sides.
-Deno.test('a database error exposes pg\'s structured field names', async () => {
+test('a database error exposes pg\'s structured field names', async () => {
 	const db = create_pglet_db();
 	await db.query('CREATE TABLE t_err (id INT PRIMARY KEY, v TEXT)');
 	await db.query("INSERT INTO t_err VALUES (1, 'x')");
 	const err = await db.query("INSERT INTO t_err VALUES (1, 'y')").then(() => null, (e) => e);
 	assert(err instanceof Error);
 	const e = err as Error & Record<string, string | undefined>;
-	assertEquals(e.code, '23505');
-	assertEquals(e.severity, 'ERROR');
-	assertEquals(e.message, 'duplicate key value violates unique constraint "t_err_pkey"');
-	assertEquals(e.detail, 'Key (id)=(1) already exists.');
-	assertEquals(e.schema, 'public');
-	assertEquals(e.table, 't_err');
-	assertEquals(e.constraint, 't_err_pkey');
+	assert_equal(e.code, '23505');
+	assert_equal(e.severity, 'ERROR');
+	assert_equal(e.message, 'duplicate key value violates unique constraint "t_err_pkey"');
+	assert_equal(e.detail, 'Key (id)=(1) already exists.');
+	assert_equal(e.schema, 'public');
+	assert_equal(e.table, 't_err');
+	assert_equal(e.constraint, 't_err_pkey');
 	// A field this error does not carry is absent, not empty — omission is the
 	// contract for anything pglet cannot fill truthfully.
-	assertEquals(e.column, undefined);
-	assertEquals(e.hint, undefined);
-	assertEquals(e.position, undefined);
+	assert_equal(e.column, undefined);
+	assert_equal(e.hint, undefined);
+	assert_equal(e.position, undefined);
 	await db.close();
 });
 
-Deno.test('a not-null violation exposes its column and failing row', async () => {
+test('a not-null violation exposes its column and failing row', async () => {
 	const db = create_pglet_db();
 	await db.query('CREATE TABLE t_nn (id INT NOT NULL, name TEXT)');
 	const err = await db.query("INSERT INTO t_nn (name) VALUES ('a')").then(() => null, (e) => e);
 	assert(err instanceof Error);
 	const e = err as Error & Record<string, string | undefined>;
-	assertEquals(e.code, '23502');
-	assertEquals(e.detail, 'Failing row contains (null, a).');
-	assertEquals(e.table, 't_nn');
-	assertEquals(e.column, 'id');
-	assertEquals(e.constraint, undefined);
+	assert_equal(e.code, '23502');
+	assert_equal(e.detail, 'Failing row contains (null, a).');
+	assert_equal(e.table, 't_nn');
+	assert_equal(e.column, 'id');
+	assert_equal(e.constraint, undefined);
 	await db.close();
 });
 
-Deno.test('a syntax error exposes position as a 1-based codepoint index, as a string', async () => {
+test('a syntax error exposes position as a 1-based codepoint index, as a string', async () => {
 	const db = create_pglet_db();
 	const err = await db.query("SELECT 'ααααα' AS a, FROM t").then(() => null, (e) => e);
 	assert(err instanceof Error);
 	const e = err as Error & Record<string, string | undefined>;
-	assertEquals(e.code, '42601');
+	assert_equal(e.code, '42601');
 	// Five two-byte characters advance the position by five, not ten; `pg` leaves the
 	// value a string, so this one does too.
-	assertEquals(e.position, '22');
+	assert_equal(e.position, '22');
 	await db.close();
 });
 
-Deno.test('an upsert that meets its own row twice is 21000 with 18.6\'s hint, and writes nothing', async () => {
+test('an upsert that meets its own row twice is 21000 with 18.6\'s hint, and writes nothing', async () => {
 	// One `ON CONFLICT DO UPDATE` statement whose rows propose one key twice: the second
 	// proposal meets the row the first wrote, which 18.6 refuses and pglet used to update.
 	const db = create_pglet_db();
@@ -154,29 +174,29 @@ Deno.test('an upsert that meets its own row twice is 21000 with 18.6\'s hint, an
 	const err = await db.query(sql, [1, 'a', 1, 'b']).then(() => null, (e) => e);
 	assert(err instanceof Error);
 	const e = err as Error & Record<string, string | undefined>;
-	assertEquals(e.code, '21000');
-	assertEquals(e.message, 'ON CONFLICT DO UPDATE command cannot affect row a second time');
-	assertEquals(
+	assert_equal(e.code, '21000');
+	assert_equal(e.message, 'ON CONFLICT DO UPDATE command cannot affect row a second time');
+	assert_equal(
 		e.hint,
 		'Ensure that no rows proposed for insertion within the same command have duplicate constrained values.',
 	);
-	assertEquals(e.table, undefined);
-	assertEquals((await db.query('SELECT k, v FROM t_up')).rows, [{k: 1, v: 'seed'}]);
+	assert_equal(e.table, undefined);
+	assert_equal((await db.query('SELECT k, v FROM t_up')).rows, [{k: 1, v: 'seed'}]);
 	// the same statement over two keys upserts
 	await db.query(sql, [1, 'a', 2, 'b']);
-	assertEquals((await db.query('SELECT k, v FROM t_up ORDER BY k')).rows, [{k: 1, v: 'a'}, {k: 2, v: 'b'}]);
+	assert_equal((await db.query('SELECT k, v FROM t_up ORDER BY k')).rows, [{k: 1, v: 'a'}, {k: 2, v: 'b'}]);
 	await db.close();
 });
 
-Deno.test('a failed query does not wedge the db; error carries .code', async () => {
+test('a failed query does not wedge the db; error carries .code', async () => {
 	const db = create_pglet_db();
 	await db.query('CREATE TABLE t (id INT PRIMARY KEY)');
 	await db.query('INSERT INTO t VALUES (1)');
 	const err = await db.query('INSERT INTO t VALUES (1)').then(() => null, (e) => e);
 	assert(err instanceof Error);
-	assertEquals((err as {code?: string}).code, '23505');
+	assert_equal((err as {code?: string}).code, '23505');
 	// still fully usable after the error
-	assertEquals((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 1);
+	assert_equal((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 1);
 	await db.close();
 });
 
@@ -185,7 +205,7 @@ Deno.test('a failed query does not wedge the db; error carries .code', async () 
 // would leave it rendering as before. A value it cannot honor is refused, through `set_config` too, and a
 // spelling of the value it already has is accepted — the statement a harness sends to pin a
 // session.
-Deno.test('a SET pglet cannot honor is refused (0A000); the value it already has is accepted', async () => {
+test('a SET pglet cannot honor is refused (0A000); the value it already has is accepted', async () => {
 	const db = create_pglet_db();
 	const code = (sql: string) => db.query(sql).then(() => null, (e) => (e as {code?: string}).code);
 	for (
@@ -200,7 +220,7 @@ Deno.test('a SET pglet cannot honor is refused (0A000); the value it already has
 			`SET standard_conforming_strings = off`,
 		]
 	) {
-		assertEquals(await code(sql), '0A000', sql);
+		assert_equal(await code(sql), '0A000', sql);
 	}
 	for (
 		const sql of [
@@ -215,11 +235,11 @@ Deno.test('a SET pglet cannot honor is refused (0A000); the value it already has
 			`RESET ALL`,
 		]
 	) {
-		assertEquals(await code(sql), null, sql);
+		assert_equal(await code(sql), null, sql);
 	}
-	assertEquals((await db.query(`SELECT set_config('timezone', 'utc', false) AS v`)).rows, [{v: 'UTC'}]);
-	assertEquals((await db.query('SHOW TimeZone')).rows, [{TimeZone: 'UTC'}]);
-	assertEquals((await db.query('SHOW DateStyle')).rows, [{DateStyle: 'ISO, MDY'}]);
+	assert_equal((await db.query(`SELECT set_config('timezone', 'utc', false) AS v`)).rows, [{v: 'UTC'}]);
+	assert_equal((await db.query('SHOW TimeZone')).rows, [{TimeZone: 'UTC'}]);
+	assert_equal((await db.query('SHOW DateStyle')).rows, [{DateStyle: 'ISO, MDY'}]);
 	await db.close();
 });
 
@@ -227,7 +247,7 @@ Deno.test('a SET pglet cannot honor is refused (0A000); the value it already has
 // module's allocator (`RuntimeError: memory access out of bounds`, measured with a config
 // object) — so the assertion that matters most is the error's CLASS, and after it the module
 // answers on every instance. A config object whose `text` is not a string is one of them.
-Deno.test('a non-string sql is a TypeError, and the module stays usable', async () => {
+test('a non-string sql is a TypeError, and the module stays usable', async () => {
 	const db = create_pglet_db();
 	for (const [bad, why] of [
 		[{sql: 'SELECT 1'}, 'takes the SQL text as a string'],
@@ -236,12 +256,12 @@ Deno.test('a non-string sql is a TypeError, and the module stays usable', async 
 		[null, 'null or undefined query'],
 	] as const) {
 		const err = await db.query(bad as unknown as string).then(() => null, (e) => e);
-		assertInstanceOf(err, TypeError);
+		assert.instanceOf(err, TypeError);
 		assert((err as Error).message.includes(why), (err as Error).message);
 	}
-	assertEquals((await db.query('SELECT 1 AS x')).rows, [{x: 1}]);
+	assert_equal((await db.query('SELECT 1 AS x')).rows, [{x: 1}]);
 	const fresh = create_pglet_db();
-	assertEquals((await fresh.query('SELECT 2 AS x')).rows, [{x: 2}]);
+	assert_equal((await fresh.query('SELECT 2 AS x')).rows, [{x: 2}]);
 	await fresh.close();
 	await db.close();
 });
@@ -251,25 +271,25 @@ Deno.test('a non-string sql is a TypeError, and the module stays usable', async 
 // `normalizeQueryConfig`), `rowMode` is honored, `name` is ignored, and `types` is honored over
 // each cell's text form (the contract itself is `types_test.ts`); without `types` the values take
 // the coercion contract (an int8 is a bigint, a timestamp a Date).
-Deno.test('query takes a pg QueryConfig: text, values, rowMode, types; name ignored', async () => {
+test('query takes a pg QueryConfig: text, values, rowMode, types; name ignored', async () => {
 	const db = create_pglet_db();
 	await db.query('CREATE TABLE t (id BIGINT, ts TIMESTAMP, name TEXT)');
 	await db.query({text: 'INSERT INTO t VALUES ($1, $2, $3)', values: [1n, new Date('2024-06-15T12:00:00Z'), 'a']});
 	await db.query({text: 'INSERT INTO t VALUES ($1, $2, $3)', values: [9n, null, 'ignored']}, [2n, null, 'b']);
 	const raw = {getTypeParser: () => (v: string) => `RAW(${v})`};
 	const obj = await db.query({text: 'SELECT id, ts, name FROM t WHERE id = $1', name: 'q1', types: raw}, [1n]);
-	assertEquals(obj.rows, [{id: 'RAW(1)', ts: 'RAW(2024-06-15 12:00:00)', name: 'RAW(a)'}]);
+	assert_equal(obj.rows, [{id: 'RAW(1)', ts: 'RAW(2024-06-15 12:00:00)', name: 'RAW(a)'}]);
 	const plain = await db.query({text: 'SELECT id, ts FROM t WHERE id = $1', name: 'q2'}, [1n]);
-	assertEquals(plain.rows[0].id, 1n);
-	assertInstanceOf(plain.rows[0].ts, Date);
+	assert_equal(plain.rows[0].id, 1n);
+	assert.instanceOf(plain.rows[0].ts, Date);
 	const arr = await db.query<unknown[]>({text: 'SELECT id, name FROM t ORDER BY id', rowMode: 'array'});
-	assertEquals(arr.rows, [[1n, 'a'], [2n, 'b']]);
+	assert_equal(arr.rows, [[1n, 'a'], [2n, 'b']]);
 	// an empty array is truthy, so it replaces the config's values, as in `pg`
 	const empty = await db.query({text: 'SELECT 1 AS x', values: ['unused']}, []);
-	assertEquals(empty.rows, [{x: 1}]);
+	assert_equal(empty.rows, [{x: 1}]);
 	// the transaction handle takes the same shape
 	const inside = await db.transaction((tx) => tx.query({text: 'SELECT $1::int AS x'}, [7]));
-	assertEquals(inside.rows, [{x: 7}]);
+	assert_equal(inside.rows, [{x: 7}]);
 	await db.close();
 });
 
@@ -279,7 +299,7 @@ Deno.test('query takes a pg QueryConfig: text, values, rowMode, types; name igno
 // that is not an array from either place (a string's characters bound one by one, measured),
 // and a `Submittable` (pg runs it itself and answers through events; resolving it here left a
 // cursor consumer waiting on events that never came). A refusal leaves the db usable.
-Deno.test('query refuses a callback, a non-array values and a Submittable, as TypeErrors that say why', async () => {
+test('query refuses a callback, a non-array values and a Submittable, as TypeErrors that say why', async () => {
 	const db = create_pglet_db();
 	const cb = (_err: unknown, _res: unknown) => {};
 	const shapes: [string, () => Promise<unknown>, string][] = [
@@ -295,12 +315,12 @@ Deno.test('query refuses a callback, a non-array values and a Submittable, as Ty
 	];
 	for (const [label, call, why] of shapes) {
 		const err = await call().then(() => null, (e) => e);
-		assertInstanceOf(err, TypeError, label);
+		assert.instanceOf(err, TypeError, label);
 		assert((err as Error).message.includes(why), `${label}: ${(err as Error).message}`);
 	}
 	// a null values is no values, as in pg
-	assertEquals((await db.query({text: 'SELECT 1 AS a', values: null as unknown as unknown[]})).rows, [{a: 1}]);
-	assertEquals((await db.query('SELECT 2 AS a')).rows, [{a: 2}]);
+	assert_equal((await db.query({text: 'SELECT 1 AS a', values: null as unknown as unknown[]})).rows, [{a: 1}]);
+	assert_equal((await db.query('SELECT 2 AS a')).rows, [{a: 2}]);
 	await db.close();
 });
 
@@ -369,11 +389,11 @@ const SHAPES: Array<[label: string, sql: string, expected: PgShape]> = [
 	['rollback', `ROLLBACK`, {command: 'ROLLBACK', rowCount: null, oid: null, rows: 0}],
 ];
 
-Deno.test('the result is pg-shaped field for field: command, rowCount, oid — measured vs pg 8.16.3 / PG 18.6', async () => {
+test('the result is pg-shaped field for field: command, rowCount, oid — measured vs pg 8.16.3 / PG 18.6', async () => {
 	const db = create_pglet_db();
 	for (const [label, sql, expected] of SHAPES) {
 		const r = await db.query(sql);
-		assertEquals(
+		assert_equal(
 			{command: r.command, rowCount: r.rowCount, oid: r.oid, rows: r.rows.length},
 			expected,
 			`${label}: ${sql}`,
@@ -382,7 +402,7 @@ Deno.test('the result is pg-shaped field for field: command, rowCount, oid — m
 	await db.close();
 });
 
-Deno.test('null and 0 are distinguishable, and `command` never carries the tag\'s tail', async () => {
+test('null and 0 are distinguishable, and `command` never carries the tag\'s tail', async () => {
 	// The two discriminations the table above would still pass if `assertEquals` were loosened,
 	// stated on their own so a failure names the rule rather than a row.
 	const db = create_pglet_db();
@@ -402,13 +422,13 @@ Deno.test('null and 0 are distinguishable, and `command` never carries the tag\'
 		['DROP TABLE t4', 'DROP'],
 	] as const) {
 		const {command} = await db.query(sql);
-		assertEquals(command, word, sql);
+		assert_equal(command, word, sql);
 		assert(!command!.includes(' '), `command must be one word: ${JSON.stringify(command)}`);
 	}
 	await db.close();
 });
 
-Deno.test('the same shape on the two alternate call paths: bound $N params, and rowMode array', async () => {
+test('the same shape on the two alternate call paths: bound $N params, and rowMode array', async () => {
 	// `run_query` picks `queryParams` over `query` when params are bound, and pivots `rows` for
 	// `rowMode: 'array'` — two branches the table above never takes, and a shape assembled per
 	// branch would diverge on exactly the fields that branch does not touch. Measured on
@@ -416,44 +436,44 @@ Deno.test('the same shape on the two alternate call paths: bound $N params, and 
 	const db = create_pglet_db();
 	await db.query('CREATE TABLE t (id INT, v TEXT)');
 	const ins = await db.query('INSERT INTO t VALUES ($1, $2), ($3, $4)', [1, 'a', 2, 'b']);
-	assertEquals({command: ins.command, rowCount: ins.rowCount, oid: ins.oid, rows: ins.rows.length}, {
+	assert_equal({command: ins.command, rowCount: ins.rowCount, oid: ins.oid, rows: ins.rows.length}, {
 		command: 'INSERT',
 		rowCount: 2,
 		oid: 0,
 		rows: 0,
 	});
 	const upd = await db.query('UPDATE t SET v = $1 WHERE id = $2', ['z', 1]);
-	assertEquals({command: upd.command, rowCount: upd.rowCount, oid: upd.oid}, {command: 'UPDATE', rowCount: 1, oid: null});
+	assert_equal({command: upd.command, rowCount: upd.rowCount, oid: upd.oid}, {command: 'UPDATE', rowCount: 1, oid: null});
 	const obj = await db.query('SELECT id, v FROM t ORDER BY id');
 	const arr = await db.query<unknown[]>('SELECT id, v FROM t ORDER BY id', [], {rowMode: 'array'});
-	assertEquals(
+	assert_equal(
 		{command: arr.command, rowCount: arr.rowCount, oid: arr.oid},
 		{command: obj.command, rowCount: obj.rowCount, oid: obj.oid},
 	);
-	assertEquals(arr.rowCount, 2); // and it is the right number, not merely the same one
+	assert_equal(arr.rowCount, 2); // and it is the right number, not merely the same one
 	await db.close();
 });
 
-Deno.test('a repeated column name: array rows are positional, object rows keep the last value, as pg', async () => {
+test('a repeated column name: array rows are positional, object rows keep the last value, as pg', async () => {
 	// each expected row is what `pg` 8.16.3 answers over PostgreSQL 18.6 for the same query, but
 	// for an int8 cell, which this package hands back as a `bigint` where `pg` hands a string
 	const db = create_pglet_db();
-	assertEquals((await db.query<unknown[]>('SELECT 1 AS x, 2 AS x, 3 AS y', [], {rowMode: 'array'})).rows, [[1, 2, 3]]);
-	assertEquals((await db.query<unknown[]>({text: 'SELECT 1 AS x, 2 AS x, 3 AS y', rowMode: 'array'})).rows, [[1, 2, 3]]);
-	assertEquals((await db.query('SELECT 1 AS x, NULL::int AS x, 2 AS y, 3 AS y')).rows, [{x: null, y: 3}]);
-	assertEquals((await db.query<unknown[]>('SELECT 1 AS x, NULL::int AS x, 2 AS y, 3 AS y', [], {rowMode: 'array'})).rows, [
+	assert_equal((await db.query<unknown[]>('SELECT 1 AS x, 2 AS x, 3 AS y', [], {rowMode: 'array'})).rows, [[1, 2, 3]]);
+	assert_equal((await db.query<unknown[]>({text: 'SELECT 1 AS x, 2 AS x, 3 AS y', rowMode: 'array'})).rows, [[1, 2, 3]]);
+	assert_equal((await db.query('SELECT 1 AS x, NULL::int AS x, 2 AS y, 3 AS y')).rows, [{x: null, y: 3}]);
+	assert_equal((await db.query<unknown[]>('SELECT 1 AS x, NULL::int AS x, 2 AS y, 3 AS y', [], {rowMode: 'array'})).rows, [
 		[1, null, 2, 3],
 	]);
 	// each cell is coerced by its own column's type, not by another column of the same name
 	const ts = "'2024-06-15 12:30:45+00'::timestamptz";
-	assertEquals((await db.query(`SELECT ${ts} AS x, 'ab' AS x`)).rows, [{x: 'ab'}]);
+	assert_equal((await db.query(`SELECT ${ts} AS x, 'ab' AS x`)).rows, [{x: 'ab'}]);
 	const [[first, second]] = (await db.query<unknown[]>(`SELECT 'ab' AS x, ${ts} AS x`, [], {rowMode: 'array'})).rows;
-	assertEquals(first, 'ab');
-	assertEquals(second, (await db.query(`SELECT ${ts} AS x`)).rows[0].x);
+	assert_equal(first, 'ab');
+	assert_equal(second, (await db.query(`SELECT ${ts} AS x`)).rows[0].x);
 	await db.close();
 });
 
-Deno.test('fields: one descriptor per output column, [] when there are none, three keys and no more', async () => {
+test('fields: one descriptor per output column, [] when there are none, three keys and no more', async () => {
 	// `fields` had no assertion anywhere in the npm suites before this test — not in the pg-shape
 	// table above (a hand-built projection of the four tag-derived answers), not in the coercion
 	// suite (which reads values), not in the Node smoke run. It is load-bearing twice over:
@@ -467,10 +487,10 @@ Deno.test('fields: one descriptor per output column, [] when there are none, thr
 	// stays a claim with a list attached rather than an impression.
 	const db = create_pglet_db();
 	const ddl = await db.query('CREATE TABLE t (id INT, name TEXT, big BIGINT, ts TIMESTAMPTZ, tags TEXT[])');
-	assertEquals(ddl.fields, []);
-	assertEquals((await db.query(`INSERT INTO t VALUES (1,'a',2,'2024-01-01T00:00:00Z',ARRAY['x'])`)).fields, []);
+	assert_equal(ddl.fields, []);
+	assert_equal((await db.query(`INSERT INTO t VALUES (1,'a',2,'2024-01-01T00:00:00Z',ARRAY['x'])`)).fields, []);
 	const sel = await db.query('SELECT id, name, big, ts, tags FROM t');
-	assertEquals(sel.fields.map((f) => [f.name, f.dataTypeID]), [
+	assert_equal(sel.fields.map((f) => [f.name, f.dataTypeID]), [
 		['id', 23],
 		['name', 25],
 		['big', 20],
@@ -480,10 +500,10 @@ Deno.test('fields: one descriptor per output column, [] when there are none, thr
 	// `pg`'s `FieldDef` keys, in its order; the table OID is pglet's own
 	const table_id = sel.fields[0].tableID;
 	assert(table_id > 0);
-	assertEquals(Object.keys(sel.fields[0]), [
+	assert_equal(Object.keys(sel.fields[0]), [
 		'name', 'tableID', 'columnID', 'dataTypeID', 'dataTypeSize', 'dataTypeModifier', 'format',
 	]);
-	assertEquals(sel.fields[0], {
+	assert_equal(sel.fields[0], {
 		name: 'id', tableID: table_id, columnID: 1, dataTypeID: 23, dataTypeSize: 4, dataTypeModifier: -1,
 		format: 'text',
 	});
@@ -492,7 +512,7 @@ Deno.test('fields: one descriptor per output column, [] when there are none, thr
 	await db.query('CREATE TABLE fd (a int4, b varchar(7), c numeric(6,2))');
 	const fd = await db.query('SELECT a, b, c, a + 1 AS e, now() AS h FROM fd');
 	const fd_id = fd.fields[0].tableID;
-	assertEquals(
+	assert_equal(
 		fd.fields.map((f) => [f.name, f.tableID, f.columnID, f.dataTypeID, f.dataTypeSize, f.dataTypeModifier, f.format]),
 		[
 			['a', fd_id, 1, 23, 4, -1, 'text'],
@@ -503,35 +523,35 @@ Deno.test('fields: one descriptor per output column, [] when there are none, thr
 		],
 	);
 	// with `types` the descriptors are the same objects' shape
-	assertEquals((await db.query({text: 'SELECT a FROM fd', types: {getTypeParser: () => String}})).fields, [fd.fields[0]]);
+	assert_equal((await db.query({text: 'SELECT a FROM fd', types: {getTypeParser: () => String}})).fields, [fd.fields[0]]);
 	// an alias renames the descriptor — which is what an ORM keys its row objects by
-	assertEquals((await db.query('SELECT id AS the_id FROM t')).fields.map((f) => f.name), ['the_id']);
+	assert_equal((await db.query('SELECT id AS the_id FROM t')).fields.map((f) => f.name), ['the_id']);
 	// `rowMode: 'array'` pivots the ROWS and leaves `fields` object-shaped: it is the pivot's key,
 	// so a descriptor list that changed shape here would silently reorder or drop row elements
 	const arr = await db.query<unknown[]>('SELECT id, name FROM t', [], {rowMode: 'array'});
-	assertEquals(arr.fields.map((f) => f.name), ['id', 'name']);
-	assertEquals(arr.rows[0], [1, 'a']);
+	assert_equal(arr.fields.map((f) => f.name), ['id', 'name']);
+	assert_equal(arr.rows[0], [1, 'a']);
 	await db.close();
 });
 
-Deno.test('transaction: returns the callback value; rolls back on throw + stays usable', async () => {
+test('transaction: returns the callback value; rolls back on throw + stays usable', async () => {
 	const db = create_pglet_db();
 	await db.query('CREATE TABLE t (id INT)');
 	const got = await db.transaction(async (tx) => {
 		await tx.query('INSERT INTO t VALUES (1)');
 		return 'done';
 	});
-	assertEquals(got, 'done');
-	await assertRejects(() =>
+	assert_equal(got, 'done');
+	await assert_rejects(() =>
 		db.transaction(async (tx) => {
 			await tx.query('INSERT INTO t VALUES (2)');
 			throw new Error('boom');
 		}));
-	assertEquals((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 1); // 2 rolled back
+	assert_equal((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 1); // 2 rolled back
 	await db.close();
 });
 
-Deno.test('a transaction() a throw rolls back leaves each later statement answering the catalog it restored', async () => {
+test('a transaction() a throw rolls back leaves each later statement answering the catalog it restored', async () => {
 	// A rollback that changed no catalog keeps the statements the database holds parsed, and one
 	// that took a catalog change back holds none parsed against it — here an index swap, which a
 	// held plan would probe after the rollback dropped it. The hit itself is seen by the native
@@ -544,27 +564,27 @@ Deno.test('a transaction() a throw rolls back leaves each later statement answer
 	const probe = 'SELECT id FROM t WHERE id = 1';
 	const inside: unknown[] = [];
 	for (const id of [2, 3]) {
-		await assertRejects(() =>
+		await assert_rejects(() =>
 			db.transaction(async (tx) => {
 				await tx.query('INSERT INTO t VALUES ($1)', [id]);
 				inside.push((await tx.query(bound, [id])).rows);
 				throw new Error('boom');
 			}));
-		assertEquals((await db.query(bound, [id])).rows, []);
+		assert_equal((await db.query(bound, [id])).rows, []);
 	}
-	await assertRejects(() =>
+	await assert_rejects(() =>
 		db.transaction(async (tx) => {
 			await tx.query('DROP INDEX t_id');
 			await tx.query('CREATE INDEX t_id2 ON t (id)');
 			inside.push((await tx.query(probe)).rows);
 			throw new Error('boom');
 		}));
-	assertEquals(inside, [[{id: 2}], [{id: 3}], [{id: 1}]]);
-	assertEquals((await db.query(probe)).rows, [{id: 1}]);
+	assert_equal(inside, [[{id: 2}], [{id: 3}], [{id: 1}]]);
+	assert_equal((await db.query(probe)).rows, [{id: 1}]);
 	await db.close();
 });
 
-Deno.test('a failed statement aborts the block: the rest is 25P02 and the COMMIT keeps nothing', async () => {
+test('a failed statement aborts the block: the rest is 25P02 and the COMMIT keeps nothing', async () => {
 	// The headline transaction-abort divergence, on the leg that had it. This package
 	// used to run every statement after the failure normally and answer the `COMMIT` with tag
 	// `COMMIT`, committing `1, 2, 3`; the native server and Postgres 18.6 answer `25P02` and
@@ -577,27 +597,27 @@ Deno.test('a failed statement aborts the block: the rest is 25P02 and the COMMIT
 	await db.query('INSERT INTO t VALUES (2)');
 
 	const dup = await db.query('INSERT INTO t VALUES (1)').then(() => null, (e) => e);
-	assertInstanceOf(dup, Error);
-	assertEquals((dup as Error & {code?: string}).code, '23505');
+	assert.instanceOf(dup, Error);
+	assert_equal((dup as Error & {code?: string}).code, '23505');
 
 	// Everything after it — a read and a write alike — is `25P02` until the block ends.
 	for (const sql of ['SELECT 1', 'INSERT INTO t VALUES (3)']) {
 		const e = await db.query(sql).then(() => null, (err) => err);
-		assertInstanceOf(e, Error, sql);
-		assertEquals((e as Error & {code?: string}).code, '25P02', sql);
+		assert.instanceOf(e, Error, sql);
+		assert_equal((e as Error & {code?: string}).code, '25P02', sql);
 	}
 
 	// The COMMIT is Postgres's implicit rollback: no error, command tag `ROLLBACK`.
-	assertEquals((await db.query('COMMIT')).command, 'ROLLBACK');
-	assertEquals((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 0);
+	assert_equal((await db.query('COMMIT')).command, 'ROLLBACK');
+	assert_equal((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 0);
 	// The adapter's own `in_tx` mirror followed the tag, so the next BEGIN is accepted rather
 	// than a spurious 25001 — the over-correction polarity.
-	assertEquals((await db.query('BEGIN')).command, 'BEGIN');
+	assert_equal((await db.query('BEGIN')).command, 'BEGIN');
 	await db.query('ROLLBACK');
 	await db.close();
 });
 
-Deno.test('a transaction() callback that swallows its own error commits nothing', async () => {
+test('a transaction() callback that swallows its own error commits nothing', async () => {
 	// The shape the README used to warn about the other way round. `transaction(fn)` rolls back
 	// only when `fn` throws, so a callback that catches its own error and returns normally
 	// reaches `run_query('COMMIT')` — which, inside an aborted block, is the implicit rollback.
@@ -616,12 +636,12 @@ Deno.test('a transaction() callback that swallows its own error commits nothing'
 		}
 		return 'swallowed';
 	});
-	assertEquals(got, 'swallowed');
-	assertEquals((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 1);
+	assert_equal(got, 'swallowed');
+	assert_equal((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 1);
 	await db.close();
 });
 
-Deno.test('a comment-prefixed exit ends an aborted block instead of wedging the connection', async () => {
+test('a comment-prefixed exit ends an aborted block instead of wedging the connection', async () => {
 	// The exit classifier reads the lexer, so the comment is stripped before anything
 	// classifies. Under the `starts_with` text match each of these answered `25P02` **and so did
 	// every statement after it, `BEGIN` included**, until a bare exit arrived — a wedged
@@ -633,16 +653,16 @@ Deno.test('a comment-prefixed exit ends an aborted block instead of wedging the 
 		await db.query('INSERT INTO t VALUES (1)');
 		await db.query('SELECT * FROM no_such_table').then(() => null, () => null);
 
-		assertEquals((await db.query(exit)).command, 'ROLLBACK', JSON.stringify(exit));
+		assert_equal((await db.query(exit)).command, 'ROLLBACK', JSON.stringify(exit));
 		// Usable, not wedged: an ordinary statement answers and a fresh block opens.
-		assertEquals((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 0);
-		assertEquals((await db.query('BEGIN')).command, 'BEGIN', JSON.stringify(exit));
+		assert_equal((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 0);
+		assert_equal((await db.query('BEGIN')).command, 'BEGIN', JSON.stringify(exit));
 		await db.query('ROLLBACK');
 		await db.close();
 	}
 });
 
-Deno.test('an outside query() during a transaction outlives its ROLLBACK (the audit-log shape)', async () => {
+test('an outside query() during a transaction outlives its ROLLBACK (the audit-log shape)', async () => {
 	// The lost-write half. `transaction()` holds the connection's one lane; a plain `db.query()`
 	// issued from outside used to run IMMEDIATELY on that same connection, so it silently joined
 	// the open transaction and was reverted with it. This is the `auth/audit_log_rollback` shape
@@ -666,19 +686,19 @@ Deno.test('an outside query() during a transaction outlives its ROLLBACK (the au
 		);
 		throw new Error('boom');
 	}).then(() => null, (e) => e);
-	assertInstanceOf(err, Error);
-	assertEquals(err.message, 'boom');
+	assert.instanceOf(err, Error);
+	assert_equal(err.message, 'boom');
 	await new Promise((r) => setTimeout(r, 20)); // let the queued outside write drain
 
-	assertEquals((await db.query('SELECT count(*)::int AS c FROM audit')).rows[0].c, 1); // survived
-	assertEquals((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 0); // txn reverted
+	assert_equal((await db.query('SELECT count(*)::int AS c FROM audit')).rows[0].c, 1); // survived
+	assert_equal((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 0); // txn reverted
 	// It ran AFTER the transaction ended, not inside it — the ordering is the mechanism, and a
 	// fix that merely made the write survive (e.g. by suppressing the ROLLBACK) would fail here.
-	assertEquals(order, ['tx:start', 'tx:wrote', 'outside:ok']);
+	assert_equal(order, ['tx:start', 'tx:wrote', 'outside:ok']);
 	await db.close();
 });
 
-Deno.test('an outside query() during a COMMITTING transaction still lands after it, in call order', async () => {
+test('an outside query() during a COMMITTING transaction still lands after it, in call order', async () => {
 	// The accept polarity of the guard above: the queue must not reorder or drop anything when
 	// the transaction succeeds either, and two outside writes must keep their relative order.
 	//
@@ -695,15 +715,15 @@ Deno.test('an outside query() during a COMMITTING transaction still lands after 
 		settled.push(db.query('INSERT INTO log VALUES (2)'));
 		// the `await` above and this one both yield the microtask queue, which is all an
 		// unqueued `query()` needs to have already landed inside this transaction
-		assertEquals((await tx.query('SELECT count(*)::int AS c FROM log')).rows[0].c, 0);
+		assert_equal((await tx.query('SELECT count(*)::int AS c FROM log')).rows[0].c, 0);
 	});
 	await Promise.all(settled);
-	assertEquals((await db.query<{n: number}>('SELECT n FROM log')).rows.map((r) => r.n), [1, 2]);
-	assertEquals((await db.query('SELECT count(*)::int AS c FROM inner_t')).rows[0].c, 1);
+	assert_equal((await db.query<{n: number}>('SELECT n FROM log')).rows.map((r) => r.n), [1, 2]);
+	assert_equal((await db.query('SELECT count(*)::int AS c FROM inner_t')).rows[0].c, 1);
 	await db.close();
 });
 
-Deno.test('the tx handle is NOT the queued query — its statements run inside the transaction', async () => {
+test('the tx handle is NOT the queued query — its statements run inside the transaction', async () => {
 	// The other side of the split: `tx.query` must bypass the queue the transaction is holding,
 	// or the callback deadlocks against itself. Two awaited statements inside one callback prove
 	// it, and the rollback proves they were really inside the transaction.
@@ -712,18 +732,18 @@ Deno.test('the tx handle is NOT the queued query — its statements run inside t
 	await db.transaction(async (tx) => {
 		await tx.query('INSERT INTO t VALUES (1)');
 		await tx.query('INSERT INTO t VALUES (2)');
-		assertEquals((await tx.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 2); // reads its own writes
+		assert_equal((await tx.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 2); // reads its own writes
 	});
-	assertEquals((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 2);
+	assert_equal((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 2);
 	await db.transaction(async (tx) => {
 		await tx.query('INSERT INTO t VALUES (3)');
 		throw new Error('boom');
 	}).catch(() => undefined);
-	assertEquals((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 2); // 3 rolled back
+	assert_equal((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 2); // 3 rolled back
 	await db.close();
 });
 
-Deno.test('an ignored failing query() still reports its rejection — fire-and-forget is not silenced', async () => {
+test('an ignored failing query() still reports its rejection — fire-and-forget is not silenced', async () => {
 	// `enqueue` must attach a handler to every entry to keep the lane's tail settled, and that
 	// attachment is what marks the CALLER's promise handled under the spec's
 	// HostPromiseRejectionTracker. Left there, the ordinary failure of the very shape this adapter
@@ -743,19 +763,17 @@ Deno.test('an ignored failing query() still reports its rejection — fire-and-f
 	// here, because the NEXT enqueued entry chains onto the caller's own promise and launders it —
 	// which is why the `SELECT 1` below is part of the reproduction and not decoration.
 	//
-	// What it cannot see: the browser's own `unhandledrejection`. Deno implements the same web
-	// event and Node's `unhandledRejection` is the same host hook (`test_npm_node.mjs` pins Node's
-	// consumer-visible form — a non-zero exit with the SQLSTATE on stderr); no browser runs here.
+	// What it cannot see: the browser's own `unhandledrejection`. Node's `unhandledRejection` is
+	// the same host hook behind it (`test_npm_node.mjs` pins Node's consumer-visible form — a
+	// non-zero exit with the SQLSTATE on stderr); no browser runs here.
 	const seen: string[] = [];
-	const on_rejection = (e: Event) => {
-		const {reason} = e as PromiseRejectionEvent;
+	const release = claim_unhandled_rejections((reason) => {
 		const message = (reason as Error | undefined)?.message ?? '';
 		const sentinel = message.match(/unhandled_probe_\w+/)?.[0];
-		if (!sentinel) return; // not ours — leave it to the test runner
-		e.preventDefault();
+		if (!sentinel) return false; // not ours — leave it to the test runner
 		seen.push(`${(reason as {code?: string}).code}:${sentinel}`);
-	};
-	globalThis.addEventListener('unhandledrejection', on_rejection);
+		return true;
+	});
 	try {
 		const db = create_pglet_db();
 		await db.query('CREATE TABLE t (id INT)');
@@ -772,17 +790,17 @@ Deno.test('an ignored failing query() still reports its rejection — fire-and-f
 			await tx.query('INSERT INTO unhandled_probe_tx_ignored VALUES (1)');
 		});
 		// a following entry: the lane must still advance past two failures...
-		assertEquals((await db.query('SELECT 1 AS x')).rows[0].x, 1);
+		assert_equal((await db.query('SELECT 1 AS x')).rows[0].x, 1);
 		await new Promise((r) => setTimeout(r, 30));
 		await db.close();
 	} finally {
-		globalThis.removeEventListener('unhandledrejection', on_rejection);
+		release();
 	}
 	// ...and chaining it must not have laundered either ignored rejection
-	assertEquals(seen.sort(), ['42P01:unhandled_probe_ignored', '42P01:unhandled_probe_tx_ignored']);
+	assert_equal(seen.sort(), ['42P01:unhandled_probe_ignored', '42P01:unhandled_probe_tx_ignored']);
 });
 
-Deno.test('a raw BEGIN gets NO outside-query protection — the transaction() guarantee does not reach it', async () => {
+test('a raw BEGIN gets NO outside-query protection — the transaction() guarantee does not reach it', async () => {
 	// The narrowed half of the audit-log class, pinned so the green `transaction()` guards above
 	// are not read as the class being closed. kysely's shipped dialect and drizzle both drive
 	// transactions with raw BEGIN/COMMIT/ROLLBACK through `query()`, and at that layer the
@@ -808,8 +826,8 @@ Deno.test('a raw BEGIN gets NO outside-query protection — the transaction() gu
 	await db.query('INSERT INTO t VALUES (1)');
 	await db.query(`INSERT INTO audit VALUES ('outside')`); // indistinguishable from an inside one
 	await db.query('ROLLBACK');
-	assertEquals((await db.query('SELECT count(*)::int AS c FROM audit')).rows[0].c, 0); // LOST
-	assertEquals((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 0);
+	assert_equal((await db.query('SELECT count(*)::int AS c FROM audit')).rows[0].c, 0); // LOST
+	assert_equal((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 0);
 	// the control — the same two writes through `transaction()`, where the boundary exists
 	await db.transaction(async (tx) => {
 		await tx.query('INSERT INTO t VALUES (1)');
@@ -817,8 +835,8 @@ Deno.test('a raw BEGIN gets NO outside-query protection — the transaction() gu
 		throw new Error('boom');
 	}).catch(() => undefined);
 	await new Promise((r) => setTimeout(r, 20));
-	assertEquals((await db.query('SELECT count(*)::int AS c FROM audit')).rows[0].c, 1);
-	assertEquals((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 0);
+	assert_equal((await db.query('SELECT count(*)::int AS c FROM audit')).rows[0].c, 1);
+	assert_equal((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 0);
 	await db.close();
 });
 
@@ -838,7 +856,7 @@ const within = <T,>(promise: Promise<T>, what: string, ms = 2000): Promise<T> =>
 const ids_of = async (db: ReturnType<typeof create_pglet_db>): Promise<number[]> =>
 	(await db.query<{id: number}>('SELECT id FROM t ORDER BY id')).rows.map((r) => r.id);
 
-Deno.test('transaction: a nested db.transaction() is refused loudly as nested, never deadlocks', async () => {
+test('transaction: a nested db.transaction() is refused loudly as nested, never deadlocks', async () => {
 	// The Node entry hands the adapter an `AsyncLocalStorage`, so the call is KNOWN to be inside the
 	// callback, and the message says so and points at the tx handle. Queued, it would wait on the
 	// lane its own transaction holds — the timeout is what turns that regression into a failure.
@@ -853,17 +871,17 @@ Deno.test('transaction: a nested db.transaction() is refused loudly as nested, n
 		);
 		return 'outer done';
 	});
-	assertEquals(await within(outer, 'the outer transaction'), 'outer done');
-	assertInstanceOf(inner, Error);
+	assert_equal(await within(outer, 'the outer transaction'), 'outer done');
+	assert.instanceOf(inner, Error);
 	assert(inner.message.includes('inside a running transaction() callback'), inner.message);
 	assert(inner.message.includes('tx handle'), inner.message);
 	// known nested, so the message no longer sends a nested caller looking for a concurrent one
 	assert(!inner.message.includes('top-level'), inner.message);
-	assertEquals(await ids_of(db), [1]); // the outer one committed; the refused one wrote nothing
+	assert_equal(await ids_of(db), [1]); // the outer one committed; the refused one wrote nothing
 	await db.close();
 });
 
-Deno.test('transaction: a nested call in a deeper async frame of the callback is still nested', async () => {
+test('transaction: a nested call in a deeper async frame of the callback is still nested', async () => {
 	// The store follows the callback across awaits, timers and helper functions, not just its
 	// lexical body — a refusal that only saw the first synchronous stretch would hang here.
 	const db = create_pglet_db();
@@ -879,12 +897,12 @@ Deno.test('transaction: a nested call in a deeper async frame of the callback is
 		}).then(() => null, (e) => e),
 		'the outer transaction',
 	);
-	assertInstanceOf(err, Error);
+	assert.instanceOf(err, Error);
 	assert(err.message.includes('inside a running transaction() callback'), err.message);
 	await db.close();
 });
 
-Deno.test('transaction: two calls made before either callback begins serialize (single-flight)', async () => {
+test('transaction: two calls made before either callback begins serialize (single-flight)', async () => {
 	// Both calls in one synchronous turn: both are queued before either callback runs. The
 	// later-turn spelling is the test below.
 	const db = create_pglet_db();
@@ -899,11 +917,11 @@ Deno.test('transaction: two calls made before either callback begins serialize (
 		await tx.query('INSERT INTO t VALUES (3)');
 	});
 	await Promise.all([a, b]);
-	assertEquals(await ids_of(db), [1, 2, 3]); // no interleave, no lost write
+	assert_equal(await ids_of(db), [1, 2, 3]); // no interleave, no lost write
 	await db.close();
 });
 
-Deno.test('a concurrent top-level transaction() made while a callback runs QUEUES behind it', async () => {
+test('a concurrent top-level transaction() made while a callback runs QUEUES behind it', async () => {
 	// The realistic spelling, and the shape a server's concurrent requests take: the second call is
 	// made in a later turn, after the first callback has begun, from an async context that is not
 	// the callback's. It waits its turn — as on PGlite and a `pg` pool — and both rows land, in
@@ -928,17 +946,17 @@ Deno.test('a concurrent top-level transaction() made while a callback runs QUEUE
 	const second = db.transaction(async (tx) => {
 		order.push('second:start');
 		// it runs after the first COMMITTED, so it reads both of the first's rows
-		assertEquals((await tx.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 2);
+		assert_equal((await tx.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 2);
 		await tx.query('INSERT INTO t VALUES (3)');
 		return 'second';
 	});
-	assertEquals(await within(Promise.all([first, second]), 'both transactions'), ['first', 'second']);
-	assertEquals(order, ['first:end', 'second:start']); // serialized, not interleaved
-	assertEquals(await ids_of(db), [1, 2, 3]);
+	assert_equal(await within(Promise.all([first, second]), 'both transactions'), ['first', 'second']);
+	assert_equal(order, ['first:end', 'second:start']); // serialized, not interleaved
+	assert_equal(await ids_of(db), [1, 2, 3]);
 	await db.close();
 });
 
-Deno.test('N concurrent top-level transaction() calls, each from its own context, all land in call order', async () => {
+test('N concurrent top-level transaction() calls, each from its own context, all land in call order', async () => {
 	// The fuz_app shape that found the refusal: concurrent request handlers, each putting its row in
 	// a transaction. Every call after the first is made while an earlier callback is running.
 	const db = create_pglet_db();
@@ -954,12 +972,12 @@ Deno.test('N concurrent top-level transaction() calls, each from its own context
 		);
 		await new Promise((r) => setTimeout(r, 0)); // the next call is made in a later turn
 	}
-	assertEquals(await within(Promise.all(calls), 'every transaction'), [1, 2, 3, 4, 5, 6, 7, 8]);
-	assertEquals(await ids_of(db), [1, 2, 3, 4, 5, 6, 7, 8]);
+	assert_equal(await within(Promise.all(calls), 'every transaction'), [1, 2, 3, 4, 5, 6, 7, 8]);
+	assert_equal(await ids_of(db), [1, 2, 3, 4, 5, 6, 7, 8]);
 	await db.close();
 });
 
-Deno.test('a queued transaction() that rolls back costs the one queued behind it nothing', async () => {
+test('a queued transaction() that rolls back costs the one queued behind it nothing', async () => {
 	const db = create_pglet_db();
 	await db.query('CREATE TABLE t (id INT)');
 	let release = () => {};
@@ -979,19 +997,19 @@ Deno.test('a queued transaction() that rolls back costs the one queued behind it
 	});
 	const last = db.transaction(async (tx) => {
 		// a fresh block, not a savepoint inside a leftover one
-		assertEquals((await tx.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 1);
+		assert_equal((await tx.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 1);
 		await tx.query('INSERT INTO t VALUES (3)');
 	});
 	const [a, b, c] = await within(Promise.allSettled([first, failing, last]), 'all three');
-	assertEquals([a.status, b.status, c.status], ['fulfilled', 'rejected', 'fulfilled']);
-	assertEquals(((b as PromiseRejectedResult).reason as Error).message, 'boom');
-	assertEquals(await ids_of(db), [1, 3]); // only the failing one's row is gone
-	assertEquals((await db.query('BEGIN')).command, 'BEGIN'); // and no block is left open
+	assert_equal([a.status, b.status, c.status], ['fulfilled', 'rejected', 'fulfilled']);
+	assert_equal(((b as PromiseRejectedResult).reason as Error).message, 'boom');
+	assert_equal(await ids_of(db), [1, 3]); // only the failing one's row is gone
+	assert_equal((await db.query('BEGIN')).command, 'BEGIN'); // and no block is left open
 	await db.query('ROLLBACK');
 	await db.close();
 });
 
-Deno.test('an outside query() from another async context waits for a running transaction', async () => {
+test('an outside query() from another async context waits for a running transaction', async () => {
 	// The other-context twin of the audit-log tests above, which issue their outside write from
 	// inside the callback: a concurrent handler's plain `db.query()` must neither join the running
 	// transaction nor be refused — it queues, and lands after the rollback.
@@ -1007,19 +1025,19 @@ Deno.test('an outside query() from another async context waits for a running tra
 		release();
 		await new Promise((r) => setTimeout(r, 5));
 		// the outside write has been issued by now; queued, the transaction does not see it
-		assertEquals((await tx.query('SELECT count(*)::int AS c FROM audit')).rows[0].c, 0);
+		assert_equal((await tx.query('SELECT count(*)::int AS c FROM audit')).rows[0].c, 0);
 		throw new Error('boom');
 	});
 	await running;
 	const outside = db.query(`INSERT INTO audit VALUES ('outside')`);
 	const [t, o] = await within(Promise.allSettled([txn, outside]), 'the transaction and the outside write');
-	assertEquals([t.status, o.status], ['rejected', 'fulfilled']);
-	assertEquals((await db.query('SELECT count(*)::int AS c FROM audit')).rows[0].c, 1); // survived
-	assertEquals((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 0); // txn reverted
+	assert_equal([t.status, o.status], ['rejected', 'fulfilled']);
+	assert_equal((await db.query('SELECT count(*)::int AS c FROM audit')).rows[0].c, 1); // survived
+	assert_equal((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 0); // txn reverted
 	await db.close();
 });
 
-Deno.test('a context that outlives its callback does not refuse work once the transaction ends', async () => {
+test('a context that outlives its callback does not refuse work once the transaction ends', async () => {
 	// A timer started inside a callback carries the callback's async context, but the transaction
 	// it named is over by the time the timer fires — so a `transaction()` made there is outside
 	// every running callback and runs.
@@ -1037,11 +1055,11 @@ Deno.test('a context that outlives its callback does not refuse work once the tr
 	});
 	await fired;
 	await within(later, 'the transaction made from the leftover timer');
-	assertEquals(await ids_of(db), [1, 2]);
+	assert_equal(await ids_of(db), [1, 2]);
 	await db.close();
 });
 
-Deno.test('a fork does not read its parent\'s callback as its own, nor the parent a fork\'s', async () => {
+test('a fork does not read its parent\'s callback as its own, nor the parent a fork\'s', async () => {
 	// Instances share the entry's one store but own their contexts by token, so a callback of one
 	// instance is outside every other instance: inside the parent's callback a fork's
 	// `transaction()` runs (on its own lane), and inside the fork's callback so does the parent's —
@@ -1059,7 +1077,7 @@ Deno.test('a fork does not read its parent\'s callback as its own, nor the paren
 		}),
 		'a fork transaction inside the parent callback',
 	);
-	assertEquals(from_parent, 'child ran');
+	assert_equal(from_parent, 'child ran');
 	const from_child = await within(
 		child.transaction(async (ctx) => {
 			await ctx.query('INSERT INTO t VALUES (11)');
@@ -1070,21 +1088,21 @@ Deno.test('a fork does not read its parent\'s callback as its own, nor the paren
 		}),
 		'a parent transaction inside the fork callback',
 	);
-	assertEquals(from_child, 'parent ran');
-	assertEquals(await ids_of(parent), [1, 2]);
-	assertEquals(await ids_of(child), [10, 11]);
+	assert_equal(from_child, 'parent ran');
+	assert_equal(await ids_of(parent), [1, 2]);
+	assert_equal(await ids_of(child), [10, 11]);
 	// and the fork still refuses a call nested in its own callback
 	const err = await within(
 		child.transaction(async () => child.transaction(async () => 1)).then(() => null, (e) => e),
 		'the fork transaction',
 	);
-	assertInstanceOf(err, Error);
+	assert.instanceOf(err, Error);
 	assert(err.message.includes('inside a running transaction() callback'), err.message);
 	await child.close();
 	await parent.close();
 });
 
-Deno.test('raw BEGIN/COMMIT (the kysely/drizzle path) works sequentially', async () => {
+test('raw BEGIN/COMMIT (the kysely/drizzle path) works sequentially', async () => {
 	const db = create_pglet_db();
 	await db.query('CREATE TABLE t (id INT)');
 	// kysely/drizzle drivers manage transactions with raw BEGIN/COMMIT via query(), not transaction()
@@ -1094,11 +1112,11 @@ Deno.test('raw BEGIN/COMMIT (the kysely/drizzle path) works sequentially', async
 	await db.query('BEGIN');
 	await db.query('INSERT INTO t VALUES (2)');
 	await db.query('ROLLBACK');
-	assertEquals((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 1); // commit kept, rollback dropped
+	assert_equal((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 1); // commit kept, rollback dropped
 	await db.close();
 });
 
-Deno.test('overlapping raw-BEGIN transactions fail loud (25001), never silently corrupt', async () => {
+test('overlapping raw-BEGIN transactions fail loud (25001), never silently corrupt', async () => {
 	const db = create_pglet_db();
 	await db.query('CREATE TABLE t (id INT)');
 	// The exact corruption shape: two logically-concurrent transactions sharing ONE instance,
@@ -1118,12 +1136,12 @@ Deno.test('overlapping raw-BEGIN transactions fail loud (25001), never silently 
 	})();
 	const results = await Promise.allSettled([txA, txB]);
 	const rejected = results.filter((r) => r.status === 'rejected');
-	assertEquals(rejected.length, 1); // exactly one lane rejected — the overlapping BEGIN
+	assert_equal(rejected.length, 1); // exactly one lane rejected — the overlapping BEGIN
 	const err = (rejected[0] as PromiseRejectedResult).reason;
-	assertInstanceOf(err, Error);
-	assertEquals((err as {code?: string}).code, '25001');
+	assert.instanceOf(err, Error);
+	assert_equal((err as {code?: string}).code, '25001');
 	// the surviving transaction committed cleanly — no lost write, no phantom
-	assertEquals((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 1);
+	assert_equal((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 1);
 	await db.close();
 });
 
@@ -1137,7 +1155,7 @@ Deno.test('overlapping raw-BEGIN transactions fail loud (25001), never silently 
 // side's newline miss is what `apply_transaction_command`'s doc comment records as measured.
 const OPENERS = ['BEGIN', 'begin work', 'START TRANSACTION', '/* c */ BEGIN', '-- c\nBEGIN', 'START\nTRANSACTION'];
 
-Deno.test('a managed transaction() under a caller\'s open block is a savepoint, in every opener spelling', async () => {
+test('a managed transaction() under a caller\'s open block is a savepoint, in every opener spelling', async () => {
 	// The lost-row shape, and the property it was protecting is unchanged — the caller's
 	// in-transaction write must survive the managed transaction's failure. What changed is how:
 	// this used to be a loud `25001` refusal because pglet had no savepoints, so the managed call
@@ -1160,22 +1178,22 @@ Deno.test('a managed transaction() under a caller\'s open block is a savepoint, 
 			throw new Error('boom');
 		}).then(() => null, (e) => e);
 		// The callback's own error surfaces — not a refusal from the adapter.
-		assertInstanceOf(err, Error);
-		assertEquals(err.message, 'boom', `the callback's error must surface: ${JSON.stringify(opener)}`);
+		assert.instanceOf(err, Error);
+		assert_equal(err.message, 'boom', `the callback's error must surface: ${JSON.stringify(opener)}`);
 		// Only the savepoint's level was discarded: the caller's row stands and `3` is gone.
-		assertEquals(
+		assert_equal(
 			(await db.query<{id: number}>('SELECT id FROM t ORDER BY id')).rows.map((r) => r.id),
 			[2],
 			`only the managed level unwinds: ${JSON.stringify(opener)}`,
 		);
 		// …and the caller's block is still open, so it still owns the decision.
-		assertEquals((await db.query('ROLLBACK')).command, 'ROLLBACK');
-		assertEquals((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 0);
+		assert_equal((await db.query('ROLLBACK')).command, 'ROLLBACK');
+		assert_equal((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 0);
 		await db.close();
 	}
 });
 
-Deno.test('a SUCCEEDING managed transaction() under a caller\'s block still leaves the caller the decision', async () => {
+test('a SUCCEEDING managed transaction() under a caller\'s block still leaves the caller the decision', async () => {
 	// The succeeding half of the test above, and the one that pins what the savepoint's `RELEASE`
 	// must NOT do: merge into the enclosing block, never commit out from under it. Both rows are
 	// therefore still pending, and the caller's own ROLLBACK reverts both.
@@ -1192,9 +1210,9 @@ Deno.test('a SUCCEEDING managed transaction() under a caller\'s block still leav
 			await tx.query('INSERT INTO t VALUES (3)');
 		});
 		// Both rows are visible inside the still-open block…
-		assertEquals((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 2);
-		assertEquals((await db.query('ROLLBACK')).command, 'ROLLBACK');
-		assertEquals(
+		assert_equal((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 2);
+		assert_equal((await db.query('ROLLBACK')).command, 'ROLLBACK');
+		assert_equal(
 			(await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c,
 			0,
 			`the caller's ROLLBACK must actually revert: ${JSON.stringify(opener)}`,
@@ -1203,7 +1221,7 @@ Deno.test('a SUCCEEDING managed transaction() under a caller\'s block still leav
 	}
 });
 
-Deno.test('an overlapping BEGIN is 25001 in every spelling, not just the ones a regex sees', async () => {
+test('an overlapping BEGIN is 25001 in every spelling, not just the ones a regex sees', async () => {
 	// The other direction, and the one a surviving text pre-check would still miss: the OVERLAPPING
 	// statement is the comment-prefixed one. Postgres answers a nested BEGIN with a WARNING and a
 	// no-op; this adapter is deliberately stricter (single connection, no savepoints — see the
@@ -1215,17 +1233,17 @@ Deno.test('an overlapping BEGIN is 25001 in every spelling, not just the ones a 
 		await db.query('BEGIN');
 		await db.query('INSERT INTO t VALUES (1)');
 		const err = await db.query(overlapping).then(() => null, (e) => e);
-		assertInstanceOf(err, Error, `must reject: ${JSON.stringify(overlapping)}`);
-		assertEquals((err as {code?: string}).code, '25001', JSON.stringify(overlapping));
+		assert.instanceOf(err, Error, `must reject: ${JSON.stringify(overlapping)}`);
+		assert_equal((err as {code?: string}).code, '25001', JSON.stringify(overlapping));
 		// The first transaction is intact: its write is still pending and still revertible.
-		assertEquals((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 1);
+		assert_equal((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 1);
 		await db.query('ROLLBACK');
-		assertEquals((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 0);
+		assert_equal((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 0);
 		await db.close();
 	}
 });
 
-Deno.test('a rejected overlapping BEGIN costs the caller nothing, DDL included', async () => {
+test('a rejected overlapping BEGIN costs the caller nothing, DDL included', async () => {
 	// The coupling between the guard's position and the engine. The overlap check runs AFTER the
 	// statement, so the rejected BEGIN really does reach the engine — and that is only free
 	// because a second BEGIN is a no-op there. A binding that re-snapshotted the catalog on it
@@ -1240,7 +1258,7 @@ Deno.test('a rejected overlapping BEGIN costs the caller nothing, DDL included',
 		await db.query(overlapping).then(() => null, () => undefined); // rejected 25001
 		await db.query('ROLLBACK');
 		// The rolled-back name must be free again, not a phantom.
-		assertEquals(
+		assert_equal(
 			(await db.query('CREATE TABLE ddl_in_tx (x INT)')).command,
 			'CREATE', // the tag's first word — `pg`'s rule; see the pg-shape test above
 			`the rejected overlap must not disturb the caller's snapshot: ${JSON.stringify(overlapping)}`,
@@ -1249,7 +1267,7 @@ Deno.test('a rejected overlapping BEGIN costs the caller nothing, DDL included',
 	}
 });
 
-Deno.test('a comment-prefixed COMMIT/ROLLBACK ends the transaction, so the next BEGIN is accepted', async () => {
+test('a comment-prefixed COMMIT/ROLLBACK ends the transaction, so the next BEGIN is accepted', async () => {
 	// The accept polarity — an over-correction reddens here. Reading the exit from the tag and the
 	// open from the text (or vice versa) leaves `in_tx` stuck true after `/* c */ COMMIT`, and the
 	// next perfectly ordinary BEGIN is then a spurious 25001. Measured tags: COMMIT / ROLLBACK.
@@ -1266,31 +1284,31 @@ Deno.test('a comment-prefixed COMMIT/ROLLBACK ends the transaction, so the next 
 		await db.query('BEGIN');
 		await db.query('INSERT INTO t VALUES (1)');
 		await db.query(exit);
-		assertEquals(
+		assert_equal(
 			(await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c,
 			expected,
 			`${JSON.stringify(exit)} must ${expected ? 'keep' : 'drop'} the write`,
 		);
 		// The next transaction must open cleanly — no leftover `in_tx`.
-		assertEquals((await db.query('BEGIN')).command, 'BEGIN', JSON.stringify(exit));
+		assert_equal((await db.query('BEGIN')).command, 'BEGIN', JSON.stringify(exit));
 		await db.query('ROLLBACK');
 		await db.close();
 	}
 });
 
-Deno.test('close is idempotent; use-after-close is a clear error, not a wasm panic', async () => {
+test('close is idempotent; use-after-close is a clear error, not a wasm panic', async () => {
 	const db = create_pglet_db();
 	await db.query('CREATE TABLE t (id INT)');
 	const first = db.close();
 	assert(db.close() === first, 'every close() answers the one drain');
 	await first;
 	await db.close(); // idempotent, no throw
-	await assertRejects(() => db.query('SELECT 1'), Error, 'this PgletDb is closed');
-	await assertRejects(() => db.transaction(async () => 1), Error, 'this PgletDb is closed');
-	await assertRejects(() => db.fork(), Error, 'this PgletDb is closed');
+	await assert_rejects(() => db.query('SELECT 1'), Error, 'this PgletDb is closed');
+	await assert_rejects(() => db.transaction(async () => 1), Error, 'this PgletDb is closed');
+	await assert_rejects(() => db.fork(), Error, 'this PgletDb is closed');
 });
 
-Deno.test('close() drains the lane: a fire-and-forget write issued before it lands', async () => {
+test('close() drains the lane: a fire-and-forget write issued before it lands', async () => {
 	// `db.query(<write>); await db.close();` in one block: the write was queued before the close,
 	// so it runs first. A database that lost it would answer this from a fork taken in between —
 	// so the fork is queued too, and sees the row.
@@ -1299,31 +1317,31 @@ Deno.test('close() drains the lane: a fire-and-forget write issued before it lan
 	db.query('INSERT INTO t VALUES (1)'); // fire-and-forget
 	const forked = db.fork(); // queued behind the write
 	const closed = db.close(); // queued behind both
-	await assertRejects(() => db.query('SELECT 1'), Error, 'this PgletDb is closed'); // refused at once
+	await assert_rejects(() => db.query('SELECT 1'), Error, 'this PgletDb is closed'); // refused at once
 	const f = await forked;
 	await closed;
-	assertEquals((await f.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 1);
+	assert_equal((await f.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 1);
 	await f.close();
 });
 
-Deno.test('fork() and close() inside a transaction() callback reject rather than deadlock', async () => {
+test('fork() and close() inside a transaction() callback reject rather than deadlock', async () => {
 	const db = create_pglet_db();
 	await db.query('CREATE TABLE t (id INT)');
 	await within(
 		db.transaction(async (tx) => {
 			await tx.query('INSERT INTO t VALUES (1)');
-			const fork_err = await assertRejects(() => db.fork(), Error, 'inside a running transaction() callback');
-			assertEquals((fork_err as {code?: string}).code, '25001');
-			await assertRejects(() => db.close(), Error, 'inside a running transaction() callback');
+			const fork_err = await assert_rejects(() => db.fork(), Error, 'inside a running transaction() callback');
+			assert_equal((fork_err as {code?: string}).code, '25001');
+			await assert_rejects(() => db.close(), Error, 'inside a running transaction() callback');
 		}),
 		'the transaction',
 	);
 	// the rejected close() did not close it
-	assertEquals((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 1);
+	assert_equal((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 1);
 	await db.close();
 });
 
-Deno.test('a close() pending before a callback starts still refuses a close() made inside it, not hangs', async () => {
+test('a close() pending before a callback starts still refuses a close() made inside it, not hangs', async () => {
 	const db = create_pglet_db();
 	await db.query('CREATE TABLE t (id INT)');
 	let inner: unknown;
@@ -1334,10 +1352,10 @@ Deno.test('a close() pending before a callback starts still refuses a close() ma
 	const outer = db.close(); // accepted: the transaction is queued, its callback not yet running
 	await within(done, 'the transaction');
 	await outer;
-	assertEquals(inner, '25001');
+	assert_equal(inner, '25001');
 });
 
-Deno.test('fork() and close() from outside a running transaction() callback wait for it', async () => {
+test('fork() and close() from outside a running transaction() callback wait for it', async () => {
 	// Decidable with the Node entry's `AsyncLocalStorage`: a call from another async context is not
 	// the callback's, so it queues — the fork branches the transaction's committed rows, and the
 	// close drains behind it. (The browser entry still refuses both; see `browser_entry_test.ts`.)
@@ -1356,28 +1374,26 @@ Deno.test('fork() and close() from outside a running transaction() callback wait
 	await inside;
 	const forked = db.fork();
 	const closed = db.close();
-	await assertRejects(() => db.query('SELECT 1'), Error, 'this PgletDb is closed'); // refused at once
+	await assert_rejects(() => db.query('SELECT 1'), Error, 'this PgletDb is closed'); // refused at once
 	release();
 	await within(running, 'the transaction');
 	const f = await within(forked, 'the fork');
 	await within(closed, 'the close');
-	assertEquals((await f.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 2); // branched after the commit
+	assert_equal((await f.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 2); // branched after the commit
 	await f.close();
 });
 
-Deno.test('a close() from outside keeps a running callback\'s fire-and-forget write, unrejected', async () => {
+test('a close() from outside keeps a running callback\'s fire-and-forget write, unrejected', async () => {
 	// The audit-write idiom under a close: the callback was admitted before the close, so its later
 	// `db.query()` is not refused as closed (a rejection nobody awaits, which kills Node) — it is
 	// queued, and the close drains until the lane stops growing, so the row lands before the free.
 	const refused: string[] = [];
-	const on_rejection = (e: Event) => {
-		const {reason} = e as PromiseRejectionEvent;
+	const release = claim_unhandled_rejections((reason) => {
 		const message = (reason as Error | undefined)?.message ?? '';
-		if (!message.includes('this PgletDb is closed')) return; // not ours — leave it to the runner
-		e.preventDefault();
+		if (!message.includes('this PgletDb is closed')) return false; // not ours — leave it to the runner
 		refused.push(message);
-	};
-	globalThis.addEventListener('unhandledrejection', on_rejection);
+		return true;
+	});
 	try {
 		const db = create_pglet_db();
 		await db.query('CREATE TABLE audit (m TEXT)');
@@ -1398,18 +1414,18 @@ Deno.test('a close() from outside keeps a running callback\'s fire-and-forget wr
 		});
 		await inside;
 		const closed = db.close();
-		assertEquals(await within(running, 'the transaction'), 'tx ok');
+		assert_equal(await within(running, 'the transaction'), 'tx ok');
 		await within(closed, 'the close');
 		// the row landed before the free; nothing after the close can read it, so its result is the witness
-		assertEquals(((await audit_landed) as Array<{rowCount: number}>).map((r) => r.rowCount), [1, 1]);
+		assert_equal(((await audit_landed) as Array<{rowCount: number}>).map((r) => r.rowCount), [1, 1]);
 		await new Promise((r) => setTimeout(r, 20)); // give an unhandled rejection time to report
-		assertEquals(refused, []);
+		assert_equal(refused, []);
 	} finally {
-		globalThis.removeEventListener('unhandledrejection', on_rejection);
+		release();
 	}
 });
 
-Deno.test('a thenable a callback returns runs inside it: its nested transaction() is refused, not hung', async () => {
+test('a thenable a callback returns runs inside it: its nested transaction() is refused, not hung', async () => {
 	// The callback is run as `async () => fn(tx)`, so a thenable it returns is adopted inside the
 	// callback's context. Without that wrapping, its `then` ran in the context of the adapter's own
 	// `await` — outside the callback — so a `transaction()` there queued behind the transaction
@@ -1424,12 +1440,12 @@ Deno.test('a thenable a callback returns runs inside it: its nested transaction(
 		db.transaction(() => thenable as unknown as Promise<unknown>).then(() => null, (e) => e),
 		'the transaction returning a thenable',
 	);
-	assertInstanceOf(err, Error);
+	assert.instanceOf(err, Error);
 	assert(err.message.includes('inside a running transaction() callback'), err.message);
 	await db.close();
 });
 
-Deno.test('a transaction queued before close() runs whole, its tx handle working, before the free', async () => {
+test('a transaction queued before close() runs whole, its tx handle working, before the free', async () => {
 	const db = create_pglet_db();
 	await db.query('CREATE TABLE t (id INT)');
 	// Same synchronous turn: the transaction is queued, its callback not yet running, so the close
@@ -1441,32 +1457,32 @@ Deno.test('a transaction queued before close() runs whole, its tx handle working
 	});
 	const forked = db.fork(); // queued behind the transaction, ahead of the close
 	const closed = db.close();
-	assertEquals(await done, 1);
+	assert_equal(await done, 1);
 	const f = await forked;
 	await closed;
-	assertEquals((await f.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 1); // committed before the fork
+	assert_equal((await f.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 1); // committed before the fork
 	await f.close();
 });
 
-Deno.test('[Symbol.asyncDispose] is close()', async () => {
+test('[Symbol.asyncDispose] is close()', async () => {
 	const db = create_pglet_db();
 	const dispose = (db as unknown as Record<symbol, () => Promise<void>>)[Symbol.asyncDispose];
 	assert(dispose === db.close);
 	await dispose.call(db);
-	await assertRejects(() => db.query('SELECT 1'), Error, 'this PgletDb is closed');
+	await assert_rejects(() => db.query('SELECT 1'), Error, 'this PgletDb is closed');
 });
 
-Deno.test('fork() rejects 25001 under a block opened by a raw BEGIN', async () => {
+test('fork() rejects 25001 under a block opened by a raw BEGIN', async () => {
 	const db = create_pglet_db();
 	await db.query('BEGIN');
-	const err = await assertRejects(() => db.fork(), Error);
-	assertEquals((err as {code?: string}).code, '25001');
+	const err = await assert_rejects(() => db.fork(), Error);
+	assert_equal((err as {code?: string}).code, '25001');
 	await db.query('ROLLBACK');
 	await (await db.fork()).close(); // forkable again once the block ends
 	await db.close();
 });
 
-Deno.test('the tx handle is refused once its transaction settles', async () => {
+test('the tx handle is refused once its transaction settles', async () => {
 	const db = create_pglet_db();
 	await db.query('CREATE TABLE t (id INT)');
 	let leaked: {query: (sql: string) => Promise<unknown>} | undefined;
@@ -1474,20 +1490,20 @@ Deno.test('the tx handle is refused once its transaction settles', async () => {
 		leaked = tx;
 		await tx.query('INSERT INTO t VALUES (1)');
 	});
-	await assertRejects(() => leaked!.query('INSERT INTO t VALUES (2)'), Error, 'transaction has ended');
+	await assert_rejects(() => leaked!.query('INSERT INTO t VALUES (2)'), Error, 'transaction has ended');
 	// and after a rolled-back one
-	await assertRejects(() =>
+	await assert_rejects(() =>
 		db.transaction(async (tx) => {
 			leaked = tx;
 			throw new Error('boom');
 		}),
 	);
-	await assertRejects(() => leaked!.query('SELECT 1'), Error, 'transaction has ended');
-	assertEquals((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 1);
+	await assert_rejects(() => leaked!.query('SELECT 1'), Error, 'transaction has ended');
+	assert_equal((await db.query('SELECT count(*)::int AS c FROM t')).rows[0].c, 1);
 	await db.close();
 });
 
-Deno.test('a value the binding cannot convert rejects with an Error, not a bare string', async () => {
+test('a value the binding cannot convert rejects with an Error, not a bare string', async () => {
 	const db = create_pglet_db();
 	await db.query('CREATE TABLE t (a INT[])');
 	const circular: Record<string, unknown> = {};
@@ -1507,7 +1523,7 @@ Deno.test('a value the binding cannot convert rejects with an Error, not a bare 
 	await db.close();
 });
 
-Deno.test('fork-per-test: the headline pattern — seed once, fork isolated copies', async () => {
+test('fork-per-test: the headline pattern — seed once, fork isolated copies', async () => {
 	// seed a base ONCE (the migrate-once/fork-per-test idiom the test-fixture audience uses)
 	const base = create_pglet_db();
 	await base.query('CREATE TABLE u (id INT PRIMARY KEY, name TEXT)');
@@ -1520,23 +1536,23 @@ Deno.test('fork-per-test: the headline pattern — seed once, fork isolated copi
 	const f2 = await base.fork();
 	await f1.query(`INSERT INTO u VALUES (2, 'f1')`);
 	await f2.query(`INSERT INTO u VALUES (3, 'f2')`);
-	assertEquals(await count(f1), 2);
-	assertEquals(await count(f2), 2);
-	assertEquals(await count(base), 1); // base untouched by either fork
+	assert_equal(await count(f1), 2);
+	assert_equal(await count(f2), 2);
+	assert_equal(await count(base), 1); // base untouched by either fork
 
 	// a fork of a fork inherits its parent's uncommitted-to-base writes
 	const ff = await f1.fork();
 	await ff.query(`INSERT INTO u VALUES (4, 'ff')`);
-	assertEquals(await count(ff), 3); // seed + f1's row + ff's row
-	assertEquals(await count(f1), 2); // f1 untouched by its child
+	assert_equal(await count(ff), 3); // seed + f1's row + ff's row
+	assert_equal(await count(f1), 2); // f1 untouched by its child
 
 	// closing a fork doesn't disturb the base — still re-forkable
 	await f1.close();
 	await f2.close();
 	await ff.close();
-	assertEquals(await count(base), 1);
+	assert_equal(await count(base), 1);
 	const f3 = await base.fork();
-	assertEquals(await count(f3), 1);
+	assert_equal(await count(f3), 1);
 	await f3.close();
 	await base.close();
 });

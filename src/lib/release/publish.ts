@@ -29,9 +29,9 @@
  *    `gro check` over `src/`, the release-audit firewall
  * 2. `npm run test:rust` and `deno task test:wasm`: the engine's own suites,
  *    natively and through the wasm binding; neither needs Postgres
- * 3. `deno task test:npm`: builds `pkg-npm` from an emptied directory and runs
+ * 3. `npm run test:npm`: builds `pkg-npm` from an emptied directory and runs
  *    the package suite, ending in the packed-tarball smoke over that same
- *    directory, with `PKG_DIR` naming it (the task root sets it on `deno`), so
+ *    directory, with `PKG_DIR` naming it (the task root sets it on `npm`), so
  *    an exported `PKG_DIR` can't point the Node legs at another build, and
  *    nothing between it and the publish rebuilds `pkg-npm`
  * 4. the built `package.json`'s `name@version` against the registry identity
@@ -165,7 +165,7 @@ export interface PublishCommandDeps {
 	git_remote: ReleaseProgram;
 	/** `npm`: the registry questions, the publish, and the gates `package.json` runs. */
 	npm: ReleaseProgram;
-	/** `deno`: the gates `deno.json` runs and the size gate. */
+	/** `deno`: the gate `deno.json` runs and the size gate. */
 	deno: ReleaseProgram;
 	/** `cargo`: probed, and the bump moves the lockfiles with it. */
 	cargo: ReleaseProgram;
@@ -433,7 +433,7 @@ export const run_publish_command = async (
 		await step('npm run test:rust', npm, ['run', 'test:rust']);
 		await step('deno task test:wasm', deno, ['task', 'test:wasm']);
 		print(`\nbuilding + testing ${name} …`);
-		await step('deno task test:npm', deno, ['task', 'test:npm']);
+		await step('npm run test:npm', npm, ['run', 'test:npm']);
 
 		// wasm-pack stamps the version from Cargo.toml and the patch task the name; assert both
 		// rather than trust the chain, since this is the file npm publishes from

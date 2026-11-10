@@ -1,11 +1,12 @@
 /**
  * Node-runtime smoke test of the built `@fuzdev/pglet-wasm` package.
  *
- * Runs under REAL Node (not Deno) on purpose — it validates the package in the runtime a
- * consumer actually uses: the `"node"` export condition and the top-level `readFileSync` +
- * `initSync` auto-init path in `index.js`. The rich Deno suite (`tests-web/npm/`) proves the
- * coercion/adapter contract, but runs under Deno's node-compat, so it can't prove the real
- * Node module-resolution + init path resolves and runs. This closes that gap — mirroring the
+ * Runs under plain Node (not a test runner's module loader) on purpose — it validates the
+ * package the way a consumer loads it: the `"node"` export condition and the top-level
+ * `readFileSync` + `initSync` auto-init path in `index.js`. The rich vitest suite
+ * (`tests-web/npm/`) proves the coercion/adapter contract, but imports the package by path
+ * through vitest's module runner, so it can't prove Node's own module resolution + init path
+ * resolves and runs. This closes that gap — mirroring the
  * sibling wasm packages' `scripts/test_npm.*` pattern (tsv, blake3).
  *
  *   PKG_DIR=crates/pglet_wasm/pkg-npm node --test scripts/test_npm_node.mjs

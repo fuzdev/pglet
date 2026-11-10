@@ -47,10 +47,11 @@ export type Args = s.Infer<typeof Args>;
  *   (`GIT_LOCAL_PASS_ENV`), and for the fetch, the remote tag lookup, the
  *   commit, the tag and the push with the whole environment, since credentials,
  *   signing and hooks are the user's setup
- * - `npm` with the whole environment: the registry's auth and config are the
- *   user's, and it runs the `package.json` gates, cargo and wasm-pack beneath
- * - `deno` with the whole environment and `PKG_DIR` set to `pkg-npm`, which only
- *   `test:npm`'s Node legs read: it runs the `deno.json` gates and the size gate
+ * - `npm` with the whole environment and `PKG_DIR` set to `pkg-npm`, which only
+ *   `test:npm`'s Node legs read: the registry's auth and config are the user's,
+ *   and it runs the `package.json` gates, cargo and wasm-pack beneath
+ * - `deno` with the whole environment: it runs the `deno.json` gate and the size
+ *   gate
  * - `cargo` with its own and rustup's variables, for its probe and the offline
  *   lockfile update; `node`, `wasm-pack` and `gzip` with gro's base environment,
  *   for their probes
@@ -79,8 +80,8 @@ export const task: Task<Args> = {
 				checkout,
 				git_local: to_program('git', { pass_env: GIT_LOCAL_PASS_ENV }),
 				git_remote: to_program('git', { pass_env: 'all' }),
-				npm: to_program('npm', { pass_env: 'all' }),
-				deno: to_program('deno', { pass_env: 'all', env: { PKG_DIR: PUBLISH_PKG_DIR } }),
+				npm: to_program('npm', { pass_env: 'all', env: { PKG_DIR: PUBLISH_PKG_DIR } }),
+				deno: to_program('deno', { pass_env: 'all' }),
 				cargo: to_program('cargo', { pass_env: ['CARGO_*', 'RUSTUP_*'] }),
 				node: to_program('node'),
 				wasm_pack: to_program('wasm-pack'),

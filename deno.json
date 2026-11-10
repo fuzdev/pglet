@@ -43,8 +43,6 @@
     "bench:memory": "cargo build --release -p pglet_bench && deno task wasm:build && deno run --config deno.json -A benches/memory.ts",
     "bench:memory:update": "cargo build --release -p pglet_bench && deno task wasm:build && deno run --config deno.json -A benches/memory.ts --update",
 
-    "test:npm": "deno task build:npm && deno test --frozen -A tests-web/npm/ && node --test scripts/test_npm_node.mjs scripts/test_npm_pack.mjs",
-    "test:npm:node": "deno task build:npm && node --test scripts/test_npm_node.mjs scripts/test_npm_pack.mjs",
     "wasm:test": "deno run --allow-read examples/browser/test.ts",
     "wasm:serve": "cd examples/browser && deno run --allow-net --allow-read serve.ts"
   },

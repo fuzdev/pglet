@@ -18,8 +18,13 @@ deno task test:drizzle         # Drizzle ORM tests
 deno task test:kysely          # Kysely ORM tests
 deno task test:pg              # pg (node-postgres) driver tests
 deno task test:postgres        # postgres.js driver tests
+npm run test:npm               # The npm package's adapter suite (vitest) + its plain-Node smoke tests
 deno task test:browser         # Playwright browser tests (WASM + OPFS)
 ```
+
+`test:npm`'s adapter suite runs under vitest with `tests-web/vitest.config.ts`, each test file
+in a process of its own, typechecked first with `tsc` against `tests-web/npm/tsconfig.json`.
+`gro check` runs only `src/`'s tests.
 
 ## Test Categories
 
@@ -49,7 +54,9 @@ port, and the browser harness's HTTP port is its own.
 
 ```
 tests-web/              # TypeScript interface tests (this directory)
+├── vitest.config.ts    # The vitest suites' config
 ├── lib/                # Shared test utilities
+│   ├── assert.ts       # assert_equal, assert_rejects (beside vitest's assert)
 │   ├── ports.ts        # Port constants (5432, 5433, 5434, 8001)
 │   ├── server.ts       # ensureServer(), spawnServer(), checkHealth()
 │   └── build.ts        # ensureWasm(), buildServer()
@@ -64,7 +71,7 @@ tests-web/              # TypeScript interface tests (this directory)
 │
 ├── integration/        # Behavioral tests (pglet_test.ts, server_test.ts, pglet_wasm_test.ts + its child scripts; see its README)
 │
-├── npm/                # @fuzdev/pglet-wasm adapter suite (coercion, dx, kysely, package, adapter, browser entry)
+├── npm/                # @fuzdev/pglet-wasm adapter suite (coercion, dx, kysely, package, adapter, browser entry; + its tsconfig.json)
 │
 └── browser/            # Playwright browser tests
     ├── run.ts          # Test runner
@@ -152,7 +159,9 @@ in both headed and headless modes.
 
 ## Shared Test Utilities
 
-`tests-web/lib/` holds the three a web test reaches for: `ports.ts` (the port constants),
+`tests-web/lib/` holds what a web test reaches for: `assert.ts` (`assert_equal`, a deep
+equality that counts prototypes, and `assert_rejects`, for a promise that must reject),
+`ports.ts` (the port constants),
 `server.ts` (`checkHealth` / `ensureServer` / `spawnServer` — health-check, a fresh spawn
 that refuses an occupied test port, with a cleanup function, and a handle-returning spawn) and `build.ts` (`buildServer` /
 `ensureWasm`, each building only when the artifact is stale). Signatures live in the files;
@@ -188,7 +197,7 @@ drivers + npm) → `test:wasm` → `test:browser`. Opt-in and not chained: `test
 | SQL fixtures | Postgres on 5432 | pglet binary: Yes |
 | Integration | None | pglet binary: Yes |
 | Drizzle | None | pglet binary: Yes |
-| npm adapter | Node (`test:npm` runs `node --test`) | npm package: Yes (`build:npm`) |
+| npm adapter | Node (vitest, then `node --test`) | npm package: Yes (`build:npm`) |
 | Browser | Playwright Chromium | WASM package: Yes |
 
 Most suites fail fast with a message naming a missing prerequisite; some skip and exit 0 instead — `test:copy`, `test:dump` and `test:pg-dump` without Postgres or its client tools, `test:power-loss` without its device.

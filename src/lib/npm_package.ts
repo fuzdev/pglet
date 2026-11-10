@@ -39,8 +39,8 @@ const RAW_SNIPPETS = 'snippets/';
 // internals, not the package's API. `init` / `init_sync` are the browser entry's, answered here
 // as no-ops so code written for both entries runs on either.
 //
-// It is also the entry every server runtime resolves (Node, Deno and Bun all match the `node`
-// export condition), so it is the one that hands the adapter an `AsyncLocalStorage`: that is what
+// It is also the entry the server runtimes resolve (Node and Bun both match the `node` export
+// condition), so it is the one that hands the adapter an `AsyncLocalStorage`: that is what
 // lets `transaction()` queue a concurrent top-level call and refuse only a nested one. It is ONE
 // store for every instance — on Node 22's async-hooks implementation each store ever entered stays
 // registered and costs on every promise, so a store per instance slows a long suite with each
