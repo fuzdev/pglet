@@ -12,19 +12,22 @@ before running it against a Postgres you keep.
 deno task test                 # The chained suites (Rust + TypeScript + Browser) — not every test:* task
 deno task test:rust            # Rust unit tests only
 deno task test:fixtures        # SQL fixture tests (in tests/fixtures/)
-deno task test:web             # The driver/ORM/npm suites (integration, drizzle, kysely, postgres, pg, npm)
-deno task test:integration     # Behavioral tests
-deno task test:drizzle         # Drizzle ORM tests
-deno task test:kysely          # Kysely ORM tests
-deno task test:pg              # pg (node-postgres) driver tests
-deno task test:postgres        # postgres.js driver tests
-npm run test:npm               # The npm package's adapter suite (vitest) + its plain-Node smoke tests
+npm run test:web               # The driver/ORM/npm suites (integration, drizzle, kysely, postgres, pg, npm)
+npm run test:integration       # Behavioral tests
+npm run test:drizzle           # Drizzle ORM tests
+npm run test:kysely            # Kysely ORM tests
+npm run test:pg                # pg (node-postgres) driver tests
+npm run test:postgres          # postgres.js driver tests
+npm run test:npm               # The npm package's adapter suite + its plain-Node smoke tests
 deno task test:browser         # Playwright browser tests (WASM + OPFS)
 ```
 
-`test:npm`'s adapter suite runs under vitest with `tests-web/vitest.config.ts`, each test file
-in a process of its own, typechecked first with `tsc` against `tests-web/npm/tsconfig.json`.
-`gro check` runs only `src/`'s tests.
+`test:web`'s suites and `test:integration:server` run under vitest, by file, with
+`tests-web/vitest.config.ts`: each test file in a process of its own, the files in parallel.
+Each script typechecks first with `tsc`, against `tests-web/tsconfig.json` (the server suites)
+or `tests-web/npm/tsconfig.json` (the npm suite, which needs `build:npm`'s package), and each
+server suite's script builds the debug `pglet_server` first. `gro check` runs only `src/`'s
+tests.
 
 ## Test Categories
 
@@ -47,19 +50,22 @@ in a process of its own, typechecked first with `tsc` against `tests-web/npm/tsc
 
 `tests-web/lib/ports.ts` is the TypeScript mirror of the Rust constants, and
 `crates/pglet_tests/README.md` § Port Conventions is where the allocation is stated —
-including the dynamic range a spawned server takes. What matters here: a test server never lands on the dev server's
-port, and the browser harness's HTTP port is its own.
+including the dynamic range a Rust harness's server takes. A server suite here asks for port 0
+and reads the port the kernel picked from the server's `pglet listening on` line, so suites run
+side by side and nothing already listening (a spy proxy, the dev server, another checkout's
+server) is mistaken for the suite's own. The browser harness's HTTP port is its own.
 
 ## Directory Structure
 
 ```
 tests-web/              # TypeScript interface tests (this directory)
 ├── vitest.config.ts    # The vitest suites' config
+├── tsconfig.json       # The server suites' typecheck (npm/ has its own)
 ├── lib/                # Shared test utilities
 │   ├── assert.ts       # assert_equal, assert_rejects (beside vitest's assert)
-│   ├── ports.ts        # Port constants (5432, 5433, 5434, 8001)
-│   ├── server.ts       # ensureServer(), spawnServer(), checkHealth()
-│   └── build.ts        # ensureWasm(), buildServer()
+│   ├── ports.ts        # Port constants (5432, 5433, 8001)
+│   ├── server.ts       # start_suite_server(), start_test_server(): this checkout's debug pglet_server
+│   └── build.ts        # ensureWasm()
 │
 ├── orms/               # ORM compatibility tests
 │   ├── drizzle/        # Drizzle ORM tests (+ schema.ts)
@@ -161,11 +167,14 @@ in both headed and headless modes.
 
 `tests-web/lib/` holds what a web test reaches for: `assert.ts` (`assert_equal`, a deep
 equality that counts prototypes, and `assert_rejects`, for a promise that must reject),
-`ports.ts` (the port constants),
-`server.ts` (`checkHealth` / `ensureServer` / `spawnServer` — health-check, a fresh spawn
-that refuses an occupied test port, with a cleanup function, and a handle-returning spawn) and `build.ts` (`buildServer` /
-`ensureWasm`, each building only when the artifact is stale). Signatures live in the files;
-they are short enough to read, and a copy here goes stale silently.
+`ports.ts` (the port constants), `server.ts` (`start_suite_server` for a server the file's
+tests share, stopped after them, and `start_test_server` for one a single test owns, stopped
+when it ends, passed or failed) and `build.ts` (`ensureWasm`, building only
+when the artifact is stale). `server.ts` is the composition root: it hands this checkout's
+debug build, with gro's base environment, to `src/lib/pglet_server.ts`, which starts it with
+`--port 0`, reads the bound port, and stops it, as a process group of its own that gro's exit
+and signal hooks also stop. Signatures live in the files; they are short enough to read, and a
+copy here goes stale silently.
 
 ## Running All Tests
 
@@ -186,7 +195,7 @@ drivers + npm) → `test:wasm` → `test:browser`. Opt-in and not chained: `test
 |-----------|---------------|-------|
 | Rust unit | Yes | Independent tests |
 | SQL fixtures | No — one run per oracle | Each run resets the oracle's `public` schema before its first fixture; fixtures within a run are isolated by `BEGIN … ROLLBACK` |
-| Integration | Yes | Unique table names per test |
+| Server suites | Yes | Each file starts its own server on a port the kernel picks; within a file, unique table names per test |
 | Browser | No | The tests run serially on one shared page/context (OPFS is one exclusive handle per origin) |
 
 ## Prerequisites

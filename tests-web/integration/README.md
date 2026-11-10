@@ -14,8 +14,8 @@ only for:
 ## Running
 
 ```bash
-deno task test:integration          # self-contained — auto-spawns a server on the test port
-deno task test:integration:server   # server-lifecycle tests (spawn/kill per test)
+npm run test:integration            # self-contained — starts its own server on a port the kernel picks
+npm run test:integration:server     # server-lifecycle tests (spawn/kill per test)
 ```
 
 Broader query correctness lives in the SQL fixtures (`tests/fixtures/`); this

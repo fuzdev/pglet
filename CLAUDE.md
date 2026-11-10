@@ -537,7 +537,8 @@ roots, which root themselves on their own file's location (never the working dir
 which `package.json` scripts run with `gro task`; `src/test/` holds their vitest suites. `npm
 run check:ts` (`gro check -- gro test --fail_without_tests`, inside `check`) typechecks,
 tests and format-checks it, and fails when no test is found. `tests-web/` (the integration
-suites), `benches/` (the measurements) and `scripts/` (the npm package's plain-Node legs)
+suites; those on vitest take `tests-web/vitest.config.ts`, and a server suite starts its own
+server through `src/lib/pglet_server.ts`), `benches/` (the measurements) and `scripts/` (the npm package's plain-Node legs)
 stay where they are.
 
 ```bash
@@ -593,9 +594,11 @@ npm run wasm:build                # the wasm build: wasm-pack of crates/pglet_wa
 #                                   size:check run first; the npm package is build:npm)
 npm run wasm:build:opfs           # the same with the `opfs` feature on, into pkg-opfs/ — the one build exporting
 #                                   PgletBtreePersistent (examples/browser's persistent page, test:browser's OPFS worker)
-deno task test:web                # the driver/ORM/npm suites (integration, drizzle, kysely, postgres, pg, npm);
-#                                   each is its own task (test:integration, test:drizzle, test:kysely,
-#                                   test:postgres, test:pg, test:npm) — tests-web/README.md
+npm run test:web                  # the driver/ORM/npm suites (integration, drizzle, kysely, postgres, pg, npm), on vitest;
+#                                   each is its own script (test:integration, test:drizzle, test:kysely,
+#                                   test:postgres, test:pg, test:npm) — tests-web/README.md; each server suite
+#                                   builds the debug server and starts its own on a port the kernel picks
+#                                   (src/lib/pglet_server.ts)
 npm run test:power-loss           # dm-flakey power-loss rounds (root-only; skips without the device)
 npm run test:concurrent           # concurrency / MVCC isolation (spawns a server)
 npm run test:crash                # real-process kill -9 + soak durability test
@@ -612,9 +615,7 @@ npm run matrix:env                # re-print that setup without rebuilding (eval
 #                                   eval "$(npm run --silent matrix:env)"; it runs gro at PUBLIC_LOG_LEVEL=error)
 npm run spy:start                 # wire-protocol logging proxy on loopback, :5434 → :5432, appending to
 #                                   tests/captures/session.jsonl (`-- <listen_port> <server_port> <tests/captures/…>`;
-#                                   listen port 0 binds a free one and prints it; src/lib/spy_proxy/proxy.ts);
-#                                   5434 is also the port tests-web's suites spawn their server on
-#                                   (tests-web/lib/server.ts), so stop the proxy before those
+#                                   listen port 0 binds a free one and prints it; src/lib/spy_proxy/proxy.ts)
 npm run spy:spine:cell | spy:spine:fact   # the proxy recording to tests/captures/spine_{cell,fact}.jsonl
 deno task wasm:serve | wasm:test  # examples/browser's static server on :8001 and its Deno smoke test
 #                                   (examples/browser/README.md)
@@ -674,8 +675,9 @@ and `crates/pglet_bench/src/stats.rs` reproduce `@fuzdev/fuz_util`'s statistics 
 one is a change to all three, or it is a bug.
 
 Ports: 5432 real Postgres (fixture generation), 5433 dev server, 5434–5499 for
-test-spawned servers (`PGLET_TEST_PORT` is the start of the dynamic range,
-`DYNAMIC_PORT_END` its exclusive end), 8001 browser tests. Address the Postgres oracle and
+servers the Rust harnesses spawn (`PGLET_TEST_PORT` is the start of the dynamic range,
+`DYNAMIC_PORT_END` its exclusive end), a port the kernel picks for each `tests-web/` server
+suite's own server (`--port 0`), 8001 browser tests. Address the Postgres oracle and
 the pglet servers as `127.0.0.1`, not `localhost`.
 
 ## The gate runner

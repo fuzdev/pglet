@@ -1,25 +1,8 @@
 /**
  * Build utilities for pglet tests.
  *
- * Provides functions to build various targets (native, WASM) on demand.
+ * Provides functions to build the WASM packages on demand.
  */
-
-/**
- * Build pglet_server (debug build).
- */
-export async function buildServer(): Promise<boolean> {
-  console.log("[build] cargo build -p pglet_server...");
-  const cmd = new Deno.Command("cargo", {
-    args: ["build", "-p", "pglet_server"],
-    stdout: "inherit",
-    stderr: "inherit",
-  });
-  const result = await cmd.output();
-  if (!result.success) {
-    console.error("[build] Failed to build pglet_server");
-  }
-  return result.success;
-}
 
 /**
  * A wasm-pack build of `crates/pglet_wasm`: its output directory, and the cargo features

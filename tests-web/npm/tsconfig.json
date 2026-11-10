@@ -1,14 +1,4 @@
 {
-	"compilerOptions": {
-		"target": "ESNext",
-		"module": "NodeNext",
-		"moduleResolution": "NodeNext",
-		"strict": true,
-		"skipLibCheck": true,
-		"allowJs": true,
-		"noEmit": true,
-		"allowImportingTsExtensions": true,
-		"types": ["node"]
-	},
+	"extends": "../tsconfig.json",
 	"include": ["*_test.ts"]
 }

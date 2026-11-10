@@ -1,37 +1,32 @@
 /**
  * Kysely ORM tests for pglet compatibility.
  *
- * Self-contained: Automatically spawns pglet server if not running.
+ * Self-contained: starts a pglet server of its own for the file.
  *
  * Tests basic CRUD operations using Kysely ORM against pglet.
- * Run: deno task test:kysely
+ * Run: npm run test:kysely
  *
  * Mirrors the Drizzle test structure for consistent coverage.
  */
 
-import { assertEquals } from "@std/assert";
+import { test } from "vitest";
+import { assert_equal } from "../../lib/assert.ts";
 import { Kysely, type Migration, Migrator, PostgresDialect, sql } from "kysely";
 import pg from "pg";
 import type { Database, NewUser, NewPost } from "./types.ts";
-import { PORTS } from "../../lib/ports.ts";
-import { ensureServer } from "../../lib/server.ts";
+import { start_suite_server } from "../../lib/server.ts";
 
 const { Pool } = pg;
 
+// A server of this file's own, on a port the kernel picks, stopped when the file's tests end
+const server = await start_suite_server();
+
 const CONFIG = {
-  host: "127.0.0.1",
-  port: PORTS.PGLET_TEST,
+  host: server.host,
+  port: server.port,
   user: "postgres",
   database: "postgres",
 };
-
-// Ensure server is running before tests
-const cleanupServer = await ensureServer();
-
-// Register cleanup
-globalThis.addEventListener("unload", () => {
-  cleanupServer();
-});
 
 /**
  * Helper to create a fresh Kysely connection.
@@ -83,7 +78,7 @@ async function setupTables(db: Kysely<Database>): Promise<void> {
 // INSERT Tests
 // =============================================================================
 
-Deno.test("kysely - insert single row", async () => {
+test("kysely - insert single row", async () => {
   await withDb(async (db) => {
     await setupTables(db);
 
@@ -94,13 +89,13 @@ Deno.test("kysely - insert single row", async () => {
     }).execute();
 
     const result = await db.selectFrom("users").selectAll().execute();
-    assertEquals(result.length, 1);
-    assertEquals(result[0].name, "Alice");
-    assertEquals(result[0].email, "alice@example.com");
+    assert_equal(result.length, 1);
+    assert_equal(result[0].name, "Alice");
+    assert_equal(result[0].email, "alice@example.com");
   });
 });
 
-Deno.test("kysely - insert multiple rows", async () => {
+test("kysely - insert multiple rows", async () => {
   await withDb(async (db) => {
     await setupTables(db);
 
@@ -111,7 +106,7 @@ Deno.test("kysely - insert multiple rows", async () => {
     ]).execute();
 
     const result = await db.selectFrom("users").selectAll().execute();
-    assertEquals(result.length, 3);
+    assert_equal(result.length, 3);
   });
 });
 
@@ -119,7 +114,7 @@ Deno.test("kysely - insert multiple rows", async () => {
 // SELECT Tests
 // =============================================================================
 
-Deno.test("kysely - select all", async () => {
+test("kysely - select all", async () => {
   await withDb(async (db) => {
     await setupTables(db);
     await db.insertInto("users").values([
@@ -128,11 +123,11 @@ Deno.test("kysely - select all", async () => {
     ]).execute();
 
     const result = await db.selectFrom("users").selectAll().execute();
-    assertEquals(result.length, 2);
+    assert_equal(result.length, 2);
   });
 });
 
-Deno.test("kysely - select with where eq", async () => {
+test("kysely - select with where eq", async () => {
   await withDb(async (db) => {
     await setupTables(db);
     await db.insertInto("users").values([
@@ -141,12 +136,12 @@ Deno.test("kysely - select with where eq", async () => {
     ]).execute();
 
     const result = await db.selectFrom("users").selectAll().where("id", "=", 1).execute();
-    assertEquals(result.length, 1);
-    assertEquals(result[0].name, "Alice");
+    assert_equal(result.length, 1);
+    assert_equal(result[0].name, "Alice");
   });
 });
 
-Deno.test("kysely - select with where gt", async () => {
+test("kysely - select with where gt", async () => {
   await withDb(async (db) => {
     await setupTables(db);
     await db.insertInto("users").values([
@@ -156,11 +151,11 @@ Deno.test("kysely - select with where gt", async () => {
     ]).execute();
 
     const result = await db.selectFrom("users").selectAll().where("id", ">", 1).execute();
-    assertEquals(result.length, 2);
+    assert_equal(result.length, 2);
   });
 });
 
-Deno.test("kysely - select with and", async () => {
+test("kysely - select with and", async () => {
   await withDb(async (db) => {
     await setupTables(db);
     await db.insertInto("users").values([
@@ -175,12 +170,12 @@ Deno.test("kysely - select with and", async () => {
       .where("active", "=", true)
       .where("id", ">", 1)
       .execute();
-    assertEquals(result.length, 1);
-    assertEquals(result[0].name, "Carol");
+    assert_equal(result.length, 1);
+    assert_equal(result[0].name, "Carol");
   });
 });
 
-Deno.test("kysely - select with or", async () => {
+test("kysely - select with or", async () => {
   await withDb(async (db) => {
     await setupTables(db);
     await db.insertInto("users").values([
@@ -194,11 +189,11 @@ Deno.test("kysely - select with or", async () => {
       .selectAll()
       .where((eb) => eb.or([eb("id", "=", 1), eb("id", "=", 3)]))
       .execute();
-    assertEquals(result.length, 2);
+    assert_equal(result.length, 2);
   });
 });
 
-Deno.test("kysely - select specific columns", async () => {
+test("kysely - select specific columns", async () => {
   await withDb(async (db) => {
     await setupTables(db);
     await db.insertInto("users").values({
@@ -208,15 +203,15 @@ Deno.test("kysely - select specific columns", async () => {
     }).execute();
 
     const result = await db.selectFrom("users").select(["name", "email"]).execute();
-    assertEquals(result.length, 1);
-    assertEquals(result[0].name, "Alice");
-    assertEquals(result[0].email, "alice@example.com");
+    assert_equal(result.length, 1);
+    assert_equal(result[0].name, "Alice");
+    assert_equal(result[0].email, "alice@example.com");
     // @ts-expect-error id not selected
-    assertEquals(result[0].id, undefined);
+    assert_equal(result[0].id, undefined);
   });
 });
 
-Deno.test("kysely - select with order by asc", async () => {
+test("kysely - select with order by asc", async () => {
   await withDb(async (db) => {
     await setupTables(db);
     await db.insertInto("users").values([
@@ -226,13 +221,13 @@ Deno.test("kysely - select with order by asc", async () => {
     ]).execute();
 
     const result = await db.selectFrom("users").selectAll().orderBy("name", "asc").execute();
-    assertEquals(result[0].name, "Alice");
-    assertEquals(result[1].name, "Bob");
-    assertEquals(result[2].name, "Carol");
+    assert_equal(result[0].name, "Alice");
+    assert_equal(result[1].name, "Bob");
+    assert_equal(result[2].name, "Carol");
   });
 });
 
-Deno.test("kysely - select with order by desc", async () => {
+test("kysely - select with order by desc", async () => {
   await withDb(async (db) => {
     await setupTables(db);
     await db.insertInto("users").values([
@@ -242,13 +237,13 @@ Deno.test("kysely - select with order by desc", async () => {
     ]).execute();
 
     const result = await db.selectFrom("users").selectAll().orderBy("id", "desc").execute();
-    assertEquals(result[0].id, 3);
-    assertEquals(result[1].id, 2);
-    assertEquals(result[2].id, 1);
+    assert_equal(result[0].id, 3);
+    assert_equal(result[1].id, 2);
+    assert_equal(result[2].id, 1);
   });
 });
 
-Deno.test("kysely - select with limit", async () => {
+test("kysely - select with limit", async () => {
   await withDb(async (db) => {
     await setupTables(db);
     await db.insertInto("users").values([
@@ -263,13 +258,13 @@ Deno.test("kysely - select with limit", async () => {
       .orderBy("id", "asc")
       .limit(2)
       .execute();
-    assertEquals(result.length, 2);
-    assertEquals(result[0].id, 1);
-    assertEquals(result[1].id, 2);
+    assert_equal(result.length, 2);
+    assert_equal(result[0].id, 1);
+    assert_equal(result[1].id, 2);
   });
 });
 
-Deno.test("kysely - select with offset", async () => {
+test("kysely - select with offset", async () => {
   await withDb(async (db) => {
     await setupTables(db);
     await db.insertInto("users").values([
@@ -285,9 +280,9 @@ Deno.test("kysely - select with offset", async () => {
       .limit(2)
       .offset(1)
       .execute();
-    assertEquals(result.length, 2);
-    assertEquals(result[0].id, 2);
-    assertEquals(result[1].id, 3);
+    assert_equal(result.length, 2);
+    assert_equal(result[0].id, 2);
+    assert_equal(result[1].id, 3);
   });
 });
 
@@ -295,7 +290,7 @@ Deno.test("kysely - select with offset", async () => {
 // UPDATE Tests
 // =============================================================================
 
-Deno.test("kysely - update single field", async () => {
+test("kysely - update single field", async () => {
   await withDb(async (db) => {
     await setupTables(db);
     await db.insertInto("users").values({
@@ -307,11 +302,11 @@ Deno.test("kysely - update single field", async () => {
     await db.updateTable("users").set({ name: "Alicia" }).where("id", "=", 1).execute();
 
     const result = await db.selectFrom("users").selectAll().where("id", "=", 1).execute();
-    assertEquals(result[0].name, "Alicia");
+    assert_equal(result[0].name, "Alicia");
   });
 });
 
-Deno.test("kysely - update multiple fields", async () => {
+test("kysely - update multiple fields", async () => {
   await withDb(async (db) => {
     await setupTables(db);
     await db.insertInto("users").values({
@@ -328,12 +323,12 @@ Deno.test("kysely - update multiple fields", async () => {
       .execute();
 
     const result = await db.selectFrom("users").selectAll().where("id", "=", 1).execute();
-    assertEquals(result[0].name, "Alicia");
-    assertEquals(result[0].active, false);
+    assert_equal(result[0].name, "Alicia");
+    assert_equal(result[0].active, false);
   });
 });
 
-Deno.test("kysely - update multiple rows", async () => {
+test("kysely - update multiple rows", async () => {
   await withDb(async (db) => {
     await setupTables(db);
     await db.insertInto("users").values([
@@ -345,7 +340,7 @@ Deno.test("kysely - update multiple rows", async () => {
     await db.updateTable("users").set({ active: true }).where("active", "=", false).execute();
 
     const result = await db.selectFrom("users").selectAll().execute();
-    assertEquals(result.every((u) => u.active === true), true);
+    assert_equal(result.every((u) => u.active === true), true);
   });
 });
 
@@ -353,7 +348,7 @@ Deno.test("kysely - update multiple rows", async () => {
 // DELETE Tests
 // =============================================================================
 
-Deno.test("kysely - delete single row", async () => {
+test("kysely - delete single row", async () => {
   await withDb(async (db) => {
     await setupTables(db);
     await db.insertInto("users").values([
@@ -364,12 +359,12 @@ Deno.test("kysely - delete single row", async () => {
     await db.deleteFrom("users").where("id", "=", 1).execute();
 
     const result = await db.selectFrom("users").selectAll().execute();
-    assertEquals(result.length, 1);
-    assertEquals(result[0].name, "Bob");
+    assert_equal(result.length, 1);
+    assert_equal(result[0].name, "Bob");
   });
 });
 
-Deno.test("kysely - delete multiple rows", async () => {
+test("kysely - delete multiple rows", async () => {
   await withDb(async (db) => {
     await setupTables(db);
     await db.insertInto("users").values([
@@ -381,12 +376,12 @@ Deno.test("kysely - delete multiple rows", async () => {
     await db.deleteFrom("users").where("active", "=", false).execute();
 
     const result = await db.selectFrom("users").selectAll().execute();
-    assertEquals(result.length, 1);
-    assertEquals(result[0].name, "Carol");
+    assert_equal(result.length, 1);
+    assert_equal(result[0].name, "Carol");
   });
 });
 
-Deno.test("kysely - delete all rows", async () => {
+test("kysely - delete all rows", async () => {
   await withDb(async (db) => {
     await setupTables(db);
     await db.insertInto("users").values([
@@ -397,7 +392,7 @@ Deno.test("kysely - delete all rows", async () => {
     await db.deleteFrom("users").execute();
 
     const result = await db.selectFrom("users").selectAll().execute();
-    assertEquals(result.length, 0);
+    assert_equal(result.length, 0);
   });
 });
 
@@ -405,7 +400,7 @@ Deno.test("kysely - delete all rows", async () => {
 // Multi-table Tests
 // =============================================================================
 
-Deno.test("kysely - insert and query related tables", async () => {
+test("kysely - insert and query related tables", async () => {
   await withDb(async (db) => {
     await setupTables(db);
 
@@ -416,14 +411,14 @@ Deno.test("kysely - insert and query related tables", async () => {
     ]).execute();
 
     const userResult = await db.selectFrom("users").selectAll().execute();
-    assertEquals(userResult.length, 1);
+    assert_equal(userResult.length, 1);
 
     const postResult = await db
       .selectFrom("posts")
       .selectAll()
       .where("author_id", "=", 1)
       .execute();
-    assertEquals(postResult.length, 2);
+    assert_equal(postResult.length, 2);
   });
 });
 
@@ -431,9 +426,8 @@ Deno.test("kysely - insert and query related tables", async () => {
 // introspector's `getTables` query and the migration lock (`pg_advisory_xact_lock`, the
 // writer here) run as kysely issues them. The npm leg's twin is
 // `tests-web/npm/kysely_migrator_test.ts`.
-Deno.test("kysely - Migrator migrates, reruns as a no-op, rolls a failing migration back, migrates down", async () => {
+test("kysely - Migrator migrates, reruns as a no-op, rolls a failing migration back, migrates down", async () => {
   const pool = new Pool(CONFIG);
-  // deno-lint-ignore no-explicit-any
   const db = new Kysely<any>({ dialect: new PostgresDialect({ pool }) });
   try {
     for (const t of ["kysely_migration", "kysely_migration_lock", "mig_person", "mig_pet"]) {
@@ -460,20 +454,20 @@ Deno.test("kysely - Migrator migrates, reruns as a no-op, rolls a failing migrat
       (await db.introspection.getTables()).map((t) => t.name).filter((n) => n.startsWith("mig_")).sort();
 
     const first = await migrator.migrateToLatest();
-    assertEquals(first.error, undefined);
-    assertEquals(first.results?.map((r) => r.status), ["Success"]);
-    assertEquals(await names(), ["mig_person"]);
-    assertEquals((await migrator.migrateToLatest()).results, []);
+    assert_equal(first.error, undefined);
+    assert_equal(first.results?.map((r) => r.status), ["Success"]);
+    assert_equal(await names(), ["mig_person"]);
+    assert_equal((await migrator.migrateToLatest()).results, []);
 
     migrations = { "001_init": init, "002_failing": failing };
     const failed = await migrator.migrateToLatest();
-    assertEquals((failed.error as { code?: string } | undefined)?.code, "22012");
-    assertEquals(await names(), ["mig_person"]);
+    assert_equal((failed.error as { code?: string } | undefined)?.code, "22012");
+    assert_equal(await names(), ["mig_person"]);
 
     migrations = { "001_init": init };
     const down = await migrator.migrateDown();
-    assertEquals(down.error, undefined);
-    assertEquals(await names(), []);
+    assert_equal(down.error, undefined);
+    assert_equal(await names(), []);
     for (const t of ["kysely_migration", "kysely_migration_lock"]) {
       await sql.raw(`DROP TABLE ${t}`).execute(db);
     }

@@ -1,39 +1,34 @@
 /**
  * pg (node-postgres) driver tests for pglet compatibility.
  *
- * Self-contained: Automatically spawns pglet server if not running.
+ * Self-contained: starts a pglet server of its own for the file.
  *
  * Tests basic driver functionality with pg (node-postgres).
  * Complements integration tests by focusing on driver-specific features.
  *
- * Run: deno task test:pg
+ * Run: npm run test:pg
  *
  * NOTE: This is a simple test suite. Advanced features like binary vs text format
  * comparison, detailed type mapping, Pool vs Client behavior, and result metadata
  * are not yet covered here.
  */
 
-import { assertEquals } from "@std/assert";
+import { test } from "vitest";
+import { assert_equal } from "../../lib/assert.ts";
 import pg from "pg";
-import { PORTS } from "../../lib/ports.ts";
-import { ensureServer } from "../../lib/server.ts";
+import { start_suite_server } from "../../lib/server.ts";
 
 const { Client, Pool } = pg;
 
+// A server of this file's own, on a port the kernel picks, stopped when the file's tests end
+const server = await start_suite_server();
+
 const CONFIG = {
-  host: "127.0.0.1",
-  port: PORTS.PGLET_TEST,
+  host: server.host,
+  port: server.port,
   user: "postgres",
   database: "postgres",
 };
-
-// Ensure server is running before tests
-const cleanupServer = await ensureServer();
-
-// Register cleanup
-globalThis.addEventListener("unload", () => {
-  cleanupServer();
-});
 
 /**
  * Helper to create a fresh connection with pg.Client.
@@ -68,11 +63,11 @@ async function withPool<T>(
 // Basic Connection Tests
 // =============================================================================
 
-Deno.test("pg - basic connection and query", async () => {
+test("pg - basic connection and query", async () => {
   await withClient(async (client) => {
     const result = await client.query("SELECT 1 as num");
-    assertEquals(result.rows.length, 1);
-    assertEquals(result.rows[0].num, 1);
+    assert_equal(result.rows.length, 1);
+    assert_equal(result.rows[0].num, 1);
   });
 });
 
@@ -80,7 +75,7 @@ Deno.test("pg - basic connection and query", async () => {
 // CREATE TABLE Tests
 // =============================================================================
 
-Deno.test("pg - create and drop table", async () => {
+test("pg - create and drop table", async () => {
   await withClient(async (client) => {
     await client.query("DROP TABLE IF EXISTS test_table");
     await client.query("CREATE TABLE test_table (id INT, name TEXT)");
@@ -92,7 +87,7 @@ Deno.test("pg - create and drop table", async () => {
 // INSERT Tests
 // =============================================================================
 
-Deno.test("pg - insert and select", async () => {
+test("pg - insert and select", async () => {
   await withClient(async (client) => {
     await client.query("DROP TABLE IF EXISTS users");
     await client.query("CREATE TABLE users (id INT, name TEXT)");
@@ -100,15 +95,15 @@ Deno.test("pg - insert and select", async () => {
     await client.query("INSERT INTO users (id, name) VALUES (1, 'Alice')");
 
     const result = await client.query("SELECT * FROM users");
-    assertEquals(result.rows.length, 1);
-    assertEquals(result.rows[0].id, 1);
-    assertEquals(result.rows[0].name, "Alice");
+    assert_equal(result.rows.length, 1);
+    assert_equal(result.rows[0].id, 1);
+    assert_equal(result.rows[0].name, "Alice");
 
     await client.query("DROP TABLE users");
   });
 });
 
-Deno.test("pg - insert multiple rows", async () => {
+test("pg - insert multiple rows", async () => {
   await withClient(async (client) => {
     await client.query("DROP TABLE IF EXISTS users");
     await client.query("CREATE TABLE users (id INT, name TEXT)");
@@ -118,10 +113,10 @@ Deno.test("pg - insert multiple rows", async () => {
     );
 
     const result = await client.query("SELECT * FROM users ORDER BY id");
-    assertEquals(result.rows.length, 3);
-    assertEquals(result.rows[0].name, "Alice");
-    assertEquals(result.rows[1].name, "Bob");
-    assertEquals(result.rows[2].name, "Carol");
+    assert_equal(result.rows.length, 3);
+    assert_equal(result.rows[0].name, "Alice");
+    assert_equal(result.rows[1].name, "Bob");
+    assert_equal(result.rows[2].name, "Carol");
 
     await client.query("DROP TABLE users");
   });
@@ -131,7 +126,7 @@ Deno.test("pg - insert multiple rows", async () => {
 // Parameterized Query Tests
 // =============================================================================
 
-Deno.test("pg - parameterized queries with $1, $2", async () => {
+test("pg - parameterized queries with $1, $2", async () => {
   await withClient(async (client) => {
     await client.query("DROP TABLE IF EXISTS users");
     await client.query("CREATE TABLE users (id INT, name TEXT)");
@@ -139,14 +134,14 @@ Deno.test("pg - parameterized queries with $1, $2", async () => {
     await client.query("INSERT INTO users (id, name) VALUES ($1, $2)", [1, "Alice"]);
 
     const result = await client.query("SELECT * FROM users WHERE id = $1", [1]);
-    assertEquals(result.rows.length, 1);
-    assertEquals(result.rows[0].name, "Alice");
+    assert_equal(result.rows.length, 1);
+    assert_equal(result.rows[0].name, "Alice");
 
     await client.query("DROP TABLE users");
   });
 });
 
-Deno.test("pg - multiple parameters", async () => {
+test("pg - multiple parameters", async () => {
   await withClient(async (client) => {
     await client.query("DROP TABLE IF EXISTS products");
     await client.query("CREATE TABLE products (id INT, name TEXT, price FLOAT)");
@@ -160,8 +155,8 @@ Deno.test("pg - multiple parameters", async () => {
       "SELECT * FROM products WHERE name = $1 AND price < $2",
       ["Widget", 20.0],
     );
-    assertEquals(result.rows.length, 1);
-    assertEquals(result.rows[0].id, 1);
+    assert_equal(result.rows.length, 1);
+    assert_equal(result.rows[0].id, 1);
 
     await client.query("DROP TABLE products");
   });
@@ -171,7 +166,7 @@ Deno.test("pg - multiple parameters", async () => {
 // UPDATE Tests
 // =============================================================================
 
-Deno.test("pg - update rows", async () => {
+test("pg - update rows", async () => {
   await withClient(async (client) => {
     await client.query("DROP TABLE IF EXISTS users");
     await client.query("CREATE TABLE users (id INT, name TEXT)");
@@ -180,7 +175,7 @@ Deno.test("pg - update rows", async () => {
     await client.query("UPDATE users SET name = 'Charlie' WHERE id = 2");
 
     const result = await client.query("SELECT * FROM users WHERE id = 2");
-    assertEquals(result.rows[0].name, "Charlie");
+    assert_equal(result.rows[0].name, "Charlie");
 
     await client.query("DROP TABLE users");
   });
@@ -190,7 +185,7 @@ Deno.test("pg - update rows", async () => {
 // DELETE Tests
 // =============================================================================
 
-Deno.test("pg - delete rows", async () => {
+test("pg - delete rows", async () => {
   await withClient(async (client) => {
     await client.query("DROP TABLE IF EXISTS users");
     await client.query("CREATE TABLE users (id INT, name TEXT)");
@@ -201,9 +196,9 @@ Deno.test("pg - delete rows", async () => {
     await client.query("DELETE FROM users WHERE id = 2");
 
     const result = await client.query("SELECT * FROM users ORDER BY id");
-    assertEquals(result.rows.length, 2);
-    assertEquals(result.rows[0].id, 1);
-    assertEquals(result.rows[1].id, 3);
+    assert_equal(result.rows.length, 2);
+    assert_equal(result.rows[0].id, 1);
+    assert_equal(result.rows[1].id, 3);
 
     await client.query("DROP TABLE users");
   });
@@ -213,7 +208,7 @@ Deno.test("pg - delete rows", async () => {
 // Type Tests
 // =============================================================================
 
-Deno.test("pg - boolean type", async () => {
+test("pg - boolean type", async () => {
   await withClient(async (client) => {
     await client.query("DROP TABLE IF EXISTS test_bool");
     await client.query("CREATE TABLE test_bool (id INT, active BOOL)");
@@ -221,14 +216,14 @@ Deno.test("pg - boolean type", async () => {
     await client.query("INSERT INTO test_bool VALUES (1, true), (2, false)");
 
     const result = await client.query("SELECT * FROM test_bool ORDER BY id");
-    assertEquals(result.rows[0].active, true);
-    assertEquals(result.rows[1].active, false);
+    assert_equal(result.rows[0].active, true);
+    assert_equal(result.rows[1].active, false);
 
     await client.query("DROP TABLE test_bool");
   });
 });
 
-Deno.test("pg - numeric types", async () => {
+test("pg - numeric types", async () => {
   await withClient(async (client) => {
     await client.query("DROP TABLE IF EXISTS test_numbers");
     await client.query("CREATE TABLE test_numbers (id INT, price FLOAT)");
@@ -236,7 +231,7 @@ Deno.test("pg - numeric types", async () => {
     await client.query("INSERT INTO test_numbers VALUES (1, 99.99), (2, 42.5)");
 
     const result = await client.query("SELECT * FROM test_numbers WHERE id = 1");
-    assertEquals(result.rows[0].price, 99.99);
+    assert_equal(result.rows[0].price, 99.99);
 
     await client.query("DROP TABLE test_numbers");
   });
@@ -246,7 +241,7 @@ Deno.test("pg - numeric types", async () => {
 // WHERE Clause Tests
 // =============================================================================
 
-Deno.test("pg - where clause with comparison", async () => {
+test("pg - where clause with comparison", async () => {
   await withClient(async (client) => {
     await client.query("DROP TABLE IF EXISTS products");
     await client.query("CREATE TABLE products (id INT, price FLOAT)");
@@ -254,9 +249,9 @@ Deno.test("pg - where clause with comparison", async () => {
     await client.query("INSERT INTO products VALUES (1, 10.0), (2, 20.0), (3, 30.0)");
 
     const result = await client.query("SELECT * FROM products WHERE price > 15.0 ORDER BY id");
-    assertEquals(result.rows.length, 2);
-    assertEquals(result.rows[0].id, 2);
-    assertEquals(result.rows[1].id, 3);
+    assert_equal(result.rows.length, 2);
+    assert_equal(result.rows[0].id, 2);
+    assert_equal(result.rows[1].id, 3);
 
     await client.query("DROP TABLE products");
   });
@@ -266,7 +261,7 @@ Deno.test("pg - where clause with comparison", async () => {
 // Transaction Tests
 // =============================================================================
 
-Deno.test("pg - basic transaction commit", async () => {
+test("pg - basic transaction commit", async () => {
   await withClient(async (client) => {
     await client.query("DROP TABLE IF EXISTS accounts");
     await client.query("CREATE TABLE accounts (id INT, balance FLOAT)");
@@ -277,14 +272,14 @@ Deno.test("pg - basic transaction commit", async () => {
     await client.query("COMMIT");
 
     const result = await client.query("SELECT * FROM accounts ORDER BY id");
-    assertEquals(result.rows.length, 2);
-    assertEquals(result.rows[0].balance, 100.0);
+    assert_equal(result.rows.length, 2);
+    assert_equal(result.rows[0].balance, 100.0);
 
     await client.query("DROP TABLE accounts");
   });
 });
 
-Deno.test("pg - transaction rollback", async () => {
+test("pg - transaction rollback", async () => {
   await withClient(async (client) => {
     await client.query("DROP TABLE IF EXISTS accounts");
     await client.query("CREATE TABLE accounts (id INT, balance FLOAT)");
@@ -296,7 +291,7 @@ Deno.test("pg - transaction rollback", async () => {
     await client.query("ROLLBACK");
 
     const result = await client.query("SELECT * FROM accounts WHERE id = 1");
-    assertEquals(result.rows[0].balance, 100.0); // Should be unchanged
+    assert_equal(result.rows[0].balance, 100.0); // Should be unchanged
 
     await client.query("DROP TABLE accounts");
   });
@@ -306,11 +301,11 @@ Deno.test("pg - transaction rollback", async () => {
 // Pool Tests
 // =============================================================================
 
-Deno.test("pg - pool basic query", async () => {
+test("pg - pool basic query", async () => {
   await withPool(async (pool) => {
     const result = await pool.query("SELECT 1 as num");
-    assertEquals(result.rows.length, 1);
-    assertEquals(result.rows[0].num, 1);
+    assert_equal(result.rows.length, 1);
+    assert_equal(result.rows[0].num, 1);
   });
 });
 
@@ -322,7 +317,7 @@ Deno.test("pg - pool basic query", async () => {
 // Result Metadata Tests
 // =============================================================================
 
-Deno.test("pg - result metadata", async () => {
+test("pg - result metadata", async () => {
   await withClient(async (client) => {
     await client.query("DROP TABLE IF EXISTS users");
     await client.query("CREATE TABLE users (id INT, name TEXT)");
@@ -331,12 +326,12 @@ Deno.test("pg - result metadata", async () => {
     const result = await client.query("SELECT * FROM users");
 
     // Check rows
-    assertEquals(result.rows.length, 1);
+    assert_equal(result.rows.length, 1);
 
     // Check fields metadata
-    assertEquals(result.fields.length, 2);
-    assertEquals(result.fields[0].name, "id");
-    assertEquals(result.fields[1].name, "name");
+    assert_equal(result.fields.length, 2);
+    assert_equal(result.fields[0].name, "id");
+    assert_equal(result.fields[1].name, "name");
     // TODO: `dataTypeID`, `tableID` / `columnID` and `dataTypeModifier` as `pg` reads them off
     // the native server (the fixture harness compares declared type OIDs through its own Rust
     // client; the npm adapter's equivalents are pinned in `tests-web/npm/dx_test.ts`).
@@ -352,7 +347,7 @@ Deno.test("pg - result metadata", async () => {
  * the connection (`FATAL 0A000`) rather than serve `public` to a client that asked for another,
  * and serves a path that names only `public`.
  */
-Deno.test("pg - options: a startup search_path gets its set_config's verdict", async () => {
+test("pg - options: a startup search_path gets its set_config's verdict", async () => {
   const refused = new Client({ ...CONFIG, options: "-c search_path=nosuch" });
   let code: string | undefined;
   try {
@@ -362,13 +357,13 @@ Deno.test("pg - options: a startup search_path gets its set_config's verdict", a
   } finally {
     await refused.end().catch(() => {});
   }
-  assertEquals(code, "0A000");
+  assert_equal(code, "0A000");
 
   const served = new Client({ ...CONFIG, options: "-c search_path=public" });
   await served.connect();
   try {
     const result = await served.query("SELECT current_schema() AS s");
-    assertEquals(result.rows, [{ s: "public" }]);
+    assert_equal(result.rows, [{ s: "public" }]);
   } finally {
     await served.end();
   }

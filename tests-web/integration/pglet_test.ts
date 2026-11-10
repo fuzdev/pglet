@@ -1,7 +1,7 @@
 /**
  * Behavioral tests for pglet that can't be captured by SQL fixtures.
  *
- * Self-contained: Automatically spawns pglet server if not running.
+ * Self-contained: starts a pglet server of its own for the file.
  *
  * SQL fixtures (tests/fixtures/) cover query correctness.
  * These tests cover connection behavior, session state, and edge cases.
@@ -12,45 +12,40 @@
  */
 
 import pg from "pg";
-import { assertEquals, assertRejects } from "@std/assert";
-import { PORTS } from "../lib/ports.ts";
-import { ensureServer } from "../lib/server.ts";
+import { assert, test } from "vitest";
+import { assert_equal, assert_rejects } from "../lib/assert.ts";
+import { start_suite_server } from "../lib/server.ts";
 
 const { Client } = pg;
 
+// A server of this file's own, on a port the kernel picks, stopped when the file's tests end
+const server = await start_suite_server();
+
 const CONFIG = {
-  host: "127.0.0.1",
-  port: PORTS.PGLET_TEST,
+  host: server.host,
+  port: server.port,
   user: "postgres",
   database: "postgres",
 };
 
-// Ensure server is running before tests
-const cleanupServer = await ensureServer();
-
-// Register cleanup
-globalThis.addEventListener("unload", () => {
-  cleanupServer();
-});
-
-Deno.test("connection - basic connect and disconnect", async () => {
+test("connection - basic connect and disconnect", async () => {
   const client = new Client(CONFIG);
   await client.connect();
   await client.end();
 });
 
-Deno.test("connection - multiple sequential connections", async () => {
+test("connection - multiple sequential connections", async () => {
   // Each connection should work independently
   for (let i = 0; i < 3; i++) {
     const client = new Client(CONFIG);
     await client.connect();
     const result = await client.query("SELECT 1");
-    assertEquals(result.rows.length, 1);
+    assert_equal(result.rows.length, 1);
     await client.end();
   }
 });
 
-Deno.test("session - state persists within connection", async () => {
+test("session - state persists within connection", async () => {
   const client = new Client(CONFIG);
   await client.connect();
 
@@ -64,16 +59,16 @@ Deno.test("session - state persists within connection", async () => {
 
   // Query should see both rows
   const result = await client.query("SELECT * FROM session_test ORDER BY id");
-  assertEquals(result.rows.length, 2);
-  assertEquals(result.rows[0].val, "first");
-  assertEquals(result.rows[1].val, "second");
+  assert_equal(result.rows.length, 2);
+  assert_equal(result.rows[0].val, "first");
+  assert_equal(result.rows[1].val, "second");
 
   // Cleanup
   await client.query("DROP TABLE session_test");
   await client.end();
 });
 
-Deno.test("session - state shared between connections", async () => {
+test("session - state shared between connections", async () => {
   // First connection creates a table
   const client1 = new Client(CONFIG);
   await client1.connect();
@@ -87,15 +82,15 @@ Deno.test("session - state shared between connections", async () => {
   await client2.connect();
 
   const result = await client2.query("SELECT * FROM shared_test");
-  assertEquals(result.rows.length, 1);
-  assertEquals(result.rows[0].id, 1);
+  assert_equal(result.rows.length, 1);
+  assert_equal(result.rows[0].id, 1);
 
   // Cleanup
   await client2.query("DROP TABLE shared_test");
   await client2.end();
 });
 
-Deno.test("rowCount - INSERT returns correct count", async () => {
+test("rowCount - INSERT returns correct count", async () => {
   const client = new Client(CONFIG);
   await client.connect();
 
@@ -103,17 +98,17 @@ Deno.test("rowCount - INSERT returns correct count", async () => {
   await client.query("CREATE TABLE count_test (id INT)");
 
   const r1 = await client.query("INSERT INTO count_test VALUES (1)");
-  assertEquals(r1.rowCount, 1);
+  assert_equal(r1.rowCount, 1);
 
   const r2 = await client.query("INSERT INTO count_test VALUES (2), (3), (4)");
-  assertEquals(r2.rowCount, 3);
+  assert_equal(r2.rowCount, 3);
 
   // Cleanup
   await client.query("DROP TABLE count_test");
   await client.end();
 });
 
-Deno.test("rowCount - UPDATE returns correct count", async () => {
+test("rowCount - UPDATE returns correct count", async () => {
   const client = new Client(CONFIG);
   await client.connect();
 
@@ -126,17 +121,17 @@ Deno.test("rowCount - UPDATE returns correct count", async () => {
   const r1 = await client.query(
     "UPDATE update_count SET active = true WHERE active = false",
   );
-  assertEquals(r1.rowCount, 2);
+  assert_equal(r1.rowCount, 2);
 
   const r2 = await client.query("UPDATE update_count SET active = false");
-  assertEquals(r2.rowCount, 3);
+  assert_equal(r2.rowCount, 3);
 
   // Cleanup
   await client.query("DROP TABLE update_count");
   await client.end();
 });
 
-Deno.test("rowCount - DELETE returns correct count", async () => {
+test("rowCount - DELETE returns correct count", async () => {
   const client = new Client(CONFIG);
   await client.connect();
 
@@ -145,17 +140,17 @@ Deno.test("rowCount - DELETE returns correct count", async () => {
   await client.query("INSERT INTO delete_count VALUES (1), (2), (3), (4), (5)");
 
   const r1 = await client.query("DELETE FROM delete_count WHERE id > 3");
-  assertEquals(r1.rowCount, 2);
+  assert_equal(r1.rowCount, 2);
 
   const r2 = await client.query("DELETE FROM delete_count");
-  assertEquals(r2.rowCount, 3);
+  assert_equal(r2.rowCount, 3);
 
   // Cleanup
   await client.query("DROP TABLE delete_count");
   await client.end();
 });
 
-Deno.test("concurrent - multiple simultaneous connections", async () => {
+test("concurrent - multiple simultaneous connections", async () => {
   // Create multiple clients and connect them all at once
   const clients = await Promise.all(
     Array.from({ length: 5 }, async () => {
@@ -192,8 +187,8 @@ Deno.test("concurrent - multiple simultaneous connections", async () => {
 
   // Verify each client got its own data
   results.forEach((row, i) => {
-    assertEquals(row.id, i);
-    assertEquals(row.val, `client${i}`);
+    assert_equal(row.id, i);
+    assert_equal(row.val, `client${i}`);
   });
 
   // Cleanup
@@ -205,7 +200,7 @@ Deno.test("concurrent - multiple simultaneous connections", async () => {
   await Promise.all(clients.map((client) => client.end()));
 });
 
-Deno.test("concurrent - interleaved queries", async () => {
+test("concurrent - interleaved queries", async () => {
   // Two clients running queries that interleave
   const client1 = new Client(CONFIG);
   const client2 = new Client(CONFIG);
@@ -227,13 +222,13 @@ Deno.test("concurrent - interleaved queries", async () => {
   const r1 = await client1.query("SELECT * FROM interleave1 ORDER BY id");
   const r2 = await client2.query("SELECT * FROM interleave2 ORDER BY id");
 
-  assertEquals(r1.rows.length, 2);
-  assertEquals(r1.rows[0].id, 1);
-  assertEquals(r1.rows[1].id, 3);
+  assert_equal(r1.rows.length, 2);
+  assert_equal(r1.rows[0].id, 1);
+  assert_equal(r1.rows[1].id, 3);
 
-  assertEquals(r2.rows.length, 2);
-  assertEquals(r2.rows[0].id, 2);
-  assertEquals(r2.rows[1].id, 4);
+  assert_equal(r2.rows.length, 2);
+  assert_equal(r2.rows[0].id, 2);
+  assert_equal(r2.rows[1].id, 4);
 
   // Cleanup
   await client1.query("DROP TABLE interleave1");
@@ -241,11 +236,11 @@ Deno.test("concurrent - interleaved queries", async () => {
   await Promise.all([client1.end(), client2.end()]);
 });
 
-Deno.test("error - invalid SQL syntax", async () => {
+test("error - invalid SQL syntax", async () => {
   const client = new Client(CONFIG);
   await client.connect();
 
-  await assertRejects(
+  await assert_rejects(
     async () => {
       await client.query("SELEKT * FROM nowhere");
     },
@@ -255,11 +250,11 @@ Deno.test("error - invalid SQL syntax", async () => {
   await client.end();
 });
 
-Deno.test("error - table not found", async () => {
+test("error - table not found", async () => {
   const client = new Client(CONFIG);
   await client.connect();
 
-  await assertRejects(
+  await assert_rejects(
     async () => {
       await client.query("SELECT * FROM nonexistent_table_xyz");
     },
@@ -269,14 +264,14 @@ Deno.test("error - table not found", async () => {
   await client.end();
 });
 
-Deno.test("error - column not found", async () => {
+test("error - column not found", async () => {
   const client = new Client(CONFIG);
   await client.connect();
 
   await client.query("DROP TABLE IF EXISTS col_test");
   await client.query("CREATE TABLE col_test (id INT)");
 
-  await assertRejects(
+  await assert_rejects(
     async () => {
       await client.query("SELECT nonexistent_column FROM col_test");
     },
@@ -288,7 +283,7 @@ Deno.test("error - column not found", async () => {
   await client.end();
 });
 
-Deno.test("edge - empty result set", async () => {
+test("edge - empty result set", async () => {
   const client = new Client(CONFIG);
   await client.connect();
 
@@ -296,15 +291,15 @@ Deno.test("edge - empty result set", async () => {
   await client.query("CREATE TABLE empty_test (id INT)");
 
   const result = await client.query("SELECT * FROM empty_test");
-  assertEquals(result.rows.length, 0);
-  assertEquals(result.rowCount, 0);
+  assert_equal(result.rows.length, 0);
+  assert_equal(result.rowCount, 0);
 
   // Cleanup
   await client.query("DROP TABLE empty_test");
   await client.end();
 });
 
-Deno.test("edge - large result set", async () => {
+test("edge - large result set", async () => {
   const client = new Client(CONFIG);
   await client.connect();
 
@@ -316,16 +311,16 @@ Deno.test("edge - large result set", async () => {
   await client.query(`INSERT INTO large_test VALUES ${values.join(", ")}`);
 
   const result = await client.query("SELECT * FROM large_test ORDER BY id");
-  assertEquals(result.rows.length, 200);
-  assertEquals(result.rows[0].id, 0);
-  assertEquals(result.rows[199].id, 199);
+  assert_equal(result.rows.length, 200);
+  assert_equal(result.rows[0].id, 0);
+  assert_equal(result.rows[199].id, 199);
 
   // Cleanup
   await client.query("DROP TABLE large_test");
   await client.end();
 });
 
-Deno.test("edge - wide row with many columns", async () => {
+test("edge - wide row with many columns", async () => {
   const client = new Client(CONFIG);
   await client.connect();
 
@@ -340,17 +335,17 @@ Deno.test("edge - wide row with many columns", async () => {
   await client.query(`INSERT INTO wide_test VALUES (${vals.join(", ")})`);
 
   const result = await client.query("SELECT * FROM wide_test");
-  assertEquals(result.rows.length, 1);
-  assertEquals(Object.keys(result.rows[0]).length, 20);
-  assertEquals(result.rows[0].col0, 0);
-  assertEquals(result.rows[0].col19, 19);
+  assert_equal(result.rows.length, 1);
+  assert_equal(Object.keys(result.rows[0]).length, 20);
+  assert_equal(result.rows[0].col0, 0);
+  assert_equal(result.rows[0].col19, 19);
 
   // Cleanup
   await client.query("DROP TABLE wide_test");
   await client.end();
 });
 
-Deno.test("edge - null values", async () => {
+test("edge - null values", async () => {
   const client = new Client(CONFIG);
   await client.connect();
 
@@ -360,17 +355,17 @@ Deno.test("edge - null values", async () => {
 
   const result = await client.query("SELECT * FROM null_test ORDER BY id");
   // NULL sorts LAST in ASC (Postgres: NULLs are treated as larger than any value)
-  assertEquals(result.rows[0].id, 1);
-  assertEquals(result.rows[0].val, null);
-  assertEquals(result.rows[1].id, null);
-  assertEquals(result.rows[1].val, "text");
+  assert_equal(result.rows[0].id, 1);
+  assert_equal(result.rows[0].val, null);
+  assert_equal(result.rows[1].id, null);
+  assert_equal(result.rows[1].val, "text");
 
   // Cleanup
   await client.query("DROP TABLE null_test");
   await client.end();
 });
 
-Deno.test("simple query - multi-statement returns every result set", async () => {
+test("simple query - multi-statement returns every result set", async () => {
   // A single simple-Query message with multiple statements must return EVERY
   // statement's result set, not just the last — node-postgres surfaces this as an
   // array of results. Before the fix the server dropped the earlier result sets
@@ -386,14 +381,14 @@ Deno.test("simple query - multi-statement returns every result set", async () =>
       `expected an array of results for a multi-statement query, got a single result: ${JSON.stringify(results)}`,
     );
   }
-  assertEquals(results.length, 2);
-  assertEquals(results[0].rows[0].a, "first");
-  assertEquals(results[1].rows[0].b, "second");
+  assert_equal(results.length, 2);
+  assert_equal(results[0].rows[0].a, "first");
+  assert_equal(results[1].rows[0].b, "second");
 
   await client.end();
 });
 
-Deno.test("edge - special characters in text", async () => {
+test("edge - special characters in text", async () => {
   const client = new Client(CONFIG);
   await client.connect();
 
@@ -418,7 +413,7 @@ Deno.test("edge - special characters in text", async () => {
       values: [val],
     });
     const result = await client.query("SELECT * FROM special_test");
-    assertEquals(result.rows[0].val, val);
+    assert_equal(result.rows[0].val, val);
   }
 
   // Cleanup

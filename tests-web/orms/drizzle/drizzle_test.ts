@@ -1,47 +1,42 @@
 /**
  * Drizzle ORM tests for pglet compatibility.
  *
- * Self-contained: Automatically spawns pglet server if not running.
+ * Self-contained: starts a pglet server of its own for the file.
  *
  * Tests basic CRUD operations using Drizzle ORM against pglet.
- * Run: deno task test:drizzle
+ * Run: npm run test:drizzle
  *
  * Status: All tests passing! Extended query protocol (Parse/Bind/Execute)
  * and parameterized queries are fully implemented.
  */
 
-import { assertEquals } from "@std/assert";
-import { drizzle } from "drizzle-orm/node-postgres";
+import { test } from "vitest";
+import { assert_equal } from "../../lib/assert.ts";
+import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import { and, asc, desc, eq, gt, or } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import pg from "pg";
 import { posts, users } from "./schema.ts";
-import { PORTS } from "../../lib/ports.ts";
-import { ensureServer } from "../../lib/server.ts";
+import { start_suite_server } from "../../lib/server.ts";
 
 const { Client } = pg;
 
+// A server of this file's own, on a port the kernel picks, stopped when the file's tests end
+const server = await start_suite_server();
+
 const CONFIG = {
-  host: "127.0.0.1",
-  port: PORTS.PGLET_TEST,
+  host: server.host,
+  port: server.port,
   user: "postgres",
   database: "postgres",
 };
-
-// Ensure server is running before tests
-const cleanupServer = await ensureServer();
-
-// Register cleanup
-globalThis.addEventListener("unload", () => {
-  cleanupServer();
-});
 
 /**
  * Helper to create a fresh connection with Drizzle.
  * Data now persists across connections (shared state).
  */
 async function withDb<T>(
-  fn: (db: ReturnType<typeof drizzle>) => Promise<T>,
+  fn: (db: NodePgDatabase) => Promise<T>,
 ): Promise<T> {
   const client = new Client(CONFIG);
   await client.connect();
@@ -57,7 +52,7 @@ async function withDb<T>(
  * Setup tables using raw SQL.
  * Drops tables first since data persists across connections.
  */
-async function setupTables(db: ReturnType<typeof drizzle>): Promise<void> {
+async function setupTables(db: NodePgDatabase): Promise<void> {
   // Drop existing tables first (data persists across connections)
   await db.execute(sql`DROP TABLE IF EXISTS posts CASCADE`);
   await db.execute(sql`DROP TABLE IF EXISTS users CASCADE`);
@@ -85,7 +80,7 @@ async function setupTables(db: ReturnType<typeof drizzle>): Promise<void> {
 // INSERT Tests
 // =============================================================================
 
-Deno.test("drizzle - insert single row", async () => {
+test("drizzle - insert single row", async () => {
   await withDb(async (db) => {
     await setupTables(db);
 
@@ -96,13 +91,13 @@ Deno.test("drizzle - insert single row", async () => {
     });
 
     const result = await db.select().from(users);
-    assertEquals(result.length, 1);
-    assertEquals(result[0].name, "Alice");
-    assertEquals(result[0].email, "alice@example.com");
+    assert_equal(result.length, 1);
+    assert_equal(result[0].name, "Alice");
+    assert_equal(result[0].email, "alice@example.com");
   });
 });
 
-Deno.test("drizzle - insert multiple rows", async () => {
+test("drizzle - insert multiple rows", async () => {
   await withDb(async (db) => {
     await setupTables(db);
 
@@ -113,7 +108,7 @@ Deno.test("drizzle - insert multiple rows", async () => {
     ]);
 
     const result = await db.select().from(users);
-    assertEquals(result.length, 3);
+    assert_equal(result.length, 3);
   });
 });
 
@@ -121,7 +116,7 @@ Deno.test("drizzle - insert multiple rows", async () => {
 // SELECT Tests
 // =============================================================================
 
-Deno.test("drizzle - select all", async () => {
+test("drizzle - select all", async () => {
   await withDb(async (db) => {
     await setupTables(db);
     await db.insert(users).values([
@@ -130,11 +125,11 @@ Deno.test("drizzle - select all", async () => {
     ]);
 
     const result = await db.select().from(users);
-    assertEquals(result.length, 2);
+    assert_equal(result.length, 2);
   });
 });
 
-Deno.test("drizzle - select with where eq", async () => {
+test("drizzle - select with where eq", async () => {
   await withDb(async (db) => {
     await setupTables(db);
     await db.insert(users).values([
@@ -143,12 +138,12 @@ Deno.test("drizzle - select with where eq", async () => {
     ]);
 
     const result = await db.select().from(users).where(eq(users.id, 1));
-    assertEquals(result.length, 1);
-    assertEquals(result[0].name, "Alice");
+    assert_equal(result.length, 1);
+    assert_equal(result[0].name, "Alice");
   });
 });
 
-Deno.test("drizzle - select with where gt", async () => {
+test("drizzle - select with where gt", async () => {
   await withDb(async (db) => {
     await setupTables(db);
     await db.insert(users).values([
@@ -158,11 +153,11 @@ Deno.test("drizzle - select with where gt", async () => {
     ]);
 
     const result = await db.select().from(users).where(gt(users.id, 1));
-    assertEquals(result.length, 2);
+    assert_equal(result.length, 2);
   });
 });
 
-Deno.test("drizzle - select with and", async () => {
+test("drizzle - select with and", async () => {
   await withDb(async (db) => {
     await setupTables(db);
     await db.insert(users).values([
@@ -175,12 +170,12 @@ Deno.test("drizzle - select with and", async () => {
       .select()
       .from(users)
       .where(and(eq(users.active, true), gt(users.id, 1)));
-    assertEquals(result.length, 1);
-    assertEquals(result[0].name, "Carol");
+    assert_equal(result.length, 1);
+    assert_equal(result[0].name, "Carol");
   });
 });
 
-Deno.test("drizzle - select with or", async () => {
+test("drizzle - select with or", async () => {
   await withDb(async (db) => {
     await setupTables(db);
     await db.insert(users).values([
@@ -193,11 +188,11 @@ Deno.test("drizzle - select with or", async () => {
       .select()
       .from(users)
       .where(or(eq(users.id, 1), eq(users.id, 3)));
-    assertEquals(result.length, 2);
+    assert_equal(result.length, 2);
   });
 });
 
-Deno.test("drizzle - select specific columns", async () => {
+test("drizzle - select specific columns", async () => {
   await withDb(async (db) => {
     await setupTables(db);
     await db.insert(users).values({
@@ -209,15 +204,15 @@ Deno.test("drizzle - select specific columns", async () => {
     const result = await db
       .select({ name: users.name, email: users.email })
       .from(users);
-    assertEquals(result.length, 1);
-    assertEquals(result[0].name, "Alice");
-    assertEquals(result[0].email, "alice@example.com");
+    assert_equal(result.length, 1);
+    assert_equal(result[0].name, "Alice");
+    assert_equal(result[0].email, "alice@example.com");
     // @ts-expect-error id not selected
-    assertEquals(result[0].id, undefined);
+    assert_equal(result[0].id, undefined);
   });
 });
 
-Deno.test("drizzle - select with order by asc", async () => {
+test("drizzle - select with order by asc", async () => {
   await withDb(async (db) => {
     await setupTables(db);
     await db.insert(users).values([
@@ -227,13 +222,13 @@ Deno.test("drizzle - select with order by asc", async () => {
     ]);
 
     const result = await db.select().from(users).orderBy(asc(users.name));
-    assertEquals(result[0].name, "Alice");
-    assertEquals(result[1].name, "Bob");
-    assertEquals(result[2].name, "Carol");
+    assert_equal(result[0].name, "Alice");
+    assert_equal(result[1].name, "Bob");
+    assert_equal(result[2].name, "Carol");
   });
 });
 
-Deno.test("drizzle - select with order by desc", async () => {
+test("drizzle - select with order by desc", async () => {
   await withDb(async (db) => {
     await setupTables(db);
     await db.insert(users).values([
@@ -243,13 +238,13 @@ Deno.test("drizzle - select with order by desc", async () => {
     ]);
 
     const result = await db.select().from(users).orderBy(desc(users.id));
-    assertEquals(result[0].id, 3);
-    assertEquals(result[1].id, 2);
-    assertEquals(result[2].id, 1);
+    assert_equal(result[0].id, 3);
+    assert_equal(result[1].id, 2);
+    assert_equal(result[2].id, 1);
   });
 });
 
-Deno.test("drizzle - select with limit", async () => {
+test("drizzle - select with limit", async () => {
   await withDb(async (db) => {
     await setupTables(db);
     await db.insert(users).values([
@@ -261,13 +256,13 @@ Deno.test("drizzle - select with limit", async () => {
     const result = await db.select().from(users).orderBy(asc(users.id)).limit(
       2,
     );
-    assertEquals(result.length, 2);
-    assertEquals(result[0].id, 1);
-    assertEquals(result[1].id, 2);
+    assert_equal(result.length, 2);
+    assert_equal(result[0].id, 1);
+    assert_equal(result[1].id, 2);
   });
 });
 
-Deno.test("drizzle - select with offset", async () => {
+test("drizzle - select with offset", async () => {
   await withDb(async (db) => {
     await setupTables(db);
     await db.insert(users).values([
@@ -282,9 +277,9 @@ Deno.test("drizzle - select with offset", async () => {
       .orderBy(asc(users.id))
       .limit(2)
       .offset(1);
-    assertEquals(result.length, 2);
-    assertEquals(result[0].id, 2);
-    assertEquals(result[1].id, 3);
+    assert_equal(result.length, 2);
+    assert_equal(result[0].id, 2);
+    assert_equal(result[1].id, 3);
   });
 });
 
@@ -292,7 +287,7 @@ Deno.test("drizzle - select with offset", async () => {
 // UPDATE Tests
 // =============================================================================
 
-Deno.test("drizzle - update single field", async () => {
+test("drizzle - update single field", async () => {
   await withDb(async (db) => {
     await setupTables(db);
     await db.insert(users).values({
@@ -304,11 +299,11 @@ Deno.test("drizzle - update single field", async () => {
     await db.update(users).set({ name: "Alicia" }).where(eq(users.id, 1));
 
     const result = await db.select().from(users).where(eq(users.id, 1));
-    assertEquals(result[0].name, "Alicia");
+    assert_equal(result[0].name, "Alicia");
   });
 });
 
-Deno.test("drizzle - update multiple fields", async () => {
+test("drizzle - update multiple fields", async () => {
   await withDb(async (db) => {
     await setupTables(db);
     await db.insert(users).values({
@@ -324,12 +319,12 @@ Deno.test("drizzle - update multiple fields", async () => {
       .where(eq(users.id, 1));
 
     const result = await db.select().from(users).where(eq(users.id, 1));
-    assertEquals(result[0].name, "Alicia");
-    assertEquals(result[0].active, false);
+    assert_equal(result[0].name, "Alicia");
+    assert_equal(result[0].active, false);
   });
 });
 
-Deno.test("drizzle - update multiple rows", async () => {
+test("drizzle - update multiple rows", async () => {
   await withDb(async (db) => {
     await setupTables(db);
     await db.insert(users).values([
@@ -341,7 +336,7 @@ Deno.test("drizzle - update multiple rows", async () => {
     await db.update(users).set({ active: true }).where(eq(users.active, false));
 
     const result = await db.select().from(users);
-    assertEquals(result.every((u) => u.active === true), true);
+    assert_equal(result.every((u) => u.active === true), true);
   });
 });
 
@@ -349,7 +344,7 @@ Deno.test("drizzle - update multiple rows", async () => {
 // DELETE Tests
 // =============================================================================
 
-Deno.test("drizzle - delete single row", async () => {
+test("drizzle - delete single row", async () => {
   await withDb(async (db) => {
     await setupTables(db);
     await db.insert(users).values([
@@ -360,12 +355,12 @@ Deno.test("drizzle - delete single row", async () => {
     await db.delete(users).where(eq(users.id, 1));
 
     const result = await db.select().from(users);
-    assertEquals(result.length, 1);
-    assertEquals(result[0].name, "Bob");
+    assert_equal(result.length, 1);
+    assert_equal(result[0].name, "Bob");
   });
 });
 
-Deno.test("drizzle - delete multiple rows", async () => {
+test("drizzle - delete multiple rows", async () => {
   await withDb(async (db) => {
     await setupTables(db);
     await db.insert(users).values([
@@ -377,12 +372,12 @@ Deno.test("drizzle - delete multiple rows", async () => {
     await db.delete(users).where(eq(users.active, false));
 
     const result = await db.select().from(users);
-    assertEquals(result.length, 1);
-    assertEquals(result[0].name, "Carol");
+    assert_equal(result.length, 1);
+    assert_equal(result[0].name, "Carol");
   });
 });
 
-Deno.test("drizzle - delete all rows", async () => {
+test("drizzle - delete all rows", async () => {
   await withDb(async (db) => {
     await setupTables(db);
     await db.insert(users).values([
@@ -393,7 +388,7 @@ Deno.test("drizzle - delete all rows", async () => {
     await db.delete(users);
 
     const result = await db.select().from(users);
-    assertEquals(result.length, 0);
+    assert_equal(result.length, 0);
   });
 });
 
@@ -401,7 +396,7 @@ Deno.test("drizzle - delete all rows", async () => {
 // Multi-table Tests
 // =============================================================================
 
-Deno.test("drizzle - insert and query related tables", async () => {
+test("drizzle - insert and query related tables", async () => {
   await withDb(async (db) => {
     await setupTables(db);
 
@@ -412,12 +407,12 @@ Deno.test("drizzle - insert and query related tables", async () => {
     ]);
 
     const userResult = await db.select().from(users);
-    assertEquals(userResult.length, 1);
+    assert_equal(userResult.length, 1);
 
     const postResult = await db
       .select()
       .from(posts)
       .where(eq(posts.author_id, 1));
-    assertEquals(postResult.length, 2);
+    assert_equal(postResult.length, 2);
   });
 });

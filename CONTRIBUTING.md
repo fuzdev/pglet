@@ -85,7 +85,8 @@ conninfo the config renders. If your oracle authenticates by password rather tha
 `trust`, spell that password in `PGLET_PG_URL` — `psql` and `pg_dump` are given no other.
 
 The other ports in play: 5433 for the dev server (`cargo run -p pglet_server`),
-5434–5499 for servers the tests spawn, and 8001 for the browser tests.
+5434–5499 for servers the Rust harnesses spawn, a port the kernel picks for each
+server the `tests-web/` suites start, and 8001 for the browser tests.
 
 ## Running the checks
 

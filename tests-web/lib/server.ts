@@ -1,171 +1,68 @@
 /**
- * Server lifecycle management for pglet tests.
+ * The `pglet_server` the server suites start: this checkout's debug build, run
+ * through `#lib/pglet_server.ts` on a port the kernel picks. This module is the
+ * suites' composition root for it: the one place a server suite's program is
+ * made.
  *
- * Provides utilities to spawn, detect, and manage pglet server instances.
- * Tests use `ensureServer()` to spawn a fresh server on the test port.
+ * @module
  */
+import {fileURLToPath} from 'node:url';
+import {fs} from '@fuzdev/gro/fs.ts';
+import {spawn, type SpawnProgram} from '@fuzdev/gro/spawn.ts';
+import {afterAll, onTestFinished} from 'vitest';
+import {start_pglet_server, type PgletServer} from '#lib/pglet_server.ts';
 
-import pg from "pg";
-import { PORTS, PGLET_CONFIG } from "./ports.ts";
-import { buildServer } from "./build.ts";
+/** This checkout, from this module's own location. */
+const CHECKOUT = fileURLToPath(new URL('../../', import.meta.url));
 
-const { Client } = pg;
-
-/** Connection config type */
-interface DbConfig {
-  host: string;
-  port: number;
-  user: string;
-  database: string;
-}
-
-/** Handle to a spawned server process */
-export interface ServerHandle {
-  port: number;
-  process: Deno.ChildProcess;
-  kill: () => Promise<void>;
-}
-
-/** Global registry of spawned servers (for cleanup) */
-const spawnedServers: Map<number, ServerHandle> = new Map();
+/** The debug build, beneath the checkout: `npm run test:<suite>` builds it first. */
+const SERVER = 'target/debug/pglet_server';
 
 /**
- * Check if a Postgres-compatiblesque server is healthy on the given config.
- */
-export async function checkHealth(
-  config: DbConfig,
-  timeoutMs = 1000,
-): Promise<boolean> {
-  const client = new Client({ ...config, connectionTimeoutMillis: timeoutMs });
-  try {
-    await client.connect();
-    await client.query("SELECT 1");
-    await client.end();
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Check if pglet server is running on the test port.
- */
-export async function isPgletRunning(): Promise<boolean> {
-  return checkHealth(PGLET_CONFIG);
-}
-
-/**
- * Wait for a port to become available with a server accepting connections.
- */
-export async function waitForServer(
-  port: number,
-  timeoutMs = 10000,
-  intervalMs = 100,
-): Promise<boolean> {
-  const config = { host: "127.0.0.1", port, user: "postgres", database: "postgres" };
-  const start = Date.now();
-
-  while (Date.now() - start < timeoutMs) {
-    if (await checkHealth(config, 500)) {
-      return true;
-    }
-    await new Promise((r) => setTimeout(r, intervalMs));
-  }
-
-  return false;
-}
-
-/**
- * Spawn a pglet server on the given port.
- * Returns a handle to control the server.
- */
-export async function spawnServer(port: number): Promise<ServerHandle> {
-  // Build first
-  if (!await buildServer()) {
-    throw new Error("Failed to build pglet_server");
-  }
-
-  // Spawn server with null streams to avoid resource leaks
-  const cmd = new Deno.Command("target/debug/pglet_server", {
-    args: ["--port", String(port)],
-    stdout: "null",
-    stderr: "null",
-    env: { ...Deno.env.toObject(), RUST_LOG: "error" },
-  });
-  const process = cmd.spawn();
-
-  // Wait for server to be ready
-  if (!await waitForServer(port, 10000)) {
-    process.kill("SIGKILL");
-    throw new Error(`Server failed to start on port ${port} within 10s`);
-  }
-
-  const handle: ServerHandle = {
-    port,
-    process,
-    kill: async () => {
-      try {
-        process.kill("SIGTERM");
-        await process.status;
-      } catch {
-        // Already dead
-      }
-      spawnedServers.delete(port);
-    },
-  };
-
-  spawnedServers.set(port, handle);
-
-  // Monitor for unexpected exits
-  process.status.then((status) => {
-    if (spawnedServers.has(port)) {
-      console.log(`[test] Server on port ${port} exited with code ${status.code}`);
-      spawnedServers.delete(port);
-    }
-  });
-
-  return handle;
-}
-
-/**
- * Spawn a fresh pglet server, built from the current source, on the test port (5434).
+ * This checkout's debug `pglet_server`, with gro's base environment and no more:
+ * the server reads no variable.
  *
- * Something already answering there is refused, never reused: the port is also the spy
- * proxy's default (which forwards to real Postgres) and the first of the Rust harness's
- * dynamic range, so reusing whatever answers could run the suite against Postgres or a
- * stale pglet binary — and a spawn over an occupied port would read the occupant's health
- * as its own.
+ * gro resolves a program name with a `/` against the working directory, so the
+ * name is checked against this checkout's build, found from this module's own
+ * location, and a run from another directory is refused rather than starting
+ * another tree's server.
  *
- * Returns a cleanup function to call after tests.
+ * @throws Error - when the build is missing, or the name resolves outside this checkout
  */
-export async function ensureServer(): Promise<() => Promise<void>> {
-  if (await isPgletRunning()) {
-    throw new Error(
-      `port ${PORTS.PGLET_TEST} is already in use; stop whatever is listening there ` +
-        `(a spy proxy, a leftover test server) and rerun`,
-    );
-  }
-
-  // Spawn new server on test port (dev server on 5433 is for manual testing)
-  console.log(`[test] Spawning pglet server on port ${PORTS.PGLET_TEST}...`);
-  const handle = await spawnServer(PORTS.PGLET_TEST);
-  console.log(`[test] Server ready on port ${PORTS.PGLET_TEST}`);
-
-  return handle.kill;
-}
+export const to_pglet_server_program = async (): Promise<SpawnProgram> => {
+	const debug = await fs.open_dir(`${CHECKOUT}target/debug`).catch(() => null);
+	if (debug === null || !(await debug.exists('pglet_server'))) {
+		throw new Error(`no ${SERVER} in ${CHECKOUT}: build it with cargo build -p pglet_server`);
+	}
+	const expected = `${debug.path}/pglet_server`;
+	const program = spawn.find(SERVER);
+	if (program?.path !== expected) {
+		throw new Error(
+			`${SERVER} resolved to ${program?.path ?? 'nothing'}, not this checkout's ${expected}: ` +
+				`run the suite from ${CHECKOUT}`,
+		);
+	}
+	return program;
+};
 
 /**
- * Kill all spawned servers.
- * Call this in test cleanup or on process exit.
+ * Starts a server for the calling test file, and stops it when the file's tests
+ * are done, passed or failed. Call it at the top level of a test file.
  */
-export async function killAllServers(): Promise<void> {
-  for (const [port, handle] of spawnedServers) {
-    console.log(`[test] Killing server on port ${port}`);
-    await handle.kill();
-  }
-}
+export const start_suite_server = async (): Promise<PgletServer> => {
+	const server = await start_pglet_server(await to_pglet_server_program());
+	afterAll(() => server.stop());
+	return server;
+};
 
-// Cleanup on process exit
-globalThis.addEventListener("unload", () => {
-  killAllServers();
-});
+/**
+ * Starts a server for the calling test, and stops it when the test ends,
+ * passed or failed, unless the test stopped it first. Call it inside a test.
+ */
+export const start_test_server = async (): Promise<PgletServer> => {
+	const server = await start_pglet_server(await to_pglet_server_program());
+	onTestFinished(async () => {
+		await server.stop();
+	});
+	return server;
+};

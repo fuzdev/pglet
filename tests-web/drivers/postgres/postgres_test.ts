@@ -1,34 +1,29 @@
 /**
  * postgres.js driver tests for pglet compatibility.
  *
- * Self-contained: Automatically spawns pglet server if not running.
+ * Self-contained: starts a pglet server of its own for the file.
  *
  * Tests basic driver functionality with postgres.js (modern alternative to node-postgres).
- * Run: deno task test:postgres
+ * Run: npm run test:postgres
  *
  * NOTE: This is a simple test suite. Advanced features like binary vs text format
  * comparison, detailed type mapping, and connection pooling are not yet covered here.
  */
 
-import { assertEquals } from "@std/assert";
+import { test } from "vitest";
+import { assert_equal } from "../../lib/assert.ts";
 import postgres from "postgres";
-import { PORTS } from "../../lib/ports.ts";
-import { ensureServer } from "../../lib/server.ts";
+import { start_suite_server } from "../../lib/server.ts";
+
+// A server of this file's own, on a port the kernel picks, stopped when the file's tests end
+const server = await start_suite_server();
 
 const CONFIG = {
-  host: "127.0.0.1",
-  port: PORTS.PGLET_TEST,
+  host: server.host,
+  port: server.port,
   user: "postgres",
   database: "postgres",
 };
-
-// Ensure server is running before tests
-const cleanupServer = await ensureServer();
-
-// Register cleanup
-globalThis.addEventListener("unload", () => {
-  cleanupServer();
-});
 
 /**
  * Helper to create a fresh connection with postgres.js.
@@ -48,11 +43,11 @@ async function withSql<T>(
 // Basic Connection Tests
 // =============================================================================
 
-Deno.test("postgres.js - basic connection and query", async () => {
+test("postgres.js - basic connection and query", async () => {
   await withSql(async (sql) => {
     const result = await sql`SELECT 1 as num`;
-    assertEquals(result.length, 1);
-    assertEquals(result[0].num, 1);
+    assert_equal(result.length, 1);
+    assert_equal(result[0].num, 1);
   });
 });
 
@@ -60,7 +55,7 @@ Deno.test("postgres.js - basic connection and query", async () => {
 // CREATE TABLE Tests
 // =============================================================================
 
-Deno.test("postgres.js - create and drop table", async () => {
+test("postgres.js - create and drop table", async () => {
   await withSql(async (sql) => {
     await sql`DROP TABLE IF EXISTS test_table`;
     await sql`CREATE TABLE test_table (id INT, name TEXT)`;
@@ -72,7 +67,7 @@ Deno.test("postgres.js - create and drop table", async () => {
 // INSERT Tests
 // =============================================================================
 
-Deno.test("postgres.js - insert and select", async () => {
+test("postgres.js - insert and select", async () => {
   await withSql(async (sql) => {
     await sql`DROP TABLE IF EXISTS users`;
     await sql`CREATE TABLE users (id INT, name TEXT)`;
@@ -80,15 +75,15 @@ Deno.test("postgres.js - insert and select", async () => {
     await sql`INSERT INTO users (id, name) VALUES (1, 'Alice')`;
 
     const result = await sql`SELECT * FROM users`;
-    assertEquals(result.length, 1);
-    assertEquals(result[0].id, 1);
-    assertEquals(result[0].name, "Alice");
+    assert_equal(result.length, 1);
+    assert_equal(result[0].id, 1);
+    assert_equal(result[0].name, "Alice");
 
     await sql`DROP TABLE users`;
   });
 });
 
-Deno.test("postgres.js - insert multiple rows", async () => {
+test("postgres.js - insert multiple rows", async () => {
   await withSql(async (sql) => {
     await sql`DROP TABLE IF EXISTS users`;
     await sql`CREATE TABLE users (id INT, name TEXT)`;
@@ -96,10 +91,10 @@ Deno.test("postgres.js - insert multiple rows", async () => {
     await sql`INSERT INTO users (id, name) VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Carol')`;
 
     const result = await sql`SELECT * FROM users ORDER BY id`;
-    assertEquals(result.length, 3);
-    assertEquals(result[0].name, "Alice");
-    assertEquals(result[1].name, "Bob");
-    assertEquals(result[2].name, "Carol");
+    assert_equal(result.length, 3);
+    assert_equal(result[0].name, "Alice");
+    assert_equal(result[1].name, "Bob");
+    assert_equal(result[2].name, "Carol");
 
     await sql`DROP TABLE users`;
   });
@@ -109,7 +104,7 @@ Deno.test("postgres.js - insert multiple rows", async () => {
 // Parameterized Query Tests
 // =============================================================================
 
-Deno.test("postgres.js - parameterized queries", async () => {
+test("postgres.js - parameterized queries", async () => {
   await withSql(async (sql) => {
     await sql`DROP TABLE IF EXISTS users`;
     await sql`CREATE TABLE users (id INT, name TEXT)`;
@@ -119,8 +114,8 @@ Deno.test("postgres.js - parameterized queries", async () => {
     await sql`INSERT INTO users (id, name) VALUES (${id}, ${name})`;
 
     const result = await sql`SELECT * FROM users WHERE id = ${id}`;
-    assertEquals(result.length, 1);
-    assertEquals(result[0].name, "Alice");
+    assert_equal(result.length, 1);
+    assert_equal(result[0].name, "Alice");
 
     await sql`DROP TABLE users`;
   });
@@ -130,7 +125,7 @@ Deno.test("postgres.js - parameterized queries", async () => {
 // UPDATE Tests
 // =============================================================================
 
-Deno.test("postgres.js - update rows", async () => {
+test("postgres.js - update rows", async () => {
   await withSql(async (sql) => {
     await sql`DROP TABLE IF EXISTS users`;
     await sql`CREATE TABLE users (id INT, name TEXT)`;
@@ -139,7 +134,7 @@ Deno.test("postgres.js - update rows", async () => {
     await sql`UPDATE users SET name = 'Charlie' WHERE id = 2`;
 
     const result = await sql`SELECT * FROM users WHERE id = 2`;
-    assertEquals(result[0].name, "Charlie");
+    assert_equal(result[0].name, "Charlie");
 
     await sql`DROP TABLE users`;
   });
@@ -149,7 +144,7 @@ Deno.test("postgres.js - update rows", async () => {
 // DELETE Tests
 // =============================================================================
 
-Deno.test("postgres.js - delete rows", async () => {
+test("postgres.js - delete rows", async () => {
   await withSql(async (sql) => {
     await sql`DROP TABLE IF EXISTS users`;
     await sql`CREATE TABLE users (id INT, name TEXT)`;
@@ -158,9 +153,9 @@ Deno.test("postgres.js - delete rows", async () => {
     await sql`DELETE FROM users WHERE id = 2`;
 
     const result = await sql`SELECT * FROM users ORDER BY id`;
-    assertEquals(result.length, 2);
-    assertEquals(result[0].id, 1);
-    assertEquals(result[1].id, 3);
+    assert_equal(result.length, 2);
+    assert_equal(result[0].id, 1);
+    assert_equal(result[1].id, 3);
 
     await sql`DROP TABLE users`;
   });
@@ -170,7 +165,7 @@ Deno.test("postgres.js - delete rows", async () => {
 // Type Tests
 // =============================================================================
 
-Deno.test("postgres.js - boolean type", async () => {
+test("postgres.js - boolean type", async () => {
   await withSql(async (sql) => {
     await sql`DROP TABLE IF EXISTS test_bool`;
     await sql`CREATE TABLE test_bool (id INT, active BOOL)`;
@@ -178,14 +173,14 @@ Deno.test("postgres.js - boolean type", async () => {
     await sql`INSERT INTO test_bool VALUES (1, true), (2, false)`;
 
     const result = await sql`SELECT * FROM test_bool ORDER BY id`;
-    assertEquals(result[0].active, true);
-    assertEquals(result[1].active, false);
+    assert_equal(result[0].active, true);
+    assert_equal(result[1].active, false);
 
     await sql`DROP TABLE test_bool`;
   });
 });
 
-Deno.test("postgres.js - numeric types", async () => {
+test("postgres.js - numeric types", async () => {
   await withSql(async (sql) => {
     await sql`DROP TABLE IF EXISTS test_numbers`;
     await sql`CREATE TABLE test_numbers (id INT, price FLOAT)`;
@@ -193,7 +188,7 @@ Deno.test("postgres.js - numeric types", async () => {
     await sql`INSERT INTO test_numbers VALUES (1, 99.99), (2, 42.5)`;
 
     const result = await sql`SELECT * FROM test_numbers WHERE id = 1`;
-    assertEquals(result[0].price, 99.99);
+    assert_equal(result[0].price, 99.99);
 
     await sql`DROP TABLE test_numbers`;
   });
@@ -203,7 +198,7 @@ Deno.test("postgres.js - numeric types", async () => {
 // WHERE Clause Tests
 // =============================================================================
 
-Deno.test("postgres.js - where clause with comparison", async () => {
+test("postgres.js - where clause with comparison", async () => {
   await withSql(async (sql) => {
     await sql`DROP TABLE IF EXISTS products`;
     await sql`CREATE TABLE products (id INT, price FLOAT)`;
@@ -211,9 +206,9 @@ Deno.test("postgres.js - where clause with comparison", async () => {
     await sql`INSERT INTO products VALUES (1, 10.0), (2, 20.0), (3, 30.0)`;
 
     const result = await sql`SELECT * FROM products WHERE price > 15.0 ORDER BY id`;
-    assertEquals(result.length, 2);
-    assertEquals(result[0].id, 2);
-    assertEquals(result[1].id, 3);
+    assert_equal(result.length, 2);
+    assert_equal(result[0].id, 2);
+    assert_equal(result[1].id, 3);
 
     await sql`DROP TABLE products`;
   });
@@ -223,7 +218,7 @@ Deno.test("postgres.js - where clause with comparison", async () => {
 // Transaction Tests
 // =============================================================================
 
-Deno.test("postgres.js - basic transaction commit", async () => {
+test("postgres.js - basic transaction commit", async () => {
   await withSql(async (sql) => {
     await sql`DROP TABLE IF EXISTS accounts`;
     await sql`CREATE TABLE accounts (id INT, balance FLOAT)`;
@@ -234,14 +229,14 @@ Deno.test("postgres.js - basic transaction commit", async () => {
     });
 
     const result = await sql`SELECT * FROM accounts ORDER BY id`;
-    assertEquals(result.length, 2);
-    assertEquals(result[0].balance, 100.0);
+    assert_equal(result.length, 2);
+    assert_equal(result[0].balance, 100.0);
 
     await sql`DROP TABLE accounts`;
   });
 });
 
-Deno.test("postgres.js - transaction rollback", async () => {
+test("postgres.js - transaction rollback", async () => {
   await withSql(async (sql) => {
     await sql`DROP TABLE IF EXISTS accounts`;
     await sql`CREATE TABLE accounts (id INT, balance FLOAT)`;
@@ -258,7 +253,7 @@ Deno.test("postgres.js - transaction rollback", async () => {
     }
 
     const result = await sql`SELECT * FROM accounts WHERE id = 1`;
-    assertEquals(result[0].balance, 100.0); // Should be unchanged
+    assert_equal(result[0].balance, 100.0); // Should be unchanged
 
     await sql`DROP TABLE accounts`;
   });
