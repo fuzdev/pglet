@@ -6,8 +6,12 @@
  * @module
  */
 
-import {changelog_declared_bump, changelog_unreleased_content, CHANGELOG_PATH} from './changelog.ts';
-import {type BumpLevel, version_bump, version_parse} from './version.ts';
+import {
+	changelog_declared_bump,
+	changelog_unreleased_content,
+	CHANGELOG_PATH
+} from './changelog.ts';
+import { type BumpLevel, version_bump, version_parse } from './version.ts';
 
 export interface ReleasePlanInput {
 	/** The `Cargo.toml` `[workspace.package]` version. */
@@ -52,18 +56,22 @@ export type ReleasePlan =
  * @returns the release the run performs, with every reason a fresh one cannot proceed
  */
 export const release_plan = (input: ReleasePlanInput): ReleasePlan => {
-	const {version, bump, sentinel, changelog} = input;
+	const { version, bump, sentinel, changelog } = input;
 	if (sentinel === version) {
 		return {
 			kind: 'resume',
 			version,
-			notes: bump ? [`--bump ${bump} is ignored — resuming the interrupted v${version} release`] : [],
+			notes: bump
+				? [`--bump ${bump} is ignored — resuming the interrupted v${version} release`]
+				: []
 		};
 	}
 
 	const problems: Array<string> = [];
 	if (!version_parse(version)) {
-		problems.push(`Cargo.toml's version "${version}" is not <major>.<minor>.<patch>, so it has no bump`);
+		problems.push(
+			`Cargo.toml's version "${version}" is not <major>.<minor>.<patch>, so it has no bump`
+		);
 	}
 
 	let declared: BumpLevel | null = null;
@@ -71,17 +79,23 @@ export const release_plan = (input: ReleasePlanInput): ReleasePlan => {
 		problems.push(`no ${CHANGELOG_PATH} — a release needs its notes`);
 	} else {
 		const content = changelog_unreleased_content(changelog);
-		if (content === null) problems.push(`no "## Unreleased" section in ${CHANGELOG_PATH} — add the release notes`);
-		else if (content === '') problems.push(`"## Unreleased" in ${CHANGELOG_PATH} is empty — add the release notes`);
+		if (content === null)
+			problems.push(`no "## Unreleased" section in ${CHANGELOG_PATH} — add the release notes`);
+		else if (content === '')
+			problems.push(`"## Unreleased" in ${CHANGELOG_PATH} is empty — add the release notes`);
 		declared = changelog_declared_bump(changelog);
 		if (content !== null && declared === null) {
-			problems.push(`no "<!-- bump: patch|minor|major -->" marker under "## Unreleased" in ${CHANGELOG_PATH}`);
+			problems.push(
+				`no "<!-- bump: patch|minor|major -->" marker under "## Unreleased" in ${CHANGELOG_PATH}`
+			);
 		}
 	}
 
 	if (bump === null) problems.push('no --bump — pass the level the changelog marker declares');
 	else if (declared !== null && bump !== declared) {
-		problems.push(`--bump ${bump} disagrees with ${CHANGELOG_PATH}'s marker <!-- bump: ${declared} -->`);
+		problems.push(
+			`--bump ${bump} disagrees with ${CHANGELOG_PATH}'s marker <!-- bump: ${declared} -->`
+		);
 	}
 
 	const level = bump !== null && (declared === null || bump === declared) ? bump : null;
@@ -91,6 +105,6 @@ export const release_plan = (input: ReleasePlanInput): ReleasePlan => {
 		level,
 		target: level === null ? null : version_bump(version, level),
 		problems,
-		stale_sentinel: sentinel,
+		stale_sentinel: sentinel
 	};
 };

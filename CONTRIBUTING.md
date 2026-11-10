@@ -96,16 +96,16 @@ The other ports in play: 5433 for the dev server (`cargo run -p pglet_server`),
 `deno task` runs a `package.json` script too when `deno.json` has no task of that name, so
 `deno task <name>` works for every one.
 
-- `deno task check` — the hermetic bar: clippy with `-D warnings`, a
+- `npm run check` — the hermetic bar: clippy with `-D warnings`, a
   `--no-default-features` `cargo check`, clippy over `pglet` and `pglet_wasm` for the
   wasm target with the wasm build's features, default, stripped and with the opt-in
   `opfs` feature, plus a host clippy of `pglet_wasm` with `opfs` on, its tests included
   (`check:wasm-features`), `cargo fmt --check`, the rustdoc
   broken-link check (`check:docs`, run with `--document-private-items` because most of
   the engine is private items; `private_intra_doc_links` and `redundant_explicit_links`
-  stay at warn by choice), `deno check` of the release scripts (`check:scripts`, which
-  nothing else typechecks before a release runs them), and the release audit. Needs no
-  Postgres and runs anywhere.
+  stay at warn by choice), `gro check` over the TypeScript tools in `src/`
+  (`check:ts`: their typecheck, their vitest suites, which must find a test, and their
+  format), and the release audit. Needs no Postgres and runs anywhere, after `npm ci`.
   The narrower `cargo clippy --workspace` you are likelier to type covers neither tests
   nor benches and fails on nothing, so it passes locally where `check` does not.
 - `cargo xtask gates` — the full gate set, in a fixed order. Run it
@@ -138,7 +138,7 @@ run did not report is a failure, because a gate that ran nothing proves nothing 
 is what makes a missing `psql` a loud hole rather than a quiet one.
 
 `deno task test:npm` sits outside the gate set; beside `wasm-pack` it needs `node` and
-`npm` at or above the package's `engines` floor (`scripts/npm_metadata.ts`) — its Node leg
+`npm` at or above the package's `engines` floor (`src/lib/npm_metadata.ts`) — its Node leg
 refuses to run below it — and it packs and installs the package offline, in the OS temp
 directory.
 
@@ -155,40 +155,45 @@ figure for that is recorded.
 
 ## Releasing
 
-`@fuzdev/pglet-wasm` is released by the maintainer with `deno task publish:npm`
-(`scripts/publish.ts`, over the `scripts/release/` modules). The version is `Cargo.toml`'s
+`@fuzdev/pglet-wasm` is released by the maintainer with `npm run publish:npm`
+(`src/tasks/publish_npm.task.ts`, over the `src/lib/release/` modules). The version is `Cargo.toml`'s
 `[workspace.package].version`. Between releases, changes are noted under `CHANGELOG.md`'s
 `## Unreleased`, whose next line declares the release's level (`<!-- bump: patch -->`; raise it
 to `minor` or `major` when a change calls for it).
 
-- `deno task publish:npm --bump <level>` — a dry run, which changes nothing. Its preflight
+- `npm run publish:npm -- --bump <level>` — a dry run, which changes nothing. Its preflight
   refuses outright on a missing tool (`node` below the package's `engines` floor, `wasm-pack`,
   `gzip`, `cargo`), a failed registry lookup, or a target version already on npm, and warns on
   everything a wetrun refuses: an empty or missing `## Unreleased`, a `--bump` missing or
   disagreeing with the marker, a dirty tree, a branch other than `main`, a `HEAD` that is not
   exactly `origin/main` (after a `git fetch origin main`), an existing `v<version>` tag (locally
-  or on `origin`) and a failing `npm whoami`. It then runs `deno task check`,
-  `deno task test:rust`, `deno task test:wasm`, `deno task test:npm` (which builds
+  or on `origin`) and a failing `npm whoami`. It then runs `npm run check`,
+  `npm run test:rust`, `deno task test:wasm`, `deno task test:npm` (which builds
   `crates/pglet_wasm/pkg-npm` and ends in the packed-tarball smoke over that same directory),
   checks the built `name@version`, runs the size gate on the wasm it built, and runs
   `npm publish --dry-run` in `pkg-npm`. None of its gates needs Postgres; the differential gates
   are CI's and `cargo xtask gates`'.
-- `deno task publish:npm --wetrun --bump <level>` — the release. The preflight's warnings
+- `npm run publish:npm -- --wetrun --bump <level>` — the release. The preflight's warnings
   refuse before anything changes. It then bumps `Cargo.toml`, moves both lockfiles' workspace
   members (the root's and `fuzz/`'s), stamps `## Unreleased` as `## <version>` under a fresh
   `## Unreleased`, runs the same gates over the bumped checkout, refuses if the checkout changed
-  while they ran, runs `npm publish` (streamed, so npm's browser auth reaches you), commits
+  while they ran, runs `npm publish --no-dry-run` (streamed, so npm's browser auth reaches
+  you; the flag keeps a `dry-run` in npm's config from turning it into a dry run), commits
   exactly those files as `chore: release v<version>`, creates the annotated tag
   `v<version>`, and runs `git push --follow-tags origin main`.
 - `--no-git` stops after the publish and prints the commit, tag and push instead.
 - **Resuming.** The bump writes `.publish-in-progress` (gitignored), which is removed only once
   the push lands. If a wetrun fails after the bump, fix the cause and run
-  `deno task publish:npm --wetrun`: it resumes the bumped version, accepting a tree dirty with
+  `npm run publish:npm -- --wetrun`: it resumes the bumped version, accepting a tree dirty with
   only the release files, or one release commit ahead of `origin/main`. Every later step is
   idempotent, and a version already on npm skips the gates and the publish and only finishes
   git. To abandon a release instead, discard the release files' changes and delete the
   sentinel.
 - `--bump` takes `patch`, `minor` or `major`; a prerelease version has no level.
 
-Any other argument is refused — `--` included, so pass the flags straight after the task
-name.
+Any other argument is refused, a positional one included, and `--help` lists the flags.
+The flags go after npm's `--`: npm keeps a flag written before it for itself, so
+`npm run publish:npm --wetrun` (or `--dry-run`) is refused, as is anything after a second
+`--`. Every program the release runs is found on `PATH` and runs in the checkout; `git` and
+`npm` take your whole environment, for your credentials, signing and hooks, and reach `origin`
+and the npm registry.

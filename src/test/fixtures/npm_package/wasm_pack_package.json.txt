@@ -1,0 +1,21 @@
+{
+  "name": "pglet_wasm",
+  "type": "module",
+  "description": "fast and small embeddable postgres for speeding up your tests",
+  "version": "0.1.2",
+  "license": "0BSD",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fuzdev/pglet"
+  },
+  "files": [
+    "pglet_wasm_bg.wasm",
+    "pglet_wasm.js",
+    "pglet_wasm.d.ts"
+  ],
+  "main": "pglet_wasm.js",
+  "types": "pglet_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

@@ -120,7 +120,7 @@ refused when either name moves) and a password, which `SimpleProbe` does not spe
 `CONTRIBUTING.md` § Before you run the tests and § The Postgres oracle respectively.
 
 `.github/workflows/check.yml` runs the three tiers a contributor can — hermetic
-(`deno task check` + `deno task test:rust`), package (`test:npm`,
+(`npm run check` + `npm run test:rust`), package (`test:npm`,
 `size:check` and the `opfs` build's export check), differential (the Postgres gates under `cargo xtask gates
 --check`, against a `postgres:18.6` service with `POSTGRES_HOST_AUTH_METHOD: trust`
 — the probe's ceiling — named by `PGLET_PG_URL`). It runs the `deno task` bodies

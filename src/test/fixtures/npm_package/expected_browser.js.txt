@@ -1,0 +1,36 @@
+import { default as _init, initSync, PgletBtree } from './pglet_wasm.js';
+import { wrap_pglet_db } from './db.js';
+
+let _ready = false;
+// The one in-flight initialization: wasm-bindgen's own init only checks for a finished module, so a
+// second load started before the first finished would replace the module under a live instance.
+let _loading = null;
+function _check() {
+	if (!_ready) throw new Error('@fuzdev/pglet-wasm: WASM not initialized. Call `await init()` first.');
+}
+export function init(options) {
+	if (_ready) return Promise.resolve();
+	_loading ??= _init(options?.wasm === undefined ? undefined : { module_or_path: options.wasm }).then(
+		() => {
+			_ready = true;
+		},
+		(e) => {
+			_loading = null;
+			throw e;
+		},
+	);
+	return _loading;
+}
+export function init_sync(options) {
+	if (_ready) return;
+	if (_loading) throw new Error('@fuzdev/pglet-wasm: init_sync() was called while init() is loading the module; await init() instead');
+	if (options?.wasm === undefined) {
+		throw new Error('@fuzdev/pglet-wasm: init_sync() needs {wasm}: the module bytes or a compiled WebAssembly.Module');
+	}
+	initSync({ module: options.wasm });
+	_ready = true;
+}
+export function create_pglet_db(options) {
+	_check();
+	return wrap_pglet_db(new PgletBtree(), options);
+}

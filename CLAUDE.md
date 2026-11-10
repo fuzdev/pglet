@@ -531,6 +531,15 @@ Tasks live in `package.json` (`npm run <name> -- <flags>`) and `deno.json`
 the JS dependencies `package-lock.json` pins into `node_modules`, which Deno reads too
 (`"nodeModulesDir": "manual"`); `.npmrc` turns install scripts off.
 
+The TypeScript tools are a gro project under `src/`: `src/lib/` holds their code, each taking
+what it reaches (dirs, programs, output) as deps; `src/tasks/*.task.ts` are the composition
+roots, which root themselves on their own file's location (never the working directory) and
+which `package.json` scripts run with `gro task`; `src/test/` holds their vitest suites. `npm
+run check:ts` (`gro check -- gro test --fail_without_tests`, inside `check`) typechecks,
+tests and format-checks it, and fails when no test is found. `tests-web/` (the integration
+suites), `benches/` (the measurements) and `scripts/` (the npm package's plain-Node legs)
+stay where they are.
+
 ```bash
 npm ci                            # the JS dependencies, before any JS task
 cargo build                       # build all crates
@@ -556,10 +565,10 @@ cargo xtask gates --skip test:pg-dump   # ...minus named tasks (--skip beats --o
 npm run gates:check               # cargo xtask gates --check (gates:update likewise)
 deno task size:check              # wasm size gate: raw bytes under the lower of baseline +2% and the 1650 KB hard cap (needs wasm-pack, gzip)
 deno task size:update             # ...and record this build as the new baseline
-deno task check                   # clippy -D warnings + stripped + wasm-features + fmt + docs + scripts typecheck + tests + release audit
-deno task check:stripped | check:wasm-features | check:scripts | test:scripts | check:release   # check's own steps, runnable alone
-#                                   (check:scripts is `deno check` of scripts/*.ts and scripts/release/*.ts, the release scripts'
-#                                   only typecheck; test:scripts their unit tests; check:release is cargo xtask check-release)
+npm run check                     # clippy -D warnings + stripped + wasm-features + fmt + docs + check:ts + release audit
+npm run check:stripped | check:wasm-features | check:ts | check:release   # check's own steps, runnable alone
+#                                   (check:ts is `gro check` over src/, tests required; check:release is
+#                                   cargo xtask check-release)
 npm run fmt                       # cargo fmt (check runs cargo fmt --check)
 npm run check:docs                # rustdoc: every doc-comment link resolves (see below)
 npm run dump -- --data-dir <dir>  # print a portable SQL dump of a persisted database
@@ -607,21 +616,22 @@ deno task spy:spine:cell | spy:spine:fact   # the proxy recording to tests/captu
 deno task wasm:serve | wasm:test  # examples/browser's static server on :8001 and its Deno smoke test
 #                                   (examples/browser/README.md)
 
-deno task build:npm               # assemble @fuzdev/pglet-wasm (pkg-npm/ emptied → wasm-pack → patch_npm_package.ts)
+npm run build:npm                 # assemble @fuzdev/pglet-wasm (pkg-npm/ emptied → wasm-pack → src/lib/npm_package.ts)
 #                                   the npm name is kebab (`-wasm`, like `@fuzdev/tsv-wasm`); the crate and its generated
-#                                   `pglet_wasm.js` / `pglet_wasm_bg.wasm` stay snake_case — patch_npm_package.ts sets the name
+#                                   `pglet_wasm.js` / `pglet_wasm_bg.wasm` stay snake_case — npm_package.ts sets the name
 deno task test:npm                # build:npm + the adapter suite (coercion contract, shape, DX) + a Node smoke run
 #                                   (refusing a Node below the package's `engines` floor) + the packed tarball
 #                                   installed offline and imported by bare specifier (scripts/test_npm_pack.mjs);
-#                                   the registry identity fields live in scripts/npm_metadata.ts;
+#                                   the registry identity fields live in src/lib/npm_metadata.ts;
 #                                   test:npm:node is build:npm + the Node smoke and pack legs alone
-deno task publish:npm --bump patch   # release @fuzdev/pglet-wasm — USER-RUN, dry-run default; `--bump` must repeat
+npm run publish:npm -- --bump patch   # release @fuzdev/pglet-wasm — USER-RUN, dry-run default; `--bump` must repeat
 #                                   CHANGELOG.md's `## Unreleased` marker. A preflight (tools, changelog, clean tree,
 #                                   HEAD == origin/main, no existing tag, not yet on npm), then gates on check, test:rust,
 #                                   test:wasm, test:npm and the shipped wasm's size, then `npm publish --dry-run`.
 #                                   `--wetrun` bumps Cargo.toml + both lockfiles + the changelog first, publishes, then
 #                                   commits, tags and pushes; an interrupted wetrun resumes with a bare `--wetrun`
-#                                   (`.publish-in-progress`); scripts/release/ is its library (CONTRIBUTING.md § Releasing)
+#                                   (`.publish-in-progress`); src/lib/release/ is its library (CONTRIBUTING.md § Releasing);
+#                                   its own flags or `--dry-run` written before `--` (npm keeps them) are refused
 
 npm run bench:commit              # commit-latency + write-amp sweep vs SQLite (prints)
 npm run bench:commit:update       # ...and refresh benches/phase1_results.json
@@ -674,7 +684,7 @@ task under `target/gates/`. Carry two things when reading a run: interleaved run
 that look exactly like a real regression, and **a killed run's log reads green right up to
 the kill** — read the summary's `KILLED` / `FAIL(n)`. `--check` fails a run against
 `tests/gates_baseline.txt` (its header says on what — a skipped gate included), and
-`--update` refuses a run with failures. It is not in `deno task check`, which
+`--update` refuses a run with failures. It is not in `npm run check`, which
 stays hermetic. The why: `crates/xtask/src/gates.rs` and `runner.rs`'s module docs;
 prerequisites: `CONTRIBUTING.md` § Running the checks.
 

@@ -1,0 +1,13 @@
+import { readFileSync } from 'node:fs';
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { initSync, PgletBtree } from './pglet_wasm.js';
+import { wrap_pglet_db } from './db.js';
+
+const wasm = readFileSync(new URL('./pglet_wasm_bg.wasm', import.meta.url));
+initSync({ module: wasm });
+
+const context_store = new AsyncLocalStorage();
+
+export async function init(_options) {}
+export function init_sync(_options) {}
+export const create_pglet_db = (options) => wrap_pglet_db(new PgletBtree(), options, context_store);

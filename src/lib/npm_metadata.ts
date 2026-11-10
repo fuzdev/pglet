@@ -1,7 +1,7 @@
 /**
  * The registry identity of `@fuzdev/pglet-wasm` — the `package.json` fields that say what the
- * package is and who answers for it, shared by every script that writes or checks them:
- * `scripts/patch_npm_package.ts` assembles the published `package.json` from this module, and
+ * package is and who answers for it, shared by everything that writes or checks them:
+ * `npm_package.ts` assembles the published `package.json` from this module, and
  * `tests-web/npm/package_test.ts` and `scripts/test_npm_node.mjs` assert the assembled file
  * carries it.
  *
@@ -11,7 +11,9 @@
  * Node leg of `test:npm` cannot pass on a runtime the package does not support.
  *
  * Per-package fields (`description`, `keywords`, `files`, `exports`, `sideEffects`,
- * `peerDependencies`) stay in the patch script beside the files they describe.
+ * `peerDependencies`) stay in `npm_package.ts` beside the files they describe.
+ *
+ * @module
  */
 export const NPM_SHARED_METADATA = {
 	name: '@fuzdev/pglet-wasm',
@@ -20,15 +22,15 @@ export const NPM_SHARED_METADATA = {
 	author: {
 		name: 'Ryan Atkinson',
 		email: 'mail@ryanatkn.com',
-		url: 'https://www.ryanatkn.com/',
+		url: 'https://www.ryanatkn.com/'
 	},
 	repository: {
 		type: 'git',
-		url: 'git+https://github.com/fuzdev/pglet.git',
+		url: 'git+https://github.com/fuzdev/pglet.git'
 	},
 	bugs: 'https://github.com/fuzdev/pglet/issues',
 	funding: 'https://www.ryanatkn.com/funding',
-	engines: {node: '>=22'},
+	engines: { node: '>=22' },
 	// structural, so a hand `npm publish` of a scoped package can never land restricted
-	publishConfig: {access: 'public'},
+	publishConfig: { access: 'public' }
 } as const;

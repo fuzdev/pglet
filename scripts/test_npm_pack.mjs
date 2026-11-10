@@ -11,7 +11,7 @@
  * `files[]` says. The type declarations `exports`, `main` and `types` name are checked to be in the
  * installed package too, and so is each relative import inside them.
  *
- * **The directory that publishes.** `scripts/publish.ts` runs this (through `test:npm`) with
+ * **The directory that publishes.** `npm run publish:npm` runs this (through `test:npm`) with
  * `PKG_DIR` set to the `pkg-npm` its publish step runs in, after `build:npm` has rebuilt that
  * directory from empty, and nothing rebuilds it in between — so the tarball smoked here is packed
  * from the same files as the one published.

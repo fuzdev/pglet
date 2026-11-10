@@ -1,0 +1,76 @@
+{
+	"name": "@fuzdev/pglet-wasm",
+	"type": "module",
+	"description": "fast and small embeddable postgres for speeding up your tests",
+	"version": "0.1.2",
+	"license": "0BSD",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/fuzdev/pglet.git"
+	},
+	"files": [
+		"index.js",
+		"index.d.ts",
+		"browser.js",
+		"db.js",
+		"coerce.js",
+		"kysely.js",
+		"kysely.d.ts",
+		"pglet_wasm.js",
+		"pglet_wasm.d.ts",
+		"pglet_wasm_bg.wasm",
+		"snippets/",
+		"README.md",
+		"LICENSE"
+	],
+	"main": "index.js",
+	"types": "index.d.ts",
+	"sideEffects": [
+		"./index.js"
+	],
+	"exports": {
+		"./package.json": "./package.json",
+		".": {
+			"types": "./index.d.ts",
+			"node": "./index.js",
+			"default": "./browser.js"
+		},
+		"./kysely": {
+			"types": "./kysely.d.ts",
+			"default": "./kysely.js"
+		}
+	},
+	"peerDependencies": {
+		"kysely": ">=0.27 <1"
+	},
+	"peerDependenciesMeta": {
+		"kysely": {
+			"optional": true
+		}
+	},
+	"keywords": [
+		"postgres",
+		"postgresql",
+		"pglet",
+		"wasm",
+		"webassembly",
+		"database",
+		"sql",
+		"test-fixtures",
+		"embedded"
+	],
+	"homepage": "https://github.com/fuzdev/pglet",
+	"author": {
+		"name": "Ryan Atkinson",
+		"email": "mail@ryanatkn.com",
+		"url": "https://www.ryanatkn.com/"
+	},
+	"bugs": "https://github.com/fuzdev/pglet/issues",
+	"funding": "https://www.ryanatkn.com/funding",
+	"engines": {
+		"node": ">=22"
+	},
+	"publishConfig": {
+		"access": "public"
+	}
+}

@@ -46,11 +46,11 @@ const RECORDED_OUTPUTS = [
 
 /**
  * Untracked files count toward a dirty stamp only under these: the directories whose
- * files build the measured artifacts (`crates/`, `scripts/` — the npm package's patch
- * step) or are the measuring code itself (`benches/`). An untracked file anywhere else —
+ * files build the measured artifacts (`crates/`, `src/` — the npm package's patch
+ * step — and `scripts/`) or are the measuring code itself (`benches/`). An untracked file anywhere else —
  * a scratch note, an editor file — changes nothing a bench measures.
  */
-const UNTRACKED_COUNTS_UNDER = ['benches/', 'crates/', 'scripts/'];
+const UNTRACKED_COUNTS_UNDER = ['benches/', 'crates/', 'scripts/', 'src/'];
 
 /**
  * The short commit a result was measured at, suffixed `-dirty` when the tree differs

@@ -22,7 +22,7 @@
  * and query figures are measured on a database of its own, but over an instance
  * already warm — memory grown, code compiled — which favours it on the one-shot
  * bulk insert. The package must be current: a missing one, or
- * one older than any file under `crates/`, `scripts/` or the workspace manifests,
+ * one older than any file under `crates/`, `scripts/`, `src/` or the workspace manifests,
  * stops the run before anything is measured — as does a pglite other than the one
  * `benches/package-lock.json` pins (`lib/pglite_install.ts`).
  *

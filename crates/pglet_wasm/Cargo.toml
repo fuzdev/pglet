@@ -6,9 +6,9 @@ license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
 publish.workspace = true
-# The npm-package description is authored in `scripts/patch_npm_package.ts`; this is the raw-crate
+# The npm-package description is authored in `src/lib/npm_package.ts`; this is the raw-crate
 # metadata (parity with `tsv_wasm`/`blake3_wasm`). The npm package spells the same repository in
-# npm's object form, from that same script.
+# npm's object form, from `src/lib/npm_metadata.ts`.
 description = "fast and small embeddable postgres for speeding up your tests"
 
 [lib]

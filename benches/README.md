@@ -88,7 +88,7 @@ pglet has two rows, both over the npm package the task chain builds
   instance the `pglet` row loaded: no cold init of its own (`—`, recorded
   `null`), and its one-shot bulk insert runs on an instance already warm.
 
-A missing `pkg-npm`, or one older than any file under `crates/`, `scripts/` or
+A missing `pkg-npm`, or one older than any file under `crates/`, `scripts/`, `src/` or
 the workspace manifests, stops the run before anything is measured, as does a pglite
 other than the one `package-lock.json` pins (`lib/pglite_install.ts`). A failed
 engine row is printed, and the run then exits 1 without writing.

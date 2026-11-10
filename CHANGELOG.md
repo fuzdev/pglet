@@ -4,7 +4,7 @@ Covers `@fuzdev/pglet-wasm`, the npm package published from this repo, at the
 `Cargo.toml [workspace.package]` version.
 
 Pending changes go under `## Unreleased`, whose next line declares the release's level
-(`<!-- bump: patch|minor|major -->`). `deno task publish:npm --wetrun --bump <level>`
+(`<!-- bump: patch|minor|major -->`). `npm run publish:npm -- --wetrun --bump <level>`
 requires `<level>` to repeat it and a non-empty section, then stamps the section as the
 released version under a fresh `## Unreleased` declaring a patch.
 

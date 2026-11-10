@@ -52,8 +52,9 @@ const newest_file = (dir: URL, newest: {path: string; mtime: number}): void => {
 
 /**
  * Refuse a missing or stale npm package rather than measure an old build. Stale is
- * any file under `crates/` or `scripts/`, or a workspace manifest, newer than the
- * oldest package file a consumer loads — `deno task build:npm` rebuilds all of them.
+ * any file under `crates/`, `scripts/` or `src/` (the package's patch step), or a
+ * workspace manifest, newer than the oldest package file a consumer loads —
+ * `deno task build:npm` rebuilds all of them.
  *
  * @param chained_by - the tasks that chain `build:npm`, named in the refusal
  * @throws when the package is missing a file or is older than its newest input
@@ -74,6 +75,7 @@ export const assert_pglet_package_current = (chained_by: string): void => {
 	const newest = {path: '', mtime: 0};
 	newest_file(new URL('crates/', REPO), newest);
 	newest_file(new URL('scripts/', REPO), newest);
+	newest_file(new URL('src/', REPO), newest);
 	for (const name of ['Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml']) {
 		const url = new URL(name, REPO);
 		const mtime = statSync(url).mtimeMs;

@@ -1,7 +1,7 @@
 # Three jobs run on every push to main and every PR, one per tier a contributor
 # can run locally:
 #
-#   hermetic     — `deno task check` plus `deno task test:rust`. Needs no
+#   hermetic     — `npm run check` plus `npm run test:rust`. Needs no
 #                  Postgres and no wasm toolchain; this is the bar that runs
 #                  anywhere.
 #   package      — the published wasm/npm shape: the package tests and the size
@@ -12,8 +12,9 @@
 #
 # Every job runs the tasks by name rather than re-enumerating them here: a
 # hand-copied command list goes stale the first time a task gains a step. A name
-# is a `deno.json` task or, where `deno.json` has none, the `package.json` script
-# `deno task` falls through to; those two files are the authoritative versions.
+# is a `package.json` script, run with `npm run`, or a `deno.json` task, run with
+# `deno task`, which falls through to the `package.json` script where `deno.json`
+# has none; those two files are the authoritative versions.
 #
 # The one thing this file must not do is be green because a prerequisite was
 # missing. Several harnesses exit 0 without theirs — `test:dump` and
@@ -46,8 +47,8 @@ jobs:
   # The hermetic bar, the same one `CONTRIBUTING.md` names: clippy under
   # `-D warnings`, a `--no-default-features` check, clippy over `pglet` and
   # `pglet_wasm` with the wasm build's default, stripped and `opfs` features,
-  # `cargo fmt --check`, the rustdoc link check, the
-  # release audit — then the workspace test suite. No
+  # `cargo fmt --check`, the rustdoc link check, `gro check` over the TypeScript
+  # tools in `src/`, the release audit — then the workspace test suite. No
   # Postgres (nothing under `crates/*/tests/` connects to one; the suite does
   # build and spawn pglet servers, which is why it wants a full toolchain).
   hermetic:
@@ -77,13 +78,15 @@ jobs:
 
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
 
-      - name: Install Deno
-        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+      # `check:ts` runs gro, which `package-lock.json` pins; the Node is gro's
+      # `engines` floor, as in `package`.
+      - name: Install Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          # Pinned to the version the tasks are developed against. Every gate is a
-          # `deno task`, so deno is on the critical path of all three jobs.
-          deno-version: 2.8.3
-          cache: true
+          node-version: '24.14.1'
+
+      - name: Install npm dependencies
+        run: npm ci
 
       # The lockfile gate for the whole run, asked once and cheaply: would
       # resolving need to change `Cargo.lock`? `metadata` answers without
@@ -94,12 +97,12 @@ jobs:
         run: cargo metadata --locked --format-version 1 > /dev/null
 
       - name: Check
-        run: deno task check
+        run: npm run check
 
       # `test:rust` turns the `opfs` feature on, which brings in the persistent wasm
       # binding's host tests the default build does not compile.
       - name: Test
-        run: deno task test:rust
+        run: npm run test:rust
 
   # The published shape. `test:npm` builds the npm package and runs the adapter
   # suite under both deno and node; `size:check` runs its own wasm build and
@@ -137,10 +140,11 @@ jobs:
       - name: Install Deno
         uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
         with:
+          # Pinned to the version the tasks are developed against.
           deno-version: 2.8.3
           cache: true
 
-      # The package declares `engines: {node: '>=22'}` (`scripts/npm_metadata.ts`),
+      # The package declares `engines: {node: '>=22'}` (`src/lib/npm_metadata.ts`),
       # and the node half of `test:npm` runs under `node --test` — refusing a Node
       # below that floor — and packs and installs the tarball with the npm this
       # step ships. Pinned to match the ecosystem's other workspaces.

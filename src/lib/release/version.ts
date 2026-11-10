@@ -26,7 +26,9 @@ export const cargo_workspace_version = (cargo_toml: string): string | null =>
 /** The `Cargo.toml` text with its `[workspace.package]` version replaced, or null when it
  * declares none. Every other byte is kept. */
 export const cargo_workspace_version_set = (cargo_toml: string, version: string): string | null =>
-	WORKSPACE_VERSION.test(cargo_toml) ? cargo_toml.replace(WORKSPACE_VERSION, `$1"${version}"`) : null;
+	WORKSPACE_VERSION.test(cargo_toml)
+		? cargo_toml.replace(WORKSPACE_VERSION, `$1"${version}"`)
+		: null;
 
 /** A release version: `<major>.<minor>.<patch>`, no prerelease or build suffix. */
 export interface ReleaseVersion {
@@ -40,7 +42,7 @@ export interface ReleaseVersion {
 export const version_parse = (version: string): ReleaseVersion | null => {
 	const match = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.exec(version);
 	if (!match) return null;
-	return {major: Number(match[1]), minor: Number(match[2]), patch: Number(match[3])};
+	return { major: Number(match[1]), minor: Number(match[2]), patch: Number(match[3]) };
 };
 
 /** The version one `level` past `version`, or null when `version` is not a release version. A

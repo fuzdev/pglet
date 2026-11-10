@@ -8,7 +8,7 @@
  * @module
  */
 
-import type {BumpLevel} from './version.ts';
+import type { BumpLevel } from './version.ts';
 
 export const CHANGELOG_PATH = 'CHANGELOG.md';
 
@@ -26,7 +26,8 @@ const UNRELEASED_HEADING = new RegExp(`^## Unreleased${LINE_END}`, 'm');
 
 /** The heading with its marker on the next line, the two lines `changelog_stamp` replaces, down
  * to the marker's terminator, so a marker the reader accepts is one the stamp strips. */
-const UNRELEASED_HEADING_WITH_MARKER = /^## Unreleased\n<!-- bump: (?:patch|minor|major) -->(?:\n|$)/m;
+const UNRELEASED_HEADING_WITH_MARKER =
+	/^## Unreleased\n<!-- bump: (?:patch|minor|major) -->(?:\n|$)/m;
 
 /** What the next cycle starts from: an empty `## Unreleased` declaring a patch. */
 const FRESH_UNRELEASED = '## Unreleased\n<!-- bump: patch -->\n\n';
@@ -78,18 +79,18 @@ export interface ChangelogStamp {
 /** Stamp `## Unreleased` into `## <version>`, dropping its bump marker, under a fresh empty
  * `## Unreleased` that declares a patch. Idempotent: an already-stamped version is left alone. */
 export const changelog_stamp = (changelog: string, version: string): ChangelogStamp => {
-	if (heading_re(version).test(changelog)) return {outcome: 'already_stamped', text: changelog};
+	if (heading_re(version).test(changelog)) return { outcome: 'already_stamped', text: changelog };
 	if (UNRELEASED_HEADING_WITH_MARKER.test(changelog)) {
 		return {
 			outcome: 'stamped',
-			text: changelog.replace(UNRELEASED_HEADING_WITH_MARKER, `${FRESH_UNRELEASED}## ${version}\n`),
+			text: changelog.replace(UNRELEASED_HEADING_WITH_MARKER, `${FRESH_UNRELEASED}## ${version}\n`)
 		};
 	}
 	if (UNRELEASED_HEADING.test(changelog)) {
 		return {
 			outcome: 'stamped_without_marker',
-			text: changelog.replace(UNRELEASED_HEADING, `${FRESH_UNRELEASED}## ${version}`),
+			text: changelog.replace(UNRELEASED_HEADING, `${FRESH_UNRELEASED}## ${version}`)
 		};
 	}
-	return {outcome: 'no_unreleased', text: changelog};
+	return { outcome: 'no_unreleased', text: changelog };
 };

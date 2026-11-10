@@ -20,7 +20,7 @@ import {fileURLToPath, pathToFileURL} from 'node:url';
 const PKG_DIR = process.env.PKG_DIR ?? 'crates/pglet_wasm/pkg-npm';
 const pkg = JSON.parse(readFileSync(resolve(PKG_DIR, 'package.json'), 'utf8'));
 
-// The package declares the Node it supports (`engines`, from `scripts/npm_metadata.ts`), and a
+// The package declares the Node it supports (`engines`, from `src/lib/npm_metadata.ts`), and a
 // pass on a Node below that floor would vouch for a runtime the package does not support — so
 // this leg refuses to run there instead. The floor is read from the built package, not
 // restated, so the two cannot drift.

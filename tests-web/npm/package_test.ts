@@ -6,7 +6,7 @@
  * it's asserted, not assumed. Runs after `build:npm` (see `deno task test:npm`).
  */
 import {assert, assertEquals} from '@std/assert';
-import {NPM_SHARED_METADATA} from '../../scripts/npm_metadata.ts';
+import {NPM_SHARED_METADATA} from '../../src/lib/npm_metadata.ts';
 
 const PKG = 'crates/pglet_wasm/pkg-npm';
 const exists = async (rel: string): Promise<boolean> => {
