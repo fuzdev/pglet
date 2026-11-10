@@ -76,7 +76,7 @@
   },
   "devDependencies": {
     "@fuzdev/fuz_util": "0.81.0",
-    "@fuzdev/gro": "0.233.0",
+    "@fuzdev/gro": "0.234.0",
     "@types/node": "24.19.2",
     "@types/pg": "8.16.0",
     "drizzle-orm": "0.45.1",
