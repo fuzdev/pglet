@@ -35,7 +35,7 @@ Tests don't need this trust, they just gotta go fast.
 
 pglet is not an alternative to PostgresSQL, nor for PGlite, in the cases where its size and startup are acceptable.
 The project is a serious engineering effort
-but its maintainers have zero database expertise, only user experience; all of that is deferred upstream.
+but its maintainer has zero database expertise, only user experience; all of that is deferred upstream.
 PostgreSQL is a community of people with the collective design and implementation power
 to maintain the software and steward its design, and pglet is a dependent.
 Conformance is pglet's goal; it differs only in implementation tradeoffs
