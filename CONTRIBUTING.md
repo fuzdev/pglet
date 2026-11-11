@@ -106,7 +106,7 @@ server the `tests-web/` suites start and for the browser tests' static server, a
   the engine is private items; `private_intra_doc_links` and `redundant_explicit_links`
   stay at warn by choice), `gro check` over the TypeScript tools in `src/`
   (`check:ts`: their typecheck, their vitest suites, which must find a test, and their
-  format), and the release audit. Needs no Postgres and runs anywhere, after `npm ci`.
+  format), `tsc` over the benches (`check:benches`), and the release audit. Needs no Postgres and runs anywhere, after `npm ci`.
   The narrower `cargo clippy --workspace` you are likelier to type covers neither tests
   nor benches and fails on nothing, so it passes locally where `check` does not.
 - `cargo xtask gates` — the full gate set, in a fixed order. Run it
@@ -117,8 +117,8 @@ server the `tests-web/` suites start and for the browser tests' static server, a
   task's status and elapsed time in its closing summary.
   `--check` compares the run's counters against `tests/gates_baseline.txt`.
 
-The gate set's prerequisites, read off the task bodies in `deno.json` and `package.json`:
-`deno` throughout (the runner invokes every gate as `deno task <name>`) and `cargo`, with `check` also wanting the `clippy` and
+The gate set's prerequisites, read off the script bodies in `package.json`:
+`npm` and `node` throughout (the runner invokes every gate as `npm run <name>`) and `cargo`, with `check` also wanting the `clippy` and
 `rustfmt` rustup components and the `wasm32-unknown-unknown` target; **Rust 1.99.1**,
 which `rust-toolchain.toml` pins together with those two components and that target — the
 wasm size gate is calibrated against that toolchain, so a different one moves `size:check`
@@ -169,7 +169,7 @@ to `minor` or `major` when a change calls for it).
   disagreeing with the marker, a dirty tree, a branch other than `main`, a `HEAD` that is not
   exactly `origin/main` (after a `git fetch origin main`), an existing `v<version>` tag (locally
   or on `origin`) and a failing `npm whoami`. It then runs `npm run check`,
-  `npm run test:rust`, `deno task test:wasm`, `npm run test:npm` (which builds
+  `npm run test:rust`, `npm run test:wasm`, `npm run test:npm` (which builds
   `crates/pglet_wasm/pkg-npm` and ends in the packed-tarball smoke over that same directory),
   checks the built `name@version`, runs the size gate on the wasm it built, and runs
   `npm publish --dry-run` in `pkg-npm`. None of its gates needs Postgres; the differential gates

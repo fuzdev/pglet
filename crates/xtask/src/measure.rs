@@ -91,7 +91,7 @@ use std::time::{Duration, SystemTime};
 
 use pglet_core::{JsonbValue, parse_jsonb};
 
-use crate::runner::{TaskRun, deno_task, lock_run_dir, parse_name_list, repo_root, run_logged};
+use crate::runner::{TaskRun, lock_run_dir, npm_run, parse_name_list, repo_root, run_logged};
 use Seg::{Item, Key};
 
 /// One step of the set, in run order.
@@ -229,7 +229,7 @@ struct StepRun<'a> {
 fn command_for(name: &str, opts: &Opts, root: &Path) -> Command {
     match name {
         "exit-proof" => {
-            let mut cmd = deno_task("bench:exit-proof:update");
+            let mut cmd = npm_run("bench:exit-proof:update");
             cmd.env(
                 "PGLET_EXITPROOF_PG_URL",
                 format!("postgres://postgres@127.0.0.1:5432/{}", opts.scratch_db),
@@ -240,10 +240,10 @@ fn command_for(name: &str, opts: &Opts, root: &Path) -> Command {
             }
             cmd
         }
-        "wasm-compare" => deno_task("bench:wasm-compare:update"),
-        "startup" => deno_task("bench:startup:update"),
-        "wasm-init" => deno_task("bench:wasm-init:update"),
-        "size-compare" => deno_task("bench:size-compare:update"),
+        "wasm-compare" => npm_run("bench:wasm-compare:update"),
+        "startup" => npm_run("bench:startup:update"),
+        "wasm-init" => npm_run("bench:wasm-init:update"),
+        "size-compare" => npm_run("bench:size-compare:update"),
         // Re-invoking this binary rather than `cargo xtask gates` keeps the step
         // free of a rebuild in the middle of a measurement run, and keeps its
         // own `target/gates` lock and logs exactly where a hand-run leaves them.
@@ -328,13 +328,7 @@ fn preflight(root: &Path, selected: &[&Step]) -> Result<(), String> {
     // install is refused before the first timed step rather than by size-compare after
     // the last of them.
     if wants("wasm-compare") || wants("size-compare") {
-        let version = deno_eval(
-            root,
-            "import {assert_pglite_matches_lockfile} from './benches/lib/pglite_install.ts'; \
-             try { console.log(assert_pglite_matches_lockfile().version); } \
-             catch (e) { console.error(e instanceof Error ? e.message : String(e)); Deno.exit(1); }",
-        )?;
-        println!("pglite (benches/): {version}, the lockfile's");
+        println!("{}", pglite_line(preflight_query(root, "pglite"))?);
     }
     if wants("size-compare") && !on_path("gzip") {
         return Err("gzip not on PATH (needed by size-compare)".to_owned());
@@ -342,43 +336,57 @@ fn preflight(root: &Path, selected: &[&Step]) -> Result<(), String> {
 
     // Every step but gates stamps the results file it writes.
     if selected.iter().any(|s| s.name != "gates") {
-        match tree_stamp(root) {
-            Some(stamp) if stamp.ends_with("-dirty") || stamp.ends_with("-dirty?") => println!(
-                "stamp: {stamp}\n  ⚠ the tree differs from HEAD — every results file this run writes \
-                 will be stamped `{stamp}`;\n    commit (or stash) first for a stamp that names \
-                 the measured tree"
-            ),
-            Some(stamp) => println!("stamp: {stamp}"),
-            None => println!("stamp: unreadable (`deno eval` of benches/lib/results.ts failed)"),
-        }
+        println!("{}", stamp_line(tree_stamp(root)));
     }
 
     print_idle_check();
     Ok(())
 }
 
+/// The preflight's line for the pglite `benches/` loads, or the refusal that stops the
+/// run before any step: a pglite other than the lockfile's, or one that can't be asked
+/// about, fails **hard**, since wasm-compare and size-compare would refuse it only after
+/// the timed steps before them.
+fn pglite_line(answer: Result<String, String>) -> Result<String, String> {
+    answer.map(|version| format!("pglite (benches/): {version}, the lockfile's"))
+}
+
+/// The preflight's line for the stamp this run's results files will carry, `None` when it
+/// could not be read. That fails **soft**: the stamp is provenance a step writes, never a
+/// reason not to measure.
+fn stamp_line(stamp: Option<String>) -> String {
+    match stamp {
+        Some(stamp) if stamp.ends_with("-dirty") || stamp.ends_with("-dirty?") => format!(
+            "stamp: {stamp}\n  ⚠ the tree differs from HEAD — every results file this run writes \
+             will be stamped `{stamp}`;\n    commit (or stash) first for a stamp that names \
+             the measured tree"
+        ),
+        Some(stamp) => format!("stamp: {stamp}"),
+        None => format!("stamp: unreadable (`node {PREFLIGHT_ENTRY} stamp` failed)"),
+    }
+}
+
 /// The stamp the benches will write, asked of the one rule that writes it
 /// (`benches/lib/results.ts`'s `git_commit`) rather than a second copy of it here.
 fn tree_stamp(root: &Path) -> Option<String> {
-    deno_eval(
-        root,
-        "import {git_commit} from './benches/lib/results.ts'; console.log(git_commit());",
-    )
-    .ok()
-    .filter(|stamp| !stamp.is_empty())
+    preflight_query(root, "stamp")
+        .ok()
+        .filter(|stamp| !stamp.is_empty())
 }
 
-/// Run `code` under `deno eval` from the repo root — how the preflight asks a bench's own
-/// rule rather than copying it here. Its trimmed stdout, or, when it fails, its trimmed
-/// stderr.
-fn deno_eval(root: &Path, code: &str) -> Result<String, String> {
-    let out = Command::new("deno")
-        .args(["eval", code])
+/// The plain Node entry the preflight asks the benches' own rules through.
+const PREFLIGHT_ENTRY: &str = "benches/lib/measure_preflight.ts";
+
+/// Ask `PREFLIGHT_ENTRY` one question (`pglite` or `stamp`) under `node`, from the repo
+/// root — how the preflight asks a bench's own rule rather than copying it here. Its
+/// trimmed stdout, or, when it fails, its trimmed stderr.
+fn preflight_query(root: &Path, question: &str) -> Result<String, String> {
+    let out = Command::new("node")
+        .args([PREFLIGHT_ENTRY, question])
         .current_dir(root)
-        .env_remove("LD_LIBRARY_PATH")
         .stdin(std::process::Stdio::null())
         .output()
-        .map_err(|e| format!("`deno eval` could not run: {e}"))?;
+        .map_err(|e| format!("`node {PREFLIGHT_ENTRY} {question}` could not run: {e}"))?;
     let text = |bytes: &[u8]| String::from_utf8_lossy(bytes).trim().to_owned();
     if out.status.success() {
         Ok(text(&out.stdout))
@@ -1314,7 +1322,7 @@ mod tests {
             .get_args()
             .map(|a| a.to_string_lossy().into_owned())
             .collect();
-        assert_eq!(args, ["task", "bench:size-compare:update"]);
+        assert_eq!(args, ["run", "bench:size-compare:update"]);
     }
 
     const STAT_BEFORE: &str = "cpu  100 0 50 800 50 0 0 0 0 0\ncpu0 50 0 25 400 25 0 0 0 0 0\n";
@@ -1617,6 +1625,54 @@ mod tests {
                     path_text(path)
                 );
             }
+        }
+    }
+
+    /// The pglite preflight fails hard: a refusal from the benches' rule stops the run.
+    #[test]
+    fn a_pglite_refusal_stops_the_run() {
+        assert_eq!(
+            pglite_line(Err("holds pglite 0.4.0 but pins 0.5.8".to_owned())),
+            Err("holds pglite 0.4.0 but pins 0.5.8".to_owned())
+        );
+        assert_eq!(
+            pglite_line(Ok("0.5.8".to_owned())),
+            Ok("pglite (benches/): 0.5.8, the lockfile's".to_owned())
+        );
+    }
+
+    /// The stamp preflight fails soft: an unreadable stamp is a line, never a refusal.
+    #[test]
+    fn an_unreadable_stamp_is_a_line_not_a_refusal() {
+        assert_eq!(
+            stamp_line(None),
+            "stamp: unreadable (`node benches/lib/measure_preflight.ts stamp` failed)"
+        );
+        assert_eq!(stamp_line(Some("abc1234".to_owned())), "stamp: abc1234");
+        for stamp in ["abc1234-dirty", "abc1234-dirty?"] {
+            let line = stamp_line(Some(stamp.to_owned()));
+            assert!(line.contains("⚠ the tree differs from HEAD"), "{line}");
+        }
+    }
+
+    /// Every bench step runs its `package.json` script through npm.
+    #[test]
+    fn a_bench_step_runs_its_update_script_through_npm() {
+        let opts = opts(&[]).expect("parses");
+        for (step, script) in [
+            ("exit-proof", "bench:exit-proof:update"),
+            ("wasm-compare", "bench:wasm-compare:update"),
+            ("startup", "bench:startup:update"),
+            ("wasm-init", "bench:wasm-init:update"),
+            ("size-compare", "bench:size-compare:update"),
+        ] {
+            let cmd = command_for(step, &opts, Path::new("."));
+            assert_eq!(cmd.get_program(), "npm", "{step}");
+            assert_eq!(
+                cmd.get_args().collect::<Vec<_>>(),
+                ["run", script],
+                "{step}"
+            );
         }
     }
 

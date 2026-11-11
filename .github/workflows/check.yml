@@ -205,11 +205,12 @@ jobs:
 
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
 
-      - name: Install Deno
-        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+      # The gate runner runs each gate as `npm run <name>`; these six are `cargo`
+      # bodies, so no `npm ci`. Pinned as `package`'s is.
+      - name: Install Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          deno-version: 2.8.3
-          cache: true
+          node-version: '24.14.1'
 
       # From the PostgreSQL project's own apt repository rather than the runner
       # image's default, which carries an older major. `pg_dump` refuses to dump
@@ -240,7 +241,7 @@ jobs:
           pg_dump --version
           test "$(pg_dump --version | grep -oE '[0-9]+' | head -1)" -ge 18
 
-      # `cargo xtask gates` rather than the six `deno task`s directly: it takes
+      # `cargo xtask gates` rather than the six `npm run`s directly: it takes
       # the exclusive run lock, writes a per-task log under `target/gates/`,
       # distinguishes a killed task from a failing one, and extracts the counters
       # `--check` compares. Run from the repository root, which the harness needs

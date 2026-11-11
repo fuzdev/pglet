@@ -50,7 +50,7 @@
 //!   reason: with the requester present the **default-feature** graph — `cargo
 //!   tree --workspace -e normal --no-dedupe`, no `--all-features`, which is what
 //!   `cargo build --release` at the root links — carries `pglet_testing` under
-//!   `pglet_server` at depth 2 too. (`deno task build` is that build, and the
+//!   `pglet_server` at depth 2 too. (`npm run build` is that build, and the
 //!   root manifest sets `resolver = "2"` explicitly, so a workspace-wide build
 //!   unifies features across members for one target.) This is also what bounds
 //!   the feature axis — on **three** premises, of which the third is a fact

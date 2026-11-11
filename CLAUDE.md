@@ -590,8 +590,7 @@ npm run test:pg-dump              # pg_dump round-trip (needs psql + pg_dump)
 npm run test:copy                 # COPY FROM/TO fixtures vs Postgres
 npm run test:keywords             # keyword-probe sweep vs Postgres
 npm run test:wasm                 # wasm build + the wasm integration suite, on vitest; its depth tests run child `node`s
-#                                   under both V8 tiers; vitest is run as `node …/vitest.mjs`, so `deno task test:wasm`
-#                                   (the gate runner's word) runs it on Node too (needs wasm-pack)
+#                                   under both V8 tiers (needs wasm-pack)
 npm run wasm:build                # the wasm build: wasm-pack of crates/pglet_wasm into its pkg/ (what test:wasm and
 #                                   size:check run first; the npm package is build:npm)
 npm run wasm:build:opfs           # the same with the `opfs` feature on, into pkg-opfs/ — the one build exporting
@@ -686,7 +685,7 @@ suite's own server (`--port 0`) and for the browser tests' static server, 8001 `
 
 ## The gate runner
 
-`cargo xtask gates` runs the gate set — `check`, `size:check`, `test:wasm`, `test:rust`,
+`cargo xtask gates` runs the gate set — each as `npm run <name>`: `check`, `size:check`, `test:wasm`, `test:rust`,
 `test:fixtures`, `test:fixtures:profile-lock`, `test:dump`, `test:pg-dump`, `test:copy`,
 `test:keywords`, `test:concurrent`, in that order — under an exclusive lock, writing a log per
 task under `target/gates/`. Carry two things when reading a run: interleaved runs fail in ways
@@ -697,7 +696,7 @@ the kill** — read the summary's `KILLED` / `FAIL(n)`. `--check` fails a run ag
 stays hermetic. The why: `crates/xtask/src/gates.rs` and `runner.rs`'s module docs;
 prerequisites: `CONTRIBUTING.md` § Running the checks.
 
-`deno task check:docs` (rustdoc, chained into `check`) fails a `` [`Name`] `` in a doc
+`npm run check:docs` (rustdoc, chained into `check`) fails a `` [`Name`] `` in a doc
 comment that resolves to no item, and an invalid HTML tag; it cannot see whether the
 sentence around a link is true. It is not the only gate that reads doc comments:
 `check`'s clippy fails some prose structure too (`doc_lazy_continuation`, measured). A

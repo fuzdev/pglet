@@ -27,7 +27,7 @@
  *
  * 1. `npm run check`: clippy, the stripped and wasm-feature builds, fmt, docs,
  *    `gro check` over `src/`, the release-audit firewall
- * 2. `npm run test:rust` and `deno task test:wasm`: the engine's own suites,
+ * 2. `npm run test:rust` and `npm run test:wasm`: the engine's own suites,
  *    natively and through the wasm binding; neither needs Postgres
  * 3. `npm run test:npm`: builds `pkg-npm` from an emptied directory and runs
  *    the package suite, ending in the packed-tarball smoke over that same
@@ -165,8 +165,6 @@ export interface PublishCommandDeps {
 	git_remote: ReleaseProgram;
 	/** `npm`: the registry questions, the publish, and the gates `package.json` runs. */
 	npm: ReleaseProgram;
-	/** `deno`: the gate `deno.json` runs. */
-	deno: ReleaseProgram;
 	/** `gro`: runs the size gate's task on the shipped wasm. */
 	gro: ReleaseProgram;
 	/** `cargo`: probed, and the bump moves the lockfiles with it. */
@@ -193,7 +191,7 @@ export const run_publish_command = async (
 	deps: PublishCommandDeps,
 	args: PublishCommandArgs
 ): Promise<void> => {
-	const { checkout, git_local, git_remote, npm, deno, gro, cargo, node, print, print_error } = deps;
+	const { checkout, git_local, git_remote, npm, gro, cargo, node, print, print_error } = deps;
 	const { wetrun } = args;
 	const name = NPM_SHARED_METADATA.name;
 
@@ -433,7 +431,7 @@ export const run_publish_command = async (
 		await step('npm run check', npm, ['run', 'check']);
 		print('\ntesting the engine (native + wasm) …');
 		await step('npm run test:rust', npm, ['run', 'test:rust']);
-		await step('deno task test:wasm', deno, ['task', 'test:wasm']);
+		await step('npm run test:wasm', npm, ['run', 'test:wasm']);
 		print(`\nbuilding + testing ${name} …`);
 		await step('npm run test:npm', npm, ['run', 'test:npm']);
 

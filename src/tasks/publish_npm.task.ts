@@ -50,7 +50,6 @@ export type Args = s.Infer<typeof Args>;
  * - `npm` with the whole environment and `PKG_DIR` set to `pkg-npm`, which only
  *   `test:npm`'s Node legs read: the registry's auth and config are the user's,
  *   and it runs the `package.json` gates, cargo and wasm-pack beneath
- * - `deno` with the whole environment: it runs the `deno.json` gate
  * - `gro` with gro's base environment: it runs the size gate's task, which gives
  *   its own `gzip` and `git` their environments
  * - `cargo` with its own and rustup's variables, for its probe and the offline
@@ -82,7 +81,6 @@ export const task: Task<Args> = {
 				git_local: to_program('git', { pass_env: GIT_LOCAL_PASS_ENV }),
 				git_remote: to_program('git', { pass_env: 'all' }),
 				npm: to_program('npm', { pass_env: 'all', env: { PKG_DIR: PUBLISH_PKG_DIR } }),
-				deno: to_program('deno', { pass_env: 'all' }),
 				gro: to_program('gro'),
 				cargo: to_program('cargo', { pass_env: ['CARGO_*', 'RUSTUP_*'] }),
 				node: to_program('node'),

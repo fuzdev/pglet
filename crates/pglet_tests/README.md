@@ -122,7 +122,7 @@ refused when either name moves) and a password, which `SimpleProbe` does not spe
 (`npm run check` + `npm run test:rust`), package (`test:npm`,
 `size:check` and the `opfs` build's export check), differential (the Postgres gates under `cargo xtask gates
 --check`, against a `postgres:18.6` service with `POSTGRES_HOST_AUTH_METHOD: trust`
-— the probe's ceiling — named by `PGLET_PG_URL`). It runs the `deno task` bodies
+— the probe's ceiling — named by `PGLET_PG_URL`). It runs the `package.json` scripts
 rather than re-enumerating them, and the differential job both installs the
 `psql` / `pg_dump` clients explicitly and relies on `--check`'s missing-counter
 rule, so neither a missing client nor the gate skip it causes can pass for a green

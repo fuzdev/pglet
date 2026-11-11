@@ -8,7 +8,7 @@
  * `resolve_package_dir` — so the version recorded is the one that was loaded.
  *
  * `assert_pglite_matches_lockfile` is the check both `benches/` consumers apply before they
- * measure, and that `cargo xtask measure`'s preflight asks (`deno eval`) before any timed
+ * measure, and that `cargo xtask measure`'s preflight asks (`measure_preflight.ts`) before any timed
  * step runs, so a run cannot record one pglite and quote another.
  *
  * **Plain Node on purpose**, like `results.ts`: `wasm_compare.ts` runs under Node and

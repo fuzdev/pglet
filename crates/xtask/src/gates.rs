@@ -1,6 +1,6 @@
 //! `cargo xtask gates` — run the gate set once, under a lock, and report.
 //!
-//! The gate set is the sequence of `deno task` invocations a change must pass.
+//! The gate set is the sequence of `npm run` invocations a change must pass.
 //! Running it by hand is a shell loop that has to be re-written every time, and
 //! three properties kept getting lost in the rewriting. Two of them —
 //! exclusivity, and exit codes a killed task cannot fake — are general enough
@@ -26,7 +26,7 @@ use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use crate::runner::{deno_task, lock_run_dir, parse_name_list, repo_root, run_logged};
+use crate::runner::{lock_run_dir, npm_run, parse_name_list, repo_root, run_logged};
 
 /// The gate set, in run order.
 ///
@@ -255,7 +255,7 @@ pub fn run(args: &[String]) -> ExitCode {
 /// bury the counters the summary exists to show. The log holds everything.
 fn run_gate(gate: &Gate, root: &Path, log_dir: &Path) -> Outcome {
     let log = log_dir.join(format!("{}.log", gate.key()));
-    let run = run_logged(&mut deno_task(gate.task), root, log, false);
+    let run = run_logged(&mut npm_run(gate.task), root, log, false);
     Outcome {
         task: gate.task,
         prefix: gate.key(),

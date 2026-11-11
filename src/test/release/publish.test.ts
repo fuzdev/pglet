@@ -40,7 +40,7 @@ const FINGERPRINT = [
 const GATES = [
 	'npm run check',
 	'npm run test:rust',
-	'deno task test:wasm',
+	'npm run test:wasm',
 	'npm run test:npm',
 	'gro task src/tasks/size.task.ts --check --wasm crates/pglet_wasm/pkg-npm/pglet_wasm_bg.wasm'
 ];

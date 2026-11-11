@@ -110,11 +110,20 @@ impl TaskRun {
     }
 }
 
-/// A `deno task <task>` command, the shape most tasks in this workspace take.
+/// An `npm run <task>` command: every gate and every measurement step is a
+/// `package.json` script.
+///
+/// Plain `npm run`, not `--silent`: npm's banner, two stdout lines beginning `> ` (the
+/// script's name, then its body), records in each log what ran, and no
+/// counter a gate's log is read for (`gates.rs`'s `extract_metrics`) can match a line
+/// beginning that way; `--silent` would also drop the line npm closes a failed script with.
+/// npm puts `node_modules/.bin` first on the script's `PATH`, so a JS tool a script names
+/// (`gro`, `tsc`, `vitest`) is the version `package-lock.json` pins, as in a nested
+/// `npm run`; it holds no other program a gate spawns.
 #[must_use]
-pub fn deno_task(task: &str) -> Command {
-    let mut cmd = Command::new("deno");
-    cmd.args(["task", task]);
+pub fn npm_run(task: &str) -> Command {
+    let mut cmd = Command::new("npm");
+    cmd.args(["run", task]);
     cmd
 }
 
@@ -125,21 +134,10 @@ pub fn deno_task(task: &str) -> Command {
 /// per-task progress and is read from the summary afterwards, while a
 /// measurement run's *tables are the product* and a silent multi-minute step is
 /// unreadable.
-///
-/// `LD_LIBRARY_PATH` is dropped from the child's environment. `cargo run -p
-/// xtask` sets it so *this* binary finds its dylibs, and it would otherwise be
-/// inherited by every task. Deno refuses to spawn a subprocess under a scoped
-/// `--allow-run` when it is set (the variable can redirect which libraries load,
-/// so a narrow allowlist would not mean what it says), which made `size:check` —
-/// the one gate that shells out, to `gzip` — fail under the runner while passing
-/// when run by hand. Cargo re-derives it for the binaries it runs, so dropping
-/// the inherited one costs nothing and keeps the runner's environment out of the
-/// tasks it runs.
 pub fn run_logged(cmd: &mut Command, root: &Path, log: PathBuf, tee: bool) -> TaskRun {
     let started = Instant::now();
     let spawned = cmd
         .current_dir(root)
-        .env_remove("LD_LIBRARY_PATH")
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
