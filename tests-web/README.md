@@ -1,7 +1,7 @@
 # pglet TypeScript/Web Test Suite
 
 Tests auto-spawn the pglet servers they need. The differential suites also need a
-**disposable** PostgreSQL on port 5432: `deno task test` runs `test:fixtures`,
+**disposable** PostgreSQL on port 5432: `npm run test` runs `test:fixtures`,
 `test:fixtures:profile-lock`, `test:copy` and `test:dump`, which reset that database's `public`
 schema, and `test:pg-dump`, which drops tables of fixed names in it — read `CONTRIBUTING.md`
 before running it against a Postgres you keep.
@@ -9,9 +9,9 @@ before running it against a Postgres you keep.
 ## Quick Start
 
 ```bash
-deno task test                 # The chained suites (Rust + TypeScript + Browser) — not every test:* task
-deno task test:rust            # Rust unit tests only
-deno task test:fixtures        # SQL fixture tests (in tests/fixtures/)
+npm run test                   # The chained suites (Rust + TypeScript + Browser) — not every test:* script
+npm run test:rust              # Rust unit tests only
+npm run test:fixtures          # SQL fixture tests (in tests/fixtures/)
 npm run test:web               # The driver/ORM/npm suites (integration, drizzle, kysely, postgres, pg, npm)
 npm run test:integration       # Behavioral tests
 npm run test:drizzle           # Drizzle ORM tests
@@ -97,7 +97,7 @@ crates/pglet_tests/      # Rust test binaries (see crates/pglet_tests/README.md)
 
 ## How Self-Contained Tests Work
 
-When you run `deno task test:fixtures`:
+When you run `npm run test:fixtures`:
 
 1. The Rust fixture runner builds the server binary from current source and
    **always spawns a fresh server** on a dynamically-chosen open port (5434+) —
@@ -116,8 +116,8 @@ The fixture format and its directives are documented canonically in
 boilerplate is needed. Common commands:
 
 ```bash
-deno task test:fixtures:update [pattern]                      # regenerate expected from Postgres
-deno task test:fixtures <pattern>                             # run a subset (path filter)
+npm run test:fixtures:update -- [pattern]                     # regenerate expected from Postgres
+npm run test:fixtures -- <pattern>                            # run a subset (path filter)
 cargo run -p pglet_tests --bin test_fixtures -- -v <pattern>  # verbose
 ```
 
@@ -180,7 +180,7 @@ copy here goes stale silently.
 ## Running All Tests
 
 ```bash
-deno task test
+npm run test
 ```
 
 This chains, in order: `test:rust` (cargo unit tests) → `test:fixtures` →

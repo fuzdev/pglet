@@ -20,7 +20,7 @@
 //! ## Persistent Database (Web Worker with B+tree, `opfs` feature)
 //!
 //! The OPFS-backed `PgletBtreePersistent` is an opt-in layer: only a build with the
-//! crate's `opfs` feature on exports it (`deno task wasm:build:opfs`, a `wasm-pack build`
+//! crate's `opfs` feature on exports it (`npm run wasm:build:opfs`, a `wasm-pack build`
 //! with `--features opfs`). The default build — the one the npm package ships — carries
 //! neither it nor the OPFS shim.
 //!
@@ -62,7 +62,7 @@ pub use result::QueryResult;
 // than silently growing the artifact. A native build's feature set depends on what else
 // the invocation selects — `cargo test -p pglet_wasm` alone leaves the feature off, a
 // `--workspace` build unifies it on through the native consumers — so the check is
-// gated to the wasm target, the build it is about. `deno task check:wasm-features` lints
+// gated to the wasm target, the build it is about. `npm run check:wasm-features` lints
 // `pglet` and this crate for the wasm target under the wasm build's feature sets, the
 // default, the stripped `--no-default-features` one and the `opfs` one.
 #[cfg(target_arch = "wasm32")]

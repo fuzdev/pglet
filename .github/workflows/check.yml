@@ -12,9 +12,8 @@
 #
 # Every job runs the tasks by name rather than re-enumerating them here: a
 # hand-copied command list goes stale the first time a task gains a step. A name
-# is a `package.json` script, run with `npm run`, or a `deno.json` task, run with
-# `deno task`, which falls through to the `package.json` script where `deno.json`
-# has none; those two files are the authoritative versions.
+# is a `package.json` script, run with `npm run`; that file is the authoritative
+# version.
 #
 # The one thing this file must not do is be green because a prerequisite was
 # missing. Several harnesses exit 0 without theirs — `test:dump` and

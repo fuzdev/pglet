@@ -87,7 +87,7 @@ path = "src/bin/test_crash.rs"
 
 # True power-loss (page-cache-bypassing) durability driver. Root-only + opt-in: the
 # binary itself skips without the dm-flakey device set up by
-# `tools/durability/power_loss_test.sh`, so it is NOT chained into `deno task test`.
+# `tools/durability/power_loss_test.sh`, so it is NOT chained into `npm run test`.
 [[bin]]
 name = "test_power_loss"
 path = "src/bin/test_power_loss.rs"
@@ -98,7 +98,7 @@ path = "src/bin/test_keywords.rs"
 
 # Large-dataset soak harness: server-driven churn + kill + in-process post-kill
 # audit (Leg A) and an in-process embed leg with live vacuum/snapshot stats (Leg
-# B). Opt-in (like `test_power_loss`), NOT chained into `deno task test`.
+# B). Opt-in (like `test_power_loss`), NOT chained into `npm run test`.
 [[bin]]
 name = "test_soak"
 path = "src/bin/test_soak.rs"

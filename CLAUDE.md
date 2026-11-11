@@ -525,11 +525,9 @@ type explicitly.
 
 ## Commands
 
-Tasks live in `package.json` (`npm run <name> -- <flags>`) and `deno.json`
-(`deno task <name> <flags>`); `deno task` falls through to the `package.json` script when
-`deno.json` has no task of that name, so `deno task <name>` runs either. `npm ci` installs
-the JS dependencies `package-lock.json` pins into `node_modules`, which Deno reads too
-(`"nodeModulesDir": "manual"`); `.npmrc` turns install scripts off.
+Tasks are `package.json` scripts, run as `npm run <name> -- <flags>`. `npm ci` installs the
+JS dependencies `package-lock.json` pins into `node_modules`; `.npmrc` turns install scripts
+off.
 
 The TypeScript tools are a gro project under `src/`: `src/lib/` holds their code, each taking
 what it reaches (dirs, programs, output) as deps; `src/tasks/*.task.ts` are the composition
@@ -577,7 +575,7 @@ npm run dump -- --data-dir <dir>  # print a portable SQL dump of a persisted dat
 npm run lint:edges                # EDGES.md's structural invariants (src/lib/edges_lint.ts's header lists them)
 npm run size                      # print the release server's size; size:wasm the wasm's, size:gzip the server's gzipped — ungated
 
-deno task test                    # the suites deno.json's "test" chains (auto-spawn servers) — not every test:*;
+npm run test                      # the suites package.json's "test" chains (auto-spawn servers) — not every test:*;
 #                                   test:binary, test:integration:server, test:power-loss, test:soak are among those outside it
 cargo test --workspace            # Rust unit + integration tests (incl. crash fuzz); without `--features pglet_wasm/opfs`
 #                                   it skips the persistent binding's host tests, which test:rust runs
@@ -609,7 +607,7 @@ npm run test:browser              # WASM (pkg/) + OPFS (pkg-opfs/) under Playwri
 #                                   or older than the newest .rs it links, served from a static server of its own on
 #                                   127.0.0.1 port 0; `test:browser:install` fetches its chromium once (network);
 #                                   test:browser:headed shows the browser
-deno task fuzz                    # coverage-guided cargo-fuzz recovery target (needs nightly + cargo-fuzz; see fuzz/README.md)
+npm run fuzz                      # coverage-guided cargo-fuzz recovery target (needs nightly + cargo-fuzz; see fuzz/README.md)
 npm run fuzz:seed                 # (re)write the valid seed image into the fuzz corpus
 
 npm run matrix:artifacts          # build release server + wasm pkg, print the fuz_app db-matrix setup

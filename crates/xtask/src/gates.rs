@@ -267,41 +267,40 @@ fn run_gate(gate: &Gate, root: &Path, log_dir: &Path) -> Outcome {
 
 /// Pull a gate's declared counters out of its output.
 ///
-/// Deliberately tolerant: a counter the output does not carry is simply absent,
-/// so a task that dies early still reports its exit code and log path instead of
-/// the extractor failing on top of the real failure.
+/// No counter has a default. Each is read from the lines of the exact shape its harness
+/// prints, as many as it prints them (one, one per declared-type leg, or one per test
+/// binary), or it is absent, and an absent counter the baseline records fails `--check`
+/// ([`compare_counters`]). A line carries a counter's label when it begins with the label
+/// followed by whitespace, so a line that merely mentions one (npm's banner echoing the
+/// command, a test's own output, an indented line) is never read; a line that carries the
+/// label in any other shape makes the counter absent rather than leaving it to the lines
+/// that kept their shape, so a harness that changes what it prints reads as a missing
+/// counter, never as a zero. Absent rather than an error, too, so a task that dies early
+/// still reports its exit code and log path instead of the extractor failing on top of the
+/// real failure.
 fn extract_metrics(gate: &Gate, text: &str) -> Vec<(Metric, i64)> {
     let mut out = Vec::new();
 
     if gate.task == "test:rust" {
         // `cargo test` prints one `test result:` line per test binary; sum them.
-        let (mut passed, mut failed) = (0_i64, 0_i64);
-        for line in text.lines().filter(|l| l.starts_with("test result:")) {
-            passed += count_before(line, "passed");
-            failed += count_before(line, "failed");
+        let results = shaped_values(text, read_test_result).filter(|r| !r.is_empty());
+        if let Some(results) = results {
+            out.push((Metric::Passed, results.iter().map(|&(p, _)| p).sum()));
+            out.push((Metric::Failed, results.iter().map(|&(_, f)| f).sum()));
         }
-        out.push((Metric::Passed, passed));
-        out.push((Metric::Failed, failed));
         return out;
     }
 
     if gate.task == "test:keywords" {
-        if let Some(line) = text.lines().find(|l| l.contains("probes across")) {
-            let numbers: Vec<i64> = line
-                .split_whitespace()
-                .filter_map(|w| w.parse::<i64>().ok())
-                .collect();
-            if let Some(&probes) = numbers.first() {
-                out.push((Metric::Probes, probes));
-            }
-            if let Some(&keywords) = numbers.get(1) {
-                out.push((Metric::Keywords, keywords));
-            }
+        if let Some((probes, keywords)) = shaped_values(text, read_keywords_line).and_then(only_one)
+        {
+            out.push((Metric::Probes, probes));
+            out.push((Metric::Keywords, keywords));
         }
         return out;
     }
 
-    // The harness binaries share a `Passed:` / `Failed:` / `Skipped:` block.
+    // The harness binaries print one `Passed:` / `Failed:` / `Skipped:` block.
     for metric in [Metric::Passed, Metric::Failed, Metric::Skipped] {
         if !gate.metrics.contains(&metric) {
             continue;
@@ -311,52 +310,145 @@ fn extract_metrics(gate: &Gate, text: &str) -> Vec<(Metric, i64)> {
             Metric::Failed => "Failed:",
             _ => "Skipped:",
         };
-        if let Some(value) = last_number_after(text, label) {
+        if let Some(value) = shaped_values(text, |l| read_count_line(l, label)).and_then(only_one) {
             out.push((metric, value));
         }
     }
 
-    // The two declared-type legs print the same `Asserted:` label, in order:
-    // text (the executor walker) then extended (the planner walker). They are
-    // different walkers feeding different clients and can disagree with each
-    // other, so they are recorded separately rather than summed.
+    // The two declared-type legs each print an `Asserted:` line and a `Divergent:` line, in
+    // order: text (the executor walker) then extended (the planner walker). They are
+    // different walkers feeding different clients and can disagree with each other, so the
+    // asserted counts are recorded separately rather than summed; the divergences sum.
     if gate.metrics.contains(&Metric::DeclaredText) {
-        let asserted: Vec<i64> = numbers_after(text, "Asserted:");
-        if let Some(&text_leg) = asserted.first() {
+        if let Some([text_leg, extended_leg]) =
+            shaped_values(text, read_asserted_line).and_then(per_leg)
+        {
             out.push((Metric::DeclaredText, text_leg));
-        }
-        if let Some(&extended_leg) = asserted.get(1) {
             out.push((Metric::DeclaredExtended, extended_leg));
         }
-        let divergent: i64 = numbers_after(text, "Divergent:").iter().sum();
-        out.push((Metric::Divergent, divergent));
+        if let Some([text_leg, extended_leg]) =
+            shaped_values(text, read_divergent_line).and_then(per_leg)
+        {
+            out.push((Metric::Divergent, text_leg + extended_leg));
+        }
     }
 
     out
 }
 
-/// The count immediately preceding `word` on a `cargo test` result line.
-fn count_before(line: &str, word: &str) -> i64 {
-    let mut previous = None;
-    for token in line.split_whitespace() {
-        if token.trim_end_matches(';') == word {
-            return previous.and_then(|p: &str| p.parse().ok()).unwrap_or(0);
+/// What one line of a gate's output says about a counter.
+#[derive(Debug)]
+enum LineRead<T> {
+    /// The line doesn't carry the counter's label.
+    Unlabeled,
+    /// The line carries the label in the counter's exact shape.
+    Shaped(T),
+    /// The line carries the label in another shape: the harness changed what it prints.
+    Reshaped,
+}
+
+/// The value of every line carrying a counter's label, in order, or `None` when any of
+/// them has another shape.
+fn shaped_values<T>(text: &str, read: impl Fn(&str) -> LineRead<T>) -> Option<Vec<T>> {
+    let mut values = Vec::new();
+    for line in text.lines() {
+        match read(line) {
+            LineRead::Unlabeled => {}
+            LineRead::Shaped(value) => values.push(value),
+            LineRead::Reshaped => return None,
         }
-        previous = Some(token);
     }
-    0
+    Some(values)
 }
 
-/// Every number appearing directly after `label` at the start of a line.
-fn numbers_after(text: &str, label: &str) -> Vec<i64> {
-    text.lines()
-        .filter(|l| l.trim_start().starts_with(label))
-        .filter_map(|l| l.split_whitespace().nth(1).and_then(|s| s.parse().ok()))
-        .collect()
+/// The one value of a counter its harness prints once.
+fn only_one<T>(values: Vec<T>) -> Option<T> {
+    let [value] = <[T; 1]>::try_from(values).ok()?;
+    Some(value)
 }
 
-fn last_number_after(text: &str, label: &str) -> Option<i64> {
-    numbers_after(text, label).last().copied()
+/// The text leg's and the extended leg's values of a declared-type counter.
+fn per_leg(values: Vec<i64>) -> Option<[i64; 2]> {
+    values.try_into().ok()
+}
+
+/// How `line` reads for the counter labeled `label`: unlabeled unless it begins with the
+/// label followed by whitespace, then shaped when `shape` reads the words after it.
+fn read_line<'a, T>(
+    line: &'a str,
+    label: &str,
+    shape: impl FnOnce(std::str::SplitWhitespace<'a>) -> Option<T>,
+) -> LineRead<T> {
+    let Some(rest) = line.strip_prefix(label) else {
+        return LineRead::Unlabeled;
+    };
+    if !rest.starts_with(char::is_whitespace) {
+        return LineRead::Unlabeled;
+    }
+    shape(rest.split_whitespace()).map_or(LineRead::Reshaped, LineRead::Shaped)
+}
+
+/// A `cargo test` binary's summary, `test result: ok. 12 passed; 0 failed; …`: its passed
+/// and failed counts.
+fn read_test_result(line: &str) -> LineRead<(i64, i64)> {
+    read_line(line, "test result:", |mut words| {
+        let verdict = words.next()?;
+        if verdict != "ok." && verdict != "FAILED." {
+            return None;
+        }
+        let passed = words.next()?.parse().ok()?;
+        if words.next()? != "passed;" {
+            return None;
+        }
+        let failed = words.next()?.parse().ok()?;
+        (words.next()? == "failed;").then_some((passed, failed))
+    })
+}
+
+/// The keyword sweep's summary, `checked 448 probes across 109 keywords (…)`: its probe and
+/// keyword counts.
+fn read_keywords_line(line: &str) -> LineRead<(i64, i64)> {
+    read_line(line, "checked", |mut words| {
+        let probes = words.next()?.parse().ok()?;
+        if words.next()? != "probes" || words.next()? != "across" {
+            return None;
+        }
+        let keywords = words.next()?.parse().ok()?;
+        (words.next()? == "keywords").then_some((probes, keywords))
+    })
+}
+
+/// A harness's `Passed:  12` line: the label, then one count, and nothing else.
+fn read_count_line(line: &str, label: &str) -> LineRead<i64> {
+    read_line(line, label, |mut words| {
+        let count = words.next()?.parse().ok()?;
+        words.next().is_none().then_some(count)
+    })
+}
+
+/// The fixture harness's `Asserted:     2144 of 5145 fixtures` line: the asserted count.
+fn read_asserted_line(line: &str) -> LineRead<i64> {
+    read_line(line, "Asserted:", |mut words| {
+        let asserted = words.next()?.parse().ok()?;
+        let shaped = words.next()? == "of"
+            && words.next()?.parse::<i64>().is_ok()
+            && words.next()? == "fixtures"
+            && words.next().is_none();
+        shaped.then_some(asserted)
+    })
+}
+
+/// The fixture harness's `Divergent:    0 mismatched, 0 unreadable` line: the mismatched
+/// count.
+fn read_divergent_line(line: &str) -> LineRead<i64> {
+    read_line(line, "Divergent:", |mut words| {
+        let mismatched = words.next()?.parse().ok()?;
+        let shaped = words.next()? == "mismatched,"
+            && words.next()?.parse::<i64>().is_ok()
+            && words.next()? == "unreadable"
+            && words.next().is_none();
+        shaped.then_some(mismatched)
+    })
 }
 
 /// Print the per-gate table.
@@ -599,7 +691,9 @@ impl Mode {
 
 #[cfg(test)]
 mod tests {
-    use super::{Counters, GATES, Metric, Mode, compare_counters, verdict_line};
+    use super::{
+        Counters, GATES, Gate, Metric, Mode, compare_counters, extract_metrics, verdict_line,
+    };
 
     fn mode(args: &[&str]) -> Result<Mode, String> {
         Mode::parse(&args.iter().map(|s| (*s).to_owned()).collect::<Vec<_>>())
@@ -737,5 +831,271 @@ mod tests {
         let (lines, ok) = compare_counters(&base, &[gate]);
         assert!(ok, "{lines:?}");
         assert!(lines.iter().any(|l| l.starts_with("ahead fixtures.passed")));
+    }
+
+    /// The counters `extract_metrics` reads for the gate named `task`.
+    fn extracted(task: &str, text: &str) -> Vec<(Metric, i64)> {
+        let gate: &Gate = GATES.iter().find(|g| g.task == task).expect("a gate");
+        extract_metrics(gate, text)
+    }
+
+    #[test]
+    fn the_keyword_counters_are_read_only_from_the_sweeps_own_line() {
+        let banner = "\n> test:keywords\n> cargo run -p pglet_tests --bin test_keywords\n\n";
+        let summary =
+            "checked 448 probes across 109 keywords (5 positions each; 97 probe(s) skipped)\n";
+        let mentions = "note: 3 probes across 2 keywords were retried\n  \
+                        checked 7 probes across 8 keywords (indented)\n\
+                        checked: 9 probes across 10 keywords\n";
+        let want = vec![(Metric::Probes, 448), (Metric::Keywords, 109)];
+        assert_eq!(
+            extracted("test:keywords", &format!("{banner}{mentions}{summary}")),
+            want
+        );
+        assert_eq!(
+            extracted("test:keywords", &format!("{banner}{mentions}")),
+            vec![]
+        );
+    }
+
+    #[test]
+    fn the_harness_counters_are_read_only_from_lines_of_their_shape() {
+        let noise = "\n> test:fixtures\n> echo Asserted: 1 of 9 fixtures\n\
+                     \x20 Asserted:     1 of 9 fixtures\nAsserted:9 of 9 fixtures\n\
+                     \x20 Divergent:    40 mismatched, 0 unreadable\nDivergent:50 rows\n\
+                     a test printed Passed: 98\n  Passed: 97\nPassed:95\n  Failed: 3\n";
+        let harness = "Asserted:     5 of 9 fixtures\nDivergent:    1 mismatched, 0 unreadable\n\
+                       Asserted:     7 of 9 fixtures\nDivergent:    2 mismatched, 3 unreadable\n\
+                       Passed:  9\nFailed:  0\nSkipped: 4\n";
+        assert_eq!(
+            extracted("test:fixtures", &format!("{noise}{harness}{noise}")),
+            vec![
+                (Metric::Passed, 9),
+                (Metric::Failed, 0),
+                (Metric::Skipped, 4),
+                (Metric::DeclaredText, 5),
+                (Metric::DeclaredExtended, 7),
+                (Metric::Divergent, 3),
+            ]
+        );
+    }
+
+    #[test]
+    fn the_rust_counters_sum_only_the_test_result_lines() {
+        let text = "\n> test:rust\n> cargo test --workspace\n\
+                    test result::tests::a_float4_is_the_number_its_text_reads_as ... ok\n\
+                    test result: ok. 10 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out\n\
+                    a test printed test result: ok. 500 passed; 500 failed;\n\
+                    \x20 test result: ok. 600 passed; 600 failed; 0 ignored\n\
+                    test result: FAILED. 3 passed; 2 failed; 0 ignored\n\
+                    test result: ok. 4 passed; 0 failed; 0 ignored\n";
+        assert_eq!(
+            extracted("test:rust", text),
+            vec![(Metric::Passed, 17), (Metric::Failed, 2)]
+        );
+    }
+
+    /// Each counted gate's output as its harness prints it, in the shapes of a passing run's
+    /// logs, with lines around the counters that carry no label.
+    const SHAPED_OUTPUTS: &[(&str, &str)] = &[
+        (
+            "test:rust",
+            "\n> test:rust\n> cargo test --workspace\n\
+             test result::tests::a_float4_is_the_number_its_text_reads_as ... ok\n\
+             test result: ok. 137 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; \
+             finished in 0.29s\n\
+             test result: ok. 0 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; \
+             finished in 0.00s\n",
+        ),
+        (
+            "test:fixtures",
+            "\n=== Declared column types (text) ===\nAsserted:     2144 of 5145 fixtures\n\
+             No assertion: 3 eligible (1 describe no row, 2 error on both engines, 0 never \
+             reached), 9 not eligible\nDivergent:    0 mismatched, 0 unreadable\n\
+             \n=== Declared column types (extended) ===\nAsserted:     2452 of 5145 fixtures\n\
+             Divergent:    0 mismatched, 0 unreadable\n\nPassed:  5145\nFailed:  0\nSkipped: 38\n",
+        ),
+        ("test:dump", "\n=== Results ===\nPassed: 1\nFailed: 0\n"),
+        (
+            "test:keywords",
+            "=== keyword conformance sweep ===\n\
+             checked 448 probes across 109 keywords (5 positions each; 97 probe(s) skipped)\n",
+        ),
+        ("test:concurrent", "test results\nPassed: 38\nFailed: 0\n"),
+    ];
+
+    /// The labels a counter's line begins with, and the counters each one carries.
+    const LABELS: &[(&str, &[Metric])] = &[
+        ("test result:", &[Metric::Passed, Metric::Failed]),
+        ("checked", &[Metric::Probes, Metric::Keywords]),
+        ("Passed:", &[Metric::Passed]),
+        ("Failed:", &[Metric::Failed]),
+        ("Skipped:", &[Metric::Skipped]),
+        (
+            "Asserted:",
+            &[Metric::DeclaredText, Metric::DeclaredExtended],
+        ),
+        ("Divergent:", &[Metric::Divergent]),
+    ];
+
+    /// `--check` of `text` as `task`'s output against `baseline`.
+    fn check(task: &str, text: &str, baseline: &[(String, i64)]) -> (Vec<String>, bool) {
+        let gate: &Gate = GATES.iter().find(|g| g.task == task).expect("a gate");
+        let found = extract_metrics(gate, text);
+        let prefix = gate.key();
+        let counters = Counters {
+            prefix: &prefix,
+            declared: gate.metrics,
+            found: &found,
+        };
+        compare_counters(baseline, &[counters])
+    }
+
+    /// `task`'s counters read from `text`, recorded as a baseline.
+    fn baseline_of(task: &str, text: &str) -> Vec<(String, i64)> {
+        let gate: &Gate = GATES.iter().find(|g| g.task == task).expect("a gate");
+        let found = extract_metrics(gate, text);
+        assert_eq!(
+            found.iter().map(|&(m, _)| m).collect::<Vec<_>>(),
+            gate.metrics,
+            "{task} reads every counter it declares"
+        );
+        found
+            .iter()
+            .map(|&(m, v)| (format!("{}.{}", gate.key(), m.key()), v))
+            .collect()
+    }
+
+    /// That `--check` of `text` as `task`'s output, a passing output changed as `change` says,
+    /// fails with each of `metrics` `MISSING`.
+    fn assert_missing(
+        task: &str,
+        change: &str,
+        text: &str,
+        baseline: &[(String, i64)],
+        metrics: &[Metric],
+    ) {
+        let prefix = GATES.iter().find(|g| g.task == task).expect("a gate").key();
+        let (lines, ok) = check(task, text, baseline);
+        assert!(!ok, "{task}, {change}: passed --check: {lines:?}");
+        for metric in metrics {
+            let key = format!("{prefix}.{}", metric.key());
+            assert!(
+                lines
+                    .iter()
+                    .any(|l| l.starts_with(&format!("MISSING {key} "))),
+                "{task}, {change}: left {key} read: {lines:?}"
+            );
+        }
+    }
+
+    /// Each counter line of each counted gate, changed in a way that keeps its label, removed,
+    /// or repeated, and every line of a label removed, makes each counter it carries
+    /// `MISSING`, so `--check` fails; the outputs themselves pass against what they read.
+    #[test]
+    fn a_reshaped_or_missing_counter_line_fails_check() {
+        type Reshape = fn(&str, &str) -> String;
+        let reshapes: &[(&str, Reshape)] = &[
+            ("a word after the label", |label, rest| {
+                format!("{label} about{rest}")
+            }),
+            ("a field at the end", |label, rest| {
+                format!("{label}{rest}, 0 late")
+            }),
+            ("a word at the end", |label, rest| {
+                format!("{label}{rest} late")
+            }),
+            ("a count spelled out", |label, rest| {
+                let digit = rest.find(|c: char| c.is_ascii_digit()).expect("a count");
+                format!("{label}{}x{}", &rest[..digit], &rest[digit..])
+            }),
+        ];
+        for &(task, text) in SHAPED_OUTPUTS {
+            let baseline = baseline_of(task, text);
+            let (lines, ok) = check(task, text, &baseline);
+            assert!(ok && lines.is_empty(), "{task}: {lines:?}");
+            let labeled = text.lines().enumerate().filter_map(|(i, line)| {
+                LABELS
+                    .iter()
+                    .find(|(label, _)| {
+                        line.strip_prefix(label)
+                            .is_some_and(|r| r.starts_with(char::is_whitespace))
+                    })
+                    .map(|&(label, metrics)| (i, line, label, metrics))
+            });
+            let mut probed = 0;
+            for (i, line, label, metrics) in labeled {
+                probed += 1;
+                let rest = &line[label.len()..];
+                let mut variants: Vec<(String, Option<String>)> = reshapes
+                    .iter()
+                    .map(|(name, reshape)| ((*name).to_owned(), Some(reshape(label, rest))))
+                    .collect();
+                // a counter `cargo test` sums over its binaries can't miss one of several, or
+                // tell a repeated one from another binary's
+                if label != "test result:" {
+                    variants.push(("the line gone".to_owned(), None));
+                    variants.push((
+                        "the line printed twice".to_owned(),
+                        Some(format!("{line}\n{line}")),
+                    ));
+                }
+                for (name, replacement) in variants {
+                    // a trailing field after `keywords` and after `failed;` is the shape
+                    let trailing_allowed = (name == "a field at the end"
+                        || name == "a word at the end")
+                        && (label == "checked" || label == "test result:");
+                    if trailing_allowed {
+                        continue;
+                    }
+                    let changed: String = text
+                        .lines()
+                        .enumerate()
+                        .filter_map(|(j, l)| {
+                            if j == i {
+                                replacement.clone()
+                            } else {
+                                Some(l.to_owned())
+                            }
+                        })
+                        .fold(String::new(), |s, l| s + &l + "\n");
+                    assert_missing(
+                        task,
+                        &format!("{name}: {line:?}"),
+                        &changed,
+                        &baseline,
+                        metrics,
+                    );
+                }
+            }
+            assert!(probed > 0, "{task}: no counter line to change");
+            for &(label, metrics) in LABELS {
+                let kept: String = text
+                    .lines()
+                    .filter(|l| {
+                        !l.strip_prefix(label)
+                            .is_some_and(|r| r.starts_with(char::is_whitespace))
+                    })
+                    .fold(String::new(), |s, l| s + l + "\n");
+                if kept.len() == text.len() {
+                    continue;
+                }
+                assert_missing(task, &format!("no {label} line"), &kept, &baseline, metrics);
+            }
+        }
+    }
+
+    /// A third field on one leg's `Divergent:` line once read as no divergence at all, so a
+    /// real divergence passed `--check`.
+    #[test]
+    fn a_divergent_line_with_another_field_is_missing_not_zero() {
+        let text = "Asserted:     5 of 9 fixtures\nDivergent:    4 mismatched, 0 unreadable, 0 late\n\
+                    Asserted:     7 of 9 fixtures\nDivergent:    0 mismatched, 0 unreadable\n\
+                    Passed:  9\nFailed:  0\nSkipped: 0\n";
+        let found = extracted("test:fixtures", text);
+        assert!(
+            found.iter().all(|(m, _)| *m != Metric::Divergent),
+            "{found:?}"
+        );
     }
 }

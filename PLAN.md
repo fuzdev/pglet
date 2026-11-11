@@ -45,8 +45,9 @@ profile, startup, the `index_acceleration` size-floor lever); the recorded numbe
 `benches/*_results.json`, `benches/size_baseline.json` and
 `benches/pglite_size_comparison.json`, and what each bench may and may not be read as is
 `benches/README.md`. The harness is plain Node scripts over `fuz_util`'s statistics
-(reproduced in `benches/lib/bench_stats.ts` where it cannot be imported) plus
-the `pglet_bench` crate (SQLite via `rusqlite` as its baseline), watch-tier: no gate but
+(reproduced in `benches/lib/bench_stats.ts` where it cannot be imported), the size gate
+(a gro task, `src/tasks/size.task.ts`) and the `pglet_bench` crate (SQLite via `rusqlite`
+as its baseline), watch-tier: no gate but
 size, no criterion, no new Cargo deps, no `cargo-bloat` (it does not support the wasm
 target).
 
@@ -94,8 +95,8 @@ corruption sweep plus a coverage-guided `cargo-fuzz` target over a mutated valid
 "loud" — and a root-gated `dm-flakey` `drop_writes` harness for *true* power loss, which a
 `kill -9` cannot simulate (it cannot lose fsynced-but-cached data the way pulled power
 can). It **passes** on its workload: every acked commit survives the simulated cut as a
-clean prefix. It needs root, so it is opt-in (`deno task test:power-loss`) rather than part of
-`deno task test`.
+clean prefix. It needs root, so it is opt-in (`npm run test:power-loss`) rather than part of
+`npm run test`.
 
 **A write the device refuses** is dropped with its statement where the host can take the
 statement back (`53100`/`58030`, serving on), and otherwise answers the same code and fails
@@ -263,10 +264,10 @@ is real — in-process fault injection, a real-process `kill -9` + soak suite, a
 randomized corruption fuzz (`crates/pglet/tests/crash.rs`, `test_crash`), every power-loss
 image of recorded DDL and DML workloads plus a `SIGKILL` of a real embedding process
 (`crates/pglet/tests/durability.rs`), and a coverage-guided
-`cargo-fuzz` recovery target (`deno task fuzz`); *true* power-loss
+`cargo-fuzz` recovery target (`npm run fuzz`); *true* power-loss
 (page-cache-bypassing) testing passes via the root-gated `dm-flakey` harness
-(`deno task test:power-loss`). A large-dataset soak harness (`test_soak` /
-`deno task test:soak`) drives sustained mixed churn with periodic `kill -9`/recover
+(`npm run test:power-loss`). A large-dataset soak harness (`test_soak` /
+`npm run test:soak`) drives sustained mixed churn with periodic `kill -9`/recover
 against a rich multi-table schema (PK / UNIQUE / composite FK / CHECK / b-tree /
 partial / GIN), asserting row-set, index↔table consistency, MVCC snapshot/vacuum,
 and durability invariants continuously — plus an in-process leg that reads live

@@ -1061,14 +1061,14 @@ pages (`with_vacuum_threshold()`); block cache ~2000 pages / ~8 MB
 A long row is stored whole, and also written whole: an `UPDATE` of any column of a row
 held in an overflow chain writes a fresh chain, and a chain's pages are read through the
 page cache. Bulk-load optimization is open (write amplification is measured:
-`deno task bench:commit` records fsyncs/writes/bytes per commit in
+`npm run bench:commit` records fsyncs/writes/bytes per commit in
 `benches/phase1_results.json`).
 
 On the durability side, fault-injection crash tests cover mid-commit recovery
 (`crates/pglet/tests/crash.rs`). A real-process `kill -9` + soak suite (`pglet_tests`
 `test_crash`) covers the production binary on a real file. A randomized corruption fuzz
 asserts recover-or-fail-loud. A coverage-guided `cargo-fuzz` recovery target (`fuzz/`,
-`deno task fuzz`) mutates a valid double-meta image against the same invariant. With the
+`npm run fuzz`) mutates a valid double-meta image against the same invariant. With the
 leaf and overflow pages' checksums re-stamped so the mutation reaches the overflow-chain
 walk, it also checks an error-not-a-panic invariant. `crates/pglet/tests/durability.rs`
 replays power-loss images of recorded DDL and DML workloads at every `sync` boundary,
@@ -1076,7 +1076,7 @@ with the pending writes landing in every tried subset, a torn page included. It 
 that no write between durable slots lands on a page the durable slot reaches, and it
 `SIGKILL`s a real embedding process inside DDL. A root-gated harness
 (`tools/durability/power_loss_test.sh` + the `test_power_loss` driver,
-`deno task test:power-loss`) runs a loopback + `dm-flakey` `drop_writes` device that
+`npm run test:power-loss`) runs a loopback + `dm-flakey` `drop_writes` device that
 loses writes it acknowledged, and asserts every acked commit survives as a clean prefix.
 This is tested, not proven: each instrument checks the workloads it runs (`PLAN.md` § 3).
 (Data-page checksums are verified on read: `btree/double_meta.rs` checks each page's CRC
@@ -1094,13 +1094,13 @@ savepoint copy below, whose B+tree column is also the wasm build's backend.
   refcount (`active_snapshots`) is atomic counts under a shared read lock. The
   mechanism and its vacuum-safety invariant are in the implementation reference
   (`crates/pglet_storage/src/btree/CLAUDE.md`). Concurrent-read throughput
-  (`deno task bench:reads`) rises with thread count and peaks near the physical core
+  (`npm run bench:reads`) rises with thread count and peaks near the physical core
   count, then flattens on CPU/memory bandwidth, not on the cache.
 - **Scans materialize fully.** `collect_range` returns the whole result as a `Vec`
   with a per-row `value.clone()`. There's no streaming at the storage layer, so a
   full-table `SELECT`/aggregate holds the whole table in memory. Memory is linear in
   the rows scanned (on the order of ~0.7–1 GB of server RSS per 1M-row full scan at a
-  representative row width). The large-dataset soak (`deno task test:soak`, the
+  representative row width). The large-dataset soak (`npm run test:soak`, the
   `test_soak` harness) confirms every invariant holds through 1M rows at roughly
   0.8 GB peak RSS. So the fully materialized scan is a *memory ceiling* far above the
   embedded / test-fixture working set (a single full-table aggregate reaching machine

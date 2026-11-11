@@ -4,7 +4,7 @@ Rust integration test utilities and binary format validation for pglet.
 
 ## The binaries
 
-The test binaries live in `src/bin/`, each but the ad-hoc `run_sql` with a `deno task` wrapper
+The test binaries live in `src/bin/`, each but the ad-hoc `run_sql` with a `package.json` script
 (see the repo `CLAUDE.md` § Commands): `test_fixtures` (the differential
 harness; `--update`, patterns, `-v`, and `--profile-lock` — the stripped-build
 regression lock with its two tag-completeness checks), `test_binary`

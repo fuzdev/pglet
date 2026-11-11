@@ -57,7 +57,7 @@ index_acceleration = ["pglet/index_acceleration", "pglet_sql/index_acceleration"
 # `opfs` adds the OPFS-backed persistent database (`PgletBtreePersistent`, a Web Worker
 # binding over the double-meta store) — an additive layer, OFF by default, so the build
 # the npm package ships and the size gate measures carries neither it nor the OPFS shim.
-# The browser example and `test:browser` build with it on (`deno task wasm:build:opfs`).
+# The browser example and `test:browser` build with it on (`npm run wasm:build:opfs`).
 opfs = ["dep:wasm-bindgen-futures", "dep:web-sys"]
 
 [package.metadata.wasm-pack.profile.release]

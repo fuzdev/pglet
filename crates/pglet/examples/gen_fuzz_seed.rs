@@ -1,5 +1,5 @@
 //! Write the pristine double-meta image to a file, to seed the `double_meta_reopen`
-//! fuzz corpus (`deno task fuzz:seed`). The fuzz target mutates this *valid* image,
+//! fuzz corpus (`npm run fuzz:seed`). The fuzz target mutates this *valid* image,
 //! so libFuzzer starts from real on-disk structure (magic, two meta slots, CRC'd
 //! pages) and explores decoder branches instead of flailing at the magic check.
 //!

@@ -80,10 +80,10 @@ SELECT * FROM users;
 ### Commands
 
 ```bash
-deno task test:fixtures              # Run fixtures
-deno task test:fixtures:update       # Regenerate expected from Postgres
-deno task test:fixtures select/      # Filter by pattern
-deno task test:fixtures:profile-lock # Stripped-build regression lock
+npm run test:fixtures                 # Run fixtures
+npm run test:fixtures:update          # Regenerate expected from Postgres
+npm run test:fixtures -- select/      # Filter by pattern
+npm run test:fixtures:profile-lock    # Stripped-build regression lock
 ```
 
 ### Directives
@@ -120,7 +120,7 @@ deno task test:fixtures:profile-lock # Stripped-build regression lock
   for fixtures that drive their own transactions (the `transaction/*` suite); these
   keep their own `DROP`-first cleanup since they aren't rolled back.
 - `-- @profile-lock` - re-run this fixture against the stripped
-  (`--no-default-features`) server in `deno task test:fixtures:profile-lock`. Required
+  (`--no-default-features`) server in `npm run test:fixtures:profile-lock`. Required
   when the `@test` takes a **different plan** on the two build profiles. See
   **Profile lock** below.
 - `-- @no-profile-lock: <why>` - the justified opt-out from the
@@ -401,7 +401,7 @@ with measured exceptions outside the corpus, which `docs/indexes.md` § Build pr
 lock run enforces it on the fixtures where the two actually diverge:
 
 ```bash
-deno task test:fixtures:profile-lock   # PGLET_NO_INDEX_ACCEL=1 … -- --profile-lock
+npm run test:fixtures:profile-lock     # PGLET_NO_INDEX_ACCEL=1 … -- --profile-lock
 ```
 
 It builds and spawns the **stripped** server, then runs only the `@profile-lock`
@@ -489,7 +489,7 @@ satisfy a lint.
 The lock covers the **stripped** direction — a fixture whose accelerated plan bypasses
 predicate evaluation isn't exercising the row-filter engine in the main run at all. The
 **accelerated** direction (a lossy probe coercion, a wrong index-key order) is the main
-`deno task test:fixtures` run's job; the lock stays green on those by construction.
+`npm run test:fixtures` run's job; the lock stays green on those by construction.
 What the lock adds *over* the main run is measured, and modest — see
 `docs/indexes.md` § Build profiles before treating a green lock run as evidence
 about the index paths.
@@ -555,7 +555,7 @@ off the inference path they test, so the declaration is its own directive.
 
 **COPY fixtures are separate.** The `copy/` fixtures use their own directive family
 (`@copy-from` / `@copy-to` / `@data` / `@data-hex` / `@verify`) and are run by the `test_copy`
-binary (`deno task test:copy`), not `test_fixtures` — the directives above don't
+binary (`npm run test:copy`), not `test_fixtures` — the directives above don't
 apply to them. A directive line naming none of them is a hard parse error there too, and
 a directive line is what the main parser's rule above makes one, `@` followed by
 `[A-Za-z0-9_]`: `-- @data-hexx` is refused, while `-- @ data-hex`, `-- @@data-hex` and

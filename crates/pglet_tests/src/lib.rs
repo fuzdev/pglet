@@ -381,7 +381,7 @@ fn find_workspace_root() -> Result<std::path::PathBuf, String> {
 /// [`stripped_profile_requested`] selects.
 ///
 /// The profile check is **not optional**: without it `PGLET_NO_INDEX_ACCEL=1
-/// deno task test:fixtures` builds and spawns the *accelerated* server, so the
+/// npm run test:fixtures` builds and spawns the *accelerated* server, so the
 /// stripped profile's whole differential run is a silent no-op — a green bar against
 /// the wrong engine.
 pub async fn build_server() -> Result<std::path::PathBuf, String> {

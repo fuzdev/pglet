@@ -6,7 +6,7 @@
  *
  * Usage:
  *   Terminal 1: npm run spy:start
- *   Terminal 2: deno run -A tests-web/orms/kysely/capture.ts
+ *   Terminal 2: node tests-web/orms/kysely/capture.ts
  *
  * Check tests/captures/ for captured queries.
  */

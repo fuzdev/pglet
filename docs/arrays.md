@@ -178,7 +178,7 @@ predicate. The index is **lossy** (JSONB containment, NULL array elements), so `
 returns a superset of candidates and is always wrapped in a recheck `Filter` that
 re-applies the real `@>`. That keeps results exact. See `docs/storage.md` § Known
 bottlenecks (the in-transaction GIN probe) and the `tests/fixtures/index/gin_*`
-differential fixtures. `deno task bench:gin` measures the speedup over the scan-based
+differential fixtures. `npm run bench:gin` measures the speedup over the scan-based
 path.
 
 Detection covers a **top-level AND conjunct** and also an `OR` of containments. A

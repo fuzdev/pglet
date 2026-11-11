@@ -91,10 +91,9 @@ test('int8:number knob + fork-per-test isolation', async () => {
 });
 
 test('the pg result shape survives the real-Node entry: first-word command, tag rowCount, null vs 0', async () => {
-	// The Deno suite owns the full field-for-field table; this pins the three discriminating
-	// answers in the runtime a consumer actually uses, since the shape is assembled in db.js and
-	// the tag crosses the wasm boundary — a difference in either would be invisible under Deno's
-	// node-compat alone.
+	// The adapter suite (`tests-web/npm/`) owns the full field-for-field table; this pins the
+	// three discriminating answers through the package's own Node entry, the one a consumer
+	// imports, since the shape is assembled in db.js and the tag crosses the wasm boundary.
 	// `deepStrictEqual`, not `deepEqual`: the latter compares primitives with `==`, under which
 	// `null == undefined` — so a build that simply dropped `oid`, or reported `undefined` where
 	// `pg` reports `null`, would pass the assertion that exists to catch exactly that.
@@ -114,8 +113,7 @@ test('an object row is built as pg 8.16.3 builds it, a __proto__ or constructor 
 	// `pg`'s `Result` assigns each field onto a `{}` template, spreads it, and assigns each cell
 	// onto a spread of that (`addFields` / `parseRow`); under Node a `__proto__` name then goes
 	// through `Object.prototype`'s setter at both steps. Every expectation below is what that
-	// algorithm answers for the same fields and cells — which only real Node can show, since
-	// Deno defines no `__proto__` accessor.
+	// algorithm answers for the same fields and cells, under Node's `__proto__` accessor.
 	const db = create_pglet_db();
 	const plain = (await db.query('SELECT 1 AS "__proto__", 2 AS z')).rows[0];
 	assert.deepEqual(Object.keys(plain), ['z']);

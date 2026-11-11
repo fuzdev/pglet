@@ -11,6 +11,7 @@
   },
   "scripts": {
     "build": "cargo build --release",
+    "test": "npm run test:rust && npm run test:fixtures && npm run test:fixtures:profile-lock && npm run test:keywords && npm run test:concurrent && npm run test:copy && npm run test:pg-dump && npm run test:dump && npm run test:crash && npm run test:web && npm run test:wasm && npm run test:browser",
     "test:rust": "cargo test --workspace --features pglet_wasm/opfs",
     "test:fixtures": "cargo run -p pglet_tests --bin test_fixtures",
     "test:fixtures:update": "cargo run -p pglet_tests --bin test_fixtures -- --update",
@@ -25,6 +26,7 @@
     "test:soak": "cargo run -p pglet_tests --bin test_soak",
     "test:soak:long": "cargo run --release -p pglet_tests --bin test_soak -- --long",
     "test:power-loss": "bash tools/durability/power_loss_test.sh",
+    "fuzz": "npm run fuzz:seed && cargo +nightly fuzz run double_meta_reopen -- -max_total_time=60 -rss_limit_mb=4096",
     "fuzz:seed": "cargo run -q -p pglet --example gen_fuzz_seed -- fuzz/corpus/double_meta_reopen/pristine",
     "check": "cargo clippy --workspace --all-targets -- -D warnings && npm run check:stripped && npm run check:wasm-features && cargo fmt --check && npm run check:docs && npm run check:ts && npm run check:benches && npm run check:release",
     "check:ts": "gro check -- gro test --fail_without_tests",

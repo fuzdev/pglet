@@ -558,9 +558,9 @@ in-memory / fault-injecting `BlockIo` double (`MemBlockIo`) lives in the dev-onl
 `pglet_testing` crate (`pglet_testing::block_io`); `pglet_storage` keeps its own
 in-crate `mem_block_io.rs` for its `#[cfg(test)]` unit tests (a distinct trait
 instance it can't borrow from `pglet_testing`). Real-process **kill -9 + soak**
-durability testing is the `pglet_tests` `test_crash` binary (`deno task
+durability testing is the `pglet_tests` `test_crash` binary (`npm run
 test:crash`), which spawns `pglet_server` over a real file and pulls the rug out
-with `SIGKILL`. A coverage-guided `cargo-fuzz`/libFuzzer target (`fuzz/`, `deno task
+with `SIGKILL`. A coverage-guided `cargo-fuzz`/libFuzzer target (`fuzz/`, `npm run
 fuzz`) mutates a valid double-meta image against the **same** recover-or-loud
 invariant — shared with `crash.rs` via `pglet_testing::durability` — but
 coverage-guided and stricter (a panic on an untrusted image is a finding, not an

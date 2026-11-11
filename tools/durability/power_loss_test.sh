@@ -6,7 +6,7 @@
 # ---------------
 # pglet's durability is already tested against *process* death: the in-process
 # fault-injection tests (crates/pglet/tests/crash.rs), the real-process kill -9
-# soak (crates/pglet_tests/src/bin/test_crash.rs, `deno task test:crash`), a
+# soak (crates/pglet_tests/src/bin/test_crash.rs, `npm run test:crash`), a
 # randomized corruption fuzz, and a cargo-fuzz reopen target. All of those share
 # the one invariant: after any interruption, a reopen recovers to a valid
 # committed *prefix* or fails loud — never a torn read, and every *acked* commit
@@ -50,7 +50,7 @@
 # USAGE
 # -----
 #   sudo tools/durability/power_loss_test.sh
-#   (also: `deno task test:power-loss`, which just runs this script)
+#   (also: `npm run test:power-loss`, which just runs this script)
 #
 # Knobs: PGLET_POWER_LOSS_N (acked commit count, default 200).
 

@@ -91,11 +91,8 @@ server the `tests-web/` suites start and for the browser tests' static server, a
 ## Running the checks
 
 `npm ci` first: it installs the JS dependencies `package-lock.json` pins into
-`node_modules`, which the Deno suites read too (`deno.json`'s `"nodeModulesDir": "manual"`;
-`.npmrc` turns install scripts off). A task is either a `package.json` script, run as
-`npm run <name> -- <flags>`, or a `deno.json` task, run as `deno task <name> <flags>`;
-`deno task` runs a `package.json` script too when `deno.json` has no task of that name, so
-`deno task <name>` works for every one.
+`node_modules` (`.npmrc` turns install scripts off). A task is a `package.json` script, run
+as `npm run <name> -- <flags>`.
 
 - `npm run check` — the hermetic bar: clippy with `-D warnings`, a
   `--no-default-features` `cargo check`, clippy over `pglet` and `pglet_wasm` for the
@@ -131,8 +128,8 @@ its cache on the first `wasm:build`; `gzip` for
 rather than skipping without it; `git` for `size:check --update` **only**, which stamps
 the commit into the baseline it writes; and the `psql`/`pg_dump` client binaries
 (`test:dump` runs `psql`, `test:pg-dump` both), which those two gates **skip, exit 0**
-without. A cold clone also fetches cargo's registry dependencies and deno's jsr
-imports, and `npm ci` its npm ones.
+without. A cold clone also fetches cargo's registry dependencies, and `npm ci` its npm
+ones.
 
 Under `--check` a gate that skipped is **red**: a counter the baseline records and the
 run did not report is a failure, because a gate that ran nothing proves nothing — which

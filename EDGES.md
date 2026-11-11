@@ -2992,7 +2992,7 @@ inside a table.
   directive grammar has no raw-bytes form — so the shape cannot be written as
   SQL-plus-directives at all. The guards are the two `binary.rs` unit tests and the
   `handlers.rs` Bind test named in the row, all three under `cargo test --workspace`,
-  which is the gated `test:rust`; `test_binary` is in neither `deno task test` nor the
+  which is the gated `test:rust`; `test_binary` is in neither `npm run test` nor the
   gate set, so a case added there would enforce nothing. The rule's statement is
   `docs/param_binding.md` § A binary `jsonb` payload's first byte is its version.
 
@@ -6679,8 +6679,8 @@ inside a table.
   (measured: both callbacks fulfil and both rows land, while a genuinely *nested* PGlite
   `transaction()` does not settle at all). The resolution is pglet's own choice, taken because the
   deadlock it declines to risk is largely silent — an ordinary `main()`-at-module-bottom entry
-  exits **0** with no output at all, on node, deno and bun alike. The Node entry, which Node, Deno
-  and Bun resolve, hands the adapter an `AsyncLocalStorage`, so there the readings are separated:
+  exits **0** with no output at all, on node, deno and bun alike. The Node entry, which Node and Bun
+  resolve, hands the adapter an `AsyncLocalStorage`, so there the readings are separated:
   a call from inside a running callback is refused as nested, and a concurrent top-level one
   queues and runs after it, as on PGlite. `fork()` and `close()` follow the same split — refused
   from inside a callback on every entry, queued from outside on the Node entry, and refused while
@@ -6994,7 +6994,7 @@ inside a table.
   After the `COMMIT` the index enforces the key: a further autocommit
   `INSERT INTO r VALUES (1)` is `23505` here, and `count(*)` stays `2` — the duplicate is
   published, not repaired. It survives a restart under `--data-dir`, and
-  `deno task dump` of that directory exits `0` with the two `1` rows and
+  `npm run dump` of that directory exits `0` with the two `1` rows and
   `CREATE UNIQUE INDEX r_u ON r (a)`, which `psql -f` into 18.6 loads with exit `0`, the
   `COPY` taking both rows and the index refused (`could not create unique index`,
   `Key (a)=(1) is duplicated`) — so this also breaks the dump invariant
@@ -14380,7 +14380,7 @@ inside a table.
   (an enum *column* was already caught by the write path's own gate, which is why the text
   sink is the shape that matters), `DELETE FROM w WHERE m IN ('ok','zzz')` removed the
   rows 18.6 keeps, and a `CHECK (m > 'zzz')` or partial index over one was **persisted** —
-  measured end to end: `deno task dump` emitted it, `psql -f` into stock 18.6 exited `0`,
+  measured end to end: `npm run dump` emitted it, `psql -f` into stock 18.6 exited `0`,
   and the restored database held `pg_constraint` and `pg_indexes` empty where pglet holds
   both. The conversion now runs at the comparison positions, at the five
   `select_common_type` constructs, at the set-operation door, and at both

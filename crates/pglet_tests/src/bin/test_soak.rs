@@ -75,7 +75,7 @@
 //! `CREATE INDEX` over a populated table (the half-built index must recover
 //! all-or-nothing).
 //!
-//! Run: `deno task test:soak` (short default) / `deno task test:soak:long`.
+//! Run: `npm run test:soak` (short default) / `npm run test:soak:long`.
 //! Knobs: `PGLET_SOAK_SEED`, `PGLET_SOAK_ROWS`, `PGLET_SOAK_DURATION_SECS`,
 //! `PGLET_SOAK_KILL_EVERY_SECS`, `PGLET_SOAK_CYCLES`, `PGLET_SOAK_KILL_CYCLES`,
 //! `--long`, `--update`.

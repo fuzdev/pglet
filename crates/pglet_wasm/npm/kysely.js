@@ -37,7 +37,6 @@ class PgletConnection {
 		);
 		return {rows, numAffectedRows: affected(command, rowCount)};
 	}
-	// deno-lint-ignore require-yield
 	async *streamQuery() {
 		throw new Error('@fuzdev/pglet-wasm: kysely streamQuery is not supported (single in-process connection)');
 	}

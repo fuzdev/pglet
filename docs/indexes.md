@@ -792,15 +792,15 @@ wasm-pack build crates/pglet_wasm --target web -- \
   --no-default-features --features console_error_panic_hook
 # stripped native server (file_store rides the dep lines, so only acceleration drops)
 cargo build --release -p pglet_server --no-default-features
-# stripped regression lock — the `@profile-lock` subset (chained into `deno task test`)
-deno task test:fixtures:profile-lock
+# stripped regression lock — the `@profile-lock` subset (chained into `npm run test`)
+npm run test:fixtures:profile-lock
 # full stripped differential run — the harness builds the spawned server --no-default-features
-PGLET_NO_INDEX_ACCEL=1 deno task test:fixtures
+PGLET_NO_INDEX_ACCEL=1 npm run test:fixtures
 ```
 
 ### The profile lock
 
-**The guard for the byte-identical *intent* is `deno task test:fixtures:profile-lock`.**
+**The guard for the byte-identical *intent* is `npm run test:fixtures:profile-lock`.**
 It runs the differential harness under `PGLET_NO_INDEX_ACCEL=1` (so the spawned server is
 the stripped build) over the fixtures tagged `-- @profile-lock`, the subset whose `@test`
 takes a *different plan* on the two profiles. It's chained into `test`, right after
@@ -810,7 +810,7 @@ live Postgres for its text-format leg (`127.0.0.1:5432` unless `PGLET_PG_URL` na
 another), and giving `check` a Postgres dependency is a bigger contract change than this
 guard is worth.
 
-**The stripped build compiles under `check`.** `deno task check:stripped`
+**The stripped build compiles under `check`.** `npm run check:stripped`
 (`cargo check --workspace --all-targets --no-default-features`, chained into `check`)
 keeps the `#[cfg(feature = "index_acceleration")]` gates accurate. Without it, a new
 planner test naming `Plan::IndexScan` would break the stripped build with no signal until
@@ -889,7 +889,7 @@ A quick sanity check that the knob is wired up: the spawned `target/debug/pglet_
 differs between the two runs (compare size or hash). If the knob were silently ignored,
 it would report green against the accelerated binary twice.
 
-A **full** stripped run (`PGLET_NO_INDEX_ACCEL=1 deno task test:fixtures`, all fixtures)
+A **full** stripped run (`PGLET_NO_INDEX_ACCEL=1 npm run test:fixtures`, all fixtures)
 is still the thorough check. It's worth running by hand whenever a change touches the
 planner's index selection, the `IndexScan` / `IndexRangeScan` / `GinScan` read paths, or
 any operand/type gate that one profile can reach and the other can't. The lock is the

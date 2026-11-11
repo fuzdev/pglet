@@ -4,7 +4,7 @@
 //!
 //! libFuzzer mutates `data` as the raw bytes of a double-meta file. Seed the corpus
 //! with [`build_pristine_image`](pglet_testing::durability::build_pristine_image)
-//! output (`deno task fuzz` / `fuzz:seed` does this) so it starts from real on-disk
+//! output (`npm run fuzz` / `fuzz:seed` does this) so it starts from real on-disk
 //! structure — magic, two meta slots, checksummed pages — and mutates toward new
 //! decoder coverage rather than flailing at the magic check.
 //!

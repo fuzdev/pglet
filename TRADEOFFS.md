@@ -162,7 +162,7 @@ mechanism:
 - **`opfs`** (`pglet_wasm`'s OPFS-backed `PgletBtreePersistent` and its `BlockIo` shim) is
   additive and off by default on the leaf crate itself, so the build the npm package
   ships and `size:check` measures leaves it out, and the builds that want it name it
-  (`deno task wasm:build:opfs`, for the browser example and `test:browser`). The
+  (`npm run wasm:build:opfs`, for the browser example and `test:browser`). The
   `DoubleMetaStore`, page (de)serialization, the page cache and tree recovery, which only
   that binding reached, left the default build with it (read off a symbol-named build):
   measured −84 166 B raw / −48 556 B gzip on the build it was cut from.

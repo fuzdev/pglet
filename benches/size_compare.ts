@@ -12,9 +12,9 @@
  *     `benches/node_modules/@electric-sql/pglite/dist`, at the version
  *     `benches/package-lock.json` pins (the one `wasm_compare.ts` runs).
  *
- * JS glue is excluded from both sides. gzip is `lib/gzip_size.ts` — the measurement the
- * size gate (`src/lib/size_gate.ts`) reports — so every gzip figure in `benches/` is the
- * same tool at the same level.
+ * JS glue is excluded from both sides. gzip is `lib/gzip_size.ts`, which runs the arguments
+ * the size gate (`src/lib/size_gate.ts`) runs for the wire size it reports (`to_gzip_args`),
+ * so every recorded gzip figure is the same tool at the same level.
  *
  * Refuses (exit 1, nothing written) when the npm package is missing or older than its
  * sources (`lib/pglet_package.ts`), or when no pglite is installed under `benches/` or the

@@ -19,8 +19,8 @@ never enters the production build graph, `cargo build/test --workspace`, or the
 ## Run
 
 ```bash
-deno task fuzz            # seed the corpus, then fuzz for 60s
-deno task fuzz:seed       # (re)write the valid seed image into the corpus
+npm run fuzz              # seed the corpus, then fuzz for 60s
+npm run fuzz:seed         # (re)write the valid seed image into the corpus
 
 # or directly, for a longer / custom run:
 cargo run -p pglet --example gen_fuzz_seed -- fuzz/corpus/double_meta_reopen/pristine
