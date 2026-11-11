@@ -1,13 +1,13 @@
-#!/usr/bin/env -S deno run --allow-read
-
 // Automated test for pglet WASM
-// This script loads and tests the WASM module programmatically
+// This script loads and tests the WASM module programmatically, under Node
+
+import { readFile } from "node:fs/promises";
 
 // Resolve paths relative to this file's location
 const wasmPath = new URL("../../crates/pglet_wasm/pkg/pglet_wasm.js", import.meta.url);
 const wasmBinaryPath = new URL("../../crates/pglet_wasm/pkg/pglet_wasm_bg.wasm", import.meta.url);
 
-const { default: init, PgletBtree } = await import(wasmPath.href);
+const { initSync, PgletBtree } = await import(wasmPath.href);
 
 async function main() {
     console.log("pglet WASM Test");
@@ -16,7 +16,8 @@ async function main() {
     try {
         // Initialize WASM
         console.log("\n1. Initializing WASM module...");
-        await init();
+        const wasmBytes = await readFile(wasmBinaryPath);
+        initSync({ module: wasmBytes });
         console.log("   ✓ WASM module loaded");
 
         // Create database instance
@@ -81,12 +82,12 @@ async function main() {
 
         console.log("\n" + "=".repeat(50));
         console.log("All tests passed! ✓");
-        console.log("\nWASM binary size:", (await Deno.stat(wasmBinaryPath)).size, "bytes");
+        console.log("\nWASM binary size:", wasmBytes.byteLength, "bytes");
 
     } catch (error) {
         console.error("\n✗ Test failed:", error);
-        Deno.exit(1);
+        process.exitCode = 1;
     }
 }
 
-main();
+await main();

@@ -10,7 +10,7 @@ transactions (`BEGIN` / `COMMIT` / `ROLLBACK`, and `SAVEPOINT` / `ROLLBACK TO` /
 — a savepoint rolls back only its own level and recovers an aborted block), and data held
 in browser memory or, on the persistent page, in OPFS across a reload. `test.ts` drives the
 in-memory CRUD, filter, aggregate and ordering paths; a rollback and OPFS persistence across
-a reload are covered by `deno task test:browser`, savepoints by `deno task test:wasm`.
+a reload are covered by `npm run test:browser`, savepoints by `npm run test:wasm`.
 
 ## Storage Modes
 
@@ -47,7 +47,7 @@ const branch = db.fork();
 ### Persistent Mode (Web Worker Required)
 
 For persistent storage using OPFS (Origin Private File System), run pglet in a
-Web Worker, from a build with the `opfs` feature on (`deno task wasm:build:opfs`):
+Web Worker, from a build with the `opfs` feature on (`npm run wasm:build:opfs`):
 
 ```javascript
 // worker.js — import path as used by this example's own worker:
@@ -72,26 +72,30 @@ From the project root:
 ```bash
 # Build the WASM packages (required first time): the default build for the
 # editor page, the `opfs` feature's build for the persistent page
-deno task wasm:build
-deno task wasm:build:opfs
+npm run wasm:build
+npm run wasm:build:opfs
 
 # Start the development server
-deno task wasm:serve
+npm run wasm:serve
 ```
 
-Then open http://localhost:8001/examples/browser/ in your browser.
+Then open http://127.0.0.1:8001/examples/browser/ in your browser. The server listens on
+`127.0.0.1` only, on the fixed port 8001, and serves this directory and the two builds and
+nothing else; it fails, naming the port, when something already listens there.
 
 ### Test persistence:
 
-Open http://localhost:8001/examples/browser/persistent.html to test OPFS
+Open http://127.0.0.1:8001/examples/browser/persistent.html to test OPFS
 persistence. This page uses a Web Worker and lets you verify data survives
 page reloads.
 
 ### Run automated tests:
 
 ```bash
-deno task wasm:test
+npm run wasm:test
 ```
+
+It runs `test.ts` under Node, loading the default build's bytes with `initSync`.
 
 ## Files
 
@@ -99,8 +103,10 @@ deno task wasm:test
 - `persistent.html` - Persistence test page (Web Worker + OPFS)
 - `main.js` - JS code for in-memory mode
 - `worker.js` - Web Worker for persistent mode (loads the `opfs` build)
-- `serve.ts` - Simple HTTP server for local development
-- `test.ts` - Automated test suite
+- `test.ts` - Automated test suite (Node)
+
+`npm run wasm:serve` is `src/tasks/wasm_serve.task.ts`, over the static server the browser
+tests use too (`src/lib/static_server.ts`).
 
 ## Limitations
 
@@ -133,4 +139,4 @@ For persistence mode:
 - OPFS with synchronous access handles (`FileSystemSyncAccessHandle`)
 - Must run in a Web Worker for sync access
 
-The automated browser tests (`deno task test:browser`) run in Chromium under Playwright.
+The automated browser tests (`npm run test:browser`) run in Chromium under Playwright.

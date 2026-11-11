@@ -58,8 +58,7 @@ against it need one running:
 
 - **Postgres 18.x**, by default on `127.0.0.1:5432` — the default oracle connection and
   every pglet server the tests spawn are addressed as `127.0.0.1`, not `localhost`
-  (`crates/pglet_tests/src/lib.rs`). The browser harness is the exception: its local HTTP
-  server on 8001 is reached over `localhost`.
+  (`crates/pglet_tests/src/lib.rs`), and so is the browser harness's own static server.
 - A **superuser** and a **database** it may reset, reachable over TCP — by default the
   `postgres` superuser and the `postgres` database, or whatever `PGLET_PG_URL` names.
 - **No password prompt.** The default connection string carries no password field
@@ -86,7 +85,8 @@ conninfo the config renders. If your oracle authenticates by password rather tha
 
 The other ports in play: 5433 for the dev server (`cargo run -p pglet_server`),
 5434–5499 for servers the Rust harnesses spawn, a port the kernel picks for each
-server the `tests-web/` suites start, and 8001 for the browser tests.
+server the `tests-web/` suites start and for the browser tests' static server, and 8001 for
+`npm run wasm:serve`, on `127.0.0.1` only.
 
 ## Running the checks
 

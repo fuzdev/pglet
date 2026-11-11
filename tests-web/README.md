@@ -19,15 +19,15 @@ npm run test:kysely            # Kysely ORM tests
 npm run test:pg                # pg (node-postgres) driver tests
 npm run test:postgres          # postgres.js driver tests
 npm run test:npm               # The npm package's adapter suite + its plain-Node smoke tests
-deno task test:browser         # Playwright browser tests (WASM + OPFS)
+npm run test:browser           # Playwright browser tests (WASM + OPFS)
 ```
 
 `test:web`'s suites, `test:integration:server` and `test:wasm` run under vitest, by file, with
 `tests-web/vitest.config.ts`: each test file in a process of its own, the files in parallel.
 Each script typechecks first with `tsc`, against `tests-web/tsconfig.json` (the server suites,
-the wasm suite and its child scripts) or `tests-web/npm/tsconfig.json` (the npm suite, which
-needs `build:npm`'s package), and each server suite's script builds the debug `pglet_server`
-first. `gro check` runs only `src/`'s
+the wasm suite and its child scripts, the browser runner) or `tests-web/npm/tsconfig.json` (the
+npm suite, which needs `build:npm`'s package), and each server suite's script builds the debug
+`pglet_server` first. `gro check` runs only `src/`'s
 tests.
 
 ## Test Categories
@@ -49,12 +49,12 @@ tests.
 
 ## Port Allocation
 
-`tests-web/lib/ports.ts` is the TypeScript mirror of the Rust constants, and
 `crates/pglet_tests/README.md` § Port Conventions is where the allocation is stated —
 including the dynamic range a Rust harness's server takes. A server suite here asks for port 0
 and reads the port the kernel picked from the server's `pglet listening on` line, so suites run
 side by side and nothing already listening (a spy proxy, the dev server, another checkout's
-server) is mistaken for the suite's own. The browser harness's HTTP port is its own.
+server) is mistaken for the suite's own. The browser harness serves its pages the same way: from
+a static server of its own on `127.0.0.1`, on a port the kernel picks.
 
 ## Directory Structure
 
@@ -64,9 +64,7 @@ tests-web/              # TypeScript interface tests (this directory)
 ├── tsconfig.json       # The server suites' typecheck (npm/ has its own)
 ├── lib/                # Shared test utilities
 │   ├── assert.ts       # assert_equal, assert_rejects (beside vitest's assert)
-│   ├── ports.ts        # Port constants (5432, 5433, 8001)
-│   ├── server.ts       # start_suite_server(), start_test_server(): this checkout's debug pglet_server
-│   └── build.ts        # ensureWasm()
+│   └── server.ts       # start_suite_server(), start_test_server(): this checkout's debug pglet_server
 │
 ├── orms/               # ORM compatibility tests
 │   ├── drizzle/        # Drizzle ORM tests (+ schema.ts)
@@ -81,7 +79,7 @@ tests-web/              # TypeScript interface tests (this directory)
 ├── npm/                # @fuzdev/pglet-wasm adapter suite (coercion, dx, kysely, package, adapter, browser entry; + its tsconfig.json)
 │
 └── browser/            # Playwright browser tests
-    ├── run.ts          # Test runner
+    ├── run.ts          # Test runner (Node; serves the pages, drives Chromium)
     ├── test.html       # Test page (loads WASM + spawns worker)
     └── test-worker-btree.js  # Web Worker for B+tree OPFS tests
 
@@ -130,14 +128,15 @@ Browser tests use Playwright to run WASM in a real Chromium browser.
 **First-time setup:**
 
 ```bash
-deno task test:browser:install  # Downloads Chromium (~200MB)
+npm run test:browser:install  # Downloads Chromium
 ```
 
 **Run tests:**
 
 ```bash
-deno task test:browser          # Headless (CI)
-deno task test:browser:headed   # Visible browser (debugging)
+npm run test:browser          # Headless (CI)
+npm run test:browser:headed   # Visible browser (debugging)
+npm run test:browser -- btree # The tests whose name includes `btree`
 ```
 
 **What's tested**: WASM loads; CREATE/INSERT/SELECT with WHERE;
@@ -158,8 +157,11 @@ test.html
 
 `PgletBtreePersistent` is the `pglet_wasm` crate's opt-in `opfs` feature: the default
 build — the npm package's shape — exports no such class, so the worker loads the build
-`deno task wasm:build:opfs` makes; the runner builds either one that is missing or older
-than the Rust sources (`tests-web/lib/build.ts`).
+`npm run wasm:build:opfs` makes; the runner builds either one that is missing or older
+than the Rust sources (`src/lib/wasm_build.ts`), then serves the two builds and this
+directory, and nothing else, on `127.0.0.1` from a static server of its own on a port the
+kernel picks (`src/lib/static_server.ts`), which it stops when the run ends; it never uses
+a server it did not start.
 
 Tests call `window.pgletBtreeWorker.*` methods which message the worker. This works
 in both headed and headless modes.
@@ -167,14 +169,12 @@ in both headed and headless modes.
 ## Shared Test Utilities
 
 `tests-web/lib/` holds what a web test reaches for: `assert.ts` (`assert_equal`, a deep
-equality that counts prototypes, and `assert_rejects`, for a promise that must reject),
-`ports.ts` (the port constants), `server.ts` (`start_suite_server` for a server the file's
-tests share, stopped after them, and `start_test_server` for one a single test owns, stopped
-when it ends, passed or failed) and `build.ts` (`ensureWasm`, building only
-when the artifact is stale). `server.ts` is the composition root: it hands this checkout's
-debug build, with gro's base environment, to `src/lib/pglet_server.ts`, which starts it with
-`--port 0`, reads the bound port, and stops it, as a process group of its own that gro's exit
-and signal hooks also stop. Signatures live in the files; they are short enough to read, and a
+equality that counts prototypes, and `assert_rejects`, for a promise that must reject) and
+`server.ts` (`start_suite_server` for a server the file's tests share, stopped after them, and
+`start_test_server` for one a single test owns, stopped when it ends, passed or failed).
+`server.ts` is the composition root: it hands this checkout's debug build, with gro's base
+environment, to `src/lib/pglet_server.ts`, which starts it with `--port 0`, reads the bound
+port, and stops it, as a process group of its own that gro's exit and signal hooks also stop. Signatures live in the files; they are short enough to read, and a
 copy here goes stale silently.
 
 ## Running All Tests

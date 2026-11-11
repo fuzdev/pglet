@@ -21,6 +21,7 @@
 		"integration/pglet_wasm_test.ts",
 		"integration/depth_edge.ts",
 		"integration/module_poison.ts",
-		"integration/host_exceptions.ts"
+		"integration/host_exceptions.ts",
+		"browser/run.ts"
 	]
 }

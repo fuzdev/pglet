@@ -7,15 +7,18 @@ import { fs } from '@fuzdev/gro/fs.ts';
 import ts from 'typescript';
 import { assert, test } from 'vitest';
 
-/** The one library module on `node:*`, the spy proxy's sockets and capture file. */
-const NODE_ONLY = ['spy_proxy/node_net.ts'];
+/**
+ * The library modules on `node:*`: the spy proxy's sockets and capture file, and the static
+ * server's HTTP listener.
+ */
+const NODE_ONLY = ['spy_proxy/node_net.ts', 'static_server.ts'];
 
 /** gro's host modules, the capabilities library code takes as deps. */
 const HOST_MODULE = /^@fuzdev\/gro\/(fs|spawn|process|net|watch)\.ts$/;
 
 interface LibImport {
 	path: string;
-	/** The module named, or null when it's computed, which only the Node-only module may do. */
+	/** The module named, or null when it's computed, which only a Node-only module may do. */
 	specifier: string | null;
 	type_only: boolean;
 }
@@ -79,7 +82,7 @@ const lib_imports = async (): Promise<Array<LibImport>> => {
 	return imports;
 };
 
-test("library code imports Node's builtins only in the one Node-only module", async () => {
+test("library code imports Node's builtins only in the Node-only modules", async () => {
 	// `isBuiltin` matches a bare builtin specifier (`fs/promises`) as well as a `node:` one
 	const importers = new Set(
 		(await lib_imports())

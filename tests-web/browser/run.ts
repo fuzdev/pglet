@@ -1,4 +1,3 @@
-#!/usr/bin/env -S deno run --allow-all
 /**
  * Browser test runner for pglet WASM.
  *
@@ -6,12 +5,24 @@
  * Tests verify WASM functionality — on the default build, the shipped shape — and OPFS
  * persistence, on the build with the crate's `opfs` feature on (`crates/pglet_wasm/pkg-opfs`).
  *
+ * The pages are served by a static server of the runner's own, started on `127.0.0.1` on a
+ * port the kernel picks and stopped when the run ends, serving only the directories the
+ * pages load. This module is the runner's composition root: it finds the checkout from its
+ * own location, never the working directory.
+ *
  * Usage:
- *   deno task test:browser          # Headless (CI)
- *   deno task test:browser:headed   # Visible browser (debugging)
+ *   npm run test:browser          # Headless (CI)
+ *   npm run test:browser:headed   # Visible browser (debugging)
+ *   npm run test:browser -- btree # Only the tests whose name includes `btree`
  */
 
+import { fileURLToPath } from "node:url";
+import { fs } from "@fuzdev/gro/fs.ts";
+import { spawn } from "@fuzdev/gro/spawn.ts";
 import { chromium, type Browser, type Page, type ConsoleMessage } from "playwright";
+import type { StaticMount } from "#lib/static_files.ts";
+import { start_static_server, type StaticServer } from "#lib/static_server.ts";
+import { ensure_wasm_package, WASM_DEFAULT, WASM_OPFS, WASM_PACK_PASS_ENV } from "#lib/wasm_build.ts";
 
 // Worker API response types
 interface WorkerResponse {
@@ -44,10 +55,15 @@ declare global {
     };
   }
 }
-import { ensureWasm, WASM_DEFAULT, WASM_OPFS } from "../lib/build.ts";
-import { PORTS } from "../lib/ports.ts";
 
-const HTTP_PORT = PORTS.HTTP_TEST;
+/** This checkout, from this module's own location. */
+const CHECKOUT = fileURLToPath(new URL("../../", import.meta.url));
+
+/** The directories the test page and its worker load, each served under its own path. */
+const MOUNT_DIRS = ["crates/pglet_wasm/pkg", "crates/pglet_wasm/pkg-opfs", "tests-web/browser"];
+
+/** The test page, beneath the server's origin. */
+const TEST_PAGE = "/tests-web/browser/test.html";
 
 interface TestResult {
   name: string;
@@ -57,100 +73,12 @@ interface TestResult {
 }
 
 // Parse args
-const headed = Deno.args.includes("--headed");
-const filterPattern = Deno.args.find((a) => !a.startsWith("-"));
+const argv = process.argv.slice(2);
+const headed = argv.includes("--headed");
+const filterPattern = argv.find((a) => !a.startsWith("-"));
 
-// Global state
-let browser: Browser | null = null;
-let httpServer: Deno.HttpServer | null = null;
-
-/**
- * Check if HTTP server is already running on the port.
- */
-async function isHttpServerRunning(): Promise<boolean> {
-  try {
-    const resp = await fetch(`http://localhost:${HTTP_PORT}/crates/pglet_wasm/pkg/pglet_wasm.js`, {
-      signal: AbortSignal.timeout(1000),
-    });
-    return resp.ok;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Start HTTP server for serving WASM files and test page.
- * If a server is already running (e.g., from `deno task wasm:serve`), reuses it.
- */
-async function startHttpServer(): Promise<void> {
-  // Check if server already running (from wasm:serve)
-  if (await isHttpServerRunning()) {
-    console.log(`[browser] Reusing existing HTTP server on port ${HTTP_PORT}`);
-    return;
-  }
-
-  console.log(`[browser] Starting HTTP server on port ${HTTP_PORT}...`);
-
-  try {
-    httpServer = Deno.serve(
-      { port: HTTP_PORT, onListen: () => {} },
-      async (req) => {
-        const url = new URL(req.url);
-        let path = url.pathname;
-
-        // Default to test.html
-        if (path === "/" || path === "/test.html") {
-          path = "/tests-web/browser/test.html";
-        }
-
-        // Resolve file path
-        const filePath = `.${path}`;
-
-        try {
-          const file = await Deno.readFile(filePath);
-          const contentType = getContentType(filePath);
-          return new Response(file, {
-            headers: { "Content-Type": contentType },
-          });
-        } catch {
-          return new Response("Not Found", { status: 404 });
-        }
-      },
-    );
-
-    // Wait for server to be ready
-    await new Promise((r) => setTimeout(r, 100));
-    console.log(`[browser] HTTP server ready on http://localhost:${HTTP_PORT}`);
-  } catch (err) {
-    if (err instanceof Deno.errors.AddrInUse) {
-      // Another process grabbed the port between our check and bind
-      // Try to reuse it
-      if (await isHttpServerRunning()) {
-        console.log(`[browser] Reusing existing HTTP server on port ${HTTP_PORT}`);
-        return;
-      }
-    }
-    throw err;
-  }
-}
-
-function getContentType(path: string): string {
-  if (path.endsWith(".html")) return "text/html";
-  if (path.endsWith(".js")) return "application/javascript";
-  if (path.endsWith(".wasm")) return "application/wasm";
-  if (path.endsWith(".json")) return "application/json";
-  return "application/octet-stream";
-}
-
-/**
- * Stop HTTP server.
- */
-async function stopHttpServer(): Promise<void> {
-  if (httpServer) {
-    await httpServer.shutdown();
-    httpServer = null;
-  }
-}
+/** The test page's URL on the run's own server, set once it listens. */
+let page_url = "";
 
 /**
  * Run a single test in the browser.
@@ -216,12 +144,12 @@ async function waitForBtreeOpfs(page: Page, timeoutMs = 10000): Promise<void> {
 }
 
 async function testWasmLoads(page: Page): Promise<void> {
-  await page.goto(`http://localhost:${HTTP_PORT}/`);
+  await page.goto(page_url);
   await waitForWasm(page);
 }
 
 async function testCreateTable(page: Page): Promise<void> {
-  await page.goto(`http://localhost:${HTTP_PORT}/`);
+  await page.goto(page_url);
   await waitForWasm(page);
 
   const result = await page.evaluate(async () => {
@@ -246,7 +174,7 @@ async function testCreateTable(page: Page): Promise<void> {
 }
 
 async function testQueryWithWhere(page: Page): Promise<void> {
-  await page.goto(`http://localhost:${HTTP_PORT}/`);
+  await page.goto(page_url);
   await waitForWasm(page);
 
   const result = await page.evaluate(async () => {
@@ -263,7 +191,7 @@ async function testQueryWithWhere(page: Page): Promise<void> {
 }
 
 async function testAggregates(page: Page): Promise<void> {
-  await page.goto(`http://localhost:${HTTP_PORT}/`);
+  await page.goto(page_url);
   await waitForWasm(page);
 
   const result = await page.evaluate(async () => {
@@ -291,7 +219,7 @@ async function testAggregates(page: Page): Promise<void> {
 // =============================================================================
 
 async function testBtreePersistence(page: Page): Promise<void> {
-  await page.goto(`http://localhost:${HTTP_PORT}/`);
+  await page.goto(page_url);
   await waitForBtreeOpfs(page);
 
   // Create data in first session (DROP IF EXISTS handles cleanup)
@@ -323,10 +251,10 @@ async function testBtreePersistence(page: Page): Promise<void> {
   const verified = await page.evaluate(async () => {
     const queryRes = await window.pgletBtreeWorker.query("SELECT * FROM btree_persist_test");
     if (queryRes.error) return { error: queryRes.error };
-    return queryRes.result;
+    return queryRes.result ?? { error: "the worker answered no result" };
   });
 
-  if ("error" in verified && verified.error) {
+  if ("error" in verified) {
     throw new Error(`Failed to verify persistence: ${verified.error}`);
   }
 
@@ -346,7 +274,7 @@ async function testBtreePersistence(page: Page): Promise<void> {
 // open path, the in-memory index def map is empty after reload, so the duplicate
 // would be wrongly accepted (silent index drift) and probes would error.
 async function testBtreeIndexReopen(page: Page): Promise<void> {
-  await page.goto(`http://localhost:${HTTP_PORT}/`);
+  await page.goto(page_url);
   await waitForBtreeOpfs(page);
 
   const created = await page.evaluate(async () => {
@@ -391,7 +319,7 @@ async function testBtreeIndexReopen(page: Page): Promise<void> {
 }
 
 async function testBtreeTransactionRollback(page: Page): Promise<void> {
-  await page.goto(`http://localhost:${HTTP_PORT}/`);
+  await page.goto(page_url);
   await waitForBtreeOpfs(page);
 
   // DROP IF EXISTS handles cleanup
@@ -434,7 +362,7 @@ async function testBtreeTransactionRollback(page: Page): Promise<void> {
 }
 
 async function testBtreeMultipleRows(page: Page): Promise<void> {
-  await page.goto(`http://localhost:${HTTP_PORT}/`);
+  await page.goto(page_url);
   await waitForBtreeOpfs(page);
 
   // Test multiple rows with various operations
@@ -478,7 +406,7 @@ async function testBtreeMultipleRows(page: Page): Promise<void> {
 }
 
 async function testBtreeCommitDurability(page: Page): Promise<void> {
-  await page.goto(`http://localhost:${HTTP_PORT}/`);
+  await page.goto(page_url);
   await waitForBtreeOpfs(page);
 
   // Create table and sync (this saves metadata with schema)
@@ -545,10 +473,10 @@ async function testBtreeCommitDurability(page: Page): Promise<void> {
   const recovered = await page.evaluate(async () => {
     const queryRes = await window.pgletBtreeWorker.query("SELECT * FROM btree_commit_test");
     if (queryRes.error) return { error: queryRes.error };
-    return queryRes.result;
+    return queryRes.result ?? { error: "the worker answered no result" };
   });
 
-  if ("error" in recovered && recovered.error) {
+  if ("error" in recovered) {
     throw new Error(`Reopen query failed: ${recovered.error}`);
   }
 
@@ -579,91 +507,100 @@ const tests: Array<{ name: string; fn: (page: Page) => Promise<void>; skip?: boo
   { name: "btree-commit-durability", fn: testBtreeCommitDurability },
 ];
 
-async function main() {
+async function main(): Promise<number> {
   console.log("pglet Browser Tests");
   console.log("=".repeat(50));
+
+  const checkout = (await fs.open_dir(CHECKOUT)).readonly();
+  const wasm_pack = spawn.find("wasm-pack", { pass_env: WASM_PACK_PASS_ENV });
+  if (wasm_pack === null) throw new Error("wasm-pack is not on PATH: the browser tests build the wasm with it");
 
   // Ensure both WASM builds are current: the page's in-memory tests load the default
   // build (the shipped shape), the OPFS worker the `opfs` feature's build, the only one
   // that exports `PgletBtreePersistent`.
   console.log("\n[browser] Checking WASM builds...");
-  await ensureWasm(WASM_DEFAULT);
-  await ensureWasm(WASM_OPFS);
+  const build_deps = { crates: checkout.dir("crates"), wasm_pack, checkout, print: (text: string) => console.log(text) };
+  await ensure_wasm_package(build_deps, WASM_DEFAULT);
+  await ensure_wasm_package(build_deps, WASM_OPFS);
 
-  // Start HTTP server
-  await startHttpServer();
-
-  // Launch browser
-  console.log(`\n[browser] Launching browser (headed: ${headed})...`);
+  const mounts: Array<StaticMount> = MOUNT_DIRS.map((prefix) => ({ prefix, open: () => checkout.dir(prefix) }));
+  let server: StaticServer | null = null;
+  let browser: Browser | null = null;
   try {
-    browser = await chromium.launch({ headless: !headed });
-  } catch (err) {
-    if (String(err).includes("Executable doesn't exist")) {
-      console.error("\n[browser] Playwright browsers not installed.");
-      console.error("[browser] Run: npx playwright install chromium");
-      console.error("[browser] Or:  deno run -A npm:playwright install chromium\n");
-      Deno.exit(1);
+    server = await start_static_server(mounts);
+    page_url = `${server.origin}${TEST_PAGE}`;
+    console.log(`[browser] HTTP server ready on ${server.origin}`);
+
+    // Launch browser
+    console.log(`\n[browser] Launching browser (headed: ${headed})...`);
+    try {
+      browser = await chromium.launch({ headless: !headed });
+    } catch (err) {
+      if (String(err).includes("Executable doesn't exist")) {
+        console.error("\n[browser] Playwright browsers not installed.");
+        console.error("[browser] Run: npm run test:browser:install\n");
+        return 1;
+      }
+      throw err;
     }
-    throw err;
-  }
-  const context = await browser.newContext();
-  const page = await context.newPage();
+    const context = await browser.newContext();
+    const page = await context.newPage();
 
-  // Enable console logging from browser
-  page.on("console", (msg: ConsoleMessage) => {
-    if (msg.type() === "error") {
-      console.error(`[browser console] ${msg.text()}`);
+    // Enable console logging from browser
+    page.on("console", (msg: ConsoleMessage) => {
+      if (msg.type() === "error") {
+        console.error(`[browser console] ${msg.text()}`);
+      }
+    });
+
+    // Run tests
+    const results: TestResult[] = [];
+    const filteredTests = filterPattern
+      ? tests.filter((t) => t.name.includes(filterPattern))
+      : tests;
+
+    console.log(`\n[browser] Running ${filteredTests.length} tests...\n`);
+
+    for (const test of filteredTests) {
+      process.stdout.write(`  ${test.name}... `);
+
+      if (test.skip) {
+        console.log(`\x1b[33mSKIP\x1b[0m (requires Web Worker)`);
+        continue;
+      }
+
+      const result = await runTest(page, test.name, test.fn);
+      results.push(result);
+
+      if (result.passed) {
+        console.log(`\x1b[32mPASS\x1b[0m (${result.duration}ms)`);
+      } else {
+        console.log(`\x1b[31mFAIL\x1b[0m (${result.duration}ms)`);
+        console.log(`    Error: ${result.error}`);
+      }
     }
-  });
 
-  // Run tests
-  const results: TestResult[] = [];
-  const filteredTests = filterPattern
-    ? tests.filter((t) => t.name.includes(filterPattern))
-    : tests;
+    // Summary
+    const passed = results.filter((r) => r.passed).length;
+    const failed = results.filter((r) => !r.passed).length;
 
-  console.log(`\n[browser] Running ${filteredTests.length} tests...\n`);
+    console.log("\n" + "=".repeat(50));
+    console.log(`Results: ${passed} passed, ${failed} failed`);
 
-  for (const test of filteredTests) {
-    const encoder = new TextEncoder();
-    await Deno.stdout.write(encoder.encode(`  ${test.name}... `));
-
-    if (test.skip) {
-      console.log(`\x1b[33mSKIP\x1b[0m (requires Web Worker)`);
-      continue;
-    }
-
-    const result = await runTest(page, test.name, test.fn);
-    results.push(result);
-
-    if (result.passed) {
-      console.log(`\x1b[32mPASS\x1b[0m (${result.duration}ms)`);
-    } else {
-      console.log(`\x1b[31mFAIL\x1b[0m (${result.duration}ms)`);
-      console.log(`    Error: ${result.error}`);
-    }
-  }
-
-  // Summary
-  const passed = results.filter((r) => r.passed).length;
-  const failed = results.filter((r) => !r.passed).length;
-
-  console.log("\n" + "=".repeat(50));
-  console.log(`Results: ${passed} passed, ${failed} failed`);
-
-  // Cleanup
-  await browser.close();
-  await stopHttpServer();
-
-  // Exit with error if any tests failed
-  if (failed > 0) {
-    Deno.exit(1);
+    // Exit with error if any tests failed
+    return failed > 0 ? 1 : 0;
+  } finally {
+    await browser?.close();
+    await server?.close();
   }
 }
 
-main().catch((err) => {
-  console.error("Fatal error:", err);
-  if (browser) browser.close();
-  if (httpServer) stopHttpServer();
-  Deno.exit(1);
-});
+main().then(
+  (code) => {
+    process.exitCode = code;
+  },
+  (err) => {
+    console.error("Fatal error:", err);
+    process.exitCode = 1;
+  },
+);

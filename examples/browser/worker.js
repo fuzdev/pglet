@@ -1,5 +1,5 @@
 // Web Worker for persistent pglet database (B+tree storage). Loads the build with the
-// crate's `opfs` feature on (`deno task wasm:build:opfs`): the default build exports no
+// crate's `opfs` feature on (`npm run wasm:build:opfs`): the default build exports no
 // `PgletBtreePersistent`.
 import init, { PgletBtreePersistent } from '../../crates/pglet_wasm/pkg-opfs/pglet_wasm.js';
 

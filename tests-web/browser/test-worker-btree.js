@@ -1,5 +1,5 @@
 // Web Worker for B+tree OPFS persistence tests. Loads the build with the crate's `opfs`
-// feature on (`deno task wasm:build:opfs`): the default build exports no `PgletBtreePersistent`.
+// feature on (`npm run wasm:build:opfs`): the default build exports no `PgletBtreePersistent`.
 import init, { PgletBtreePersistent } from '/crates/pglet_wasm/pkg-opfs/pglet_wasm.js';
 
 let db = null;

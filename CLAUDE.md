@@ -605,9 +605,10 @@ npm run test:power-loss           # dm-flakey power-loss rounds (root-only; skip
 npm run test:concurrent           # concurrency / MVCC isolation (spawns a server)
 npm run test:crash                # real-process kill -9 + soak durability test
 npm run test:soak                 # large-dataset soak: churn + kill -9 + in-process audit, plus a re-migration/index-OID-desync regression-lock leg (opt-in; PGLET_SOAK_ROWS / _DURATION_SECS / _SEED / _CYCLES / _KILL_CYCLES, --long, which test:soak:long runs in release)
-deno task test:browser            # WASM (pkg/) + OPFS (pkg-opfs/) under Playwright, building either when missing or
-#                                   older than the newest .rs it links;
-#                                   `test:browser:install` fetches its chromium once; test:browser:headed shows the browser
+npm run test:browser              # WASM (pkg/) + OPFS (pkg-opfs/) under Playwright on Node, building either when missing
+#                                   or older than the newest .rs it links, served from a static server of its own on
+#                                   127.0.0.1 port 0; `test:browser:install` fetches its chromium once (network);
+#                                   test:browser:headed shows the browser
 deno task fuzz                    # coverage-guided cargo-fuzz recovery target (needs nightly + cargo-fuzz; see fuzz/README.md)
 npm run fuzz:seed                 # (re)write the valid seed image into the fuzz corpus
 
@@ -619,8 +620,8 @@ npm run spy:start                 # wire-protocol logging proxy on loopback, :54
 #                                   tests/captures/session.jsonl (`-- <listen_port> <server_port> <tests/captures/…>`;
 #                                   listen port 0 binds a free one and prints it; src/lib/spy_proxy/proxy.ts)
 npm run spy:spine:cell | spy:spine:fact   # the proxy recording to tests/captures/spine_{cell,fact}.jsonl
-deno task wasm:serve | wasm:test  # examples/browser's static server on :8001 and its Deno smoke test
-#                                   (examples/browser/README.md)
+npm run wasm:serve | wasm:test    # examples/browser's static server on 127.0.0.1:8001 and its Node smoke test
+#                                   (examples/browser/README.md; src/lib/static_server.ts, loopback only)
 
 npm run build:npm                 # assemble @fuzdev/pglet-wasm (pkg-npm/ emptied → wasm-pack → src/lib/npm_package.ts)
 #                                   the npm name is kebab (`-wasm`, like `@fuzdev/tsv-wasm`); the crate and its generated
@@ -679,8 +680,9 @@ one is a change to all three, or it is a bug.
 Ports: 5432 real Postgres (fixture generation), 5433 dev server, 5434–5499 for
 servers the Rust harnesses spawn (`PGLET_TEST_PORT` is the start of the dynamic range,
 `DYNAMIC_PORT_END` its exclusive end), a port the kernel picks for each `tests-web/` server
-suite's own server (`--port 0`), 8001 browser tests. Address the Postgres oracle and
-the pglet servers as `127.0.0.1`, not `localhost`.
+suite's own server (`--port 0`) and for the browser tests' static server, 8001 `wasm:serve`
+(loopback only). Address the Postgres oracle and the pglet servers as `127.0.0.1`, not
+`localhost`.
 
 ## The gate runner
 
