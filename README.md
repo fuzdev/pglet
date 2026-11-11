@@ -241,9 +241,9 @@ of recorded divergences.
   storage modes; in-process WASM init is ~3.6 ms p50 for a full cold load
   (`benches/wasm_init_results.json`). On the head-to-head harness, whose cold init is
   each engine's fresh module load through its first query — for pglet, its npm
-  package's — pglet takes ~12–19 ms against pglite's ~1.3–1.4 s across Deno / Node /
+  package's — pglet takes ~12–15 ms against pglite's ~1.3–1.4 s across Node and
   Bun (`benches/wasm_compare_results.json`).
-  Run `deno task bench:wasm-init` / `bench:wasm-compare` to re-measure.
+  Run `npm run bench:wasm-init` / `bench:wasm-compare` to re-measure.
 
 ## Milestones
 

@@ -6,8 +6,8 @@
  * `assert_pglet_package_current`, so "current" means the same thing for each figure
  * that comes out of it.
  *
- * **Cross-runtime on purpose**, like `results.ts`: `wasm_compare.ts` runs under Deno,
- * Node and Bun, so this uses `node:` builtins only.
+ * **Plain Node on purpose**, like `results.ts`: `wasm_compare.ts` runs under Node and
+ * Bun, so this uses `node:` builtins only.
  *
  * @module
  */
@@ -16,7 +16,7 @@ import {readdirSync, statSync} from 'node:fs';
 
 const REPO = new URL('../../', import.meta.url);
 
-/** The npm package `deno task build:npm` assembles. */
+/** The npm package `npm run build:npm` assembles. */
 export const PGLET_PKG = new URL('crates/pglet_wasm/pkg-npm/', REPO);
 
 /** The package files a `create_pglet_db()` consumer loads; the oldest of them dates the build. */
@@ -54,13 +54,13 @@ const newest_file = (dir: URL, newest: {path: string; mtime: number}): void => {
  * Refuse a missing or stale npm package rather than measure an old build. Stale is
  * any file under `crates/`, `scripts/` or `src/` (the package's patch step), or a
  * workspace manifest, newer than the oldest package file a consumer loads —
- * `deno task build:npm` rebuilds all of them.
+ * `npm run build:npm` rebuilds all of them.
  *
  * @param chained_by - the tasks that chain `build:npm`, named in the refusal
  * @throws when the package is missing a file or is older than its newest input
  */
 export const assert_pglet_package_current = (chained_by: string): void => {
-	const rebuild = `run \`deno task build:npm\` (${chained_by} chain it)`;
+	const rebuild = `run \`npm run build:npm\` (${chained_by} chain it)`;
 	let built = Infinity;
 	for (const name of PGLET_PKG_LOADED) {
 		const url = new URL(name, PGLET_PKG);

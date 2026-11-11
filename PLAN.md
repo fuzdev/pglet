@@ -44,7 +44,7 @@ Size and startup are **measured and meet their targets**. The headline figures a
 profile, startup, the `index_acceleration` size-floor lever); the recorded numbers are
 `benches/*_results.json`, `benches/size_baseline.json` and
 `benches/pglite_size_comparison.json`, and what each bench may and may not be read as is
-`benches/README.md`. The harness is Deno tasks over `fuz_util`'s statistics
+`benches/README.md`. The harness is plain Node scripts over `fuz_util`'s statistics
 (reproduced in `benches/lib/bench_stats.ts` where it cannot be imported) plus
 the `pglet_bench` crate (SQLite via `rusqlite` as its baseline), watch-tier: no gate but
 size, no criterion, no new Cargo deps, no `cargo-bloat` (it does not support the wasm

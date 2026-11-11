@@ -42,7 +42,7 @@ const GATES = [
 	'npm run test:rust',
 	'deno task test:wasm',
 	'npm run test:npm',
-	'deno run --frozen --allow-read --allow-run=gzip,git benches/size.ts --check --wasm crates/pglet_wasm/pkg-npm/pglet_wasm_bg.wasm'
+	'gro task src/tasks/size.task.ts --check --wasm crates/pglet_wasm/pkg-npm/pglet_wasm_bg.wasm'
 ];
 
 const RELEASE_FILES = 'Cargo.toml Cargo.lock fuzz/Cargo.lock CHANGELOG.md';

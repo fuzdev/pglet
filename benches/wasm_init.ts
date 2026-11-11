@@ -6,18 +6,23 @@
  * heavy path, and where pglite is disqualifying at over a second). Phases:
  *   - cold init      : initSync({module: bytes})  — sync compile + instantiate
  *   - new PgletBtree(): engine/catalog construction (the shipped in-memory class)
- *   - first query    : first exec + query (lazy parser/catalog warmup)
+ *   - first query    : first exec + query (V8 lazily compiling the functions it reaches)
  *   - full cold load : the three above, end to end (first-result latency)
  *   - cached inst.   : initSync({module: precompiled}) — instantiate only
  * plus a one-shot true-cold `WebAssembly.compile` of the bytes.
  *
- * Caveat: V8 may serve cached compiled code for byte-identical
- * input, so the per-sample "cold init" compile trends toward *warm* compile
- * after the first sample. The genuine first-compile cost is reported separately
- * as `compile (cold, one-shot)`; the delta `cold init − cached inst.` is the
- * warm compile cost. Watch-tier: prints + records, never gates.
+ * Caveat: V8's native module cache serves byte-identical input the code it already
+ * compiled, functions compiled lazily by an earlier sample's queries included, so with
+ * it on every sample after the first is warm. The scripts run Node with
+ * `--no-wasm-native-module-cache`, so each sample compiles afresh, as a fresh process
+ * does; a hand-run without the flag measures the warm path, and `--update` refuses it.
+ * The first compile is also reported on its own as `compile (cold, one-shot)`.
+ * Watch-tier: prints + records, never gates.
  *
- *   deno task bench:wasm-init
+ * Every phase is timed in this process, a plain Node one with no loader of gro's: each
+ * sample's module import happens before its clock starts.
+ *
+ *   npm run bench:wasm-init
  */
 import {
 	stats_cv,
@@ -27,6 +32,7 @@ import {
 	stats_percentile,
 	stats_std_dev,
 } from '@fuzdev/fuz_util/stats.ts';
+import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {gzip_size} from './lib/gzip_size.ts';
 import {git_commit, write_json} from './lib/results.ts';
@@ -34,11 +40,23 @@ import {git_commit, write_json} from './lib/results.ts';
 const PKG = new URL('../crates/pglet_wasm/pkg/', import.meta.url);
 const JS = new URL('pglet_wasm.js', PKG).href;
 const WASM_PATH = new URL('pglet_wasm_bg.wasm', PKG);
+const RESULTS = new URL('./wasm_init_results.json', import.meta.url);
 const WARMUP = 3;
 const SAMPLES = 25;
 const TARGET_MS = 100;
+/** The V8 flag that keeps the cold phases cold (see the caveat). */
+const NO_MODULE_CACHE = '--no-wasm-native-module-cache';
 
-const bytes = await Deno.readFile(WASM_PATH);
+const update = process.argv.includes('--update');
+if (update && !process.execArgv.includes(NO_MODULE_CACHE)) {
+	// a recorded run without it would file warm figures under the cold labels
+	console.error(
+		`error: --update needs \`node ${NO_MODULE_CACHE}\` (npm run bench:wasm-init:update)`,
+	);
+	process.exit(1);
+}
+
+const bytes = new Uint8Array(await readFile(WASM_PATH));
 
 // init/initSync are idempotent per imported module instance, so each sample
 // re-imports with a unique query string to get a fresh, uninitialized binding.
@@ -143,16 +161,16 @@ console.log(`\n(all values in ms; target = ${TARGET_MS}ms for full cold load)`);
 // Print by default; `--update` refreshes the recorded JSON — the idiom every
 // other bench here follows, and which this one did not: it wrote on every run,
 // so looking at the numbers overwrote them with whatever the box was doing.
-if (Deno.args.includes('--update')) {
-	await write_json('benches/wasm_init_results.json', {
+if (update) {
+	await write_json(RESULTS, {
 		timestamp: new Date().toISOString(),
 		git_commit: git_commit(),
 		samples: SAMPLES,
 		warmup: WARMUP,
 		target_ms: TARGET_MS,
 		note:
-			'per-iteration fresh module; whether cold-init compile trends warm after sample 1 (V8 code cache) ' +
-			'depends on the runtime version — Deno 2.8.3 warmed, 2.9.7 does not',
+			`per-iteration fresh module, under node ${NO_MODULE_CACHE} so each sample compiles ` +
+			'afresh; first query includes the lazy compile of the functions it reaches',
 		compile_cold_one_shot_ms: cold_compile_ms,
 		wasm_bytes: bytes.length,
 		// reported beside the timings, never their gate: a gzip failure records -1 rather than

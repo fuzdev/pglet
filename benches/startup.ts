@@ -3,7 +3,9 @@
  *
  * Measures wall time from spawn(pglet_server) to the "pglet listening on …"
  * ready line, across storage modes, reporting p50/p95 via fuz_util's stats.
- * This is the first real measurement of the <100ms startup claim.
+ * This is the first real measurement of the <100ms startup claim. The timed region
+ * is this process's: from just before `spawn` to the chunk of the child's stdout that
+ * completes the ready line, read in a plain Node process with no loader of gro's.
  *
  * Scope: this measures *warm-binary cold-process* startup — the binary is in
  * the page cache, each process is fresh. That's the steady-state CLI case
@@ -11,8 +13,13 @@
  * privileges (drop_caches) and is not measured here. Informational
  * (watch-tier), not a gate: startup variance is real; the numbers inform.
  *
- *   deno task bench:startup
+ *   npm run bench:startup
  */
+import {spawn} from 'node:child_process';
+import {mkdtempSync, rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {
 	stats_cv,
 	stats_mean,
@@ -23,7 +30,8 @@ import {
 } from '@fuzdev/fuz_util/stats.ts';
 import {git_commit, write_json} from './lib/results.ts';
 
-const BIN = 'target/release/pglet_server';
+const BIN = fileURLToPath(new URL('../target/release/pglet_server', import.meta.url));
+const RESULTS = new URL('./startup_results.json', import.meta.url);
 const MARKER = 'pglet listening on';
 const WARMUP = 3;
 const SAMPLES = 25;
@@ -36,46 +44,36 @@ let next_port = 6000;
 const spawn_to_ready = async (args: string[]): Promise<number> => {
 	const full = [...args, '--port', String(next_port++)];
 	const t0 = performance.now();
-	const child = new Deno.Command(BIN, {
-		args: full,
-		stdout: 'piped',
-		stderr: 'null',
-		stdin: 'null',
-	}).spawn();
+	// the server reads no variable this bench sets, so it is given none of this process's
+	const child = spawn(BIN, full, {stdio: ['ignore', 'pipe', 'ignore'], env: {}});
+	const exited = new Promise<void>((resolve) => child.once('close', () => resolve()));
 
-	const reader = child.stdout.getReader();
 	const decoder = new TextDecoder();
 	let buf = '';
-	// `ReturnType<typeof setTimeout>` rather than `number`: this file's graph now
-	// reaches `node:` builtins (through `./lib/results.ts`), and under those
-	// typings `setTimeout` returns a `Timeout` object rather than a handle id.
 	let timer: ReturnType<typeof setTimeout> | undefined;
-	const timeout = new Promise<never>((_resolve, reject) => {
+	const ready = new Promise<number>((resolve, reject) => {
 		timer = setTimeout(() => reject(new Error('timeout waiting for ready')), READY_TIMEOUT_MS);
+		child.once('error', reject);
+		child.stdout.on('data', (chunk: Buffer) => {
+			buf += decoder.decode(chunk, {stream: true});
+			if (buf.includes(MARKER)) resolve(performance.now());
+		});
+		child.stdout.once('end', () => reject(new Error('server exited before ready')));
 	});
-	const read_loop = (async (): Promise<number> => {
-		for (;;) {
-			const {value, done} = await reader.read();
-			if (done) throw new Error('server exited before ready');
-			buf += decoder.decode(value, {stream: true});
-			if (buf.includes(MARKER)) return performance.now();
-		}
-	})();
 
 	try {
-		const t1 = await Promise.race([read_loop, timeout]);
+		const t1 = await ready;
 		return t1 - t0;
 	} finally {
 		clearTimeout(timer);
-		await reader.cancel().catch(() => {});
-		try {
-			child.kill('SIGKILL');
-		} catch {
-			// already exited
-		}
-		await child.status;
+		child.stdout.destroy();
+		child.kill('SIGKILL');
+		await exited;
 	}
 };
+
+const temp_dir = (prefix: string): string => mkdtempSync(join(tmpdir(), prefix));
+const remove_dir = (dir: string): void => rmSync(dir, {recursive: true, force: true});
 
 /** Each scenario yields fresh args per spawn (so "fresh dir" really is fresh). */
 interface Scenario {
@@ -91,10 +89,10 @@ const scenarios: Scenario[] = [
 		// new empty data dir each spawn → measures first-open + file create
 		name: 'btree (file, fresh)',
 		make_args: async () => {
-			const dir = await Deno.makeTempDir({prefix: 'pglet_bench_fresh_'});
+			const dir = temp_dir('pglet_bench_fresh_');
 			return {
 				args: ['--data-dir', dir],
-				dispose: () => Deno.remove(dir, {recursive: true}).catch(() => {}),
+				dispose: async () => remove_dir(dir),
 			};
 		},
 	},
@@ -105,13 +103,13 @@ const scenarios: Scenario[] = [
 			name: 'btree (file, reopen)',
 			make_args: async () => {
 				if (dir === undefined) {
-					dir = await Deno.makeTempDir({prefix: 'pglet_bench_reopen_'});
+					dir = temp_dir('pglet_bench_reopen_');
 					await spawn_to_ready(['--data-dir', dir]); // initialize the files
 				}
 				return {args: ['--data-dir', dir]};
 			},
 			teardown: async () => {
-				if (dir !== undefined) await Deno.remove(dir, {recursive: true}).catch(() => {});
+				if (dir !== undefined) remove_dir(dir);
 			},
 		};
 	})(),
@@ -189,8 +187,8 @@ console.log(`\n(all values in ms; target = ${TARGET_MS}ms p50)`);
 // Print by default; `--update` refreshes the recorded JSON — the idiom every
 // other bench here follows, and which this one did not: it wrote on every run,
 // so looking at the numbers overwrote them with whatever the box was doing.
-if (Deno.args.includes('--update')) {
-	await write_json('benches/startup_results.json', {
+if (process.argv.includes('--update')) {
+	await write_json(RESULTS, {
 		timestamp: new Date().toISOString(),
 		git_commit: git_commit(),
 		samples: SAMPLES,

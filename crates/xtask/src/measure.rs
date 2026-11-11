@@ -109,7 +109,7 @@ const STEPS: &[Step] = &[
     },
     Step {
         name: "wasm-compare",
-        title: "head-to-head cold-init vs pglite and sqlite-wasm (Deno/Node/Bun)",
+        title: "head-to-head cold-init vs pglite and sqlite-wasm (Node/Bun)",
     },
     Step {
         name: "startup",
@@ -821,21 +821,6 @@ const FIGURES: &[Figure] = &[
         null_means: None,
     },
     Figure {
-        quoted: "README § Size and startup, TRADEOFFS.md: pglet's head-to-head cold init — Deno",
-        step: "wasm-compare",
-        file: WASM_COMPARE_JSON,
-        path: &[
-            Key("runtimes"),
-            Key("deno"),
-            Key("results"),
-            item("engine", "pglet"),
-            Key("cold_init_ms"),
-        ],
-        envelope: &[Key("runtimes"), Key("deno")],
-        unit: Unit::Millis,
-        null_means: None,
-    },
-    Figure {
         quoted: "README § Size and startup, TRADEOFFS.md: pglet's head-to-head cold init — Node",
         step: "wasm-compare",
         file: WASM_COMPARE_JSON,
@@ -867,22 +852,7 @@ const FIGURES: &[Figure] = &[
     },
     Figure {
         quoted: "README intro (\"pglite's second-plus init\") + § What it's for (\"pglite takes \
-                 over a second\") + § Size and startup, TRADEOFFS.md: pglite's head-to-head cold init — Deno",
-        step: "wasm-compare",
-        file: WASM_COMPARE_JSON,
-        path: &[
-            Key("runtimes"),
-            Key("deno"),
-            Key("results"),
-            item("engine", "pglite"),
-            Key("cold_init_ms"),
-        ],
-        envelope: &[Key("runtimes"), Key("deno")],
-        unit: Unit::Millis,
-        null_means: None,
-    },
-    Figure {
-        quoted: "the same, pglite's head-to-head cold init — Node",
+                 over a second\") + § Size and startup, TRADEOFFS.md: pglite's head-to-head cold init — Node",
         step: "wasm-compare",
         file: WASM_COMPARE_JSON,
         path: &[
@@ -1545,36 +1515,36 @@ mod tests {
     }
 
     /// One runtime's slice of the shared wasm-compare file is fresh only if its own
-    /// timestamp is: a chain that stopped at node rewrote the file and the deno slice, and
-    /// left the node and bun slices a previous run wrote.
+    /// timestamp is: a chain that stopped at bun rewrote the file and the node slice, and
+    /// left the bun slice a previous run wrote.
     #[test]
     fn a_runtime_slice_older_than_the_step_is_not_refreshed() {
         let doc = r#"{"runtimes": {
-            "deno": {"timestamp": "2026-10-04T00:22:03.040Z", "git_commit": "d",
+            "node": {"timestamp": "2026-10-04T00:22:03.040Z", "git_commit": "n",
                      "results": [{"engine": "pglet", "cold_init_ms": 12.69}]},
-            "node": {"timestamp": "2026-10-01T00:00:00.000Z", "git_commit": "n",
-                     "results": [{"engine": "pglet", "cold_init_ms": 11.2}]}}}"#;
+            "bun": {"timestamp": "2026-10-01T00:00:00.000Z", "git_commit": "b",
+                    "results": [{"engine": "pglet", "cold_init_ms": 11.2}]}}}"#;
         let started = SystemTime::UNIX_EPOCH + Duration::from_secs(1_791_073_000);
-        let slice = |runtime: &'static str| {
+        let slice = |runtime: &'static str, doc: &str| {
             let fig = FIGURES
                 .iter()
                 .find(|f| f.envelope == [Key("runtimes"), Key(runtime)])
                 .expect("a figure");
             figure_line(fig, &ran_at(false, true, started), Some(doc))
         };
-        let deno = slice("deno");
-        assert!(deno.contains("12.69 ms") && deno.contains("@ d)"), "{deno}");
-        let node = slice("node");
+        let node = slice("node", doc);
+        assert!(node.contains("12.69 ms") && node.contains("@ n)"), "{node}");
+        let bun = slice("bun", doc);
         assert!(
-            node.contains("not refreshed") && !node.contains("11.2"),
-            "{node}"
+            bun.contains("not refreshed") && !bun.contains("11.2"),
+            "{bun}"
         );
         assert!(
-            node.contains("did not rewrite benches/wasm_compare_results.json runtimes.node"),
-            "{node}"
+            bun.contains("did not rewrite benches/wasm_compare_results.json runtimes.bun"),
+            "{bun}"
         );
-        let bun = slice("bun");
-        assert!(bun.contains("no such envelope"), "{bun}");
+        let missing = slice("bun", r#"{"runtimes": {}}"#);
+        assert!(missing.contains("no such envelope"), "{missing}");
     }
 
     #[test]

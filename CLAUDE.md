@@ -538,7 +538,7 @@ which `package.json` scripts run with `gro task`; `src/test/` holds their vitest
 run check:ts` (`gro check -- gro test --fail_without_tests`, inside `check`) typechecks,
 tests and format-checks it, and fails when no test is found. `tests-web/` (the integration
 suites; those on vitest take `tests-web/vitest.config.ts`, and a server suite starts its own
-server through `src/lib/pglet_server.ts`), `benches/` (the measurements) and `scripts/` (the npm package's plain-Node legs)
+server through `src/lib/pglet_server.ts`), `benches/` (the measurements, plain Node scripts but the size gate, which is `src/tasks/size.task.ts`) and `scripts/` (the npm package's plain-Node legs)
 stay where they are.
 
 ```bash
@@ -564,12 +564,12 @@ cargo xtask gates --only test:fixtures,test:rust   # ...restricted to named task
 cargo xtask gates --skip test:pg-dump   # ...minus named tasks (--skip beats --only; an unselected
 #                                         gate's baseline counters are not asked for)
 npm run gates:check               # cargo xtask gates --check (gates:update likewise)
-deno task size:check              # wasm size gate: raw bytes under the lower of baseline +2% and the 1650 KB hard cap (needs wasm-pack, gzip)
-deno task size:update             # ...and record this build as the new baseline
-npm run check                     # clippy -D warnings + stripped + wasm-features + fmt + docs + check:ts + release audit
-npm run check:stripped | check:wasm-features | check:ts | check:release   # check's own steps, runnable alone
-#                                   (check:ts is `gro check` over src/, tests required; check:release is
-#                                   cargo xtask check-release)
+npm run size:check                # wasm size gate: raw bytes under the lower of baseline +2% and the 1650 KB hard cap (needs wasm-pack, gzip)
+npm run size:update               # ...and record this build as the new baseline
+npm run check                     # clippy -D warnings + stripped + wasm-features + fmt + docs + check:ts + check:benches + release audit
+npm run check:stripped | check:wasm-features | check:ts | check:benches | check:release   # check's own steps, runnable alone
+#                                   (check:ts is `gro check` over src/, tests required; check:benches is tsc
+#                                   over benches/; check:release is cargo xtask check-release)
 npm run fmt                       # cargo fmt (check runs cargo fmt --check)
 npm run check:docs                # rustdoc: every doc-comment link resolves (see below)
 npm run dump -- --data-dir <dir>  # print a portable SQL dump of a persisted database
@@ -645,16 +645,16 @@ npm run bench:commit:update       # ...and refresh benches/phase1_results.json
 npm run bench:reads               # read-concurrency scaling (page-cache contention)
 npm run bench:query               # query/scan latency vs SQLite (point lookup / scan / aggregate)
 npm run bench:gin                 # GIN-accelerated `@>` vs full-scan containment latency (pglet-vs-pglet)
-deno task bench:index-accel       # index acceleration ON vs OFF (wasm): size delta + read-latency ratio across table sizes (builds both profiles)
-deno task bench:memory            # peak RSS (native embed, /proc VmHWM) + WASM linear-memory high-water — pglet-internal longitudinal
-deno task bench:wasm-compare      # in-memory wasm startup+query: pglet vs pglite vs sqlite-wasm (Deno/Node/Bun;
-#                                   :deno / :node / :bun run one runtime, :install populates benches/node_modules
+npm run bench:index-accel         # index acceleration ON vs OFF (wasm): size delta + read-latency ratio across table sizes (builds both profiles)
+npm run bench:memory              # peak RSS (native embed, /proc VmHWM) + WASM linear-memory high-water — pglet-internal longitudinal
+npm run bench:wasm-compare        # in-memory wasm startup+query: pglet vs pglite vs sqlite-wasm (Node and Bun;
+#                                   :node / :bun run one runtime, :install populates benches/node_modules
 #                                   once — benches/README.md)
-deno task bench:size-compare      # pglet-vs-pglite payload bytes, raw + gzip: the shipped npm wasm vs pglite's wasm + data
+npm run bench:size-compare        # pglet-vs-pglite payload bytes, raw + gzip: the shipped npm wasm vs pglite's wasm + data
 #                                   (:update rewrites benches/pglite_size_comparison.json)
-deno task bench:exit-proof        # the four-leg fuz_app `db` suite macro (pglite, pglet-wasm, pglet-server, pg)
-deno task bench:startup           # native server spawn→ready latency
-deno task bench:wasm-init         # wasm init phases (compile / construct / first query)
+npm run bench:exit-proof          # the four-leg fuz_app `db` suite macro (pglite, pglet-wasm, pglet-server, pg)
+npm run bench:startup             # native server spawn→ready latency
+npm run bench:wasm-init           # wasm init phases (compile / construct / first query)
 npm run bench:parse               # fused parse+plan latency (pglet-vs-pglet)
 npm run bench:attribute           # commit-CPU attribution
 
@@ -664,7 +664,7 @@ npm run measure:release           # the whole quiet-box measurement set behind t
 **`measure:release` (`cargo xtask measure`) is the counterpart to `cargo xtask gates`**
 — *what are the numbers* rather than *is the engine correct*, meaningful only on an idle
 box with a live Postgres. Only its exit-proof step needs a fuz_app checkout
-(`PGLET_FUZ_APP_DIR`, default `../fuz_app`, as `deno task bench:exit-proof` reads it);
+(`PGLET_FUZ_APP_DIR`, default `../fuz_app`, as `npm run bench:exit-proof` reads it);
 `--skip exit-proof` runs the rest without one. Every bench step overwrites a recorded
 results JSON, so probe it with `--dry-run`. It ends by printing every figure the README, the
 npm README and `TRADEOFFS.md` quote from a file its steps write, as the run just wrote it —

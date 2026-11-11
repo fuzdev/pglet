@@ -27,10 +27,16 @@
  * `benches/memory_results.json` (native + wasm sections), print-by-default /
  * `--update`, mirroring `wasm_compare.ts`.
  *
- *   deno task bench:memory           # print both surfaces
- *   deno task bench:memory:update    # ...and refresh memory_results.json
+ * Each WASM workload's child is this file with `--wasm-child`, run by this process's own
+ * `node` with no environment and no loader of gro's. The native binary gets only what it
+ * reads (`NATIVE_PASS_ENV`).
+ *
+ *   npm run bench:memory           # print both surfaces
+ *   npm run bench:memory:update    # ...and refresh memory_results.json
  */
-import {readFile, writeFile} from 'node:fs/promises';
+import {execFile} from 'node:child_process';
+import {readFile} from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
 import {git_commit, write_json} from './lib/results.ts';
 
 // --- shared workload axes (mirror crates/pglet_bench BenchSchema + ROW_SIZES) ---
@@ -41,9 +47,43 @@ type Schema = (typeof SCHEMAS)[number];
 const TEXT_B = 'abcdefghijklmnopqrstuvwxyz012345'; // 32 chars, matches pglet_bench
 const CHUNK = 2_000; // rows per BEGIN/COMMIT (matches PREPOPULATE_CHUNK)
 
-const NATIVE_BIN = 'target/release/pglet_bench';
+const NATIVE_BIN = fileURLToPath(new URL('../target/release/pglet_bench', import.meta.url));
 const PGLET_WASM = new URL('../crates/pglet_wasm/pkg/pglet_wasm_bg.wasm', import.meta.url);
-const SELF = new URL(import.meta.url).pathname;
+// a URL rather than a literal specifier, so the typecheck needs no build of `pkg`
+const PGLET_JS = new URL('../crates/pglet_wasm/pkg/pglet_wasm.js', import.meta.url).href;
+const SELF = fileURLToPath(import.meta.url);
+
+/**
+ * The variables `pglet_bench memory` reads, passed through when set: where its scratch
+ * databases go, and its page-cache size and prepopulate knobs (`crates/pglet_bench`'s
+ * `common.rs`).
+ */
+const NATIVE_PASS_ENV = ['TMPDIR', 'PGLET_BENCH_CACHE', 'PGLET_BENCH_PREPOPULATE'];
+
+const native_env = (): Record<string, string> => {
+	const env: Record<string, string> = {};
+	for (const name of NATIVE_PASS_ENV) {
+		const value = process.env[name];
+		if (value !== undefined) env[name] = value;
+	}
+	return env;
+};
+
+/**
+ * `program`'s stdout, its stderr passed through to this process's, or `null` when it
+ * fails to start or exits non-zero.
+ */
+const run_capturing = (
+	program: string,
+	args: string[],
+	env: Record<string, string>,
+): Promise<string | null> =>
+	new Promise((resolve) => {
+		const child = execFile(program, args, {env, maxBuffer: 64 * 1024 * 1024}, (error, stdout) =>
+			resolve(error ? null : stdout),
+		);
+		child.stderr?.pipe(process.stderr);
+	});
 
 /** The `CREATE …` DDL for a schema axis — byte-identical to `BenchSchema::create_stmts`. */
 function create_stmts(schema: Schema): string[] {
@@ -70,7 +110,7 @@ function pseudo_a(id: number): number {
 async function run_wasm_child(schema: Schema, rows: number): Promise<void> {
 	const line = (obj: unknown) => console.log(JSON.stringify(obj));
 	try {
-		const mod: any = await import('../crates/pglet_wasm/pkg/pglet_wasm.js');
+		const mod: any = await import(PGLET_JS);
 		const bytes = await readFile(PGLET_WASM);
 		// `initSync` returns InitOutput whose `.memory` is the live WebAssembly.Memory;
 		// `.buffer.byteLength` always reflects the current (monotonic) linear size.
@@ -126,16 +166,11 @@ interface WasmRow {
 	error?: string;
 }
 
-/** Spawn a fresh Deno process for one WASM workload (cold module → clean high-water). */
+/** Spawn a fresh `node` for one WASM workload (cold module → clean high-water). */
 async function measure_wasm_cell(schema: Schema, rows: number): Promise<WasmRow | null> {
-	const cmd = new Deno.Command(Deno.execPath(), {
-		args: ['run', '-A', SELF, '--wasm-child', schema, String(rows)],
-		stdout: 'piped',
-		stderr: 'inherit',
-	});
-	const {success, stdout} = await cmd.output();
-	if (!success) return null;
-	const text = new TextDecoder().decode(stdout).trim();
+	const stdout = await run_capturing(process.execPath, [SELF, '--wasm-child', schema, String(rows)], {});
+	if (stdout === null) return null;
+	const text = stdout.trim();
 	const jsonLine = text.split('\n').findLast((l) => l.startsWith('{'));
 	return jsonLine ? (JSON.parse(jsonLine) as WasmRow) : null;
 }
@@ -158,14 +193,11 @@ interface NativeRow {
 }
 
 async function measure_native(): Promise<NativeRow[]> {
-	const cmd = new Deno.Command(NATIVE_BIN, {
-		args: ['memory', '--emit-json'],
-		stdout: 'piped',
-		stderr: 'inherit',
-	});
-	const {success, stdout} = await cmd.output();
-	if (!success) throw new Error(`${NATIVE_BIN} memory --emit-json failed (is it built? deno task bench:memory builds it)`);
-	return JSON.parse(new TextDecoder().decode(stdout)) as NativeRow[];
+	const stdout = await run_capturing(NATIVE_BIN, ['memory', '--emit-json'], native_env());
+	if (stdout === null) {
+		throw new Error(`${NATIVE_BIN} memory --emit-json failed (is it built? npm run bench:memory builds it)`);
+	}
+	return JSON.parse(stdout) as NativeRow[];
 }
 
 // ==========================================================================
@@ -211,7 +243,7 @@ function print_wasm(rows: WasmRow[]): void {
 // ==========================================================================
 // Entry.
 // ==========================================================================
-const args = Deno.args;
+const args = process.argv.slice(2);
 const child_i = args.indexOf('--wasm-child');
 if (child_i !== -1) {
 	// Child mode: one WASM workload, JSON to stdout, exit.

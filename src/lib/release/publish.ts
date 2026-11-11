@@ -36,7 +36,7 @@
  *    nothing between it and the publish rebuilds `pkg-npm`
  * 4. the built `package.json`'s `name@version` against the registry identity
  *    and the version
- * 5. the size gate on the shipped `pkg-npm/pglet_wasm_bg.wasm`
+ * 5. the size gate on the shipped `pkg-npm/pglet_wasm_bg.wasm`, its task run by `gro`
  *
  * On a wetrun, a checkout that changed while the gates ran refuses to publish.
  *
@@ -165,8 +165,10 @@ export interface PublishCommandDeps {
 	git_remote: ReleaseProgram;
 	/** `npm`: the registry questions, the publish, and the gates `package.json` runs. */
 	npm: ReleaseProgram;
-	/** `deno`: the gate `deno.json` runs and the size gate. */
+	/** `deno`: the gate `deno.json` runs. */
 	deno: ReleaseProgram;
+	/** `gro`: runs the size gate's task on the shipped wasm. */
+	gro: ReleaseProgram;
 	/** `cargo`: probed, and the bump moves the lockfiles with it. */
 	cargo: ReleaseProgram;
 	/** `node`: probed against the package's `engines` floor. */
@@ -191,7 +193,7 @@ export const run_publish_command = async (
 	deps: PublishCommandDeps,
 	args: PublishCommandArgs
 ): Promise<void> => {
-	const { checkout, git_local, git_remote, npm, deno, cargo, node, print, print_error } = deps;
+	const { checkout, git_local, git_remote, npm, deno, gro, cargo, node, print, print_error } = deps;
 	const { wetrun } = args;
 	const name = NPM_SHARED_METADATA.name;
 
@@ -446,12 +448,9 @@ export const run_publish_command = async (
 
 		// the size of the artifact that ships, not the sibling `pkg` build `size:check` measures
 		print('\ngating the shipped wasm size …');
-		await step('size gate (pkg-npm)', deno, [
-			'run',
-			'--frozen',
-			'--allow-read',
-			'--allow-run=gzip,git',
-			'benches/size.ts',
+		await step('size gate (pkg-npm)', gro, [
+			'task',
+			'src/tasks/size.task.ts',
 			'--check',
 			'--wasm',
 			`${PUBLISH_PKG_DIR}/pglet_wasm_bg.wasm`

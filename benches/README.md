@@ -24,21 +24,19 @@ longitudinal** metric — "did this change raise peak?" — spanning *both* surf
 a cross-engine ratio (pglite is whole-Postgres and WASM linear memory only grows,
 so a pglet/pglite memory comparison is meaningless). See `bench:memory` below.
 
-This directory's `package.json` takes over bare-specifier resolution for the files under it unless
-`deno run` is given `--config deno.json`, and each resolution is the only one that works for some script:
+Every script here is a plain Node script, run as `node benches/<name>.ts` (Node strips the
+types); `wasm_compare.ts` runs under Bun as well. None runs on gro's loader, so nothing a
+bench times in its own process, or in a child it starts, carries gro's startup or module
+graph: the children (`index_accel.ts --measure`, `memory.ts --wasm-child`) are this
+process's own `node` with no environment. Paths are found from each file, never the
+working directory, so a hand-run works from anywhere: `node benches/startup.ts`. Bare
+specifiers resolve as Node resolves them, through this directory's `package.json` and
+`node_modules` (pglite, sqlite-wasm) and then the root's (`@fuzdev/fuz_util`).
+`npm run check:benches` typechecks them (`tsconfig.json`, inside `npm run check`).
 
-- **Needs `--config deno.json`** — `startup.ts`, `wasm_init.ts` and `exit_proof.ts`, which import the root
-  import map's `@fuzdev/fuz_util`. Without the flag they fail before running
-  (`Import "@fuzdev/fuz_util/stats.ts" not a dependency`) in any checkout without a root `node_modules`.
-- **Must not have it** — `wasm_compare.ts`, whose pglite and sqlite-wasm imports resolve only through that
-  `package.json`. Under the flag both engine rows fail
-  (`Import "@electric-sql/pglite" not a dependency and not in import map`) and the run exits 1. Node and Bun
-  resolve it through `benches/node_modules` and take no flag.
-- **Either** — `size.ts`, `size_compare.ts`, `index_accel.ts` and `memory.ts` import no bare specifier
-  (`size_compare.ts` reads pglite's files by path rather than importing it); their tasks pass the flag.
-
-A hand-run takes the flag its task does: `deno run --config deno.json -A benches/startup.ts`, but
-`deno run -A benches/wasm_compare.ts`.
+The size gate is the exception: a gro task (`src/tasks/size.task.ts` over
+`src/lib/size_gate.ts`), since it gates rather than measures time. It and `lib/results.ts`
+stamp results by the one rule in `src/lib/bench_results.ts`.
 
 ## Files
 
@@ -50,12 +48,11 @@ A hand-run takes the flag its task does: `deno run --config deno.json -A benches
 | `exit_proof.ts` | fuz_app `db`-suite wall-time per engine leg — four legs: pglite / pglet-wasm (L1, in-process) and pglet-server / pg (L2, out-of-process), never compared across the line but by the one `ratios` entry marked `crosses_tiers`; records the README's multiples under `ratios`, `null` with a `null_reason` over a failed or unselected leg or two legs that passed different test counts (discovery refuses, before any leg runs, a fuz_app file mixing a single-driver suite into its four-leg ones), and under `engines` what the legs ran — the pglite fuz_app's install resolves (not `benches/`'), the npm package's version, fuz_app's commit (`bench:exit-proof`; single writer of `exit_proof_results.json`) |
 | `startup.ts` | native server spawn→ready latency |
 | `index_accel.ts` | index-acceleration ON vs OFF (wasm): size delta + read-latency ratio across table sizes (`bench:index-accel`; builds both profiles) |
-| `size.ts` | raw WASM size gate (`size:check` / `size:update`; gzip reported as the wire size, not gated) |
 | `size_compare.ts` | pglet-vs-pglite runtime payload, raw and gzip — the npm package's shipped wasm against pglite's wasm + data + initdb wasm at the lockfile's version; refuses a stale package or a pglite off the lockfile (`bench:size-compare`; single writer of `pglite_size_comparison.json`) |
 | `lib/bench_stats.ts` | zero-dependency median/p95/CV stats, shared by the cross-runtime benches |
 | `lib/results.ts` | `git_commit` + `write_json` — the envelope every recorded `*_results.json` carries — and `package_version`, an engine's; the stamp is `<commit>-dirty` when a tracked file is modified or an untracked one sits under `benches/`, `crates/` or `scripts/` (the recorded results files themselves excluded), `<commit>-dirty?` when that could not be read, and for another checkout (`git_commit(dir)`, fuz_app's) `-dirty` on any change. A `size:update` run before the change it measures is committed stamps `size_baseline.json` `<parent>-dirty` |
 | `lib/exit_proof_ratios.ts` | the ratios `exit_proof.ts` records — which legs, which bucket, and the keys `cargo xtask measure`'s figures list reads |
-| `lib/gzip_size.ts` | the one gzip measurement (`gzip -c`, default level) behind `size.ts`, `size_compare.ts` and `wasm_init.ts` |
+| `lib/gzip_size.ts` | the gzip measurement (`gzip -c`, default level, the size gate's arguments too) behind `size_compare.ts` and `wasm_init.ts` |
 | `lib/pglet_package.ts` | the npm package's location and the one rule for whether it is current, shared by `wasm_compare.ts` and `size_compare.ts` |
 | `lib/pglite_install.ts` | which pglite a bench loads (resolved as Node resolves the import) and the one rule for whether `benches/` holds the lockfile's — applied by `wasm_compare.ts` and `size_compare.ts`, and asked by `cargo xtask measure`'s preflight before any timed step |
 | `package.json` | `private`, dev-only npm deps for `wasm_compare.ts` (pglite, sqlite-wasm) and `size_compare.ts` (pglite) |
@@ -68,17 +65,17 @@ A hand-run takes the flag its task does: `deno run --config deno.json -A benches
 In-memory only — every engine runs in its no-persistence mode (pglet
 `create_pglet_db()`, pglite ephemeral `new PGlite()`, sqlite `:memory:`), so the
 numbers isolate **engine startup + query CPU** from OPFS / fsync / disk. Runs
-**headless** (no browser) under **Deno, Node, and Bun** — the same `.ts` file,
-unmodified — so Deno's numbers get cross-engine (V8 vs JavaScriptCore) context.
+**headless** (no browser) under **Node and Bun** — the same `.ts` file,
+unmodified — so the figures get cross-engine (V8 vs JavaScriptCore) context.
 
 Measured per engine: cold init (one-shot startup, module load through the first
 query), bulk insert of N rows, point lookup, full scan, and an aggregate.
 
 pglet has two rows, both over the npm package the task chain builds
-(`deno task build:npm` → `crates/pglet_wasm/pkg-npm`):
+(`npm run build:npm` → `crates/pglet_wasm/pkg-npm`):
 
 - **`pglet`** — the package as a consumer loads it: its Node entry (`index.js`,
-  which a bare `@fuzdev/pglet-wasm` import resolves to under all three runtimes),
+  which a bare `@fuzdev/pglet-wasm` import resolves to under both runtimes),
   `create_pglet_db()`, and `await db.query(sql)`'s `.rows`, the adapter's coerced
   object rows. This is the row a pglet figure quoted elsewhere comes from.
 - **`pglet-raw`** — the same package's raw `PgletBtree` binding
@@ -110,22 +107,21 @@ pglite + sqlite-wasm are dev-only deps in this directory's `package.json`
 budget). Populate `benches/node_modules` once:
 
 ```bash
-deno task bench:wasm-compare:install   # npm install --prefix benches
+npm run bench:wasm-compare:install   # npm install --prefix benches
 ```
 
 ### Run
 
 ```bash
-deno task bench:wasm-compare           # build the npm package once, then run under all 3 (the normal one)
-deno task bench:wasm-compare:deno      # Deno only
-deno task bench:wasm-compare:node      # Node only
-deno task bench:wasm-compare:bun       # Bun only
-deno task bench:wasm-compare:update    # all 3, each merges its slice into wasm_compare_results.json
+npm run bench:wasm-compare           # build the npm package once, then run under both (the normal one)
+npm run bench:wasm-compare:node      # Node only
+npm run bench:wasm-compare:bun       # Bun only
+npm run bench:wasm-compare:update    # both, each merges its slice into wasm_compare_results.json
 ```
 
-The all-3 run is **fail-fast**: a missing runtime stops the chain (it assumes
-all three are installed). `wasm_compare_results.json` keys each runtime
-(`deno` / `node` / `bun`) separately, recording its version + the detected
+The two-runtime run is **fail-fast**: a missing runtime stops the chain (it assumes
+both are installed). `wasm_compare_results.json` keys each runtime
+(`node` / `bun`) separately, recording its version + the detected
 engine versions, so a single-runtime `--update` refreshes only its own slice.
 
 Knobs (env): `PGLET_BENCH_ROWS` (default 10000), `PGLET_BENCH_SAMPLES` (50),
@@ -144,7 +140,7 @@ custom global allocator (the deferred allocation-instrumentation) and no new dep
   (the high-water is monotonic, so per-workload isolation needs a cold process)
   and also reports the baseline `VmRSS` (subtract the fixed binary/runtime floor)
   and the on-disk file size. Runnable bare — `cargo run -p pglet_bench -- memory`
-  — without Deno.
+  — without Node.
 - **WASM in-memory** — linear-memory high-water
   (`initSync(…).memory.buffer.byteLength`) after the load into `PgletBtree` (the
   fuz_app wasm leg's in-memory engine). Linear memory never shrinks, so each
@@ -155,9 +151,9 @@ the **single writer** of `memory_results.json` (native + wasm sections), mirrori
 `wasm_compare.ts`.
 
 ```bash
-deno task bench:memory          # print both surfaces
-deno task bench:memory:update   # ...and refresh memory_results.json
-cargo run -p pglet_bench -- memory   # native surface only, no Deno
+npm run bench:memory          # print both surfaces
+npm run bench:memory:update   # ...and refresh memory_results.json
+cargo run -p pglet_bench -- memory   # native surface only, no Node
 ```
 
 > **Longitudinal, watch-tier.** Read each number against a **prior local run's

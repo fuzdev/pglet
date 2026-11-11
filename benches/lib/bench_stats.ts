@@ -1,7 +1,7 @@
 /**
  * Self-contained bench stats — median / percentile / mean / CV over a sample
  * array. Deliberately zero-dependency so the cross-runtime benches
- * (`wasm_compare.ts`) run byte-identically under Deno, Node, and Bun without
+ * (`wasm_compare.ts`) run byte-identically under Node and Bun without
  * resolving an npm/JSR package (`@fuzdev/fuz_util/stats.ts` exposes a `.ts`
  * subpath that Node won't type-strip inside `node_modules`).
  *

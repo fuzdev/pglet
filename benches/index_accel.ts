@@ -15,14 +15,24 @@
  * Builds both profiles (stripped first, full last) so the working tree is left on the
  * default full build.
  *
- *   deno task bench:index-accel
+ * Each profile is measured in a child: this file with `--measure`, run by this process's
+ * own `node` with no environment and no loader of gro's, which times the read batches and
+ * the test cycle in-process and prints them as JSON.
+ *
+ *   npm run bench:index-accel
  */
 
+import {execFile, spawn} from 'node:child_process';
+import {readFile} from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
 import {git_commit, write_json} from './lib/results.ts';
 
 const PKG = new URL('../crates/pglet_wasm/pkg/', import.meta.url);
 const JS = new URL('pglet_wasm.js', PKG).href;
 const WASM_PATH = new URL('pglet_wasm_bg.wasm', PKG);
+const REPO = fileURLToPath(new URL('../', import.meta.url));
+const SELF = fileURLToPath(import.meta.url);
+const RESULTS = new URL('./index_accel_results.json', import.meta.url);
 const SIZES = [20, 200, 2000];
 const SAMPLES = 300;
 const WARMUP = 40;
@@ -36,7 +46,7 @@ const pctl = (xs: number[], q: number): number => {
 
 // ---- child mode (`--measure`): measure the currently-built pkg, emit JSON (last line) ----
 const measure = async () => {
-	const bytes = await Deno.readFile(WASM_PATH);
+	const bytes = new Uint8Array(await readFile(WASM_PATH));
 	const m: any = await import(JS);
 	m.initSync({module: bytes});
 
@@ -99,27 +109,35 @@ const measure = async () => {
 	);
 };
 
-if (Deno.args.includes('--measure')) {
+if (process.argv.includes('--measure')) {
 	await measure();
-	Deno.exit(0);
+	process.exit(0);
 }
 
 // ---- orchestrator: build each profile, measure in a clean subprocess, compare ----
 const build = async (stripped: boolean) => {
 	const args = ['build', 'crates/pglet_wasm', '--target', 'web'];
 	if (stripped) args.push('--', '--no-default-features', '--features', 'console_error_panic_hook');
-	const {success} = await new Deno.Command('wasm-pack', {args, stdout: 'null', stderr: 'null'}).output();
-	if (!success) throw new Error(`wasm-pack build failed (stripped=${stripped})`);
+	// wasm-pack runs cargo, so it keeps this process's environment
+	const code = await new Promise<number | null>((resolve, reject) => {
+		const child = spawn('wasm-pack', args, {cwd: REPO, stdio: 'ignore'});
+		child.once('error', reject);
+		child.once('close', resolve);
+	});
+	if (code !== 0) throw new Error(`wasm-pack build failed (stripped=${stripped})`);
 };
 
 const run_measure = async (): Promise<{wasm_bytes: number; rows: {n: number; p50: number; p95: number}[]; cycle: {p50: number; p95: number}}> => {
-	const {success, stdout} = await new Deno.Command(Deno.execPath(), {
-		args: ['run', '-A', new URL(import.meta.url).pathname, '--measure'],
-		stdout: 'piped',
-		stderr: 'inherit',
-	}).output();
-	if (!success) throw new Error('measure subprocess failed');
-	const last = new TextDecoder().decode(stdout).trim().split('\n').at(-1) ?? '';
+	const stdout = await new Promise<string>((resolve, reject) => {
+		const child = execFile(
+			process.execPath,
+			[SELF, '--measure'],
+			{env: {}, maxBuffer: 16 * 1024 * 1024},
+			(error, out) => (error ? reject(new Error('measure subprocess failed')) : resolve(out)),
+		);
+		child.stderr?.pipe(process.stderr);
+	});
+	const last = stdout.trim().split('\n').at(-1) ?? '';
 	return JSON.parse(last);
 };
 
@@ -153,8 +171,8 @@ console.log(
 		`makes reads slower (stripped ÷ full ≥ ~1, growing with N — an index pays for itself by ~200 rows).`,
 );
 
-if (Deno.args.includes('--update')) {
-	await write_json('benches/index_accel_results.json', {
+if (process.argv.includes('--update')) {
+	await write_json(RESULTS, {
 				timestamp: new Date().toISOString(),
 				git_commit: git_commit(),
 				samples: SAMPLES,

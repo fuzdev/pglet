@@ -204,7 +204,7 @@ never a committed absolute; on-disk file grows with the dataset while cache-boun
 /// cell, collect peak RSS. `emit_json` prints ONLY the JSON array to stdout (for
 /// the `benches/memory.ts` orchestrator, which owns `memory_results.json`);
 /// otherwise a human table is printed. This mode never writes the results file —
-/// the Deno orchestrator merges native + WASM and is the single writer.
+/// the Node orchestrator merges native + WASM and is the single writer.
 pub fn run_memory(emit_json: bool) {
     let exe = std::env::current_exe().expect("current_exe");
     if !emit_json {

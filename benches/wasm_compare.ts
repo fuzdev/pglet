@@ -4,14 +4,13 @@
  * Isolated from storage on purpose — every engine runs in its no-persistence
  * mode (pglet `create_pglet_db()`, pglite ephemeral `new PGlite()`, sqlite
  * `:memory:`) so the numbers reflect engine startup + query CPU, not OPFS /
- * fsync / disk. Runs **headless in Deno, Node, or Bun** (no browser): the same
- * `.ts` file executes unmodified under all three (Deno/Bun native TS; Node ≥23.6
- * strips types). Run it under each runtime to give Deno's numbers cross-engine
- * (V8 vs JavaScriptCore) context.
+ * fsync / disk. Runs **headless in Node or Bun** (no browser): the same `.ts` file
+ * executes unmodified under both (Bun's native TS; Node strips types). Run it under
+ * each runtime for cross-engine (V8 vs JavaScriptCore) context.
  *
  * **The `pglet` row is the npm package as a consumer loads it**: the entry
- * `deno task build:npm` assembles (`crates/pglet_wasm/pkg-npm/index.js`, the file
- * each of the three runtimes resolves a bare `@fuzdev/pglet-wasm` import to, by
+ * `npm run build:npm` assembles (`crates/pglet_wasm/pkg-npm/index.js`, the file
+ * each runtime resolves a bare `@fuzdev/pglet-wasm` import to, by
  * its `node` export condition), `create_pglet_db()`, and `await db.query(sql)`'s
  * `.rows` — the adapter's coerced object rows. The `pglet-raw` row is the same
  * package's raw `PgletBtree` binding (`db.query(sql).rows`), read from the package's
@@ -45,10 +44,9 @@
  * in-memory, rough figures — not a rigorous throughput claim (that's the native
  * `pglet_bench` vs rusqlite lane).
  *
- *   deno task bench:wasm-compare           # build the package, then Deno, Node and Bun
- *   deno task bench:wasm-compare:deno      # Deno
- *   deno task bench:wasm-compare:node      # Node
- *   deno task bench:wasm-compare:bun       # Bun
+ *   npm run bench:wasm-compare           # build the package, then Node and Bun
+ *   npm run bench:wasm-compare:node      # Node
+ *   npm run bench:wasm-compare:bun       # Bun
  *   add --update to merge this runtime's slice into wasm_compare_results.json
  *   (any runtime; a run with a failed engine row exits 1 and writes nothing)
  */
@@ -56,7 +54,7 @@ import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {summarize, type Summary} from './lib/bench_stats.ts';
 import {assert_pglet_package_current, PGLET_PKG} from './lib/pglet_package.ts';
-import {assert_pglite_matches_lockfile} from './lib/pglite_install.ts';
+import {assert_pglite_matches_lockfile, PGLITE} from './lib/pglite_install.ts';
 import {git_commit, package_version, write_json} from './lib/results.ts';
 
 // --- knobs ----------------------------------------------------------------
@@ -67,26 +65,21 @@ const INSERT_BATCH = 1_000; // rows per multi-VALUES INSERT statement
 const TEXT_B = 'abcdefghijklmnopqrstuvwxyz012345'; // 32 chars, matches pglet_bench
 
 function num_env(name: string, fallback: number): number {
-	const v = (globalThis as any).process?.env?.[name] ?? get_deno_env(name);
+	const v = process.env[name];
 	const n = v == null ? NaN : Number(v);
 	return Number.isFinite(n) ? n : fallback;
-}
-function get_deno_env(name: string): string | undefined {
-	const d = (globalThis as any).Deno;
-	try {
-		return d?.env?.get?.(name);
-	} catch {
-		return undefined;
-	}
 }
 
 const {RUNTIME_NAME, RUNTIME_VERSION} = (() => {
 	const g = globalThis as any;
-	if (typeof g.Deno !== 'undefined') return {RUNTIME_NAME: 'deno', RUNTIME_VERSION: g.Deno.version.deno};
 	if (typeof g.Bun !== 'undefined') return {RUNTIME_NAME: 'bun', RUNTIME_VERSION: g.Bun.version};
 	return {RUNTIME_NAME: 'node', RUNTIME_VERSION: String(g.process.version).replace(/^v/, '')};
 })();
 const RUNTIME = `${RUNTIME_NAME}-${RUNTIME_VERSION}`;
+
+// The comparison engines are imported by a variable, so the typecheck needs no install of
+// `benches/package.json`'s deps (a network step); each resolves from this file at run time.
+const SQLITE_WASM: string = '@sqlite.org/sqlite-wasm';
 
 // --- the pglet package ----------------------------------------------------
 const PGLET_ENTRY = new URL('index.js', PGLET_PKG);
@@ -141,7 +134,7 @@ const pglite_factory: EngineFactory = {
 	name: 'pglite',
 	cold: true,
 	async create() {
-		const {PGlite} = await import('@electric-sql/pglite');
+		const {PGlite} = await import(PGLITE);
 		const db = new PGlite(); // ephemeral in-memory; readiness resolves on first query
 		return {
 			exec: async (sql) => void (await db.exec(sql)),
@@ -154,7 +147,7 @@ const sqlite_factory: EngineFactory = {
 	name: 'sqlite-wasm',
 	cold: true,
 	async create() {
-		const init = (await import('@sqlite.org/sqlite-wasm')).default;
+		const init = (await import(SQLITE_WASM)).default;
 		const sqlite3: any = await init();
 		const db = new sqlite3.oo1.DB(':memory:');
 		return {
@@ -303,12 +296,12 @@ function dep_version(pkg: string): string {
 }
 
 // --- main -----------------------------------------------------------------
-const update = (globalThis as any).Deno?.args?.includes('--update') ?? process.argv.includes('--update');
+const update = process.argv.includes('--update');
 
 /**
- * Run a check that refuses the run before anything is measured. Deno and Bun report an
- * uncaught throw as an `error:` line themselves; Node prints a bare stack trace, so under
- * Node the refusal is printed as that line and the run exits 1.
+ * Run a check that refuses the run before anything is measured. Bun reports an uncaught
+ * throw as an `error:` line itself; Node prints a bare stack trace, so under Node the
+ * refusal is printed as that line and the run exits 1.
  */
 const refuse_unless = <T>(check: () => T): T => {
 	if (RUNTIME_NAME !== 'node') return check();
@@ -373,7 +366,7 @@ const failed = results.filter((r) => r.error);
 if (failed.length > 0) {
 	console.error(`\nFAILED: ${failed.map((r) => r.engine).join(', ')} — nothing written`);
 } else if (update) {
-	// This-runtime slice. The recorded JSON keys each runtime (deno/node/bun)
+	// This-runtime slice. The recorded JSON keys each runtime (node/bun)
 	// under `runtimes`, so a run only refreshes its own slice — `--update` merges
 	// into the existing doc rather than clobbering the other runtimes' numbers.
 	// Built only here, so a print-only run never spawns git / reads package.json.
@@ -411,7 +404,7 @@ if (failed.length > 0) {
 }
 
 // pglite's wasm teardown sets `process.exitCode = 99` under bun on a *fully
-// successful* run (measured: node and deno exit 0, a trivial bun script exits 0,
+// successful* run (measured: node exits 0, a trivial bun script exits 0,
 // and a bare `PGlite.create()` + one query reproduces it with or without
 // `close()`). Left alone it makes every green `bench:wasm-compare` run report
 // failure to its caller, which is worse than cosmetic: the caller's warning then

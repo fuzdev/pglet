@@ -779,7 +779,7 @@ Only the acceleration *consumption* is dropped (and, through dead-code eliminati
 now-unreachable GIN/range storage probes). That trims ~2.4% off the wasm
 (`benches/index_accel_results.json`'s two `wasm_bytes`) and ~3.0% off the native server.
 The native figure is a one-off measurement, not tracked in a results artifact. **This is
-a lever for the size floor, not for fixture speed.** `deno task bench:index-accel`
+a lever for the size floor, not for fixture speed.** `npm run bench:index-accel`
 measures acceleration as ~1.8–2.0× faster on reads from ~200 rows up, so the fixture/test
 audience wants it **ON**. The stripped build is for a size-constrained consumer that
 accepts slower reads. (It's the first compile-time layer. For how the flag propagates

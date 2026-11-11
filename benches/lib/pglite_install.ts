@@ -11,8 +11,8 @@
  * measure, and that `cargo xtask measure`'s preflight asks (`deno eval`) before any timed
  * step runs, so a run cannot record one pglite and quote another.
  *
- * **Cross-runtime on purpose**, like `results.ts`: `wasm_compare.ts` runs under Deno, Node
- * and Bun, so this uses `node:` builtins only.
+ * **Plain Node on purpose**, like `results.ts`: `wasm_compare.ts` runs under Node and
+ * Bun, so this uses `node:` builtins only.
  *
  * @module
  */
@@ -28,7 +28,7 @@ export const PGLITE = '@electric-sql/pglite';
 /** `benches/`, whose `package-lock.json` pins the pglite the comparison benches run. */
 const BENCHES = fileURLToPath(new URL('../', import.meta.url));
 
-const INSTALL = 'run `deno task bench:wasm-compare:install`';
+const INSTALL = 'run `npm run bench:wasm-compare:install`';
 
 /**
  * The directory a bare `name` import from `from` resolves to: the first

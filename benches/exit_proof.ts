@@ -5,7 +5,7 @@
  * *same* suite of database tests takes when the DB is backed by pglet (both
  * legs) versus pglite. This is the payoff measurement for the "fast test-fixture
  * engine" thesis: the micro-benches already prove pglet wins cold-start
- * decisively (`wasm_compare.ts`, ~12–19 ms vs pglite's ~1.3–1.4 s); this proves
+ * decisively (`wasm_compare.ts`, ~12–15 ms vs pglite's ~1.3–1.4 s); this proves
  * it — or doesn't — on a real consumer's suite.
  *
  * ## Method (no fuz_app edit for the bench's sake)
@@ -45,15 +45,20 @@
  * box. Each leg runs `REPS` timed passes (+`WARMUP` discarded) interleaved so
  * thermal drift hits every leg evenly.
  *
- *   deno task bench:exit-proof            # print
- *   deno task bench:exit-proof:update     # ...and refresh the results JSON
+ *   npm run bench:exit-proof            # print
+ *   npm run bench:exit-proof:update     # ...and refresh the results JSON
  *
- * Knobs (env): PGLET_EXITPROOF_REPS (default 3), PGLET_EXITPROOF_WARMUP (1),
- * PGLET_EXITPROOF_LEGS (comma-separated subset; default all four),
- * PGLET_FUZ_APP_DIR (default ../fuz_app), PGLET_SERVER_BIN (default the built
- * release server), PGLET_EXITPROOF_PG_URL (opt-in pg leg — the
- * named database is DROPPED and recreated before every pass; point it at a
- * dedicated scratch database, never at one you keep).
+ * Knobs (env, read once, into `ENV`): PGLET_EXITPROOF_REPS (default 3),
+ * PGLET_EXITPROOF_WARMUP (1), PGLET_EXITPROOF_LEGS (comma-separated subset; default all
+ * four), PGLET_FUZ_APP_DIR (default the `fuz_app` beside this checkout),
+ * PGLET_SERVER_BIN (default the built release server), PGLET_EXITPROOF_PG_URL (opt-in pg
+ * leg — the named database is DROPPED and recreated before every pass; point it at a
+ * dedicated scratch database, never at one you keep). Paths are found from this file,
+ * never the working directory.
+ *
+ * The children's environments are explicit: each vitest run gets `PATH`, `HOME`, its
+ * leg's variables (the pg leg's include the `PG*` variables) and the report path, and nothing
+ * else of this process's (`run_leg_once`); `psql` gets `PATH`, `HOME` and the `PG*` variables.
  *
  * That per-pass reset is defense in depth, not the load-bearing part, and the
  * distinction cost this leg several runs. The contamination it was written for
@@ -68,7 +73,11 @@
  * `drop_auth_schema` as that helper's own guidance prescribes. Without that fix
  * this leg cannot go green no matter what this harness does between passes.
  */
-import {resolve} from 'node:path';
+import {spawn} from 'node:child_process';
+import {mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join, resolve} from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {
 	stats_cv,
 	stats_mean,
@@ -82,36 +91,60 @@ import {PGLITE, resolve_package_dir} from './lib/pglite_install.ts';
 import {git_commit, package_version, write_json} from './lib/results.ts';
 
 // --- knobs ----------------------------------------------------------------
-const num_env = (name: string, fallback: number): number => {
-	const v = Deno.env.get(name);
-	const n = v == null ? NaN : Number(v);
+/** Every variable this process reads, read once. */
+const ENV = {
+	PGLET_EXITPROOF_REPS: process.env.PGLET_EXITPROOF_REPS,
+	PGLET_EXITPROOF_WARMUP: process.env.PGLET_EXITPROOF_WARMUP,
+	PGLET_EXITPROOF_LEGS: process.env.PGLET_EXITPROOF_LEGS,
+	PGLET_EXITPROOF_PG_URL: process.env.PGLET_EXITPROOF_PG_URL,
+	PGLET_FUZ_APP_DIR: process.env.PGLET_FUZ_APP_DIR,
+	PGLET_SERVER_BIN: process.env.PGLET_SERVER_BIN,
+	/** Passed to the vitest and psql children, which find their programs and config by them. */
+	PATH: process.env.PATH ?? '',
+	HOME: process.env.HOME ?? '',
+	/**
+	 * The `PG*` variables libpq and node-postgres read (a password, a service file), passed to
+	 * `psql` and the pg leg; this repo's own `PGLET_*` are not among them.
+	 */
+	PG: Object.fromEntries(
+		Object.entries(process.env).filter(
+			(entry): entry is [string, string] =>
+				entry[0].startsWith('PG') && !entry[0].startsWith('PGLET_') && entry[1] !== undefined,
+		),
+	),
+};
+
+const num_env = (value: string | undefined, fallback: number): number => {
+	const n = value == null ? NaN : Number(value);
 	return Number.isFinite(n) ? n : fallback;
 };
 
-const REPS = num_env('PGLET_EXITPROOF_REPS', 3);
-const WARMUP = num_env('PGLET_EXITPROOF_WARMUP', 1);
-const FUZ_APP_DIR = resolve(Deno.env.get('PGLET_FUZ_APP_DIR') ?? resolve(Deno.cwd(), '../fuz_app'));
-const SERVER_BIN =
-	Deno.env.get('PGLET_SERVER_BIN') ?? resolve(Deno.cwd(), 'target/release/pglet_server');
-// The assembled npm package (`deno task build:npm`), never the raw wasm-pack `pkg/`. fuz_app
+/** This checkout, found from this file. */
+const REPO = fileURLToPath(new URL('../', import.meta.url));
+
+const REPS = num_env(ENV.PGLET_EXITPROOF_REPS, 3);
+const WARMUP = num_env(ENV.PGLET_EXITPROOF_WARMUP, 1);
+const FUZ_APP_DIR = resolve(ENV.PGLET_FUZ_APP_DIR ?? resolve(REPO, '../fuz_app'));
+const SERVER_BIN = ENV.PGLET_SERVER_BIN ?? resolve(REPO, 'target/release/pglet_server');
+// The assembled npm package (`npm run build:npm`), never the raw wasm-pack `pkg/`. fuz_app
 // imports `@fuzdev/pglet-wasm` by name, so the wasm leg measures this build only when fuz_app's
 // install of it is a link to this directory — checked below, before the run.
-const WASM_PKG = resolve(Deno.cwd(), 'crates/pglet_wasm/pkg-npm');
+const WASM_PKG = resolve(REPO, 'crates/pglet_wasm/pkg-npm');
 /** The package name fuz_app imports the wasm leg's engine by. */
 const PGLET_WASM = '@fuzdev/pglet-wasm';
-const PG_URL = Deno.env.get('PGLET_EXITPROOF_PG_URL'); // opt-in production-ceiling leg
+const PG_URL = ENV.PGLET_EXITPROOF_PG_URL; // opt-in production-ceiling leg
 
 // --- artifact / dir preflight (fail loud, never silently skip) ------------
 const fail = (message: string): never => {
 	console.error(`error: ${message}`);
-	Deno.exit(1);
+	return process.exit(1);
 };
 const require_path = (path: string, hint: string): void => {
 	try {
-		Deno.statSync(path);
+		statSync(path);
 	} catch {
 		console.error(`error: missing ${path}\n  ${hint}`);
-		Deno.exit(1);
+		process.exit(1);
 	}
 };
 require_path(FUZ_APP_DIR, 'set PGLET_FUZ_APP_DIR to the fuz_app checkout');
@@ -243,10 +276,10 @@ const classify_db_test = (text: string): DbTestVerdict => {
 	return offenses.length ? {kind: 'refused', offenses} : {kind: 'shared'};
 };
 
-const walk_db_tests = async (dir: string, out: string[] = []): Promise<string[]> => {
-	for await (const entry of Deno.readDir(dir)) {
+const walk_db_tests = (dir: string, out: string[] = []): string[] => {
+	for (const entry of readdirSync(dir, {withFileTypes: true})) {
 		const path = `${dir}/${entry.name}`;
-		if (entry.isDirectory) await walk_db_tests(path, out);
+		if (entry.isDirectory()) walk_db_tests(path, out);
 		else if (entry.name.endsWith('.db.test.ts')) out.push(path);
 	}
 	return out;
@@ -257,14 +290,14 @@ const walk_db_tests = async (dir: string, out: string[] = []): Promise<string[]>
 // read, naming each — before any leg runs, whichever legs `PGLET_EXITPROOF_LEGS` selects
 // and whether or not `PGLET_EXITPROOF_PG_URL` is set, since the shared set is a claim about
 // fuz_app's tree, not about this run's legs.
-const discover_shared_files = async (): Promise<string[]> => {
+const discover_shared_files = (): string[] => {
 	const root = `${FUZ_APP_DIR}/src/test`;
-	const all = (await walk_db_tests(root)).sort();
+	const all = walk_db_tests(root).sort();
 	const shared: string[] = [];
 	const refused: string[] = [];
 	for (const abs of all) {
 		const rel = abs.slice(FUZ_APP_DIR.length + 1); // relative to fuz_app cwd
-		const verdict = classify_db_test(await Deno.readTextFile(abs));
+		const verdict = classify_db_test(readFileSync(abs, 'utf8'));
 		if (verdict.kind === 'shared') shared.push(rel);
 		else if (verdict.kind === 'refused') {
 			refused.push(`  ${rel}\n${verdict.offenses.map((o) => `    ${o}`).join('\n')}`);
@@ -278,13 +311,13 @@ const discover_shared_files = async (): Promise<string[]> => {
 				`\n  hint: split a single-driver suite into its own *.db.test.ts file; write a fixture` +
 					` import as \`import {…} from '…db_fixture.ts'\``,
 		);
-		Deno.exit(1);
+		process.exit(1);
 	}
 	return shared;
 };
 
 // Discovered now, ahead of the artifact checks and every leg, so a refusal costs nothing.
-const shared_files = await discover_shared_files();
+const shared_files = discover_shared_files();
 
 // --- legs -----------------------------------------------------------------
 interface Leg {
@@ -314,14 +347,14 @@ const reset_pg_database = async (): Promise<void> => {
 	const admin = new URL(PG_URL);
 	admin.pathname = '/postgres';
 	for (const sql of [`DROP DATABASE IF EXISTS "${dbname}"`, `CREATE DATABASE "${dbname}"`]) {
-		const {code, stderr} = await new Deno.Command('psql', {
-			args: [admin.toString(), '-v', 'ON_ERROR_STOP=1', '-Atc', sql],
-			stdout: 'null',
-			stderr: 'piped',
-		}).output();
+		const {code, stderr} = await run_child(
+			'psql',
+			[admin.toString(), '-v', 'ON_ERROR_STOP=1', '-Atc', sql],
+			{env: {PATH: ENV.PATH, HOME: ENV.HOME, ...ENV.PG}, stdout: 'ignore'},
+		);
 		if (code !== 0) {
-			console.error(`error: pg-leg database reset failed: ${new TextDecoder().decode(stderr)}`);
-			Deno.exit(1);
+			console.error(`error: pg-leg database reset failed: ${stderr}`);
+			process.exit(1);
 		}
 	}
 };
@@ -334,7 +367,7 @@ const legs: Leg[] = [
 		name: 'pg',
 		tier: 'L2',
 		driver: 'pg',
-		env: PG_URL ? {TEST_DATABASE_URL: PG_URL} : {},
+		env: PG_URL ? {...ENV.PG, TEST_DATABASE_URL: PG_URL} : {},
 		skip: PG_URL ? undefined : 'PGLET_EXITPROOF_PG_URL not set',
 	},
 ];
@@ -342,7 +375,7 @@ const legs: Leg[] = [
 // Optional leg filter, comma-separated (`PGLET_EXITPROOF_LEGS=pglite,pglet-wasm,pg`): a run of
 // only the legs a change touches. An unknown name is a hard error rather than a silent no-op,
 // so a typo cannot quietly measure a different set than the one asked for.
-const LEGS_FILTER = Deno.env.get('PGLET_EXITPROOF_LEGS');
+const LEGS_FILTER = ENV.PGLET_EXITPROOF_LEGS;
 if (LEGS_FILTER) {
 	const wanted = new Set(
 		LEGS_FILTER.split(',')
@@ -355,21 +388,21 @@ if (LEGS_FILTER) {
 			`error: PGLET_EXITPROOF_LEGS names unknown leg(s): ${unknown.join(', ')}` +
 				`\n  known legs: ${legs.map((l) => l.name).join(', ')}`,
 		);
-		Deno.exit(1);
+		process.exit(1);
 	}
 	for (const leg of legs) if (!wanted.has(leg.name)) leg.skip = 'not in PGLET_EXITPROOF_LEGS';
 }
 const runs_leg = (name: string): boolean => legs.some((l) => l.name === name && !l.skip);
 if (runs_leg('pglet-server')) {
-	require_path(SERVER_BIN, 'run `deno task matrix:artifacts` to build the release server');
+	require_path(SERVER_BIN, 'run `npm run matrix:artifacts` to build the release server');
 }
 if (runs_leg('pglet-wasm')) {
-	require_path(`${WASM_PKG}/pglet_wasm_bg.wasm`, 'run `deno task build:npm` to build the adapter pkg');
+	require_path(`${WASM_PKG}/pglet_wasm_bg.wasm`, 'run `npm run build:npm` to build the adapter pkg');
 	// The wasm leg loads the npm adapter (`pkg-npm`), never the raw wasm-pack `pkg` —
-	// so `deno task build:npm` is what freshens it. `bench:exit-proof` chains that one
+	// so `npm run build:npm` is what freshens it. `bench:exit-proof` chains that one
 	// for exactly this reason; running this file directly measures whatever `pkg-npm`
 	// happens to hold, which can be an older engine than the server binary beside it.
-	require_path(`${WASM_PKG}/index.js`, 'run `deno task build:npm` — the wasm leg needs the npm adapter, not the raw wasm-pack pkg');
+	require_path(`${WASM_PKG}/index.js`, 'run `npm run build:npm` — the wasm leg needs the npm adapter, not the raw wasm-pack pkg');
 	// fuz_app resolves `@fuzdev/pglet-wasm` from its own install; an `npm install` there puts
 	// the published package back over a link, and the leg would then measure that instead.
 	const link_hint =
@@ -378,8 +411,8 @@ if (runs_leg('pglet-wasm')) {
 	const installed =
 		resolve_package_dir(FUZ_APP_DIR, PGLET_WASM) ??
 		fail(`no ${PGLET_WASM} resolves from ${FUZ_APP_DIR} — ${link_hint}`);
-	if (Deno.realPathSync(installed) !== Deno.realPathSync(WASM_PKG)) {
-		fail(`${FUZ_APP_DIR}'s ${PGLET_WASM} is ${Deno.realPathSync(installed)}, not this build — ${link_hint}`);
+	if (realpathSync(installed) !== realpathSync(WASM_PKG)) {
+		fail(`${FUZ_APP_DIR}'s ${PGLET_WASM} is ${realpathSync(installed)}, not this build — ${link_hint}`);
 	}
 }
 
@@ -460,20 +493,55 @@ const parse_summary = (out: string, report_json: string | null): Omit<RunResult,
 };
 
 /** The reporter that writes each run's engine bucket (`lib/vitest_file_times.mjs`). */
-const FILE_TIMES_REPORTER = new URL('./lib/vitest_file_times.mjs', import.meta.url).pathname;
+const FILE_TIMES_REPORTER = fileURLToPath(new URL('./lib/vitest_file_times.mjs', import.meta.url));
+
+/** A finished child: its exit code (`-1` for a signal) and its captured streams. */
+interface ChildResult {
+	code: number;
+	stdout: string;
+	stderr: string;
+}
+
+/**
+ * Runs `program` with exactly `env`, in `cwd` when given, capturing its stdout (unless
+ * `'ignore'`) and stderr.
+ */
+const run_child = (
+	program: string,
+	args: string[],
+	options: {env: Record<string, string>; cwd?: string; stdout?: 'pipe' | 'ignore'},
+): Promise<ChildResult> =>
+	new Promise((resolve, reject) => {
+		const child = spawn(program, args, {
+			cwd: options.cwd,
+			env: options.env,
+			stdio: ['ignore', options.stdout ?? 'pipe', 'pipe'],
+		});
+		const stdout: Buffer[] = [];
+		const stderr: Buffer[] = [];
+		child.stdout?.on('data', (chunk: Buffer) => stdout.push(chunk));
+		child.stderr?.on('data', (chunk: Buffer) => stderr.push(chunk));
+		child.once('error', reject);
+		child.once('close', (code) =>
+			resolve({
+				code: code ?? -1,
+				stdout: Buffer.concat(stdout).toString('utf8'),
+				stderr: Buffer.concat(stderr).toString('utf8'),
+			}),
+		);
+	});
 
 const run_leg_once = async (leg: Leg, files: string[]): Promise<{r: RunResult; out: string}> => {
-	// Minimal env (mirrors the validated `env -i PATH HOME`) + leg vars, so a
+	// A minimal env: PATH and HOME (the validated `env -i PATH HOME`) + the leg's vars, so a
 	// pglet var never leaks into the pglite leg.
-	const base: Record<string, string> = {
-		PATH: Deno.env.get('PATH') ?? '',
-		HOME: Deno.env.get('HOME') ?? '',
-	};
+	const base: Record<string, string> = {PATH: ENV.PATH, HOME: ENV.HOME};
 	// The file-times reporter, beside the dot reporter, writes the engine bucket here — outside
 	// the fuz_app checkout, removed after.
-	const report_path = await Deno.makeTempFile({prefix: 'pglet_exit_proof_', suffix: '.json'});
-	const cmd = new Deno.Command('npx', {
-		args: [
+	const report_dir = mkdtempSync(join(tmpdir(), 'pglet_exit_proof_'));
+	const report_path = join(report_dir, 'file_times.json');
+	const {code, stdout, stderr} = await run_child(
+		'npx',
+		[
 			'vitest',
 			'run',
 			'--project',
@@ -488,20 +556,16 @@ const run_leg_once = async (leg: Leg, files: string[]): Promise<{r: RunResult; o
 			'-t',
 			`\\(${leg.driver}\\)`,
 		],
-		cwd: FUZ_APP_DIR,
-		env: {...base, ...leg.env, PGLET_EXITPROOF_FILE_TIMES: report_path},
-		stdout: 'piped',
-		stderr: 'piped',
-	});
-	const {code, stdout, stderr} = await cmd.output();
-	const out = new TextDecoder().decode(stdout) + new TextDecoder().decode(stderr);
+		{cwd: FUZ_APP_DIR, env: {...base, ...leg.env, PGLET_EXITPROOF_FILE_TIMES: report_path}},
+	);
+	const out = stdout + stderr;
 	let report_json: string | null = null;
 	try {
-		report_json = await Deno.readTextFile(report_path);
+		report_json = readFileSync(report_path, 'utf8');
 	} catch {
 		// no report: `tests_ms` is `NaN`, and the leg fails below
 	}
-	await Deno.remove(report_path).catch(() => {});
+	rmSync(report_dir, {recursive: true, force: true});
 	return {r: {...parse_summary(out, report_json || null), exit_code: code}, out};
 };
 
@@ -555,8 +619,7 @@ console.log(
 );
 
 // rep-major, leg-minor: interleave so drift hits every leg evenly.
-const enc = new TextEncoder();
-const log_err = (s: string): void => void Deno.stderr.writeSync(enc.encode(s));
+const log_err = (s: string): void => void process.stderr.write(s);
 interface LegState {
 	total: number[];
 	tests: number[];
@@ -667,7 +730,7 @@ console.log(
 console.log(
 	`\nNOTE: fuz_app shares one engine instance across the whole \`db\` run (isolate:false,` +
 		`\n  fileParallelism:false), so each engine's cold boot is paid once and amortized —` +
-		`\n  the per-file spin-up win pglet holds decisively (wasm_compare cold-init roughly 70–120×` +
+		`\n  the per-file spin-up win pglet holds decisively (wasm_compare cold-init roughly 85–115×` +
 		`\n  vs pglite, a one-shot sample that swings run to run, runtime-dependent — see` +
 		`\n  wasm_compare_results.json) shows here only as its ~1/${shared_files.length} share.` +
 		`\n  This suite measures steady-state throughput on a real consumer, the` +
@@ -692,7 +755,7 @@ if (any_failed) {
 }
 
 // --- results JSON ---------------------------------------------------------
-const update = Deno.args.includes('--update');
+const update = process.argv.includes('--update');
 if (update) {
 	const doc = {
 		schema: 'exit_proof',
@@ -721,7 +784,7 @@ if (update) {
 			fuz_app: FUZ_APP_COMMIT,
 		},
 	};
-	await write_json('benches/exit_proof_results.json', doc);
+	await write_json(new URL('./exit_proof_results.json', import.meta.url), doc);
 	console.error(`\nwrote benches/exit_proof_results.json`);
 } else {
 	console.error(`\n(results not written — pass --update to refresh exit_proof_results.json)`);
@@ -743,5 +806,7 @@ const failed_legs = summaries.filter((r) => r.leg_failed).map((r) => r.name);
 if (failed_legs.length) fatal.push(`leg(s) failed to complete: ${failed_legs.join(', ')}`);
 if (fatal.length) {
 	console.error(`\nerror: ${fatal.join('\n       ')}`);
-	Deno.exit(1);
+	// the exit code alone, not `process.exit`, which can cut short a piped stdout still
+	// holding the tables above
+	process.exitCode = 1;
 }

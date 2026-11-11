@@ -14,7 +14,7 @@
 //!   percentile function in the same crate;
 //! - `cv`, over a **sample** standard deviation (`n - 1`), where
 //!   `stats_std_dev` uses the **population** one (`n`) — so every `cv` in this
-//!   crate's JSON read slightly higher than every `cv` in the Deno benches',
+//!   crate's JSON read slightly higher than every `cv` in the TypeScript benches',
 //!   for the same spread.
 //!
 //! None of that is visible in a table: each number is plausible on its own, and

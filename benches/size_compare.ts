@@ -4,39 +4,42 @@
  * Weighs the runtime payload a consumer downloads from each package, raw and gzipped:
  *
  *   - **pglet** — the wasm the npm package ships (`crates/pglet_wasm/pkg-npm/
- *     pglet_wasm_bg.wasm`, built by `deno task build:npm`), the file an
- *     `@fuzdev/pglet-wasm` consumer downloads. It is the same build `size.ts` gates
+ *     pglet_wasm_bg.wasm`, built by `npm run build:npm`), the file an
+ *     `@fuzdev/pglet-wasm` consumer downloads. It is the same build the size gate checks
  *     (`size_baseline.json`, from `pkg`) up to embedded metadata, but the shipped file is
  *     the one the README's "~647 KB" describes, so it is the one weighed.
  *   - **pglite** — `pglite.wasm` + `pglite.data` + `initdb.wasm` from
  *     `benches/node_modules/@electric-sql/pglite/dist`, at the version
  *     `benches/package-lock.json` pins (the one `wasm_compare.ts` runs).
  *
- * JS glue is excluded from both sides. gzip is `lib/gzip_size.ts` — the measurement
- * `size.ts` reports — so every gzip figure in `benches/` is the same tool at the same level.
+ * JS glue is excluded from both sides. gzip is `lib/gzip_size.ts` — the measurement the
+ * size gate (`src/lib/size_gate.ts`) reports — so every gzip figure in `benches/` is the
+ * same tool at the same level.
  *
  * Refuses (exit 1, nothing written) when the npm package is missing or older than its
  * sources (`lib/pglet_package.ts`), or when no pglite is installed under `benches/` or the
  * installed one is not the lockfile's (`lib/pglite_install.ts`) — the two rules
  * `wasm_compare.ts` applies too.
  *
- *   deno task bench:size-compare          # build the npm package, print
- *   deno task bench:size-compare:update   # ...and rewrite pglite_size_comparison.json
+ *   npm run bench:size-compare          # build the npm package, print
+ *   npm run bench:size-compare:update   # ...and rewrite pglite_size_comparison.json
  *
  * @module
  */
 
+import {statSync} from 'node:fs';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import {gzip_size} from './lib/gzip_size.ts';
 import {assert_pglet_package_current, PGLET_PKG} from './lib/pglet_package.ts';
 import {assert_pglite_matches_lockfile} from './lib/pglite_install.ts';
 import {git_commit, package_version, write_json} from './lib/results.ts';
 
-const OUT = 'benches/pglite_size_comparison.json';
+const OUT = new URL('./pglite_size_comparison.json', import.meta.url);
+const OUT_DISPLAY = 'benches/pglite_size_comparison.json';
 
 const refuse = (message: string): never => {
 	console.error(`error: ${message}`);
-	Deno.exit(1);
+	return process.exit(1);
 };
 
 /** `fn`'s result, or a refusal carrying its error's message. */
@@ -56,7 +59,7 @@ interface Weighed {
 const weigh = async (url: URL): Promise<Weighed> => {
 	let raw: number;
 	try {
-		raw = (await Deno.stat(url)).size;
+		raw = statSync(url).size;
 	} catch {
 		return refuse(`missing ${fileURLToPath(url)}`);
 	}
@@ -79,13 +82,13 @@ const total_gzip = main_wasm.gzip + data.gzip + initdb_wasm.gzip;
 const doc = {
 	schema: 'pglite_size_comparison',
 	note:
-		'Written by benches/size_compare.ts (`deno task bench:size-compare:update`, a step of ' +
+		'Written by benches/size_compare.ts (`npm run bench:size-compare:update`, a step of ' +
 		'`cargo xtask measure`). pglet: the wasm the npm package ships ' +
-		'(crates/pglet_wasm/pkg-npm/pglet_wasm_bg.wasm, `deno task build:npm`) — the file a ' +
+		'(crates/pglet_wasm/pkg-npm/pglet_wasm_bg.wasm, `npm run build:npm`) — the file a ' +
 		'consumer downloads, the size_baseline.json build up to embedded metadata. pglite: ' +
 		'pglite.wasm + pglite.data + initdb.wasm from benches/node_modules/@electric-sql/pglite/dist ' +
 		'at the version benches/package-lock.json pins. gzip is `gzip -c` at its default level, as ' +
-		'size.ts measures. Compares the runtime payload a browser/Node consumer downloads; JS glue ' +
+		'the size gate measures. Compares the runtime payload a browser/Node consumer downloads; JS glue ' +
 		'is excluded from both sides.',
 	timestamp: new Date().toISOString(),
 	git_commit: git_commit(),
@@ -126,9 +129,9 @@ for (const [key, value] of Object.entries(doc.ratios_pglite_over_pglet)) {
 	console.log(`  ${key.padEnd(24)} ${value.toFixed(3)}`);
 }
 
-if (Deno.args.includes('--update')) {
+if (process.argv.includes('--update')) {
 	await write_json(OUT, doc);
-	console.error(`\nwrote ${OUT}`);
+	console.error(`\nwrote ${OUT_DISPLAY}`);
 } else {
-	console.error(`\n(results not written — pass --update to refresh ${OUT})`);
+	console.error(`\n(results not written — pass --update to refresh ${OUT_DISPLAY})`);
 }

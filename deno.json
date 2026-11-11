@@ -5,32 +5,7 @@
     "test": "deno task test:rust && deno task test:fixtures && deno task test:fixtures:profile-lock && deno task test:keywords && deno task test:concurrent && deno task test:copy && deno task test:pg-dump && deno task test:dump && deno task test:crash && deno task test:web && deno task test:wasm && deno task test:browser",
     "fuzz": "deno task fuzz:seed && cargo +nightly fuzz run double_meta_reopen -- -max_total_time=60 -rss_limit_mb=4096",
 
-    "server": "deno run --allow-read=crates --allow-run=cargo tools/dev_server.ts",
-
-    "size:wasm": "deno task wasm:build && ls -lh crates/pglet_wasm/pkg/pglet_wasm_bg.wasm",
-    "size:check": "deno task wasm:build && deno run --config deno.json --allow-read --allow-env --allow-run=gzip,git benches/size.ts --check",
-    "size:update": "deno task wasm:build && cargo build --release -p pglet_server && deno run --config deno.json --allow-read --allow-write --allow-env --allow-run=gzip,git benches/size.ts --update",
-
-    "bench:startup": "cargo build --release -p pglet_server && deno run --config deno.json -A benches/startup.ts",
-    "bench:startup:update": "cargo build --release -p pglet_server && deno run --config deno.json -A benches/startup.ts --update",
-    "bench:wasm-init": "deno task wasm:build && deno run --config deno.json -A benches/wasm_init.ts",
-    "bench:wasm-init:update": "deno task wasm:build && deno run --config deno.json -A benches/wasm_init.ts --update",
-    "bench:index-accel": "deno run --config deno.json -A benches/index_accel.ts",
-    "bench:index-accel:update": "deno run --config deno.json -A benches/index_accel.ts --update",
-    "bench:wasm-compare": "deno task build:npm && deno run -A benches/wasm_compare.ts && node benches/wasm_compare.ts && bun benches/wasm_compare.ts",
-    "bench:wasm-compare:deno": "deno task build:npm && deno run -A benches/wasm_compare.ts",
-    "bench:wasm-compare:node": "deno task build:npm && node benches/wasm_compare.ts",
-    "bench:wasm-compare:bun": "deno task build:npm && bun benches/wasm_compare.ts",
-    "bench:wasm-compare:update": "deno task build:npm && deno run -A benches/wasm_compare.ts --update && node benches/wasm_compare.ts --update && bun benches/wasm_compare.ts --update",
-
-    "bench:size-compare": "deno task build:npm && deno run --config deno.json --allow-read --allow-env --allow-run=gzip,git benches/size_compare.ts",
-    "bench:size-compare:update": "deno task build:npm && deno run --config deno.json --allow-read --allow-write --allow-env --allow-run=gzip,git benches/size_compare.ts --update",
-
-    "bench:exit-proof": "cargo build --release -p pglet_server && deno task build:npm && deno run --config deno.json -A benches/exit_proof.ts",
-    "bench:exit-proof:update": "cargo build --release -p pglet_server && deno task build:npm && deno run --config deno.json -A benches/exit_proof.ts --update",
-
-    "bench:memory": "cargo build --release -p pglet_bench && deno task wasm:build && deno run --config deno.json -A benches/memory.ts",
-    "bench:memory:update": "cargo build --release -p pglet_bench && deno task wasm:build && deno run --config deno.json -A benches/memory.ts --update"
+    "server": "deno run --allow-read=crates --allow-run=cargo tools/dev_server.ts"
   },
   "imports": {
     "@std/assert": "jsr:@std/assert@1.0.16"
