@@ -65,7 +65,7 @@ client.simple_query("SELECT 1").await?;
 | `POSTGRES_PORT` | 5432 | Real Postgres, unless `PGLET_PG_URL` names another |
 | `PGLET_TEST_PORT` | 5434+ | pglet test server (dynamic, finds an open port up to `DYNAMIC_PORT_END` = 5500) |
 
-Dev server runs on 5433 via `deno task server`.
+Dev server runs on 5433 via `npm run server`.
 
 ## Environment
 

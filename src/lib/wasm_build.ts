@@ -10,6 +10,8 @@ import type { FsReadDir } from '@fuzdev/gro/fs.ts';
 import { fs_search } from '@fuzdev/gro/fs_search.ts';
 import type { SpawnProgram } from '@fuzdev/gro/spawn.ts';
 
+import { CARGO_PASS_ENV } from './cargo_env.ts';
+
 /**
  * A wasm-pack build of `crates/pglet_wasm`: its output directory beneath the crate, and
  * the cargo features it adds to the crate's defaults.
@@ -38,38 +40,17 @@ export const WASM_SOURCE_DIRS: ReadonlyArray<string> = [
 ];
 
 /**
- * The host variables wasm-pack's child is given beside gro's base environment: what cargo,
- * rustc, rustup, wasm-pack and wasm-bindgen read for a build, so the build of a `pkg` here
- * and `npm run wasm:build`'s, which inherits the whole environment, compile with the same
- * flags and tools, and cargo, which fingerprints the flags, finds the other's output fresh.
+ * The host variables wasm-pack's child is given beside gro's base environment: cargo's
+ * (`CARGO_PASS_ENV`, which already holds the one variable a build script in the wasm build's
+ * graph reruns on, `RUSTC_BOOTSTRAP`), so the build of a `pkg` here and
+ * `npm run wasm:build`'s compile with the same flags and tools and each finds the other's
+ * output fresh, and the two tools' own:
  *
- * - `CARGO_*` - cargo's own (`CARGO_HOME`, `CARGO_TARGET_DIR`, `CARGO_ENCODED_RUSTFLAGS`,
- *   `CARGO_INCREMENTAL`, `CARGO_CACHE_RUSTC_INFO`, `CARGO_LOG`, `CARGO`) and every
- *   configuration value set as one (`CARGO_BUILD_*`, `CARGO_PROFILE_*`, `CARGO_TARGET_*`)
- * - `RUSTUP_*` - the toolchain rustup picks (`RUSTUP_TOOLCHAIN`, `RUSTUP_HOME`)
- * - `RUSTC`, `RUSTC_WRAPPER`, `RUSTC_WORKSPACE_WRAPPER`, `RUSTFLAGS` - the compiler cargo
- *   runs, what wraps it, and the flags it passes
- * - `RUSTC_BOOTSTRAP` - read by rustc, and by a build script in the wasm build's graph
- * - `HTTPS_PROXY`, `https_proxy`, `http_proxy`, `HTTP_TIMEOUT` - how cargo fetches a crate
- *   it lacks
  * - `WASM_PACK_*` - wasm-pack's (`WASM_PACK_CACHE`, where its tools are kept)
  * - `WASM_BINDGEN_*` - wasm-bindgen's, which change the glue it emits
- *
- * Not given: `RUSTDOC`, `RUSTDOCFLAGS`, `RUSTFMT` and `BROWSER`, which only `cargo doc` and
- * `cargo fmt` read.
  */
 export const WASM_PACK_PASS_ENV: ReadonlyArray<string> = [
-	'CARGO_*',
-	'RUSTUP_*',
-	'RUSTC',
-	'RUSTC_WRAPPER',
-	'RUSTC_WORKSPACE_WRAPPER',
-	'RUSTFLAGS',
-	'RUSTC_BOOTSTRAP',
-	'HTTPS_PROXY',
-	'https_proxy',
-	'http_proxy',
-	'HTTP_TIMEOUT',
+	...CARGO_PASS_ENV,
 	'WASM_PACK_*',
 	'WASM_BINDGEN_*'
 ];

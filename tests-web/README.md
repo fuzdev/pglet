@@ -216,7 +216,7 @@ Most suites fail fast with a message naming a missing prerequisite; some skip an
 
 ```bash
 # Terminal 1: Run pglet server
-deno task server
+npm run server
 
 # Terminal 2: Test with psql
 psql -h 127.0.0.1 -p 5433 -U postgres << 'EOF'

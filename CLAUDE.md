@@ -554,8 +554,9 @@ cargo run -p pglet_server -- --data-dir <dir>   # persistent
 cargo run -p pglet_server -- --lock-timeout 5s  # how long a write waits for the writer before 55P03
                                                 # (a lock_timeout value; default 1s, 0 = no bound)
 cargo run -p pglet_server -- --help             # every flag; an unknown, repeated or unparsable one is refused
-deno task server                  # dev server, rebuilt and restarted on a .rs change (`server:restart` stops it;
-#                                   the next .rs save rebuilds and starts it)
+npm run server                    # dev server on :5433: rebuilt and restarted on a .rs change under crates/, which
+#                                   stops it first, so a failed build leaves none until a build passes; a change
+#                                   mid-build builds once more; Ctrl-C stops it (src/lib/dev_server.ts)
 
 cargo xtask gates                 # run the gate set once, under an exclusive lock (see below)
 cargo xtask gates --check         # ...and fail if a counter regressed against the baseline

@@ -38,7 +38,7 @@
     "gates:update": "cargo xtask gates --update",
     "fmt": "cargo fmt",
     "dump": "cargo run -p pglet_server -- dump",
-    "server:restart": "pkill -x pglet_server || true",
+    "server": "exec gro task src/tasks/dev_server.task.ts",
     "size": "cargo build --release -p pglet_server && ls -lh target/release/pglet_server",
     "size:gzip": "cargo build --release -p pglet_server && gzip -c target/release/pglet_server | wc -c",
     "size:wasm": "npm run wasm:build && ls -lh crates/pglet_wasm/pkg/pglet_wasm_bg.wasm",
@@ -79,7 +79,7 @@
     "test:browser": "tsc -p tests-web/tsconfig.json && node tests-web/browser/run.ts",
     "test:browser:headed": "tsc -p tests-web/tsconfig.json && node tests-web/browser/run.ts --headed",
     "test:browser:install": "playwright install chromium",
-    "wasm:serve": "gro task src/tasks/wasm_serve.task.ts",
+    "wasm:serve": "exec gro task src/tasks/wasm_serve.task.ts",
     "wasm:test": "node examples/browser/test.ts",
     "wasm:build:opfs": "wasm-pack build crates/pglet_wasm --target web --out-dir pkg-opfs --features opfs",
     "build:npm": "rm -rf crates/pglet_wasm/pkg-npm && wasm-pack build crates/pglet_wasm --target web --scope fuzdev --out-dir pkg-npm && gro task src/tasks/patch_npm_package.task.ts",
@@ -96,9 +96,9 @@
     "lint:edges": "gro task src/tasks/edges_lint.task.ts",
     "matrix:artifacts": "cargo build --release -p pglet_server && npm run build:npm && npm run --silent matrix:env",
     "matrix:env": "PUBLIC_LOG_LEVEL=error gro task src/tasks/matrix_env.task.ts",
-    "spy:start": "gro task src/tasks/spy_proxy.task.ts",
-    "spy:spine:cell": "gro task src/tasks/spy_proxy.task.ts 5434 5432 tests/captures/spine_cell.jsonl",
-    "spy:spine:fact": "gro task src/tasks/spy_proxy.task.ts 5434 5432 tests/captures/spine_fact.jsonl"
+    "spy:start": "exec gro task src/tasks/spy_proxy.task.ts",
+    "spy:spine:cell": "exec gro task src/tasks/spy_proxy.task.ts 5434 5432 tests/captures/spine_cell.jsonl",
+    "spy:spine:fact": "exec gro task src/tasks/spy_proxy.task.ts 5434 5432 tests/captures/spine_fact.jsonl"
   },
   "devDependencies": {
     "@fuzdev/fuz_util": "0.81.0",
