@@ -17,6 +17,10 @@
 		"drivers/**/*_test.ts",
 		"orms/**/*_test.ts",
 		"integration/pglet_test.ts",
-		"integration/server_test.ts"
+		"integration/server_test.ts",
+		"integration/pglet_wasm_test.ts",
+		"integration/depth_edge.ts",
+		"integration/module_poison.ts",
+		"integration/host_exceptions.ts"
 	]
 }

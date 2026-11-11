@@ -2,9 +2,9 @@
  * Drives deep-tree shapes to the wasm depth limit and past it, and prints one JSON line
  * per shape: the largest size answered, and every refusal seen.
  *
- * Run by `pglet_wasm_test.ts` under each of V8's tiers — the default (Liftoff first) and
- * `--v8-flags=--no-liftoff`, which compiles every function with the optimizing tier up
- * front. The limit (`pglet_sql::depth`'s wasm `DEFAULT_MAX_DEPTH`) must hold under both:
+ * Run by `pglet_wasm_test.ts` in a child `node` under each of V8's tiers — the default
+ * (Liftoff first) and `--no-liftoff`, which compiles every function with the optimizing
+ * tier up front. The limit (`pglet_sql::depth`'s wasm `DEFAULT_MAX_DEPTH`) must hold under both:
  * a host-stack `RangeError` here is the failure this file exists to see, and it leaves
  * the module refusing every later call (`PgletModulePoisoned`), so each shape after it
  * reports an error too.
@@ -19,14 +19,14 @@
  * limit; any answer but a host error counts as answered, and past the limit the refusal
  * must be `54001`.
  *
- * Usage: `deno run -A [--v8-flags=--no-liftoff] depth_edge.ts <pkg dir URL>`.
+ * Usage: `node [--no-liftoff] depth_edge.ts <pkg dir URL>`.
  */
 
-const [pkgUrl] = Deno.args;
-const PKG = new URL(pkgUrl);
-// deno-lint-ignore no-explicit-any
+import { readFile } from "node:fs/promises";
+
+const PKG = new URL(process.argv[2]);
 const mod: any = await import(new URL("pglet_wasm.js", PKG).href);
-mod.initSync({ module: await Deno.readFile(new URL("pglet_wasm_bg.wasm", PKG)) });
+mod.initSync({ module: await readFile(new URL("pglet_wasm_bg.wasm", PKG)) });
 
 const rep = (s: string, k: number) => s.repeat(k);
 const TABLE = ["CREATE TABLE t (a INT)", "INSERT INTO t VALUES (1)"];

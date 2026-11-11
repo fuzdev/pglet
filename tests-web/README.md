@@ -22,11 +22,12 @@ npm run test:npm               # The npm package's adapter suite + its plain-Nod
 deno task test:browser         # Playwright browser tests (WASM + OPFS)
 ```
 
-`test:web`'s suites and `test:integration:server` run under vitest, by file, with
+`test:web`'s suites, `test:integration:server` and `test:wasm` run under vitest, by file, with
 `tests-web/vitest.config.ts`: each test file in a process of its own, the files in parallel.
-Each script typechecks first with `tsc`, against `tests-web/tsconfig.json` (the server suites)
-or `tests-web/npm/tsconfig.json` (the npm suite, which needs `build:npm`'s package), and each
-server suite's script builds the debug `pglet_server` first. `gro check` runs only `src/`'s
+Each script typechecks first with `tsc`, against `tests-web/tsconfig.json` (the server suites,
+the wasm suite and its child scripts) or `tests-web/npm/tsconfig.json` (the npm suite, which
+needs `build:npm`'s package), and each server suite's script builds the debug `pglet_server`
+first. `gro check` runs only `src/`'s
 tests.
 
 ## Test Categories

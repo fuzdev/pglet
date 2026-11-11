@@ -141,9 +141,12 @@ a connection no thread can be spawned for is refused, as Postgres refuses one it
 
 **Statement depth is bounded per host, and a statement past the bound is refused
 `54001`** rather than overflowing the stack: 10 000 levels on a server connection thread,
-2 000 in wasm, 2 600 (256 in a debug build) in the Rust embed on a thread whose stack it
-knows. A store written under a larger bound is refused at `Database::open` on a thread
-with a smaller one — export it with `pglet_server dump --data-dir <dir>`. The embed's knobs
+1 300 in wasm, 2 600 (256 in a debug build) in the Rust embed on a thread whose stack it
+knows. The wasm bound assumes the host engine's default stack on its main thread: under
+Bun, whose stack follows the process's stack rlimit, a `ulimit -s` below 3.5 MiB runs out
+inside it, and in a Chromium `Worker`, whose stack is smaller, a statement from about
+1 240 levels does. A store written under a larger bound is refused at `Database::open` on a
+thread with a smaller one — export it with `pglet_server dump --data-dir <dir>`. The embed's knobs
 are the `pglet` crate docs' (`set_thread_stack`, `set_thread_max_depth`); `EDGES.md` rows
 171, 178, 179 and 182 have what each host answers and what can still abort.
 

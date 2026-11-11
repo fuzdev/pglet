@@ -4,17 +4,17 @@
  * to call back into the module, and prints, as one JSON line, what each call answered
  * and what the module answers after it.
  *
- * Run by `pglet_wasm_test.ts` in a child Deno, so a module these leave poisoned cannot
+ * Run by `pglet_wasm_test.ts` in a child `node`, so a module these leave poisoned cannot
  * take the rest of that suite with it.
  *
- * Usage: `deno run -A host_exceptions.ts <pkg dir URL>`.
+ * Usage: `node host_exceptions.ts <pkg dir URL>`.
  */
 
-const [pkgUrl] = Deno.args;
-const PKG = new URL(pkgUrl);
-// deno-lint-ignore no-explicit-any
+import { readFile } from "node:fs/promises";
+
+const PKG = new URL(process.argv[2]);
 const mod: any = await import(new URL("pglet_wasm.js", PKG).href);
-mod.initSync({ module: await Deno.readFile(new URL("pglet_wasm_bg.wasm", PKG)) });
+mod.initSync({ module: await readFile(new URL("pglet_wasm_bg.wasm", PKG)) });
 
 /** What `f` throws — its `name`, `code` and `message`, or a thrown string — or `ok`. */
 function outcome(f: () => unknown): string {
@@ -28,13 +28,11 @@ function outcome(f: () => unknown): string {
   }
 }
 
-// deno-lint-ignore no-explicit-any
 const report: Record<string, any> = {};
 const db = new mod.PgletBtree();
 const thrower = (what: string) => () => {
   throw new Error(what);
 };
-// deno-lint-ignore no-explicit-any
 const trap = (target: any, handler: ProxyHandler<any>) => new Proxy(target, handler);
 // First, before this module has built any result: what a result is built with lives only as
 // long as that result, so a page that replaces the global `Object` for one statement (a mock,
@@ -44,7 +42,7 @@ const RealObject = Object;
 const seen: string[] = [];
 // @ts-ignore a replaced global, restored below
 globalThis.Object = function () {
-  return new Proxy(new RealObject(), {
+  return new Proxy(new RealObject() as Record<string | symbol, unknown>, {
     set(t, k, v) {
       seen.push(`${String(k)}=${JSON.stringify(v)}`);
       t[k] = v;

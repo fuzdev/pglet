@@ -4,7 +4,8 @@
  *
  * Each test file runs in a process of its own (`forks`): the coercion suite
  * re-zones its process through `TZ`, which a worker thread's copy of the
- * environment doesn't do, and a server suite's `pglet_server` is a child of
+ * environment doesn't do, the wasm suite's depth tests must run on a main
+ * thread's V8 stack, not a worker's, and a server suite's `pglet_server` is a child of
  * that process, stopped by gro's exit and signal hooks if the file never gets
  * to stop it. Files run in parallel: every server suite starts its own server
  * on a port the kernel picks.
@@ -26,6 +27,7 @@ export default defineConfig({
 			'orms/**/*_test.ts',
 			'integration/pglet_test.ts',
 			'integration/server_test.ts',
+			'integration/pglet_wasm_test.ts',
 		],
 		pool: 'forks',
 		testTimeout: 600_000,

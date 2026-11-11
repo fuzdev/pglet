@@ -55,7 +55,7 @@ use crate::runner::{deno_task, lock_run_dir, parse_name_list, repo_root, run_log
 /// tests themselves. Reusing the build one gate above would erase that, and is
 /// deliberately not done: `--only test:wasm` would then test whatever `pkg/` happened to
 /// be on disk, which is the shape of "green from a knob nobody confirmed was wired". It
-/// prints no counters (a Deno test summary, not the `passed=/failed=` shape the parser
+/// prints no counters (a vitest summary, not the `passed=/failed=` shape the parser
 /// reads), so it gates on its exit code alone.
 const GATES: &[Gate] = &[
     Gate::new("check", &[]),

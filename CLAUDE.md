@@ -589,7 +589,9 @@ npm run test:dump                 # portable SQL dump: pglet-vs-psql round-trip 
 npm run test:pg-dump              # pg_dump round-trip (needs psql + pg_dump)
 npm run test:copy                 # COPY FROM/TO fixtures vs Postgres
 npm run test:keywords             # keyword-probe sweep vs Postgres
-deno task test:wasm               # wasm build + the Deno wasm integration suite (needs wasm-pack)
+npm run test:wasm                 # wasm build + the wasm integration suite, on vitest; its depth tests run child `node`s
+#                                   under both V8 tiers; vitest is run as `node …/vitest.mjs`, so `deno task test:wasm`
+#                                   (the gate runner's word) runs it on Node too (needs wasm-pack)
 npm run wasm:build                # the wasm build: wasm-pack of crates/pglet_wasm into its pkg/ (what test:wasm and
 #                                   size:check run first; the npm package is build:npm)
 npm run wasm:build:opfs           # the same with the `opfs` feature on, into pkg-opfs/ — the one build exporting

@@ -149,7 +149,7 @@ gates against a `postgres:18.6` service. It invokes the tasks by name rather tha
 re-listing their steps, so what CI runs is what you run.
 
 A warm run (cargo cache populated, `pkg/` built) takes minutes, not seconds — `test:wasm`
-rebuilds the wasm and runs a suite that spawns child Deno processes for its depth probes;
+rebuilds the wasm and runs a suite that spawns child `node` processes for its depth probes;
 read the real figure off the run's closing summary. A first run on a fresh clone
 additionally pays a full debug build of the workspace plus a release wasm build, and no
 figure for that is recorded.

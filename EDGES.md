@@ -348,7 +348,7 @@ inside a table.
 
 | # | shape | pglet | 18.6 | silent? | guard | find it |
 | --- | --- | --- | --- | --- | --- | --- |
-| ~~171~~ | **closed** — a statement tree grown one level per repetition: an operator or postfix chain (`+ - * \|\| :: -> IS …`), a set-operation, `JOIN` or CTE chain, a stored `CHECK`/`DEFAULT`/index expression, and an `AND`/`OR` list | **aborted** the native process from 8 724 `+` terms and trapped the wasm module from 2 842, poisoning it; now `54001` past the host's depth limit, the connection kept, and an `AND`/`OR` list answers at any length | `54001 stack depth limit exceeded` at a per-shape stack bound — `+` from 4 087 terms; `AND`/`OR` answers at 100 000 | closed class; **residuals** in the bullet — each host's answer set differs from 18.6's both ways, an undeclared thread answers less, and a store carried to a host with lower bounds is refused `54001` at open | `crates/pglet_server/tests/stack_depth.rs`, `crates/pglet/tests/stack_depth.rs`, the wasm suite's depth cases (`depth_edge.ts`, `module_poison.ts`), the `stack_depth_*.sql` fixtures | overflowed its stack |
+| ~~171~~ | **closed** — a statement tree grown one level per repetition: an operator or postfix chain (`+ - * \|\| :: -> IS …`), a set-operation, `JOIN` or CTE chain, a stored `CHECK`/`DEFAULT`/index expression, and an `AND`/`OR` list | **aborted** the native process from 8 724 `+` terms and trapped the wasm module from 2 842, poisoning it; now `54001` past the host's depth limit, the connection kept, and an `AND`/`OR` list answers at any length | `54001 stack depth limit exceeded` at a per-shape stack bound — `+` from 4 087 terms; `AND`/`OR` answers at 100 000 | closed class; **residuals** in the bullet — each host's answer set differs from 18.6's both ways, an undeclared thread answers less, a smaller host stack (a Bun rlimit, a Chromium `Worker`) runs out inside the wasm limit, and a store carried to a host with lower bounds is refused `54001` at open | `crates/pglet_server/tests/stack_depth.rs`, `crates/pglet/tests/stack_depth.rs`, the wasm suite's depth cases (`depth_edge.ts`, `module_poison.ts`), the `stack_depth_*.sql` fixtures | overflowed its stack |
 | ~~173~~ | **closed** — a B+tree node split by entry **count** into a half over one 4 KB page, and an index row over 18.6's item limit accepted | a node is cut into pieces that each fit, a long value goes out of line, and an index entry is sized as 18.6 sizes it — `54000` at its limits, in its order | `54000 index row size … exceeds btree version 4 maximum 2704`, and its two siblings | closed class; **loud** residuals rows 191 and 192; **silent**, a `char(n)` key (row 95) and an enum key part behind a cast (row 104); the entry a build names under `DESC`, 18.6's collation or after an `UPDATE` (rows 92, 43, 194); a multi-row `INSERT`'s foreign-key order (row 166) | `page_fit.rs`, `large_value.rs`, `index_row_size.rs` (`crates/pglet/tests/`); `tests/fixtures/index_size/` | page writer was handed entries that did not fit |
 | 178 | an operand the tree holds more than once, nested — a parenthesized `BETWEEN` in another's left operand; in a catalog rendering, an `IN` with a column member in another's left operand | memory and time double a level: 20 nested `BETWEEN`s take 3.3 s and 397 MB, 24 abort under a 4 GiB cap; a 22-level `IN` renders 251 MB | not measured — `parse_expr.c` copies the left operand the same way, read only | **abort** — memory exhaustion ends the process | — none | copies its left operand |
 | 179 | a CTE chain each member of which reads the one before it twice — `c1 AS (SELECT a.x FROM c0 a, c0 b)`, `c2 AS (… c1 a, c1 b)`, … | memory and time quadruple every two CTEs: 18 CTEs peak at 1.65 GB and take 6.2 s | `1` in 0.7 ms at 18 CTEs | **abort** past the host's memory, slow before it | — none | reads the one before it twice |
@@ -461,18 +461,19 @@ inside a table.
   bound. The server's connection threads take 10 000 levels on a 64 MiB stack (512 MiB in
   a debug build); a thread no host sized, 2 600 (256 in debug), sized for 2 MiB — 1 000
   (128) on Windows, sized for its 1 MiB main thread, where the stack is not known; the
-  wasm module 2 000, sized against V8's optimizing tier over every chain-forming arm of the
-  parser's operator loop, the one other kind charged three levels a repetition. An
+  wasm module 1 300, sized against Bun's JavaScriptCore, the shortest edge of the engines
+  measured, over every chain-forming arm of the parser's operator loop, the one other kind
+  charged three levels a repetition. An
   `AND`/`OR` run longer than 64
   operands is built balanced under a `BinaryOp::AndList` root (`Expr::bool_list`), so a
   list of any length answers, and it renders as the one flat list 18.6 prints for its
   n-ary node — a parenthesized long list inside it as one nested operand.
 
   Measured after it — terms answered before the refusal, release server / release embed
-  on a declared 2 MiB thread / wasm (Deno) / 18.6 at `max_stack_depth` 2 MB: `+`, `-`,
-  `*`, `||` 9 998 / 2 597 / 1 998 / 4 086; `::int` 9 997 / 2 597 / 1 997 / 13 075; `IS NOT
-  NULL` 9 997 / 2 597 / 1 997 / 10 895; `UNION ALL` 9 998 / 2 533 / 1 998 / 7 262; a
-  `CHECK` over a `+` chain 9 998 / 1 531 / 1 998 / 7 684; a CTE chain 4 998 / 851 / 998 /
+  on a declared 2 MiB thread / wasm / 18.6 at `max_stack_depth` 2 MB: `+`, `-`,
+  `*`, `||` 9 998 / 2 597 / 1 298 / 4 086; `::int` 9 997 / 2 597 / 1 297 / 13 075; `IS NOT
+  NULL` 9 997 / 2 597 / 1 297 / 10 895; `UNION ALL` 9 998 / 2 533 / 1 298 / 7 262; a
+  `CHECK` over a `+` chain 9 998 / 1 531 / 1 298 / 7 684; a CTE chain 4 998 / 851 / 647 /
   not refused (18.4 ran past a 20 s statement timeout at 1 120, measured on 18.4); `AND`/`OR`
   lists, select list and `WHERE`, answer at 100 000 on all four. On a 2 MiB thread it was not told of —
   a `std::thread::spawn` or libtest thread — the release embed answers `+` 2 316, `UNION
@@ -482,14 +483,17 @@ inside a table.
   correlated `EXISTS` levels and 78 nested calls; on an undeclared one 172, 117, 21 and 63.
   Every arm of the operator loop — `::` with and without a typmod, `AT TIME ZONE`, the `IS`
   family, `[NOT] IN (…)`, `[NOT] IN (SELECT …)`, `LIKE`/`ILIKE`, the comparison and
-  `ANY`/`ALL`, the arithmetic, `||` and JSON operators — answers to wasm's 2 000 levels
-  under both V8 tiers: with no limit, V8's stack ran out first at 3 315 levels under
-  `--no-liftoff` (an `IN (SELECT …)` chain) and at 3 010 under Liftoff (an `IN` chain in a
-  `CHECK`). The one kind the loop builds that no walker takes in its lean frame — a
-  `::regclass` target's string-function node — ran V8 out at 1 394 repetitions under
-  `--no-liftoff`, inside the limit, and is charged three levels a repetition on wasm
-  (`DISPATCH_LEVEL_WEIGHT`): `SELECT 't'::regclass…` answers 665 repetitions under both
-  tiers and is `54001` past them, where 18.6 answers 1 500. Natively the byte check
+  `ANY`/`ALL`, the arithmetic, `||` and JSON operators — answers to wasm's 1 300 levels
+  under both V8 tiers and on Bun: with no limit, Bun 1.4.4's stack ran out first, at
+  2 001 levels in JavaScriptCore's baseline tier (an operator chain in a `CHECK`), the
+  tier a process that has run a few small statements is in; then V8's under
+  `--no-liftoff`, at 2 309 levels on Node 24.14.1 and 2 398 on Node 26.13.0 (`ANY`/`ALL`,
+  an `IN (SELECT …)` chain and the grouping shapes, in a `SELECT`), and at 2 908 under
+  Liftoff alone (an operator chain in a `CHECK`). The one kind the loop builds that no
+  walker takes in its lean frame — a `::regclass` target's string-function node — ran V8
+  out at 766 repetitions under `--no-liftoff`, inside the limit, and is charged three
+  levels a repetition on wasm (`DISPATCH_LEVEL_WEIGHT`): `SELECT 't'::regclass…` answers
+  432 repetitions under both tiers and is `54001` past them, where 18.6 answers 1 500. Natively the byte check
   refuses it — 706 on a declared 2 MiB release thread, 626 on an undeclared one, 9 997 on
   a server-sized one. The server process and the wasm instance survive every refusal.
 
@@ -499,7 +503,7 @@ inside a table.
     pglet levels per host as well: the server answers `+` chains of 4 087–9 997 terms
     where 18.6 refuses — the band is 18.6's configured bound, not a meaning (at
     `max_stack_depth` 7 MB it answers 8 724) — and refuses `::int` past 9 997 terms where
-    18.6 answers to 13 075; the wasm refuses `+` from 1 999 terms, where 18.6 answers to
+    18.6 answers to 13 075; the wasm refuses `+` from 1 299 terms, where 18.6 answers to
     4 086; the embed facade on a 2 MiB thread refuses `+` from 2 599 terms, and a stored
     expression past the depth its thread can encode and decode again (a `CHECK` from
     1 532 terms in release on a declared 2 MiB thread); the release embed's `+` limit of
@@ -526,6 +530,21 @@ inside a table.
     declared 4 MiB aborted (`SIGABRT`) on a CTE chain at 2 048, and now answers 880 CTEs
     (851 declared truly) and refuses past them. What the mapping cannot show stays the
     declarer's — off Linux, and a mapping merged with a neighbour's.
+  - *A smaller host stack runs out inside the wasm limit.* The wasm limit is a
+    level count sized for each engine's default stack, and a module can neither measure
+    nor raise the host's. Node's stack is V8's own `--stack-size` whatever the rlimit, and
+    holds the limit at a 2 MiB `ulimit -s`; Bun's follows the thread's stack rlimit up to
+    JavaScriptCore's 5 MiB cap. With no limit, a fresh Bun process ran out at 1 747 levels
+    under a 4 MiB `ulimit -s` and 918 under 2 MiB, against 2 240 under 8 MiB. Measured with
+    `depth_edge.ts`, the 1 300-level limit holds down to a 3.5 MiB rlimit; at 3.25 MiB and
+    below a statement inside it exhausts the stack (`RangeError`), and every later call
+    into the module is refused `PgletModulePoisoned`, where 18.6 answers. A worker thread's
+    stack is its own, smaller, whatever the rlimit: a Bun `Worker` ran out at 1 576 levels,
+    which the limit holds; a dedicated `Worker` in Chromium 143 at 1 242 once it had run a
+    few small statements (1 473 fresh), so a `CHECK` over a 1 250-term chain there is a
+    `RangeError` and poisons the module, where its main thread answers to 2 346. Loud, and
+    unguarded: the wasm suite runs on Node's main thread. No fixture can hold it, since the
+    fixtures drive the native server.
   - *A store carried to a host with lower bounds is refused, not opened.* A stored
     expression is decoded under the opener's bounds: a `CHECK` over a 2 700-term chain the
     server stored is refused at `Database::open` on a 2 MiB release thread — the whole

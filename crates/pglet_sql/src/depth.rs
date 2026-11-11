@@ -107,25 +107,57 @@ pub const DEFAULT_MAX_DEPTH: usize = 256;
 /// The wasm limit, bounded by the **host engine's** native stack, which a module can
 /// neither measure nor raise.
 ///
-/// Sized against both of V8's tiers on its default stack (Deno 2.8), at two thirds of
-/// the shortest edge measured with no limit over **every arm of the parser's operator
-/// loop** — each chain-forming node it builds around the chain so far — in a `SELECT`, a
-/// `WHERE`, a `CHECK`, a column `DEFAULT` and an index expression: under `--no-liftoff` an
-/// `IN (SELECT …)` chain ran out of V8's stack first, at 3 315 levels, and under Liftoff
-/// an `IN (…)` chain in a `CHECK`, at 3 010. An arm a walker handled from its big
-/// dispatch frame instead of its lean one costs several times the others: the `IN`,
-/// `IN (SELECT …)`, `ANY`/`ALL` and typmod-cast arms did until each walker took them in
-/// its lean frame (`Expr::chain_operands` names the set), and ran out at 1 296, 1 295,
-/// 1 824 and 1 364 levels under `--no-liftoff`, inside this limit. The plan chains ran out
-/// later (a CTE chain at 1 500 CTEs, two levels each). The one node the loop builds that
-/// is not chain-forming — a `::regclass` target's string-function node — is charged
-/// [`DISPATCH_LEVEL_WEIGHT`] a level instead, and answers 665 repetitions. The
-/// linear-memory shadow stack (`crates/pglet_wasm/build.rs`) is not the binding one: every
-/// edge measured was V8's `RangeError`. `tests-web/integration/depth_edge.ts` drives every
-/// kind the loop builds to this limit under both tiers, and `parser::operator_loop_arms`
-/// fails when a kind it reads from the builders is driven by no arm there.
+/// Two thirds of the shortest edge measured with no limit, rounded down to a round number,
+/// over every engine the package claims at its defaults, and over **every arm of the
+/// parser's operator loop** — each chain-forming node it builds around the chain so far —
+/// in a `SELECT` and in a `CHECK`, with the plan chains, a column `DEFAULT`, an index
+/// expression and a `WHERE` beside them:
+///
+/// - Bun 1.4.4 (JavaScriptCore) binds, at 2 001 levels (an operator chain in a `CHECK`) in
+///   JavaScriptCore's baseline tier (BBQ). A function runs there once it has been called a
+///   little, so a process that has run a few small statements is in it; a fresh process
+///   runs out later (2 179 levels, a `%` chain in a `SELECT`, its interpreter's frames being
+///   smaller), and one warm enough for the optimizing tier later still. Measured on an
+///   8 MiB stack rlimit, of which JavaScriptCore takes at most 5 MiB.
+/// - Node 24.14.1 (V8 13.6, the development root's `engines` floor; the package declares
+///   Node 22, not measured) and Node 26.13.0 (V8 14.6), each V8 tier
+///   alone: the optimizing tier (`--no-liftoff`) runs out at 2 309 levels on Node 24 and
+///   2 398 on Node 26 (`ANY`/`ALL`, an `IN (SELECT …)` chain and the grouping shapes, in a
+///   `SELECT`), and Liftoff alone (`--liftoff-only`) at 2 908 on Node 24 and 2 909 on
+///   Node 26 (an operator chain in a `CHECK`). The default tier moves a function from
+///   Liftoff to the optimizing tier once it runs hot, so its edge depends on what ran
+///   first and can fall below the optimizing tier's own on the same Node: 2 319 levels on
+///   Node 26 in one run of every shape, none below Node 24's 2 309.
+///
+/// The plan chains run out later (a CTE chain at 1 523 CTEs, two levels each, under
+/// `--no-liftoff` on Node 24). The one node the loop builds that is not chain-forming — a
+/// `::regclass` target's string-function node — is charged [`DISPATCH_LEVEL_WEIGHT`] a
+/// level instead, and answers 432 repetitions. The linear-memory shadow stack
+/// (`crates/pglet_wasm/build.rs`) is not the binding one: every edge measured was the host
+/// engine's `RangeError`.
+///
+/// **The guarantee holds only on a main thread whose stack is the engine's default size.**
+/// Node's is V8's own `--stack-size` (984 KiB) on any rlimit above it, so Node holds this
+/// limit at a 2 MiB `ulimit -s` too; Bun's is the thread's stack rlimit up to
+/// JavaScriptCore's 5 MiB cap, and below the cap its edge shrinks with it: 1 747 levels in
+/// a fresh process at a 4 MiB `ulimit -s`, 918 at 2 MiB. This limit holds down to a
+/// 3.5 MiB rlimit; at 3.25 MiB and below a statement inside it exhausts the stack, a
+/// `RangeError`, after which the module refuses every call (`PgletModulePoisoned`).
+///
+/// A worker thread has a smaller stack of its own, whatever the rlimit. A Bun `Worker`
+/// (web or `node:worker_threads`) runs out at 1 576 levels in the baseline tier (an
+/// operator chain in a `CHECK`), which this limit holds, short of two thirds. A dedicated
+/// `Worker` in Chromium 143, where the OPFS build must run, runs out at 1 242 levels once
+/// it has run a few small statements (1 473 fresh), **inside** this limit: a `CHECK` over a
+/// 1 250-term chain there is a `RangeError` and poisons the module. Its main thread runs
+/// out at 2 346. A Node worker, on its default 4 MiB, ran out past 6 500 levels.
+///
+/// `tests-web/integration/depth_edge.ts` drives every kind the loop builds to this limit,
+/// run under Node's two tiers by the wasm suite and under the optimizing tier again on two
+/// thirds of V8's stack, which sees Node's margin and no other engine's, and `parser::operator_loop_arms` fails when
+/// a kind it reads from the builders is driven by no arm there.
 #[cfg(target_arch = "wasm32")]
-pub const DEFAULT_MAX_DEPTH: usize = 2000;
+pub const DEFAULT_MAX_DEPTH: usize = 1300;
 
 /// The limit a thread starts with when its stack is not known (the `stack` module's
 /// third case).
@@ -187,11 +219,12 @@ pub const EMBEDDED_PLAN_LEVEL_WEIGHT: usize = 4;
 /// they recur, and the weight is `1`. On wasm the count is the whole bound, and a node
 /// that recurs through the big frames without parser nesting ran out of V8's stack inside
 /// the limit: a `::regclass` chain — `parser::expr`'s cast target builds a string-function
-/// node for it, not a cast — at 1 394 levels under `--no-liftoff`, 1 490 under Liftoff,
-/// where the chain-forming nodes' shortest edge is 3 010. Charged three a level, such a
-/// chain is refused at 666 repetitions, which that edge holds more than twice over; and
-/// the rule is the node's kind, not a list of arms, so a node any future arm builds is
-/// charged unless it is chain-forming.
+/// node for it, not a cast — at 766 levels in a `SELECT` under `--no-liftoff` (Node 24.14.1;
+/// 780 on Node 26.13.0), 1 421 under Liftoff alone and 1 234 on Bun 1.4.4's baseline tier,
+/// where the chain-forming nodes' shortest edge is 2 001. Charged three a level, such a
+/// chain is refused at 433 repetitions, which its shortest edge holds with the limit's
+/// margin; and the rule is the node's kind, not a list of arms, so a node any future arm
+/// builds is charged unless it is chain-forming.
 #[cfg(target_arch = "wasm32")]
 pub const DISPATCH_LEVEL_WEIGHT: usize = 3;
 /// See the wasm constant: natively the byte check bounds the dispatch frames.

@@ -13,6 +13,10 @@ released version under a fresh `## Unreleased` declaring a patch.
 
 - the package no longer claims Deno support: the README and the `db.js` and `index.d.ts`
   comments name Node and Bun as the runtimes the Node entry serves
+- the statement-depth limit is 1 300 levels (was 2 000): a statement nested deeper is refused
+  `54001`. Re-measured on Node's V8 under both tiers and on Bun's JavaScriptCore, the
+  shortest stack edge (Bun's, 2 001 levels) left 2 000 too little margin; 1 300 is under
+  two thirds of it
 
 ## 0.1.2
 

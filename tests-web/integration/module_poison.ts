@@ -3,18 +3,18 @@
  * the module answers afterwards: the error the statement threw, then what a new
  * instance, the instance that threw, and an instance created before it each answer.
  *
- * Run by `pglet_wasm_test.ts` with V8's stack shrunk (`--v8-flags=--stack-size=…`), so
+ * Run by `pglet_wasm_test.ts` in a child `node` with V8's stack shrunk (`--stack-size=…`), so
  * that a statement well inside the depth limit exhausts it — the one way to reach the
  * `RangeError` the limit otherwise keeps every statement from.
  *
- * Usage: `deno run -A --v8-flags=--stack-size=<KiB> module_poison.ts <pkg dir URL>`.
+ * Usage: `node --stack-size=<KiB> module_poison.ts <pkg dir URL>`.
  */
 
-const [pkgUrl] = Deno.args;
-const PKG = new URL(pkgUrl);
-// deno-lint-ignore no-explicit-any
+import { readFile } from "node:fs/promises";
+
+const PKG = new URL(process.argv[2]);
 const mod: any = await import(new URL("pglet_wasm.js", PKG).href);
-mod.initSync({ module: await Deno.readFile(new URL("pglet_wasm_bg.wasm", PKG)) });
+mod.initSync({ module: await readFile(new URL("pglet_wasm_bg.wasm", PKG)) });
 
 /** What `f` throws — its `name` and `code` — or `ok`. */
 function outcome(f: () => unknown): string {
@@ -30,7 +30,7 @@ function outcome(f: () => unknown): string {
 const before = new mod.PgletBtree();
 before.exec("CREATE TABLE t (a INT)");
 const ran = new mod.PgletBtree();
-const statement = outcome(() => ran.query("SELECT 1" + "+1".repeat(1900)));
+const statement = outcome(() => ran.query("SELECT 1" + "+1".repeat(1200)));
 const after: string[] = [];
 // Past the six unwinds that once walked the shadow stack below zero.
 for (let i = 0; i < 10; i++) {

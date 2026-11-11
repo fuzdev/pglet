@@ -4,8 +4,9 @@
 //! takes linear-memory stack as well as the host engine's own. `pglet_sql::depth`
 //! bounds the tree at `DEFAULT_MAX_DEPTH` levels, sized by the **host** stack (which a
 //! module cannot raise); this makes the shadow stack the one that is *not* binding at
-//! that limit — about 0.85 KiB a level on the dearest shape, so 1.7 MiB of the 4 — so
-//! running out of it can no longer trap and poison the instance. The stack still sits
+//! that limit — about 0.63 KiB a level on the dearest shape, an operator chain in a `CHECK`,
+//! so about 0.8 MiB of the 4 — so running out of it can no longer trap and poison the
+//! instance. The stack still sits
 //! at the bottom of linear memory (`--stack-first`), which is what `--low-memory-unused`
 //! in `Cargo.toml` relies on.
 fn main() {
