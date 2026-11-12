@@ -98,10 +98,10 @@ as `npm run <name> -- <flags>`.
   `--no-default-features` `cargo check`, clippy over `pglet` and `pglet_wasm` for the
   wasm target with the wasm build's features, default, stripped and with the opt-in
   `opfs` feature, plus a host clippy of `pglet_wasm` with `opfs` on, its tests included
-  (`check:wasm-features`), `cargo fmt --check`, the rustdoc
-  broken-link check (`check:docs`, run with `--document-private-items` because most of
-  the engine is private items; `private_intra_doc_links` and `redundant_explicit_links`
-  stay at warn by choice), `gro check` over the TypeScript tools in `src/`
+  (`check:wasm-features`), `cargo fmt --check`, rustdoc under `-D warnings`
+  (`check:docs`, over every feature and run with `--document-private-items` because most
+  of the engine is private items; `private_intra_doc_links` is allowed by choice, since
+  those links resolve in that build), `gro check` over the TypeScript tools in `src/`
   (`check:ts`: their typecheck, their vitest suites, which must find a test, and their
   format), `tsc` over the benches (`check:benches`), and the release audit. Needs no Postgres and runs anywhere, after `npm ci`.
   The narrower `cargo clippy --workspace` you are likelier to type covers neither tests

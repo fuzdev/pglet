@@ -46,7 +46,7 @@ jobs:
   # The hermetic bar, the same one `CONTRIBUTING.md` names: clippy under
   # `-D warnings`, a `--no-default-features` check, clippy over `pglet` and
   # `pglet_wasm` with the wasm build's default, stripped and `opfs` features,
-  # `cargo fmt --check`, the rustdoc link check, `gro check` over the TypeScript
+  # `cargo fmt --check`, rustdoc under `-D warnings`, `gro check` over the TypeScript
   # tools in `src/`, the release audit — then the workspace test suite. No
   # Postgres (nothing under `crates/*/tests/` connects to one; the suite does
   # build and spawn pglet servers, which is why it wants a full toolchain).

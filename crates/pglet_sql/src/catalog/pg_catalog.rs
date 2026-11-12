@@ -445,7 +445,7 @@ impl<'a> PgCatalog<'a> {
     /// / UNIQUE constraint.
     ///
     /// The rows come from the one catalog-wide enumeration
-    /// ([`constraint_entries`](super::constraint_entries)) that `pg_get_constraintdef`
+    /// ([`constraint_entries`]) that `pg_get_constraintdef`
     /// resolves an OID against, so a row's `oid` and the definition that OID renders
     /// cannot disagree.
     ///

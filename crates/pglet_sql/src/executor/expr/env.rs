@@ -81,9 +81,8 @@ impl SubqueryExec<'_> {
 
 /// A data-modifying CTE's materialized result.
 ///
-/// The `RETURNING` rows captured when the wrapping
-/// [`Plan::With`](crate::planner::Plan::With) ran the DML once, plus their column
-/// descriptors. A [`Plan::CteScan`](crate::planner::Plan::CteScan) in the body reads
+/// The `RETURNING` rows captured when the wrapping [`Plan::With`] ran the DML
+/// once, plus their column descriptors. A [`Plan::CteScan`] in the body reads
 /// these by name from the [`EvalEnv`].
 #[derive(Debug, Clone)]
 pub struct MaterializedCte {
@@ -117,8 +116,7 @@ pub struct EvalEnv<'a> {
     /// claim resolves against these frames (see [`EvalEnv::resolve_outer_slot`]).
     outer: Option<&'a OuterFrame<'a>>,
     /// Materialized data-modifying-CTE results in scope (empty outside a
-    /// [`Plan::With`](crate::planner::Plan::With) body). A
-    /// [`Plan::CteScan`](crate::planner::Plan::CteScan) resolves its rows here by
+    /// [`Plan::With`] body). A [`Plan::CteScan`] resolves its rows here by
     /// name — the DML ran once when the `With` arm built this slice.
     ctes: &'a [MaterializedCte],
     /// The live catalog, when the evaluating context has one to lend.
@@ -492,8 +490,8 @@ impl<'a> EvalEnv<'a> {
 
     /// Derive a child environment that exposes `ctes` as the materialized
     /// data-modifying-CTE results (keeping the same params and outer scope). Built
-    /// once by the [`Plan::With`](crate::planner::Plan::With) executor before running
-    /// the body, so a [`Plan::CteScan`](crate::planner::Plan::CteScan) can read them.
+    /// once by the [`Plan::With`] executor before running the body, so a
+    /// [`Plan::CteScan`] can read them.
     #[must_use]
     pub const fn with_ctes<'b>(&self, ctes: &'b [MaterializedCte]) -> EvalEnv<'b>
     where

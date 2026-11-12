@@ -570,7 +570,7 @@ npm run check:stripped | check:wasm-features | check:ts | check:benches | check:
 #                                   (check:ts is `gro check` over src/, tests required; check:benches is tsc
 #                                   over benches/; check:release is cargo xtask check-release)
 npm run fmt                       # cargo fmt (check runs cargo fmt --check)
-npm run check:docs                # rustdoc: every doc-comment link resolves (see below)
+npm run check:docs                # rustdoc under -D warnings: links resolve, markup is valid (see below)
 npm run dump -- --data-dir <dir>  # print a portable SQL dump of a persisted database
 npm run lint:edges                # EDGES.md's structural invariants (src/lib/edges_lint.ts's header lists them)
 npm run size                      # print the release server's size; size:wasm the wasm's, size:gzip the server's gzipped — ungated
@@ -695,9 +695,10 @@ the kill** — read the summary's `KILLED` / `FAIL(n)`. `--check` fails a run ag
 stays hermetic. The why: `crates/xtask/src/gates.rs` and `runner.rs`'s module docs;
 prerequisites: `CONTRIBUTING.md` § Running the checks.
 
-`npm run check:docs` (rustdoc, chained into `check`) fails a `` [`Name`] `` in a doc
-comment that resolves to no item, and an invalid HTML tag; it cannot see whether the
-sentence around a link is true. It is not the only gate that reads doc comments:
+`npm run check:docs` (rustdoc under `-D warnings` over every feature, chained into
+`check`) fails a `` [`Name`] `` in a doc comment that resolves to no item, an invalid HTML
+tag, a bare URL, and an explicit link target the label already resolves to; it cannot see
+whether the sentence around a link is true. It is not the only gate that reads doc comments:
 `check`'s clippy fails some prose structure too (`doc_lazy_continuation`, measured). A
 reference the link syntax cannot express — a `#[cfg(test)]` test name, a feature-gated
 module — takes backticks instead.

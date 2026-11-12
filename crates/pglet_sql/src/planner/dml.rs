@@ -253,7 +253,7 @@ pub fn lower_insert(
 /// **Both `None`s are measured, not defaults.** The alias is `None` because this parser
 /// rejects `INSERT INTO t AS p` (`42601`) — a gap, not Postgres's grammar, so closing it
 /// means revisiting this function *and*
-/// [`on_conflict_action_relations`](super::plan::on_conflict_action_relations), which
+/// [`on_conflict_action_relations`], which
 /// names the target the same way for the same reason. The source is `None` because an `INSERT … SELECT`'s
 /// source is genuinely **not** in Postgres's `RETURNING` namespace: on 18.6
 /// `INSERT INTO amb_t SELECT … FROM amb_s s RETURNING s.v` is `42P01` and
@@ -550,9 +550,9 @@ fn probe_literal_input(
 /// level either of those two positions embeds.
 ///
 /// **It has a twin in the other namespace type**, and the pairing is the only thing that
-/// says so: [`on_conflict_action_relations`](super::plan::on_conflict_action_relations)
+/// says so: [`on_conflict_action_relations`]
 /// builds the same target-plus-`excluded` namespace as a
-/// [`RelationColumns`](super::plan::RelationColumns) for the prepared-statement
+/// [`RelationColumns`] for the prepared-statement
 /// parameter walk, which needs ordered `ColumnDesc`s where this needs a name→type map
 /// with claimant counting. A change to what the action can name moves both.
 ///

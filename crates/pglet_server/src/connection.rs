@@ -254,8 +254,8 @@ impl SharedState {
 ///
 /// Set when the server returns `CopyInResponse` (the `Connection` enters copy-in
 /// mode) and consumed at `CopyDone`, where `execute_copy_from` ingests `buffer`.
-/// While it is `Some`, [`handle_message`](crate::handlers::handle_message) routes
-/// every inbound frame to the copy-in handler — the simple-query analogue of the
+/// While it is `Some`, [`handle_message`] routes every inbound frame to the
+/// copy-in handler — the simple-query analogue of the
 /// extended protocol's `skip_until_sync` flag. `options` is the resolved
 /// [`Plan::Copy`](pglet_sql::planner::Plan::Copy) bundle, borrowed as the engine's
 /// `CopyParams` to rebuild the ingest at `CopyDone`.

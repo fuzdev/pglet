@@ -2632,7 +2632,7 @@ pub struct ConflictTarget {
     /// The arbiter key parts, in written order — and **matched as a set**, so neither
     /// that order nor a repeat reaches the match. A bare column is an `Expr::Column`;
     /// an expression part carries its parsed IR. Both this list and a candidate index's
-    /// [`IndexKey`](crate::catalog::IndexKey) are split into their bare-column and
+    /// [`IndexKey`] are split into their bare-column and
     /// expression halves and compared half by half; `executor::constraints`'
     /// `conflict_target_matches` is that rule, and `docs/indexes.md` states it.
     pub keys: Vec<Expr>,

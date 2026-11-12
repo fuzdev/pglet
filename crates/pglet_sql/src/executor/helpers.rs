@@ -172,7 +172,7 @@ pub fn table_column_descs(table: &Table) -> Vec<ColumnDesc> {
 /// (`JoinColumnMap`, `PreparedIndex`, `IndexSpec::column_enum_orders`), and only
 /// the last outlives the statement that took it — which is why `Schema.enums` moving
 /// has to reach it (`docs/enums.md` § A copy that outlives its statement). See
-/// [`ColumnResolver::column_enum_order`](super::expr::ColumnResolver::column_enum_order).
+/// [`ColumnResolver::column_enum_order`].
 #[must_use]
 pub fn enum_order_of<'s>(
     enums: &'s BTreeMap<String, EnumType>,
@@ -371,7 +371,7 @@ fn returning_input_columns(relations: &[ReturningRelation<'_>]) -> Vec<ColumnDes
 /// on the descriptors — `col_names` below, and a [`ProjectionScope`] that consults its
 /// `names` only when it has no resolver — but nothing resolves through them any more: the
 /// correlated outer frame is handed this clause's own pairs
-/// ([`ColumnRef`](super::expr::ColumnRef)), so a **bare** dotted reference inside a
+/// ([`ColumnRef`]), so a **bare** dotted reference inside a
 /// `RETURNING` subquery — the one path no qualifier gate can reach — answers the relation
 /// whose column carries that name rather than the first descriptor spelled it.
 /// A join wears the same *spelling* on its output descriptors by a second route,
@@ -517,7 +517,7 @@ pub fn finish_returning<S: Storage>(
 /// `input_columns` and is **total** — an operand it cannot type reaches the next rule
 /// as `TypeOid::Text` rather than as `None`. Both scopes implement one [`LeafScope`]
 /// (this one included), and the cells where the totality cannot show are one
-/// shared rule ([`shared_leaf_cell_type`](crate::planner::shared_leaf_cell_type)) —
+/// shared rule ([`shared_leaf_cell_type`]) —
 /// but be exact about how far that reaches: it is the `Subquery` leaf both walks read
 /// through the trait. This walk's `Column` arm still calls
 /// [`ProjectionScope::resolve`] directly, where `Expr::infer_type`'s calls
@@ -877,7 +877,7 @@ pub fn certain_expr_type_oid(expr: &Expr, scope: ProjectionScope<'_>) -> Option<
 /// against execution-time inputs rather than the catalog `Schema`, and is **total**
 /// where that walk answers `Option`. The cells where that difference cannot show
 /// are one shared arm below; the rest stay this walk's own, and
-/// [`shared_leaf_cell_type`](crate::planner::shared_leaf_cell_type)'s doc says which of
+/// [`shared_leaf_cell_type`]'s doc says which of
 /// those are later mechanical work and which are a decision against the oracle.
 // `match_same_arms`: the `BinaryOp` arms are grouped by category for documentation
 // (comparison/logical and array-containment both yield Bool) but kept separate, mirroring

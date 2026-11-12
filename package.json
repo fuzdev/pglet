@@ -33,7 +33,7 @@
     "check:benches": "tsc -p benches/tsconfig.json",
     "check:stripped": "cargo check --workspace --all-targets --no-default-features",
     "check:wasm-features": "cargo clippy -p pglet -p pglet_wasm --target wasm32-unknown-unknown --no-default-features --features pglet_wasm/default -- -D warnings && cargo clippy -p pglet -p pglet_wasm --target wasm32-unknown-unknown --no-default-features -- -D warnings && cargo clippy -p pglet -p pglet_wasm --target wasm32-unknown-unknown --no-default-features --features pglet_wasm/default,pglet_wasm/opfs -- -D warnings && cargo clippy -p pglet_wasm --all-targets --features opfs -- -D warnings",
-    "check:docs": "RUSTDOCFLAGS='-D rustdoc::broken_intra_doc_links -D rustdoc::invalid_html_tags' cargo doc --workspace --no-deps --document-private-items --features pglet_wasm/opfs",
+    "check:docs": "RUSTDOCFLAGS='-D warnings' cargo doc --workspace --no-deps --all-features --document-private-items",
     "check:release": "cargo xtask check-release",
     "gates": "cargo xtask gates",
     "gates:check": "cargo xtask gates --check",

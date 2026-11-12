@@ -1800,7 +1800,7 @@ fn column_from_parts(mut parts: Vec<String>) -> Result<Expr> {
 /// - `-abs(1)`, `-id`, `-$1` do not fold — a function call, a column, a parameter.
 ///
 /// Unary `+` is deliberately **not** folded, here or there
-/// ([`Expr::UnaryPlus`](crate::planner::Expr::UnaryPlus)): `'+' a_expr` stays an
+/// ([`Expr::UnaryPlus`]): `'+' a_expr` stays an
 /// operator node in `gram.y`, which is why `ORDER BY +1` is not an ordinal on either
 /// engine.
 ///
@@ -1816,7 +1816,7 @@ fn column_from_parts(mut parts: Vec<String>) -> Result<Expr> {
 ///   `index/range_negative_literal.sql` carry `@profile-lock` for that, with the plan
 ///   *shape* (which no differential fixture can see) pinned by `planner::tests`'
 ///   `a_folded_negative_literal_is_a_probe_where_unary_plus_is_not`. `+1` still declines,
-///   as [`Expr::UnaryPlus`](crate::planner::Expr::UnaryPlus) records.
+///   as [`Expr::UnaryPlus`] records.
 ///
 ///   A faithful probe is **not** profile equality: one measured build-profile
 ///   exception class has a member a folded negative probe reaches, through *this*

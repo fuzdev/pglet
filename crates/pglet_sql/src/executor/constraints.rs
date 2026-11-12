@@ -345,7 +345,7 @@ fn collect_check_columns(expr: &Expr, out: &mut Vec<String>) {
 ///
 /// Uses SQL 3-valued logic: a predicate **violates** only when it resolves to
 /// **false**; both true and NULL (unknown) pass. The resolution is
-/// [`boolean_context_operand`](super::expr::boolean_context_operand)'s, not a bare
+/// [`boolean_context_operand`]'s, not a bare
 /// `Value::Bool` match, so a non-boolean predicate is `42804` rather than a row
 /// admitted — the polarity here is what made a non-boolean `CHECK` pass *every*
 /// row, the opposite direction from the filters, and the same resolver answers both.

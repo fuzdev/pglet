@@ -56,6 +56,19 @@ trivial_numeric_casts = "warn"
 unused_lifetimes = "warn"
 unused_qualifications = "warn"
 
+[workspace.lints.rustdoc]
+# A doc link is the only machine-checkable claim a doc comment makes, so
+# deny broken links and malformed markup (`npm run check:docs`, chained into
+# `check`, enforces it).
+# `private_intra_doc_links` is allowed: most of the engine is private items, so
+# public docs deliberately link private helpers, and the docs are built with
+# `--document-private-items`, where those links resolve and navigate.
+broken_intra_doc_links = "deny"
+invalid_html_tags = "deny"
+bare_urls = "deny"
+redundant_explicit_links = "deny"
+private_intra_doc_links = "allow"
+
 [workspace.lints.clippy]
 # Enable lint groups (priority -1 so individual lints can override)
 all = { level = "warn", priority = -1 }

@@ -1731,7 +1731,7 @@ pub fn resolve_expr_types_checked(expr: Expr, scope: &ColumnScope) -> Result<Exp
 /// cannot come to disagree about which nodes are branch sets. Everything below describes
 /// the reader in its unwidened state, which is what a set with no enum in it still gets.
 ///
-/// [`select_common_type`](super::select_common_type) folds
+/// [`select_common_type`] folds
 /// `types.iter().flatten()`, so a branch this reader answers `None` for is dropped from
 /// the fold and from the closing re-check alike: it is never compared against any
 /// sibling, however many concrete siblings stand beside it.
