@@ -13,8 +13,10 @@
 //! compared against a live Postgres; these assert only that the embed host reaches
 //! the same verdicts the server does.
 
-// A test harness: `.expect()`/`.unwrap()` surface a setup failure loudly right here.
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![expect(
+    clippy::expect_used,
+    reason = "helpers outside the `#[test]` fns `.expect()` setup, so a failed setup fails the test where it happens"
+)]
 
 use pglet::Database;
 use pglet_sql::types::Value;

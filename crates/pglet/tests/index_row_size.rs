@@ -10,7 +10,10 @@
 //! than at `COMMIT`, and the two measured divergences — a key 18.6 compresses under its
 //! limit, and a key whose pglet encoding outgrows a B+tree page (`EDGES.md` rows 191 and
 //! 192) — which a faithful fixture would hold red.
-#![allow(clippy::panic, clippy::expect_used)]
+#![expect(
+    clippy::expect_used,
+    reason = "helpers outside the `#[test]` fns `.expect()` setup, so a failed setup fails the test where it happens"
+)]
 
 use crate::common;
 

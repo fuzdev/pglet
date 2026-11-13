@@ -13,7 +13,10 @@
 //! behind, on each of the embed's stores and across a reopen; and the property the first
 //! refusal keeps, swept over the statements that could break it.
 
-#![allow(clippy::unwrap_used, clippy::panic)]
+#![expect(
+    clippy::panic,
+    reason = "helpers outside the `#[test]` fns `panic!` on a failed statement or an unexpected shape, so it surfaces where it happens"
+)]
 
 use crate::common::ScratchDir;
 use pglet::Database;

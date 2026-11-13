@@ -35,12 +35,13 @@
 // configuration would fork the dispatch; the two-variant build keeps the lints.
 #![cfg_attr(
     not(feature = "memory_storage"),
-    allow(
+    expect(
         irrefutable_let_patterns,
         clippy::match_wildcard_for_single_variants,
         clippy::missing_const_for_fn,
         clippy::needless_pass_by_ref_mut,
-        clippy::clone_on_copy
+        clippy::clone_on_copy,
+        reason = "with one `StorageBackend` variant, every dispatch written for two reads as redundant"
     )
 )]
 
@@ -1797,7 +1798,6 @@ impl Database {
     /// The toggle is per-thread (the engine is single-threaded), so set it on the
     /// thread that drives this `Database`. The two type resolvers (the `CAST`
     /// path and the DDL path) both consult it.
-    #[allow(clippy::unused_self)]
     pub fn set_coerce_unknown_types(&self, coerce: bool) {
         pglet_sql::planner::set_coerce_unknown_types(coerce);
     }

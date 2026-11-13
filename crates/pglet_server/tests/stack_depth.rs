@@ -14,7 +14,12 @@
 //! whichever profile built the server — so a stack reservation too small for its limit
 //! aborts this test's server rather than passing it.
 
-#![allow(clippy::expect_used, clippy::panic, clippy::unwrap_used)]
+#![expect(
+    clippy::expect_used,
+    clippy::panic,
+    clippy::unwrap_used,
+    reason = "helpers outside the `#[test]` fns `.unwrap()`/`.expect()` the server harness and `panic!` on an unexpected outcome, so a failure surfaces where it happens"
+)]
 
 use std::io::{BufRead as _, BufReader, Read as _, Write as _};
 use std::net::TcpStream;

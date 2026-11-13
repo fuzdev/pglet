@@ -200,10 +200,10 @@ pub enum PageFlags {
 }
 
 impl PageFlags {
-    // arms are an explicit enumeration of the four valid discriminants; `0` is listed
-    // for completeness and `_` is a documented "unknown -> Free" fallback, so the shared
-    // body with `Free` is intentional and kept separate.
-    #[allow(clippy::match_same_arms)]
+    #[expect(
+        clippy::match_same_arms,
+        reason = "an explicit enumeration of the valid discriminants: `0` is listed for completeness and `_` is the documented unknown-to-`Free` fallback"
+    )]
     pub const fn from_u16(v: u16) -> Self {
         match v {
             0 => Self::Free,
@@ -269,9 +269,10 @@ impl PageHeader {
     }
 
     /// Decode header from bytes.
-    // Fixed-layout decode: every `try_into` targets a statically-sized slice of
-    // the 32-byte header, so none can fail.
-    #[allow(clippy::unwrap_used)]
+    #[expect(
+        clippy::unwrap_used,
+        reason = "fixed-layout decode: every `try_into` targets a statically sized slice of the 32-byte header, so none can fail"
+    )]
     pub fn decode(bytes: &[u8]) -> Self {
         let page_id = u64::from_le_bytes(bytes[0..8].try_into().unwrap());
         let flags = PageFlags::from_u16(u16::from_le_bytes(bytes[8..10].try_into().unwrap()));

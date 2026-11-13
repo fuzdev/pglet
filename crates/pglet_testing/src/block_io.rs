@@ -388,6 +388,8 @@ impl Default for MemBlockIo {
 }
 
 impl BlockIo for MemBlockIo {
+    // `allow`, not `expect`: `fetch_update` is deprecated on the pinned toolchain but
+    // not at the `rust-version` floor.
     #[allow(
         deprecated,
         reason = "`fetch_update`'s replacement `try_update` is newer than the workspace's `rust-version`"

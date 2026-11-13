@@ -8,8 +8,10 @@
 //! The differential fixtures (`{select,insert,update}/…_subquery.sql`) assert the
 //! same against a live Postgres; this is the in-process counterpart.
 
-// A test harness: the `seed` helper `.unwrap()`s so a setup failure surfaces loudly here.
-#![allow(clippy::unwrap_used)]
+#![expect(
+    clippy::unwrap_used,
+    reason = "the `seed` helper `.unwrap()`s, so a failed setup fails the test where it happens"
+)]
 
 use pglet::Database;
 use pglet_sql::types::Value;

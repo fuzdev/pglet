@@ -93,7 +93,10 @@ pub fn resolve_expr_types(mut expr: Expr, scope: &ColumnScope) -> Result<Expr> {
 }
 
 /// Resolve a boxed child in place, reusing its allocation.
-#[allow(clippy::inline_always)] // one frame a level, or no frame at a checkpoint (`crate::depth`)
+#[expect(
+    clippy::inline_always,
+    reason = "one frame a level, or no frame at a checkpoint (`crate::depth`)"
+)]
 #[inline(always)]
 fn resolve_expr_types_in_place(slot: &mut Box<Expr>, scope: &ColumnScope) -> Result<()> {
     let taken = std::mem::replace(&mut **slot, Expr::Default);
@@ -956,7 +959,10 @@ fn type_scalar_subquery_branches(
 }
 
 /// [`type_scalar_subquery_branches`] over a boxed child in place, reusing its allocation.
-#[allow(clippy::inline_always)] // one frame a level, or no frame at a checkpoint (`crate::depth`)
+#[expect(
+    clippy::inline_always,
+    reason = "one frame a level, or no frame at a checkpoint (`crate::depth`)"
+)]
 #[inline(always)]
 fn type_scalar_subquery_in_place(
     slot: &mut Box<Expr>,
@@ -2478,8 +2484,6 @@ fn structural_identity(expr: &Expr) -> Option<Vec<u8>> {
 impl ColumnScope {
     /// A scope over the one relation `name` with `columns` — the DELETE / UPDATE
     /// target, and a single-table SELECT.
-    // internal planner helper; generalizing over the hasher is needless API churn
-    #[allow(clippy::implicit_hasher)]
     #[must_use]
     pub fn single(name: String, columns: HashMap<String, ResolvedType>) -> Self {
         let mut scope = Self::default();
@@ -2488,8 +2492,6 @@ impl ColumnScope {
     }
 
     /// Add a relation whose columns are known.
-    // internal planner helper; generalizing over the hasher is needless API churn
-    #[allow(clippy::implicit_hasher)]
     pub fn push_relation(&mut self, name: String, columns: HashMap<String, ResolvedType>) {
         self.push_scope_relation(Some(name), columns, true, false);
     }
@@ -2497,8 +2499,6 @@ impl ColumnScope {
     /// [`Self::push_relation`] for a **base table**, its `columns` the catalog's own —
     /// the one kind of relation whose column types are declared rather than derived
     /// ([`Self::base_column_type`]).
-    // internal planner helper; generalizing over the hasher is needless API churn
-    #[allow(clippy::implicit_hasher)]
     pub fn push_base_relation(&mut self, name: String, columns: HashMap<String, ResolvedType>) {
         self.push_relation(name, columns);
         if let Some(relation) = self.relations.last_mut() {
@@ -2626,8 +2626,6 @@ impl ColumnScope {
     /// catalog view, or a scan of a table the schema has no entry for. Its name answers
     /// a qualifier; a name its map lacks is *unknown* rather than absent, so resolution
     /// stops at it instead of walking outward.
-    // internal planner helper; generalizing over the hasher is needless API churn
-    #[allow(clippy::implicit_hasher)]
     pub fn push_partial_relation(&mut self, name: String, columns: HashMap<String, ResolvedType>) {
         self.push_scope_relation(Some(name), columns, false, false);
     }
@@ -3021,8 +3019,6 @@ impl ColumnScope {
 
     /// Add the `EXCLUDED` pseudo-relation — qualified-only.
     /// See [`ScopeRelation::pseudo`].
-    // internal planner helper; generalizing over the hasher is needless API churn
-    #[allow(clippy::implicit_hasher)]
     pub fn push_excluded(&mut self, columns: HashMap<String, ResolvedType>) {
         self.push_scope_relation(Some("excluded".to_string()), columns, true, true);
         if let Some(relation) = self.relations.last_mut() {
@@ -3473,7 +3469,10 @@ fn check_list_semantics(list: &[Expr], scope: &ColumnScope, schema: &Schema) -> 
 
 /// One child of [`check_expr_semantics`]: its subtree, then the boolean-context gate
 /// its parent puts it in, if any.
-#[allow(clippy::inline_always)] // one frame a level, or no frame at a checkpoint (`crate::depth`)
+#[expect(
+    clippy::inline_always,
+    reason = "one frame a level, or no frame at a checkpoint (`crate::depth`)"
+)]
 #[inline(always)]
 fn check_child_semantics(
     child: &Expr,
@@ -5064,8 +5063,10 @@ fn unknown_assignment_source(expr: &Expr) -> bool {
 /// Coerce an expression to a target type by wrapping in Cast if needed.
 ///
 /// Returns the expression unchanged if it's already the right type or is a column.
-// arms grouped by reason (column / already-cast / NULL) for documentation; several share the `expr` body but are kept separate intentionally
-#[allow(clippy::match_same_arms)]
+#[expect(
+    clippy::match_same_arms,
+    reason = "arms grouped by reason (column / already-cast / NULL); several share the `expr` body"
+)]
 pub fn coerce_to_type(expr: Expr, target_type: TypeOid) -> Expr {
     match &expr {
         // Don't wrap columns - they'll be coerced at evaluation if needed
@@ -5095,8 +5096,10 @@ pub fn coerce_to_type(expr: Expr, target_type: TypeOid) -> Expr {
 }
 
 /// Get the inferred type of a literal.
-// arms are kept one-per-variant for documentation; Null and String both infer Text but are distinct cases
-#[allow(clippy::match_same_arms)]
+#[expect(
+    clippy::match_same_arms,
+    reason = "arms kept one per variant: `Null` and `String` both infer `text` but are distinct cases"
+)]
 const fn literal_type(lit: &Literal) -> TypeOid {
     match lit {
         Literal::Null => TypeOid::Text,

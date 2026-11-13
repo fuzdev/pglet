@@ -10,7 +10,10 @@
 //! regardless. The differential fixtures (`functions/pg_column_size_*`) hold the sizes
 //! themselves against 18.6; this holds the watch, which a fixture cannot reach on every
 //! path.
-#![allow(clippy::panic, clippy::expect_used)]
+#![expect(
+    clippy::panic,
+    reason = "helpers outside the `#[test]` fns `panic!` on a failed statement or an unexpected shape, so it surfaces where it happens"
+)]
 
 use pglet::Database;
 use pglet_sql::types::Value;

@@ -11,7 +11,11 @@
 //! row 229), not 18.6's; and the enum reorders, which 18.6 refuses at the `DROP TYPE`
 //! (`2BP01`), are held to the answer the same statements give outside a block.
 
-#![allow(clippy::unwrap_used, clippy::panic)]
+#![expect(
+    clippy::unwrap_used,
+    clippy::panic,
+    reason = "helpers outside the `#[test]` fns `.unwrap()` setup and `panic!` on a failed statement or an unexpected shape, so a failure surfaces where it happens"
+)]
 
 use pglet::{Database, StorageBackend};
 

@@ -22,10 +22,10 @@
 //! or the `pg_dump`/`psql` client binaries are unavailable. The restore runs under
 //! `ON_ERROR_STOP=1`, so any statement pglet rejects fails the test loudly.
 
-// Holds non-`Send` tokio-postgres futures across awaits on a single-threaded local
-// runtime; they never cross a thread. `.expect()` surfaces setup failures loudly —
-// right for a harness.
-#![allow(clippy::future_not_send, clippy::expect_used)]
+#![expect(
+    clippy::expect_used,
+    reason = "a test-runner binary: `.expect()` surfaces a setup failure loudly rather than threading `Result` everywhere"
+)]
 
 use std::path::PathBuf;
 use std::process::Command;

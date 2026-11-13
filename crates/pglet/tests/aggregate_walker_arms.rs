@@ -14,9 +14,6 @@
 //! [`every_compound_arm_evaluates_an_aggregate`] then runs in both the projection and
 //! `HAVING`. A claim with nothing behind it would be a comment; this makes it a test.
 
-// A test harness: `.expect()` surfaces a setup failure loudly right here.
-#![allow(clippy::expect_used)]
-
 use pglet::Database;
 use pglet_sql::planner::Expr;
 
@@ -38,11 +35,14 @@ enum AggregateArm {
 
 /// One decision per `Expr` variant. Exhaustive **without `..`** on purpose — see the
 /// module doc.
-//
-// `match_same_arms`: the `NoAggregateBelow` groups are kept apart by *reason* (a leaf, a
-// sub-plan, the aggregate itself, another executor's node), which is the whole content of
-// the decision this file exists to force.
-#[allow(clippy::match_same_arms, clippy::missing_const_for_fn)]
+#[expect(
+    clippy::match_same_arms,
+    reason = "the `NoAggregateBelow` groups are kept apart by reason (a leaf, a sub-plan, the aggregate itself, another executor's node), which is the decision this file exists to force"
+)]
+#[expect(
+    clippy::missing_const_for_fn,
+    reason = "the tests call the table only at runtime, so `const` would buy nothing"
+)]
 fn aggregate_arm(expr: &Expr) -> AggregateArm {
     use AggregateArm::{Evaluates, NoAggregateBelow};
     /// The common case: the same spelling works in both positions.

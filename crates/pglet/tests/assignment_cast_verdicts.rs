@@ -8,9 +8,10 @@
 //! whether the statement is refused at all, and by which gate — and that is what these
 //! assert.
 
-// A test harness: `.expect()`/`.unwrap()`/`panic!` surface a setup failure or an
-// unexpected verdict shape loudly right here.
-#![allow(clippy::expect_used, clippy::unwrap_used, clippy::panic)]
+#![expect(
+    clippy::expect_used,
+    reason = "helpers outside the `#[test]` fns `.expect()` setup, so a failed setup fails the test where it happens"
+)]
 
 use pglet::Database;
 

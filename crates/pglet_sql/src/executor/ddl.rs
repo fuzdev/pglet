@@ -1324,7 +1324,10 @@ fn durable_write_failure(result: Result<()>) -> Result<()> {
 /// passes later than the others and is the generalizable shape — **a name this statement
 /// will register that a later gate cannot see**. Ask it of anything new this function
 /// registers; a catalog-reading gate is blind to all of them by construction.
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "one argument per field of the planned statement, plus the schema/storage context every executor takes"
+)]
 pub fn execute_create_table<S: Storage>(
     schema: &mut Schema,
     storage: &mut S,
@@ -3300,7 +3303,10 @@ pub fn execute_create_schema(name: &str, if_not_exists: bool) -> Result<QueryRes
 /// `execute_create_table` or `ALTER TABLE … ADD CONSTRAINT` is closed the other way:
 /// there the index's own catalog writes sit **below** `storage.create_index` rather
 /// than behind a pre-flight (`docs/ddl.md` § A failed index build).
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "one argument per field of the planned statement, plus the schema/storage context every executor takes"
+)]
 pub fn execute_alter_table_add_column<S: Storage>(
     schema: &mut Schema,
     storage: &mut S,
@@ -4108,7 +4114,10 @@ fn validate_added_column_uniques(
 ///
 /// `existing` is the pre-add snapshot (each `(id, row)`); `backfill[i]` is the value
 /// the new column takes in row `existing[i]`. A violation is loud — `23502` or `23514`.
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the new column's facts, its checks, and the rows it is backfilled into, threaded individually as across the executor"
+)]
 fn validate_added_column_checks(
     schema: &Schema,
     table_name: &str,
@@ -5576,12 +5585,11 @@ fn resolve_implicit_sequence_name(
 /// `Filter(Scan)`. CREATE INDEX builds and maintains the index for those probes
 /// and for the write-path probes that PK/UNIQUE enforcement uses (`enforced`
 /// records whether this unique index participates in that enforcement).
-// `unique`, `enforced`, and `nulls_not_distinct` are independent catalog facts
-// (every `unique` index is enforced — plain or expression — and NND is
-// orthogonal), so they stay distinct params; this keeps the positional dispatch
-// uniform with the sibling `execute_*` functions rather than introducing a
-// one-off options struct.
-#[allow(clippy::too_many_arguments, clippy::fn_params_excessive_bools)]
+#[expect(
+    clippy::too_many_arguments,
+    clippy::fn_params_excessive_bools,
+    reason = "`unique`, `enforced` and `nulls_not_distinct` are independent catalog facts, kept as distinct params so the positional dispatch stays uniform with the sibling `execute_*` functions"
+)]
 pub fn execute_create_index<S: Storage>(
     schema: &mut Schema,
     storage: &mut S,
@@ -6650,7 +6658,11 @@ mod enums_moved_tests {
             schema.enums.insert(
                 (*name).to_string(),
                 EnumType {
-                    #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+                    #[expect(
+                        clippy::cast_possible_truncation,
+                        clippy::cast_possible_wrap,
+                        reason = "a test catalog's handful of enums, so the index stays tiny"
+                    )]
                     oid: 16_400 + i as i32,
                     labels: labels.iter().map(|l| (*l).to_string()).collect(),
                 },

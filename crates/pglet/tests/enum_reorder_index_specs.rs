@@ -20,9 +20,11 @@
 //! Each test opens its **own** database: the state under test is a catalog reorder, and
 //! chaining two of them would let the second measure the first's rebuild.
 
-// A test harness: `.unwrap()` on setup and `panic!` on an unexpected value shape, so a
-// setup failure surfaces here rather than as a confusing assertion diff.
-#![allow(clippy::panic, clippy::unwrap_used)]
+#![expect(
+    clippy::panic,
+    clippy::unwrap_used,
+    reason = "helpers outside the `#[test]` fns `.unwrap()` setup and `panic!` on an unexpected value shape, so a failure surfaces where it happens rather than as a confusing assertion diff"
+)]
 
 use pglet::Database;
 use pglet_sql::types::Value;

@@ -9,7 +9,10 @@
 /// *shipped* stripped wasm build re-adds the feature
 /// (`--no-default-features --features console_error_panic_hook`), so it takes the
 /// non-const arm too — the lint is reachable only from the clippy invocation.
-#[allow(clippy::missing_const_for_fn)]
+#[allow(
+    clippy::missing_const_for_fn,
+    reason = "fires only with `console_error_panic_hook` off, where the body is empty; with it on, `set_once` is not a `const fn`"
+)]
 pub fn set_panic_hook() {
     #[cfg(feature = "console_error_panic_hook")]
     console_error_panic_hook::set_once();

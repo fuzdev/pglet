@@ -3,7 +3,11 @@
 //! nested operand, so the restored predicate is the tree the original was — the same
 //! catalog text, and an `ON CONFLICT … WHERE` restating it still matches it.
 
-#![allow(clippy::expect_used, clippy::unwrap_used, clippy::panic)]
+#![expect(
+    clippy::unwrap_used,
+    clippy::panic,
+    reason = "helpers outside the `#[test]` fns `.unwrap()` setup and `panic!` on a failed statement or an unexpected shape, so a failure surfaces where it happens"
+)]
 
 use pglet::Database;
 use pglet_sql::types::Value;

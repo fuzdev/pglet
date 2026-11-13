@@ -140,8 +140,6 @@ fn display_pid(pid: Option<u32>) -> String {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::expect_used, clippy::panic)]
-
     use super::*;
     use std::fs;
     use std::path::PathBuf;

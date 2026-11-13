@@ -837,7 +837,10 @@ fn compute_aggregate(
                 let Value::Interval(sum) = sum_interval(values)? else {
                     return Ok(Value::Null);
                 };
-                #[allow(clippy::cast_precision_loss)]
+                #[expect(
+                    clippy::cast_precision_loss,
+                    reason = "a row count is far under 2^53, so it is exact in an `f64`"
+                )]
                 return interval_scale(&sum, count as f64, false).map(Value::Interval);
             }
             float8_avg(values)
@@ -1014,11 +1017,15 @@ fn float8_avg(values: &[Value]) -> Result<Value> {
         n += 1.0;
         sx += x;
         if prev_n > 0.0 {
-            // not `mul_add`: 18.6 rounds the product before the subtraction
-            #[allow(clippy::suboptimal_flops)]
+            #[expect(
+                clippy::suboptimal_flops,
+                reason = "not `mul_add`: 18.6 rounds the product before the subtraction"
+            )]
             let tmp = x * n - sx;
-            // `float8_accum`'s update, as written there
-            #[allow(clippy::suspicious_operation_groupings)]
+            #[expect(
+                clippy::suspicious_operation_groupings,
+                reason = "`float8_accum`'s update, as written there"
+            )]
             {
                 sxx += tmp * tmp / (n * prev_n);
             }

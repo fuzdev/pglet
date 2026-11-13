@@ -147,9 +147,10 @@ enum PendingJoin {
 }
 
 /// Per-parenthesis state of the pre-scan.
-// One flag per grammar position the scan tracks; each is read at its own token, and a
-// state machine over their product would hide which token reads which.
-#[allow(clippy::struct_excessive_bools)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "one flag per grammar position the scan tracks, each read at its own token; a state machine over their product would hide which token reads which"
+)]
 #[derive(Default)]
 struct Frame {
     /// A `SELECT` / `DELETE` / `UPDATE` began at this level, so a `FROM` here is a

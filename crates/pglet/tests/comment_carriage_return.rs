@@ -6,9 +6,6 @@
 //! removes one row, the sum is `2`, and the two statements split at the `;` after the
 //! carriage return.
 
-// A test harness: `.expect()`/`.unwrap()` surface a setup failure loudly right here.
-#![allow(clippy::expect_used, clippy::unwrap_used)]
-
 use pglet::Database;
 use pglet_sql::types::Value;
 

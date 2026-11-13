@@ -244,7 +244,10 @@ const MAX_RECURSIVE_ITERATIONS: usize = 100_000;
 /// The recursive term's rows are cast to the non-recursive column types each
 /// iteration ([`cast_rows_to_types`]) — the asymmetric-typing rule (non-recursive
 /// authoritative), already validated castable at plan time.
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "one argument per field of the recursive CTE, plus the schema/storage context every executor takes"
+)]
 pub fn materialize_recursive_cte<S: Storage>(
     name: &str,
     columns: &[ColumnDesc],

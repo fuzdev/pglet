@@ -17,9 +17,10 @@
 //! Note: Parallel tests require consistent lock ordering in the server
 //! (schema first, then storage) to prevent ABBA deadlock.
 
-// Test-harness binary: `.expect()` surfaces setup failures loudly, the right behavior for a
-// test runner rather than threading `Result` through every assertion.
-#![allow(clippy::expect_used)]
+#![expect(
+    clippy::expect_used,
+    reason = "a test-runner binary: `.expect()` surfaces a setup failure loudly rather than threading `Result` through every assertion"
+)]
 
 use pglet_testing::server::{
     build_server, find_open_port, hard_kill, spawn_server, wait_for_ready,

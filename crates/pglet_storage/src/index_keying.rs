@@ -211,10 +211,10 @@ impl IndexKeying {
     ///
     /// Returns `ExprEval` (carrying the expression's own error) if a key
     /// expression fails to evaluate.
-    // both arms do real work (the `Some` arm builds `col_names` + maps with error
-    // handling, the `None` arm maps positions), so the if-let reads clearer than a
-    // `map_or_else` with two multi-line closures
-    #[allow(clippy::option_if_let_else)]
+    #[expect(
+        clippy::option_if_let_else,
+        reason = "both arms do real work (the `Some` arm builds `col_names` and maps with error handling, the `None` arm maps positions), so the if-let reads clearer than a `map_or_else` with two multi-line closures"
+    )]
     pub fn key_values(&self, row: &[Value]) -> Result<Vec<Value>> {
         if let Some(exprs) = &self.key_exprs {
             let col_names: Vec<&str> = self.column_names.iter().map(String::as_str).collect();

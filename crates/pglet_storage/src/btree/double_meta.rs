@@ -1023,17 +1023,20 @@ impl DoubleMetaStore {
 }
 
 /// Map a `std::io::Error` into a `PageStoreError`.
-// by-value so it's a direct `.map_err(map_io)` callback — `map_err` yields the error
-// owned, and a `&io::Error` signature would force a closure wrapper at every call site
-#[allow(clippy::needless_pass_by_value)]
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "by value so it is a direct `.map_err(map_io)` callback; a `&io::Error` signature would force a closure at every call site"
+)]
 fn map_io(e: std::io::Error) -> PageStoreError {
     PageStoreError::Io(e.to_string())
 }
 
 /// Map a refused **write or `fsync`** into [`PageStoreError::WriteRefused`], keeping
 /// whether the device was full. Reads keep [`map_io`].
-// by-value for the same reason as `map_io`
-#[allow(clippy::needless_pass_by_value)]
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "by value for the same reason as `map_io`"
+)]
 fn map_write(e: std::io::Error) -> PageStoreError {
     PageStoreError::WriteRefused(DeviceError::from_io(&e))
 }
@@ -1068,7 +1071,10 @@ fn write_slot(
     // `freelist_crc`) in the slot.
     let mut payload = metadata.serialize();
     payload.extend_from_slice(&encode_retired_entries(retired));
-    #[allow(clippy::cast_possible_truncation)]
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "the fixed metadata plus at most `RETIRED_INLINE_MAX` retired entries stays under a page"
+    )]
     let payload_len = payload.len() as u32;
 
     // CRC covers version | payload_len | payload.

@@ -7,10 +7,12 @@
 //! This binary is self-contained: it builds `pglet_server`, spawns it on an open port,
 //! runs all tests, then kills the server. No external server management needed.
 
-// Test-harness binary: `.expect()`/`.unwrap()` surface failures loudly (the right behavior
-// for a test runner), and float literals like `3.14` are deliberate round-trip test data,
-// not the math constants `approx_constant` mistakes them for.
-#![allow(clippy::expect_used, clippy::unwrap_used, clippy::approx_constant)]
+#![expect(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::approx_constant,
+    reason = "a test-runner binary: `.expect()`/`.unwrap()` surface a failure loudly, and literals like `3.14` are round-trip test data, not approximations of a math constant"
+)]
 
 use pglet_testing::server::build_server;
 use pglet_tests::{DYNAMIC_PORT_END, PGLET_TEST_PORT};
@@ -26,8 +28,10 @@ use tokio_postgres::NoTls;
 static TEST_PORT: OnceLock<u16> = OnceLock::new();
 
 /// Find an open port in the dynamic range
-// test harness: no free port in the range is an unrecoverable setup failure
-#[allow(clippy::panic)]
+#[expect(
+    clippy::panic,
+    reason = "no free port in the range is an unrecoverable setup failure"
+)]
 fn find_open_port() -> u16 {
     for port in PGLET_TEST_PORT..DYNAMIC_PORT_END {
         if TcpListener::bind(("127.0.0.1", port)).is_ok() {

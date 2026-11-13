@@ -38,9 +38,12 @@
 //! of `planner::grammar_only_name`. What that test asserts is pglet's own posture, and
 //! the divergence is stated in its own doc, which is the only place it can be.
 
-// A test harness: setup `.unwrap()`s and the helpers `.expect()`, so a setup failure
-// surfaces loudly here rather than as a confusing assertion mismatch.
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![expect(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    reason = "helpers outside the `#[test]` fns `.unwrap()`/`.expect()` setup and `panic!` on a failed statement or an unexpected shape, so a failure surfaces where it happens rather than as a confusing assertion mismatch"
+)]
 
 use pglet::Database;
 use pglet_sql::types::Value;

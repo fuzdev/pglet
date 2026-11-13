@@ -62,8 +62,9 @@ with no dubious shortcuts, and weigh every perf win against gzipped size.
 
 In place: `CLAUDE.md` § fuz-stack conformance and § Conventions, `TRADEOFFS.md` § Dependency
 footprint, and `CONTRIBUTING.md` § Running the checks. Beyond those, `pglet_wasm` carries an
-explicit `[lints]` block with audited panic-point `#[allow]`s, and a bare `cargo clippy
---workspace` covers neither tests nor benches, so it passes locally where `check` does not.
+explicit `[lints]` block (the workspace set re-pasted to hold `unsafe_code` at `deny`), and a
+bare `cargo clippy --workspace` covers neither tests nor benches, so it passes locally where
+`check` does not.
 
 ### 3. Durability correctness
 

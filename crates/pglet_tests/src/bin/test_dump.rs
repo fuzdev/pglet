@@ -37,10 +37,10 @@
 //! Self-contained: builds + spawns the server, runs against live Postgres, and
 //! degrades gracefully (skip, exit 0) when Postgres or the `psql` client is absent.
 
-// Holds non-`Send` tokio-postgres futures across awaits on a single-threaded local
-// runtime; they never cross a thread. `.expect()` surfaces setup failures loudly —
-// right for a harness.
-#![allow(clippy::future_not_send, clippy::expect_used)]
+#![expect(
+    clippy::expect_used,
+    reason = "a test-runner binary: `.expect()` surfaces a setup failure loudly rather than threading `Result` everywhere"
+)]
 
 use std::path::PathBuf;
 use std::process::Command;
@@ -1418,10 +1418,10 @@ fn check_every_nextval_has_a_sequence(dump: &str) -> Result<(), String> {
     // emission — `quote_ident` leaves a name bare only when it already matches
     // `^[a-z_][a-z0-9_]*$` — so it costs no false positive and is the whole
     // discriminator. `None` = not a well-formed name.
-    // Both arms open `let mut name = String::new()`; they stay apart for the same reason
-    // `split_name_literal` keeps them apart — quoted-verbatim vs unquoted-downcased is the
-    // rule under test, not an incidental shared binding.
-    #[allow(clippy::branches_sharing_code)]
+    #[expect(
+        clippy::branches_sharing_code,
+        reason = "quoted-verbatim vs unquoted-downcased is the rule under test, as in `split_name_literal`, not an incidental shared binding"
+    )]
     let read_name_literal = |content: &str| {
         let mut chars = content.chars().peekable();
         let is_space = |c: char| matches!(c, ' ' | '\t' | '\n' | '\r' | '\x0c');

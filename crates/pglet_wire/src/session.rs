@@ -37,9 +37,10 @@ impl Session {
 
 fn rand_i32() -> i32 {
     let mut buf = [0u8; 4];
-    // Panic is appropriate here - if the OS can't provide entropy, we can't securely generate
-    // session keys and should fail fast rather than use predictable values.
-    #[allow(clippy::expect_used)]
+    #[expect(
+        clippy::expect_used,
+        reason = "without OS entropy there is no secure session key, so fail fast rather than use a predictable value"
+    )]
     getrandom::fill(&mut buf).expect("getrandom failed");
     i32::from_ne_bytes(buf)
 }

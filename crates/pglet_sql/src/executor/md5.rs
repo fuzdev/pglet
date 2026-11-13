@@ -116,8 +116,10 @@ fn md5_digest(data: &[u8]) -> [u8; 16] {
 }
 
 /// One 64-byte block through the four rounds (RFC 1321 § 3.4).
-// `a`–`d` and `f`/`g` are RFC 1321's own names for the round registers
-#[allow(clippy::many_single_char_names)]
+#[expect(
+    clippy::many_single_char_names,
+    reason = "`a`–`d` and `f`/`g` are RFC 1321's own names for the round registers"
+)]
 fn compress(state: &mut [u32; 4], block: &[u8; 64]) {
     let mut words = [0u32; 16];
     for (word, bytes) in words.iter_mut().zip(block.as_chunks::<4>().0) {

@@ -9,10 +9,10 @@
 //! byte for byte) and the simple query protocol in text (compared live against Postgres).
 //! Setup statements use the simple query protocol, for multi-statement support.
 
-// The query futures hold a `Vec<Box<dyn ToSql + Sync>>` of bound params across awaits,
-// which isn't `Send`. This is a test harness on a local tokio runtime — the futures are
-// never sent across threads, so `future_not_send` doesn't apply.
-#![allow(clippy::future_not_send)]
+#![expect(
+    clippy::future_not_send,
+    reason = "the query futures hold a `Vec<Box<dyn ToSql + Sync>>` of bound params across awaits; the harnesses await them in place and never `tokio::spawn` one, so nothing needs them `Send`"
+)]
 
 pub mod simple_probe;
 
@@ -148,7 +148,7 @@ pub static POSTGRES_CONFIG: std::sync::LazyLock<DbConfig> = std::sync::LazyLock:
         // A panic, and deliberately not a fallback: every reader of this static
         // is a harness that would otherwise run `DROP SCHEMA public CASCADE`
         // against the default target the operator was steering away from.
-        #[allow(clippy::panic, reason = "a misconfigured oracle must not run at all")]
+        #[expect(clippy::panic, reason = "a misconfigured oracle must not run at all")]
         Err(message) => panic!("{message}"),
     }
 });
@@ -2140,10 +2140,10 @@ fn fixture_params_owned(params: &[FixtureParam]) -> Result<Vec<Box<dyn ToSql + S
 }
 
 /// Parsed SQL fixture.
-// One field per directive, and four of them are presence flags. A state machine would
-// hide the correspondence between a field here and a `-- @` line in the file, which is
-// the whole readability of this struct.
-#[allow(clippy::struct_excessive_bools)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "one field per directive, its presence flags among them; a state machine would hide the correspondence between a field here and a `-- @` line in the file"
+)]
 #[derive(Debug)]
 pub struct ParsedFixture {
     pub path: String,
@@ -2640,10 +2640,6 @@ fn read_dollar_tag(chars: &[char], start: usize) -> Option<String> {
 }
 
 #[cfg(test)]
-#[allow(
-    clippy::expect_used,
-    reason = "a failed setup in a test is a test failure, and the message is the diagnosis"
-)]
 mod tests {
     use super::*;
 

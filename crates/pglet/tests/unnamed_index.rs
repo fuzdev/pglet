@@ -6,8 +6,6 @@
 //! errors mid-script, a rollback, and a reopen. The first two tests' answers are
 //! 18.6's, measured statement by statement; the reopen is this engine's own.
 
-#![allow(clippy::unwrap_used)]
-
 use crate::common;
 
 use common::ScratchDir;

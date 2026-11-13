@@ -13,7 +13,10 @@
 //! process rather than refuse. This is the test that every door does: after each
 //! statement, the process bound must still cover the live catalog.
 
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![expect(
+    clippy::expect_used,
+    reason = "helpers outside the `#[test]` fns `.expect()` setup, so a failed setup fails the test where it happens"
+)]
 
 use pglet::Database;
 use pglet_sql::depth::{catalog_depth, stored_depth_seen};

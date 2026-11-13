@@ -13,9 +13,11 @@
 //! `cook_column_default` is where they are decided — and reaching it needs a real
 //! statement execution, not a parse.
 
-// A test harness: `.expect()`/`.unwrap()`/`panic!` surface a setup failure or an
-// unexpected verdict shape loudly right here.
-#![allow(clippy::expect_used, clippy::unwrap_used, clippy::panic)]
+#![expect(
+    clippy::expect_used,
+    clippy::panic,
+    reason = "helpers outside the `#[test]` fns `.expect()` setup and `panic!` on an unexpected verdict shape, so a failure surfaces where it happens"
+)]
 
 use pglet::Database;
 use pglet_sql::catalog::ColumnDefault;

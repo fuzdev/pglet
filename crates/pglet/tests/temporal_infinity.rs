@@ -5,8 +5,10 @@
 //! The fixtures under `tests/fixtures/types/infinity_*.sql` assert the SQL-visible
 //! behaviour against a live Postgres; nothing there closes and reopens a store.
 
-// A test harness: `.unwrap()`/`.expect()` surface a setup failure loudly here.
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![expect(
+    clippy::expect_used,
+    reason = "helpers outside the `#[test]` fns `.expect()` setup, so a failed setup fails the test where it happens"
+)]
 
 use crate::common;
 

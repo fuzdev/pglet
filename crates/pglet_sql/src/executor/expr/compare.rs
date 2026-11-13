@@ -94,7 +94,6 @@ pub(super) fn date_to_timestamp(d: crate::types::PgDate) -> crate::types::PgTime
 /// Compare two values for equality.
 /// Returns `None` if either value is NULL (SQL NULL propagation).
 /// Float `NaN` equals itself (Postgres's total order), unlike IEEE `==`.
-#[allow(clippy::match_same_arms)] // per-type arms kept separate; several share `l == r`
 pub fn values_equal(left: &Value, right: &Value) -> Option<bool> {
     if left.is_null() || right.is_null() {
         return None;
@@ -220,7 +219,6 @@ fn enum_rank<'l>(order: &[String], label: &'l str) -> std::result::Result<usize,
 /// `order` ([`enum_rank`]); every other shape is byte-identical to
 /// [`values_compare`]. The enum arm runs before the numeric/float short-circuits below
 /// for legibility only — neither claims a `Text` pair.
-#[allow(clippy::match_same_arms)] // per-type arms kept separate; several share `l.cmp(r)`
 pub fn values_compare_ordered(
     left: &Value,
     right: &Value,

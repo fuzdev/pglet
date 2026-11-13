@@ -19,8 +19,11 @@
 //! The backend is `Database::with_btree` — the in-memory CoW B+tree, the default
 //! storage — not `Database::in_memory`.
 
-// A test harness: `.unwrap()`/`.expect()`/`panic!` surface a setup failure loudly.
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![expect(
+    clippy::unwrap_used,
+    clippy::panic,
+    reason = "helpers outside the `#[test]` fns `.unwrap()` setup and `panic!` on a failed statement or an unexpected shape, so a failure surfaces where it happens"
+)]
 
 use pglet::Database;
 use pglet_core::Value;

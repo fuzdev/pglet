@@ -70,9 +70,12 @@ impl PgletBtreePersistent {
     /// happens inside `DoubleMetaStore::open`, which selects the valid
     /// higher-version meta slot (falling back to the older slot if the newer one
     /// is torn) — there is no WAL replay.
-    // `open()` awaits OPFS init while holding JS handles, so its future is `!Send` — correct and
-    // irrelevant in the single-threaded browser runtime (same rationale as `opfs_block_io.rs`).
-    #[allow(clippy::future_not_send)]
+    // `allow`, not `expect`: `#[wasm_bindgen]` re-emits the item, and an expectation
+    // on it never registers as fulfilled.
+    #[allow(
+        clippy::future_not_send,
+        reason = "`open()` awaits OPFS init while holding JS handles, which never cross a thread in the single-threaded browser runtime"
+    )]
     #[wasm_bindgen]
     pub async fn open() -> Result<Self, JsValue> {
         // Acquire the single OPFS data-file handle and wrap it as a BlockIo, then

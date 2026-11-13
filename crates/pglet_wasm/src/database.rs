@@ -140,8 +140,12 @@ impl PgletBtree {
     ///
     /// `params` is a JS array; each element is decoded to the parameter type
     /// inferred from query context. JS `null`/`undefined` binds SQL `NULL`.
-    // wasm-bindgen marshals a JS array as an owned `Vec<JsValue>`; we only borrow it.
-    #[allow(clippy::needless_pass_by_value)]
+    // `allow`, not `expect`: `#[wasm_bindgen]` re-emits the item, and an expectation
+    // on it never registers as fulfilled.
+    #[allow(
+        clippy::needless_pass_by_value,
+        reason = "wasm-bindgen marshals a JS array as an owned `Vec<JsValue>`; the body only borrows it"
+    )]
     #[wasm_bindgen(js_name = queryParams)]
     pub fn query_params(
         &mut self,

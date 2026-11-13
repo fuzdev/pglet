@@ -13,9 +13,11 @@
 //! insert is only indexed if the wrapper knows which column to maintain, which
 //! is exactly what `reattach_index` restores.
 
-// A test harness: the `probe` helper `panic!`s on the wrong backend and `.expect()`s the
-// lookup so a setup failure surfaces loudly here.
-#![allow(clippy::panic, clippy::expect_used)]
+#![expect(
+    clippy::panic,
+    clippy::expect_used,
+    reason = "the `probe` helper `panic!`s on the wrong backend and `.expect()`s the lookup, so a failed setup surfaces where it happens"
+)]
 
 use crate::common;
 

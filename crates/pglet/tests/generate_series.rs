@@ -9,9 +9,11 @@
 //!   `@expect-error` fixture over a statement 18.6 accepts passes on any error.
 //! - **The declared column type** of each overload, read off the executor's result.
 
-// A test harness: `.expect()`/`.unwrap()`/`panic!` surface an unexpected verdict shape
-// loudly right here.
-#![allow(clippy::expect_used, clippy::unwrap_used, clippy::panic)]
+#![expect(
+    clippy::expect_used,
+    clippy::panic,
+    reason = "helpers outside the `#[test]` fns `.expect()` and `panic!` on an unexpected verdict shape, so it surfaces where it happens"
+)]
 
 use std::cell::RefCell;
 

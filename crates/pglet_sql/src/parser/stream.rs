@@ -321,7 +321,6 @@ pub fn lex_error_to_error(e: crate::lexer::LexError, source: &str) -> Error {
 }
 
 #[cfg(test)]
-#[allow(clippy::panic)]
 mod tests {
     use super::*;
 

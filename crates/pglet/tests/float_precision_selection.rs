@@ -15,9 +15,11 @@
 //! - **The persisted catalog.** The selected type must survive a **double-meta** store
 //!   round-trip, not only a live `Schema`.
 
-// A test harness: `.expect()`/`.unwrap()`/`panic!` surface a setup failure loudly right
-// here. `clippy::panic` has no test-allowance in this clippy (only unwrap/expect do).
-#![allow(clippy::expect_used, clippy::panic, clippy::unwrap_used)]
+#![expect(
+    clippy::expect_used,
+    clippy::panic,
+    reason = "helpers outside the `#[test]` fns `.expect()` setup and `panic!` on a failed statement or an unexpected shape, so a failure surfaces where it happens"
+)]
 
 use crate::common;
 

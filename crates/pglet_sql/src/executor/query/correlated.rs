@@ -51,10 +51,10 @@ use super::execute_plan_node;
 /// plan clone, no outer-ref substitution. A non-correlated subquery simply never
 /// reads the frame, so it behaves exactly as before. `env` also carries the bound
 /// parameters, so a `$N` *inside* the subquery resolves too.
-// The execution-context triple (schema/storage/env) plus the scope quadruple
-// (expr/names/types/identity/row) is threaded individually, as across the executor —
-// bundling it would diverge from every callsite's shape.
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the execution-context triple (schema/storage/env) and the scope (expr/names/types/identity/row) are threaded individually, as across the executor"
+)]
 pub fn eval_expr_subquery<S: Storage>(
     expr: &Expr,
     col_names: &[&str],
@@ -94,9 +94,10 @@ pub fn eval_expr_subquery<S: Storage>(
 /// **outer frame** a correlated subquery resolves against is built from — so the frame
 /// and `resolver` agree about what the scope is even where their resolution rules
 /// differ.
-// The execution-context triple plus the scope quintuple is threaded individually, as
-// across the executor — bundling it would diverge from every callsite's shape.
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the execution-context triple and the scope are threaded individually, as across the executor"
+)]
 pub fn eval_expr_subquery_with<S: Storage, R: ColumnResolver>(
     expr: &Expr,
     resolver: &R,

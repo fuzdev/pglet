@@ -80,12 +80,10 @@
 //! `PGLET_SOAK_KILL_EVERY_SECS`, `PGLET_SOAK_CYCLES`, `PGLET_SOAK_KILL_CYCLES`,
 //! `--long`, `--update`.
 
-// Test-harness binary: `.expect()`/`panic!` surface setup failures loudly, the
-// right behavior for a test runner rather than threading `Result` everywhere. The
-// query futures hold non-`Send` bound-param state across awaits on a local runtime.
-#![allow(clippy::expect_used)]
-#![allow(clippy::panic)]
-#![allow(clippy::future_not_send)]
+#![expect(
+    clippy::expect_used,
+    reason = "a test-runner binary: `.expect()` surfaces a setup failure loudly rather than threading `Result` everywhere"
+)]
 
 use std::collections::{HashMap, HashSet};
 use std::io::Write;

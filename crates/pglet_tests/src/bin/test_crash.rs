@@ -35,10 +35,11 @@
 //! `crates/pglet_server/tests/data_dir_lock.rs`; here it is a precondition of
 //! every restart below.
 
-// Test-harness binary: `.expect()`/`panic!` surface setup failures loudly, the
-// right behavior for a test runner rather than threading `Result` everywhere.
-#![allow(clippy::expect_used)]
-#![allow(clippy::panic)]
+#![expect(
+    clippy::expect_used,
+    clippy::panic,
+    reason = "a test-runner binary: `.expect()`/`panic!` surface a setup failure loudly rather than threading `Result` everywhere"
+)]
 
 use std::path::{Path, PathBuf};
 use std::process::Child;

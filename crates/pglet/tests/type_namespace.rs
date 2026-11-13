@@ -4,9 +4,11 @@
 //! refused statement leaves on the autocommit path (every fixture runs inside
 //! `BEGIN … ROLLBACK`, which restores it).
 
-// A test harness: `.unwrap()`/`panic!` surface a setup failure or an unexpected cell
-// shape loudly right here.
-#![allow(clippy::unwrap_used, clippy::panic)]
+#![expect(
+    clippy::unwrap_used,
+    clippy::panic,
+    reason = "helpers outside the `#[test]` fns `.unwrap()` setup and `panic!` on an unexpected cell shape, so a failure surfaces where it happens"
+)]
 
 use pglet::Database;
 use pglet_sql::types::Value;

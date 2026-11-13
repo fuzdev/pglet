@@ -20,11 +20,11 @@
 //! `cargo test -p pglet --test stack_depth` measures the debug constants, and
 //! `cargo test -p pglet --release --test stack_depth` the release ones.
 
-#![allow(
+#![expect(
     clippy::expect_used,
-    clippy::unwrap_used,
     clippy::panic,
-    clippy::format_push_string
+    clippy::format_push_string,
+    reason = "helpers outside the `#[test]` fns `.expect()` setup, `panic!` on a failed statement or an unexpected shape, and build the nested SQL with `push_str(&format!(…))`"
 )]
 
 use pglet::Database;

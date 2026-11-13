@@ -12,7 +12,10 @@
 //! writer, its rollback restores unconditionally, and a block that never took the
 //! writer restores nothing.
 
-#![allow(clippy::unwrap_used, clippy::panic)]
+#![expect(
+    clippy::unwrap_used,
+    reason = "helpers outside the `#[test]` fns `.unwrap()` setup, so a failed setup fails the test where it happens"
+)]
 
 use pglet::Database;
 use pglet_sql::Error;

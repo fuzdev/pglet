@@ -22,8 +22,12 @@ impl QueryResult {
         self.rows.clone()
     }
 
-    // `#[wasm_bindgen]` exports cannot be `const fn`, so this getter cannot be made const.
-    #[allow(clippy::missing_const_for_fn)]
+    // `allow`, not `expect`: `#[wasm_bindgen]` re-emits the item, and an expectation
+    // on it never registers as fulfilled.
+    #[allow(
+        clippy::missing_const_for_fn,
+        reason = "a `#[wasm_bindgen]` export cannot be a `const fn`"
+    )]
     #[wasm_bindgen(getter, js_name = rowCount)]
     pub fn row_count(&self) -> usize {
         self.row_count
@@ -481,8 +485,6 @@ mod tests {
 
     /// The number a `float4`'s text reads as: `1.1`, not the widened `1.100000023841858`, and
     /// the sign of zero and the infinities kept.
-    // exact comparison is the point: the number must be the one the text parses to, bit for bit
-    #[allow(clippy::float_cmp)]
     #[test]
     fn a_float4_is_the_number_its_text_reads_as() {
         assert_eq!(float4_as_its_text(1.1), 1.1);

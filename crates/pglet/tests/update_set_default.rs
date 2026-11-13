@@ -13,8 +13,10 @@
 //! `…/set_rhs_error_loud.sql`) assert the same shapes against a live Postgres;
 //! this is the in-process counterpart that runs without a server.
 
-// A test harness: the `rows` helper `.expect()`s so a setup failure surfaces loudly here.
-#![allow(clippy::expect_used)]
+#![expect(
+    clippy::expect_used,
+    reason = "the `rows` helper `.expect()`s, so a failed setup fails the test where it happens"
+)]
 
 use pglet::Database;
 use pglet_sql::types::Value;

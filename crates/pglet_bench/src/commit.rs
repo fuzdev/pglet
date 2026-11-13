@@ -25,9 +25,10 @@ const BATCH_SIZES: &[u64] = &[1, 100, 1000, 10_000];
 /// (~50k–300k inserts). Both schemas use the same counts; enforcing is only a
 /// small constant factor slower per insert.
 const fn commits_for_batch(n: u64) -> u64 {
-    // an explicit batch→commits lookup table; the default arm duplicates the
-    // 1_000 body on purpose so every documented size stays spelled out in order.
-    #[allow(clippy::match_same_arms)]
+    #[expect(
+        clippy::match_same_arms,
+        reason = "an explicit batch-to-commits lookup table: the default arm repeats the `1_000` body so every documented size stays spelled out in order"
+    )]
     match n {
         1 => 5_000,   // 5k inserts, 5k commits
         100 => 1_000, // 100k inserts, 1k commits
@@ -69,9 +70,10 @@ struct Row {
 /// `write_at` syscall time, the `sync` (fsync) time, and the residual CPU
 /// (CoW build + `Page::serialize` + cache + everything else). All in
 /// microseconds.
-// The `_us` suffix marks the unit (microseconds), not a redundant field-name
-// stutter; keeping it on every field is the point.
-#[allow(clippy::struct_field_names)]
+#[expect(
+    clippy::struct_field_names,
+    reason = "the `_us` suffix marks the unit (microseconds) on every field"
+)]
 #[derive(Debug, Clone, Copy)]
 struct CommitBreakdown {
     total_us: f64,
@@ -418,9 +420,10 @@ fn bench_sqlite(cfg: &SqliteConfig, n: u64, prepopulate: u64, schema: BenchSchem
 // ---------------------------------------------------------------------------
 
 /// One per-page micro-timing (nanoseconds, averaged over the iteration count).
-// The `_ns` suffix marks the unit on every field — that's the point, not a
-// redundant name stutter (mirrors `CommitBreakdown`'s `_us`).
-#[allow(clippy::struct_field_names)]
+#[expect(
+    clippy::struct_field_names,
+    reason = "the `_ns` suffix marks the unit on every field, as `CommitBreakdown`'s `_us` does"
+)]
 #[derive(Debug, Clone, Copy)]
 struct PerPage {
     serialize_ns: f64,
@@ -451,7 +454,6 @@ impl PerPage {
 }
 
 /// Average per-commit attribution, in microseconds, plus the page/row context.
-#[allow(clippy::struct_field_names)]
 #[derive(Debug, Clone, Copy)]
 struct Attribution {
     /// Schema axis this attribution was measured under (`indexfree` /

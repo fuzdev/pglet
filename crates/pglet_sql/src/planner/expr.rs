@@ -2078,10 +2078,10 @@ impl BinaryOp {
 /// (never `timestamptz` — a bare `date` carries no zone). The `date ± int` case
 /// would already fall back to the (left) `date` type, but is listed explicitly so
 /// the funnel is the single source of truth.
-// Per-type arms are kept separate for the documentation table; several share a
-// `Some(Interval)` / `Some(Timestamp)` body (e.g. `interval - interval` and `time
-// - time` both yield `interval`).
-#[allow(clippy::match_same_arms)]
+#[expect(
+    clippy::match_same_arms,
+    reason = "per-type arms kept as a table; several share a `Some(Interval)` / `Some(Timestamp)` body (`interval - interval` and `time - time` both yield `interval`)"
+)]
 pub fn temporal_arith_type(op: BinaryOp, left: TypeOid, right: TypeOid) -> Option<TypeOid> {
     let is_ts = |t| matches!(t, TypeOid::Timestamp | TypeOid::Timestamptz);
     let is_int = |t| matches!(t, TypeOid::Int2 | TypeOid::Int4);
@@ -2398,8 +2398,6 @@ pub const fn aggregate_type_of(
 /// § *The seam: shared rules and open-coded ones* states it, that duplicated rules do not
 /// only drift apart, they also agree on being wrong.
 #[must_use]
-// arms grouped by result type for documentation; several groups share a body
-#[allow(clippy::match_same_arms)]
 pub const fn builtin_fn_result_type(func: BuiltinFn) -> TypeOid {
     match func {
         BuiltinFn::Now
@@ -2437,9 +2435,10 @@ pub const fn builtin_fn_result_type(func: BuiltinFn) -> TypeOid {
 /// `substr` over a `bytea`), which both walks answer through [`shared_leaf_cell_type`]
 /// instead.
 #[must_use]
-// arms kept per member for documentation; `current_setting` shares `text` with the
-// string members and is spelled separately because its reason is unrelated to theirs
-#[allow(clippy::match_same_arms)]
+#[expect(
+    clippy::match_same_arms,
+    reason = "arms kept per member: `current_setting` shares `text` with the string members for an unrelated reason"
+)]
 pub const fn string_fn_result_type(func: StringFunc) -> TypeOid {
     match func {
         StringFunc::Length
@@ -4057,10 +4056,10 @@ pub fn deserialize_expr(bytes: &[u8]) -> Result<Expr> {
 /// and leaves the pin corpus green, because the `_ => None` fallback answers identically.
 /// They are spelled out because the classification is what the call sites' patterns are
 /// documented against, not because anything checks them.
-// `match_same_arms`: the two `None` rules and the wildcard say different things — "this
-// variant has no type" against "no shared rule owns this variant" — and collapsing them
-// would delete the classification the two call sites' patterns are documented against.
-#[allow(clippy::match_same_arms)]
+#[expect(
+    clippy::match_same_arms,
+    reason = "the two `None` rules and the wildcard say different things (\"this variant has no type\" vs \"no shared rule owns this variant\"), the classification the two call sites' patterns are documented against"
+)]
 #[must_use]
 pub fn shared_leaf_cell_type(
     expr: &Expr,
@@ -4192,9 +4191,10 @@ pub fn shared_multi_operand_type(
 /// `executor::query::aggregate`; re-derive them there) — so a rule
 /// added to that arm would reach the planner's walk and not theirs. Either keep the arm
 /// bare, or move those sites onto `derive_node_type` in the same change.
-// arms grouped by operator family for documentation; several share a body (the
-// boolean-valued and the text-valued operators) but are kept separate intentionally
-#[allow(clippy::match_same_arms)]
+#[expect(
+    clippy::match_same_arms,
+    reason = "arms grouped by operator family; the boolean-valued and the text-valued operators share a body"
+)]
 #[must_use]
 pub fn binary_op_result_type(
     op: BinaryOp,
@@ -4331,10 +4331,10 @@ impl Expr {
     ///
     /// A hook that answers something other than the sub-expression's type answers for
     /// the whole node, so it is the caller's business that it does not.
-    // arms grouped by `Expr` variant for documentation; several variants share a
-    // body (e.g. boolean-typed expressions return `Some(TypeOid::Bool)`) but are
-    // kept separate intentionally
-    #[allow(clippy::match_same_arms)]
+    #[expect(
+        clippy::match_same_arms,
+        reason = "arms grouped by `Expr` variant; several share a body (boolean-typed expressions return `Some(TypeOid::Bool)`)"
+    )]
     pub fn infer_type_with<F: Fn(&Self) -> Option<TypeOid>>(
         &self,
         scope: &dyn LeafScope,
@@ -4497,9 +4497,10 @@ impl Expr {
     }
 
     /// Get the output column name for this expression.
-    // arms grouped by `Expr` variant for documentation; several variants share a
-    // body (the `"?column?"` fallback name) but are kept separate intentionally
-    #[allow(clippy::match_same_arms)]
+    #[expect(
+        clippy::match_same_arms,
+        reason = "arms grouped by `Expr` variant; several share the `\"?column?\"` fallback name"
+    )]
     pub fn output_name(&self) -> String {
         match self {
             Self::Literal(_) => "?column?".to_string(),
@@ -4714,7 +4715,10 @@ impl Expr {
 ///
 /// Inlined into [`Expr::output_name`], so a stack of casts is one frame a level
 /// (`crate::depth`).
-#[allow(clippy::inline_always)] // one frame a level, or no frame at a checkpoint (`crate::depth`)
+#[expect(
+    clippy::inline_always,
+    reason = "one frame a level, or no frame at a checkpoint (`crate::depth`)"
+)]
 #[inline(always)]
 fn cast_output_name(inner: &Expr, target: TypeOid) -> String {
     let name = inner.output_name();
@@ -5106,9 +5110,10 @@ mod cast_output_name_tests {
     use super::{Expr, Literal, Typmod};
     use crate::types::TypeOid;
 
-    // Returns boxed because every `Expr` child slot is a `Box<Expr>`; unboxing here
-    // would just move the `Box::new` to each call site.
-    #[allow(clippy::unnecessary_box_returns)]
+    #[expect(
+        clippy::unnecessary_box_returns,
+        reason = "every `Expr` child slot is a `Box<Expr>`; unboxing here would move the `Box::new` to each call site"
+    )]
     fn lit_int(n: i64) -> Box<Expr> {
         Box::new(Expr::Literal(Literal::Int(n)))
     }
@@ -5753,7 +5758,6 @@ mod postcard_layout {
     /// against a **later** mid-enum insertion, which is
     /// [`expr_postcard_variant_tags_are_pinned`]'s last-variant argument one level down.
     #[test]
-    #[allow(clippy::match_same_arms)]
     fn every_pinned_sub_enum_variant_has_a_row() {
         use crate::types::{JsonbValue, PgNumeric, Value};
 

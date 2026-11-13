@@ -34,11 +34,6 @@
 //! reopen each means an acked commit was lost to the simulated power loss — a real
 //! durability bug, surfaced as a non-zero exit.
 
-// Test-harness binary: `.expect()`/`panic!` surface setup failures loudly, the
-// right behavior for a test runner rather than threading `Result` everywhere.
-#![allow(clippy::expect_used)]
-#![allow(clippy::panic)]
-
 use std::path::{Path, PathBuf};
 use std::process::Child;
 use std::time::Duration;

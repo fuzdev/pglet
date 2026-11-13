@@ -2656,9 +2656,10 @@ mod tests {
     }
 
     #[test]
-    // `c`/`p`/`b`/`d`/`e` are the connection and one binding per protocol message
-    // (Parse/Bind/Describe/Execute); the message name is what carries the meaning.
-    #[allow(clippy::many_single_char_names)]
+    #[expect(
+        clippy::many_single_char_names,
+        reason = "`c`/`p`/`b`/`d`/`e` are the connection and one binding per protocol message (Parse/Bind/Describe/Execute); the message name carries the meaning"
+    )]
     fn bind_in_an_aborted_block_is_refused_and_creates_no_portal() {
         // The gate-site enumeration's measured hole, now closed. `postgres.c` gates the
         // aborted block at **five** statement-processing phases — six
@@ -2809,8 +2810,10 @@ mod tests {
     }
 
     #[test]
-    // Same message-per-binding shape as the Bind gate test above.
-    #[allow(clippy::many_single_char_names)]
+    #[expect(
+        clippy::many_single_char_names,
+        reason = "the same message-per-binding shape as the Bind gate test above"
+    )]
     fn a_parameterized_exit_statement_is_refused_at_bind_and_the_block_stays_failed() {
         // The third shape the Bind test's comment lists, and the one an
         // `IsTransactionExitStmt`-only gate would leave behind. `exec_bind_message`

@@ -23,7 +23,12 @@
 //! out, a retired-log read that fails, a read in flight when the store fails, the page
 //! accounting after a reopen, and what a commit writes while a snapshot is held.
 
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![expect(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    reason = "helpers outside the `#[test]` fns `.unwrap()` and `.expect()` setup and `panic!` on a failed statement or an unexpected shape, so a failure surfaces where it happens"
+)]
 
 use std::collections::BTreeSet;
 use std::fmt::Write as _;

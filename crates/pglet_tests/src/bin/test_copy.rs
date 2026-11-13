@@ -57,10 +57,10 @@
 //! outside this class. Pin that class in process instead
 //! (`crates/pglet/tests/copy.rs`), where the resulting table state is assertable too.
 
-// This test-runner binary holds non-`Send` tokio-postgres futures across awaits on a
-// single-threaded local runtime; they never cross a thread, so `future_not_send`
-// doesn't apply. `.expect()` surfaces setup failures loudly — right for a harness.
-#![allow(clippy::future_not_send, clippy::expect_used)]
+#![expect(
+    clippy::expect_used,
+    reason = "a test-runner binary: `.expect()` surfaces a setup failure loudly rather than threading `Result` everywhere"
+)]
 
 use std::fs;
 use std::path::{Path, PathBuf};

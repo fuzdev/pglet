@@ -48,9 +48,11 @@
 //! here because it is the default backend, not because a guard on the other would be
 //! vacuous.
 
-// A test harness: setup `.unwrap()`s and the `rows` helper `.expect()`s, so a setup
-// failure surfaces loudly here rather than as a confusing assertion mismatch.
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![expect(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "setup helpers `.unwrap()` and the `rows` helper `.expect()`s, so a failed setup surfaces where it happens rather than as a confusing assertion mismatch"
+)]
 
 use pglet::Database;
 use pglet_sql::types::Value;

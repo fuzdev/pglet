@@ -55,7 +55,10 @@ pub struct Server {
     /// Exclusive `flock` on the data dir, held for the server's lifetime — across every
     /// reopen — so a second process can't open the same `--data-dir` and corrupt its
     /// pages. Only held for its `Drop`.
-    #[allow(dead_code)]
+    #[expect(
+        dead_code,
+        reason = "held only for its `Drop`, which releases the data-dir lock"
+    )]
     data_dir_lock: Option<FileLock>,
 }
 

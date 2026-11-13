@@ -12,10 +12,10 @@
 //! The sync file access API (`FileSystemSyncAccessHandle`) is only available in
 //! Web Workers, not on the main thread.
 
-// The OPFS async fns await JS handles (`JsFuture`, `FileSystemDirectoryHandle`, …)
-// that are never `Send` — but WASM is single-threaded, so these futures never cross
-// a thread boundary. Same justification as the audited `unsafe impl Send+Sync` below.
-#![allow(clippy::future_not_send)]
+#![expect(
+    clippy::future_not_send,
+    reason = "the OPFS async fns await JS handles (`JsFuture`, `FileSystemDirectoryHandle`, …) that are never `Send`, and single-threaded WASM never moves a future across a thread"
+)]
 // The OPFS sync handle isn't `Send`/`Sync`; the `unsafe impl`s below vouch for
 // it under single-threaded WASM (see `SyncHandle`). This is the one audited
 // `unsafe` in the codebase, and this module the one place the crate's
@@ -43,14 +43,18 @@ struct SyncHandle(FileSystemSyncAccessHandle);
 
 // SAFETY: WASM is single-threaded, so Send + Sync are trivially satisfied. The lint correctly
 // observes the wrapped JS handle isn't `Send` — that's exactly what this `unsafe impl` vouches for.
-#[allow(clippy::non_send_fields_in_send_ty)]
+#[expect(
+    clippy::non_send_fields_in_send_ty,
+    reason = "the wrapped JS handle is not `Send`, which is what this `unsafe impl` vouches for under single-threaded WASM"
+)]
 unsafe impl Send for SyncHandle {}
 unsafe impl Sync for SyncHandle {}
 
 /// Map a `JsValue` error to a `std::io::Error` with context.
-// The `map_err` closures own their `JsValue` and pass it straight to formatting; taking it by
-// value (vs `&JsValue`) keeps each call site a plain `|e| io_err("x", e)`.
-#[allow(clippy::needless_pass_by_value)]
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "the `map_err` closures own their `JsValue` and pass it straight to formatting, so each call site stays a plain `|e| io_err(\"x\", e)`"
+)]
 fn io_err(context: &str, e: JsValue) -> std::io::Error {
     std::io::Error::other(format!("{context}: {e:?}"))
 }

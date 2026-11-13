@@ -8,7 +8,12 @@
 //! protocol-2 error packet — and every other connection, held or new, is unaffected.
 
 #![cfg(target_os = "linux")]
-#![allow(clippy::expect_used, clippy::panic, clippy::unwrap_used)]
+#![expect(
+    clippy::expect_used,
+    clippy::panic,
+    clippy::unwrap_used,
+    reason = "helpers outside the `#[test]` fns `.unwrap()`/`.expect()` the server harness and `panic!` on an unexpected outcome, so a failure surfaces where it happens"
+)]
 
 use std::io::{BufRead as _, BufReader, Read as _, Write as _};
 use std::net::TcpStream;

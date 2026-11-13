@@ -23,10 +23,14 @@
 //! Always available, with no feature: `rng` (a seedable PRNG) and `proc` (the
 //! `/proc` resident-set reader).
 
-// Test-support code: `unwrap`/`expect`/`panic` are the correct way to surface a
-// broken fixture or harness loudly. The workspace restriction lints that forbid
-// them in production code are relaxed here — this crate never ships in one.
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+// `allow`, not `expect`: with no feature on (`cargo clippy -p pglet_testing`) only the
+// always-available modules build, and none of the three lints fires there.
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    reason = "test-support code that never ships in a production build: `unwrap`/`expect`/`panic` surface a broken fixture or harness loudly"
+)]
 
 /// Seedable PRNG for reproducible fuzz/soak loops (pure std, always available).
 pub mod rng;

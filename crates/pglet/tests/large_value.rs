@@ -10,7 +10,11 @@
 //! that leaves a file-backed store no larger than one cycle of it needs, since a
 //! replaced chain goes back to the free list. The chain's own mechanics (release,
 //! snapshots, fork, corruption) are `cow/tests.rs`'s.
-#![allow(clippy::panic, clippy::expect_used)]
+#![expect(
+    clippy::panic,
+    clippy::expect_used,
+    reason = "helpers outside the `#[test]` fns `.expect()` setup and `panic!` on a failed statement or an unexpected shape, so a failure surfaces where it happens"
+)]
 
 use crate::common;
 

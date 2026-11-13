@@ -223,9 +223,10 @@ const fn comparator_is_coarser_than_key(key_type: TypeOid, probe_type: Option<Ty
 ///
 /// A storage failure, or an evaluation error from one of the comparisons.
 #[cfg(feature = "index_acceleration")]
-// The un-accelerated twin of `execute_index_range_scan`, so it carries the same
-// (table, key, bounds, order, limit, storage) shape that one does.
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the un-accelerated twin of `execute_index_range_scan`, so it carries the same (table, key, bounds, order, limit, storage) shape"
+)]
 fn scan_filtered_by_key<S: Storage>(
     table: &str,
     key_column: &str,
@@ -587,9 +588,10 @@ pub(super) fn execute_scan<S: Storage>(
 /// [`probe_key_value`]) falls back to [`scan_filtered_by_key`], so the equality is
 /// answered in the column's own type instead of by approximated key bytes.
 #[cfg(feature = "index_acceleration")]
-// Mirrors the plan node's fields (table/index/key/probe/order) plus the shared
-// schema/storage/env triple, like its `execute_index_range_scan` sibling.
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "mirrors the plan node's fields (table/index/key/probe/order) plus the shared schema/storage/env triple, like its `execute_index_range_scan` sibling"
+)]
 pub(super) fn execute_index_scan<S: Storage>(
     table: &str,
     index_oid: i32,
@@ -641,7 +643,10 @@ pub(super) fn execute_index_scan<S: Storage>(
 /// because `ascending`/`limit` may be an ORDER-BY pushdown the planner already
 /// elided the `Sort` for.
 #[cfg(feature = "index_acceleration")]
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "one argument per `Plan::IndexRangeScan` field, plus the schema/storage/env triple every scan executor takes"
+)]
 pub(super) fn execute_index_range_scan<S: Storage>(
     table: &str,
     index_oid: i32,
@@ -992,8 +997,10 @@ fn residual_parameters_admit_probe(
 /// type is not the key column's declines the same way (exact-or-decline): the
 /// `Filter` then answers for the pair as the stripped build's does.
 #[cfg(feature = "index_acceleration")]
-// One argument per `Plan::GinScan` field beside the ones every scan executor takes.
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "one argument per `Plan::GinScan` field beside the ones every scan executor takes"
+)]
 pub(super) fn execute_gin_scan<S: Storage>(
     table: &str,
     index_oid: i32,
@@ -1074,9 +1081,6 @@ pub(super) fn execute_gin_scan<S: Storage>(
 }
 
 /// Execute a `Plan::VirtualScan` — a `pg_catalog` introspection table.
-// Infallible, but returns `Result` to match the sibling scan executors and the
-// `Result`-typed `execute_plan_node` dispatch arm.
-#[allow(clippy::unnecessary_wraps)]
 pub(super) fn execute_virtual_scan(
     catalog_table: CatalogTable,
     schema: &Schema,
@@ -1688,9 +1692,10 @@ mod virtual_scan_tests {
 /// is correct *without* the decline — the filter and the sort both read the member
 /// order — so narrowing the decline later cannot silently reopen a mis-ordered read on
 /// the accelerated profile only.
-// A test harness: `panic!` on a value shape the fixtures below cannot produce, so a
-// broken stub surfaces here rather than as a confusing assertion diff.
-#[allow(clippy::panic)]
+#[expect(
+    clippy::panic,
+    reason = "the stub `panic!`s on a value shape the fixtures below cannot produce, so a broken stub surfaces here rather than as a confusing assertion diff"
+)]
 #[cfg(all(test, feature = "index_acceleration"))]
 mod enum_key_fallback_tests {
     use super::{enum_key_order, scan_filtered_by_key};

@@ -13,9 +13,11 @@
 //! inferred type, a catalog an older build wrote, and a verdict two spellings of one
 //! statement separate only by the operand their message names.
 
-// A test harness: `.expect()`/`.unwrap()`/`panic!` surface an unexpected verdict shape
-// loudly right here.
-#![allow(clippy::expect_used, clippy::unwrap_used, clippy::panic)]
+#![expect(
+    clippy::expect_used,
+    clippy::panic,
+    reason = "helpers outside the `#[test]` fns `.expect()` and `panic!` on an unexpected verdict shape, so it surfaces where it happens"
+)]
 
 use std::collections::HashSet;
 

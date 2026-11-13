@@ -9,9 +9,11 @@
 //! Output format:
 //!   `{ "columns": ["?column?"], "rows": [[2]], "command_tag": "SELECT 1" }`
 
-// Test-harness binary: `.expect()`/`.unwrap()` surface setup failures loudly, which is the
-// right behavior for a one-shot test runner rather than threading `Result` everywhere.
-#![allow(clippy::expect_used, clippy::unwrap_used)]
+#![expect(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    reason = "a one-shot test runner: `.expect()`/`.unwrap()` surface a setup failure loudly rather than threading `Result` everywhere"
+)]
 
 use pglet_testing::server::build_server;
 use serde::Serialize;

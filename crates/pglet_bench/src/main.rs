@@ -36,14 +36,12 @@
 //! file under `benches/` (`commit` writes `phase1_results.json`). Env knobs: `PGLET_BENCH_PREPOPULATE` (setup
 //! rows), `PGLET_BENCH_CACHE` (page-cache size).
 
-// A dev-only bench binary: it prints results, and setup-phase failures (open
-// store, run a fixed insert) are unrecoverable — `expect`/`unwrap` there is the
-// intended panic, not a code smell to thread `Result` through.
-#![allow(
+#![expect(
     clippy::print_stdout,
     clippy::print_stderr,
     clippy::expect_used,
-    clippy::unwrap_used
+    clippy::unwrap_used,
+    reason = "a dev-only bench binary: it prints its results, and a setup failure (opening the store, a fixed insert) is unrecoverable, so it panics rather than threading `Result`"
 )]
 
 mod commit;

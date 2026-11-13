@@ -18,10 +18,6 @@
 //!
 //!   cargo run -p `pglet_tests` --bin `test_keywords`
 
-// The query futures hold no params, but mirror the other test bins' allow for a
-// local single-threaded tokio runtime.
-#![allow(clippy::future_not_send)]
-
 use pglet_sql::lexer::{ALL_KEYWORDS, PgClass};
 use pglet_tests::{POSTGRES_CONFIG, connect, ensure_postgres, pglet_config, spawn_test_server};
 use tokio_postgres::Client;

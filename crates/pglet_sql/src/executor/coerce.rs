@@ -384,9 +384,10 @@ pub fn coerce_value(val: Value, target: TypeOid) -> Result<Value> {
         // `Value::Text`, an `oid` a `Value::Int4`. Coercing into `name` or `oid` is
         // therefore the identity — which is what makes `conrelid != 0` resolve, one of
         // the two comparisons the fuz spine's constraint snapshot writes.
-        // Grouped per family for documentation; the identity arms share a body
-        // deliberately — the point is that neither type changes the value's shape.
-        #[allow(clippy::match_same_arms)]
+        #[expect(
+            clippy::match_same_arms,
+            reason = "grouped per family: the identity arms share a body because neither type changes the value's shape"
+        )]
         (v @ Value::Text(_), TypeOid::Name) => Ok(v),
         // `"char"` is **one character wide**, and `charin` truncates rather than
         // refusing: measured, `WHERE contype = 'nx'` matches every `'n'` row on 18.6 and
@@ -399,9 +400,15 @@ pub fn coerce_value(val: Value, target: TypeOid) -> Result<Value> {
         (Value::Text(s), TypeOid::Char) => Ok(Value::Text(
             s.chars().next().map(String::from).unwrap_or_default(),
         )),
-        #[allow(clippy::match_same_arms)]
+        #[expect(
+            clippy::match_same_arms,
+            reason = "grouped per family with the identity arms above"
+        )]
         (Value::Int2(n), TypeOid::Oid) => Ok(Value::Int4(i32::from(n))),
-        #[allow(clippy::match_same_arms)]
+        #[expect(
+            clippy::match_same_arms,
+            reason = "grouped per family with the identity arms above"
+        )]
         (v @ Value::Int4(_), TypeOid::Oid) => Ok(v),
         (Value::Int8(n), TypeOid::Oid) => i32::try_from(n)
             .map(Value::Int4)
@@ -984,8 +991,10 @@ mod narrowing_tests {
     }
 
     #[test]
-    // `3.14` is a two-decimal `%.6g` probe, not an approximation of pi.
-    #[allow(clippy::approx_constant)]
+    #[expect(
+        clippy::approx_constant,
+        reason = "`3.14` is a two-decimal `%.6g` probe, not an approximation of pi"
+    )]
     fn float4_to_numeric_uses_own_precision() {
         // Postgres `float4_numeric` renders 6 significant digits (`%.6g`), so the
         // numeric reflects the float4's precision, not the f64-widened noise a

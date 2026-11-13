@@ -136,7 +136,10 @@ thread_local! {
 }
 
 /// The address of a local of the calling frame.
-#[allow(clippy::inline_always)] // one frame a level, or no frame at a checkpoint (`crate::depth`)
+#[expect(
+    clippy::inline_always,
+    reason = "one frame a level, or no frame at a checkpoint (`crate::depth`)"
+)]
 #[inline(always)]
 fn here() -> usize {
     let marker = 0_u8;
@@ -154,7 +157,10 @@ pub fn reserve() -> usize {
 /// # Errors
 ///
 /// [`Error::StackDepthExceeded`] below the limit.
-#[allow(clippy::inline_always)] // one frame a level, or no frame at a checkpoint (`crate::depth`)
+#[expect(
+    clippy::inline_always,
+    reason = "one frame a level, or no frame at a checkpoint (`crate::depth`)"
+)]
 #[inline(always)]
 pub fn check() -> Result<()> {
     let here = here();

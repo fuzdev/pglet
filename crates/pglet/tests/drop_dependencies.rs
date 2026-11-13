@@ -8,9 +8,12 @@
 //! look identical to one that errored before. These tests inspect the catalog
 //! afterwards, and cover the round-trip through a reopened store.
 
-// A test harness: `.unwrap()`/`.expect_err()`/`panic!` surface a setup failure or an
-// unexpected cell shape loudly right here.
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![expect(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    reason = "helpers outside the `#[test]` fns `.unwrap()`/`.expect()` setup and `panic!` on an unexpected cell shape, so a failure surfaces where it happens"
+)]
 
 use crate::common;
 

@@ -311,7 +311,13 @@ pub use stack::{
 /// # Errors
 ///
 /// [`Error::StackDepthExceeded`] (`54001`) when it would not fit.
-#[cfg_attr(target_arch = "wasm32", allow(clippy::missing_const_for_fn))]
+#[cfg_attr(
+    target_arch = "wasm32",
+    expect(
+        clippy::missing_const_for_fn,
+        reason = "the wasm body checks nothing, but the native one calls into `stack`, so the one signature stays non-`const`"
+    )
+)]
 pub fn check_stack_room(bytes: usize) -> Result<()> {
     #[cfg(not(target_arch = "wasm32"))]
     return stack::check_room(bytes);
@@ -331,9 +337,18 @@ pub fn check_stack_room(bytes: usize) -> Result<()> {
 /// # Errors
 ///
 /// [`Error::StackDepthExceeded`] (`54001`) below this thread's limit.
-#[allow(clippy::inline_always)] // one frame a level, or no frame at a checkpoint (`crate::depth`)
+#[expect(
+    clippy::inline_always,
+    reason = "one frame a level, or no frame at a checkpoint (`crate::depth`)"
+)]
 #[inline(always)]
-#[cfg_attr(target_arch = "wasm32", allow(clippy::missing_const_for_fn))]
+#[cfg_attr(
+    target_arch = "wasm32",
+    expect(
+        clippy::missing_const_for_fn,
+        reason = "the wasm body checks nothing, but the native one calls into `stack`, so the one signature stays non-`const`"
+    )
+)]
 pub fn check_stack() -> Result<()> {
     #[cfg(not(target_arch = "wasm32"))]
     return stack::check();
@@ -929,7 +944,10 @@ fn push_exprs<'a>(items: &'a [Expr], push: &mut dyn FnMut(Node<'a>)) {
 /// until it states what it carries. An expression missed here is measured anyway
 /// where the parser finished it; a missed *sub-plan* would leave a plan chain through
 /// it unmeasured.
-#[allow(clippy::too_many_lines)]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one arm per plan variant, exhaustive by design"
+)]
 fn plan_children<'a>(plan: &'a Plan, push: &mut dyn FnMut(Node<'a>)) {
     match plan {
         Plan::Values { rows, .. } => {

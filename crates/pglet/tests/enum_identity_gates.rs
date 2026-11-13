@@ -14,9 +14,11 @@
 //! - **The catalog a refused DDL did not write**, which is what separates "the statement
 //!   errored" from "the constraint is not there".
 
-// A test harness: `.expect()`/`.unwrap()`/`panic!` surface an unexpected verdict shape
-// loudly right here.
-#![allow(clippy::expect_used, clippy::unwrap_used, clippy::panic)]
+#![expect(
+    clippy::expect_used,
+    clippy::panic,
+    reason = "helpers outside the `#[test]` fns `.expect()` and `panic!` on an unexpected verdict shape, so it surfaces where it happens"
+)]
 
 use pglet::Database;
 use pglet_sql::types::Value;

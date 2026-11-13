@@ -2137,8 +2137,10 @@ const fn is_null_literal(expr: &Expr) -> bool {
 /// Whether argument `i` of a string function is a **text** position, so a bare `$N`
 /// there types as text. Mirrors `eval_string_fn`'s per-argument text/int split: the
 /// integer positions (substring's start/length, lpad/rpad's length) return `false`.
-// arms grouped per function for documentation; several share an `i <= 1` body
-#[allow(clippy::match_same_arms)]
+#[expect(
+    clippy::match_same_arms,
+    reason = "arms grouped per function; several share an `i <= 1` body"
+)]
 const fn string_fn_text_arg(func: StringFunc, i: usize) -> bool {
     match func {
         // arg0 text; substring's start/length are integer.

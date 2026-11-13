@@ -6,7 +6,11 @@
 //! and without rows, across a block's rollback, a failed `ADD COLUMN` and a dump, which a
 //! fixture's one compared statement does not reach.
 
-#![allow(clippy::unwrap_used, clippy::panic)]
+#![expect(
+    clippy::unwrap_used,
+    clippy::panic,
+    reason = "helpers outside the `#[test]` fns `.unwrap()` setup and `panic!` on a failed statement or an unexpected shape, so a failure surfaces where it happens"
+)]
 
 use pglet::Database;
 

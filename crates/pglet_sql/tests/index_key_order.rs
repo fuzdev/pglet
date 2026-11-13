@@ -10,8 +10,10 @@
 //! differential fixtures' (`tests/fixtures/container_key/`) and the measured ladders in
 //! `pglet_core`'s `index_key` tests.
 
-// A test module: a generator that fails to build its population should fail the test.
-#![allow(clippy::expect_used)]
+#![expect(
+    clippy::expect_used,
+    reason = "a generator that fails to build its population fails the test where it happens"
+)]
 
 use std::cmp::Ordering;
 

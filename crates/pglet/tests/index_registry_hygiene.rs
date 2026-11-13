@@ -32,9 +32,11 @@
 //!   of the batch's pages already written. The third guard injects that I/O error, both
 //!   at a page write and at the fsync, and reads the band back.
 
-// A test harness: helpers `panic!` on the wrong backend / a failed statement and `.unwrap()`
-// reads so a setup failure surfaces loudly here.
-#![allow(clippy::panic, clippy::unwrap_used, clippy::expect_used)]
+#![expect(
+    clippy::panic,
+    clippy::unwrap_used,
+    reason = "helpers outside the `#[test]` fns `panic!` on the wrong backend or a failed statement and `.unwrap()` reads, so a failed setup surfaces where it happens"
+)]
 
 use crate::common;
 

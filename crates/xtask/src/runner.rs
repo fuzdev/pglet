@@ -299,8 +299,6 @@ mod tests {
 
 #[cfg(test)]
 mod lock_tests {
-    #![allow(clippy::expect_used, clippy::panic)]
-
     use super::{PathBuf, lock_run_dir};
 
     /// A fresh root per test — a lock test that inherits a previous run's

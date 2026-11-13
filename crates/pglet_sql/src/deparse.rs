@@ -1109,7 +1109,10 @@ fn render_case(
 ///
 /// `AND` / `OR` are the exception, and they take [`render_bool_chain`] — 18.6's node for
 /// them is **N-ary**, not binary.
-#[allow(clippy::inline_always)] // one frame a level, or no frame at a checkpoint (`crate::depth`)
+#[expect(
+    clippy::inline_always,
+    reason = "one frame a level, or no frame at a checkpoint (`crate::depth`)"
+)]
 #[inline(always)]
 fn render_binary_op(
     left: &Expr,
@@ -1877,7 +1880,10 @@ pub fn format_type_with_typemod(oid: TypeOid, typmod: i32) -> Result<String> {
 /// assumes; `a::timestamp` over an `a timestamp(3)` column is the mirror, elided here
 /// and kept there (measured, and pre-existing). Closing it needs the **operand's**
 /// typmod, which [`LeafScope`] does not carry.
-#[allow(clippy::inline_always)] // one frame a level, or no frame at a checkpoint (`crate::depth`)
+#[expect(
+    clippy::inline_always,
+    reason = "one frame a level, or no frame at a checkpoint (`crate::depth`)"
+)]
 #[inline(always)]
 fn render_cast(
     expr: &Expr,
@@ -2064,7 +2070,10 @@ fn render_in_list(
 
 /// Render one operand of a node that resolves an *unknown* literal at that position,
 /// passing the resolved type down to the literal and leaving every other shape alone.
-#[allow(clippy::inline_always)] // one frame a level, or no frame at a checkpoint (`crate::depth`)
+#[expect(
+    clippy::inline_always,
+    reason = "one frame a level, or no frame at a checkpoint (`crate::depth`)"
+)]
 #[inline(always)]
 fn render_operand(expr: &Expr, ty: Option<TypeOid>, mode: RenderMode<'_>) -> Result<String> {
     match (expr, mode) {

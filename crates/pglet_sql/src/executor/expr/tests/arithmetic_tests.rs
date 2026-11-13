@@ -184,9 +184,10 @@ fn timestamp_interval_null_propagates() {
     );
 }
 
-// `1 * 3_600_000_000` reads as one hour beside its `23 *` / `22 *` / `2 *` siblings;
-// collapsing it to the bare constant would make the table inconsistent.
-#[allow(clippy::identity_op)]
+#[expect(
+    clippy::identity_op,
+    reason = "`1 * 3_600_000_000` reads as one hour beside its `23 *` / `22 *` / `2 *` siblings"
+)]
 #[test]
 fn time_arithmetic_diff_and_interval_wrap() {
     // `time - time → interval` (µs duration, may be negative).

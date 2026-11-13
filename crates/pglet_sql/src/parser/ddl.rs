@@ -678,10 +678,11 @@ impl Parser<'_> {
         self.ts.expect(&TokenKind::RParen)?;
 
         // All-bare-column → `Columns` (position-keyed); any expression part → `Exprs`
-        // (the any-expression fold). A `match` (not `map_or`) so the `None` arm moves
-        // `parts` lazily — `map_or`'s eager default would build (and discard)
-        // `Exprs(parts)` even on the `Columns` path.
-        #[allow(clippy::option_if_let_else)]
+        // (the any-expression fold).
+        #[expect(
+            clippy::option_if_let_else,
+            reason = "a `match` moves `parts` lazily in the `None` arm; `map_or`'s eager default would build and discard `Exprs(parts)` on the `Columns` path"
+        )]
         let key = match bare_column_names(&parts) {
             Some(names) => IndexKey::Columns(names),
             None => IndexKey::Exprs(parts),

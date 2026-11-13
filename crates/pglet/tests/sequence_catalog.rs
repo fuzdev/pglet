@@ -14,8 +14,10 @@
 //!   statement invisible. See `a_failed_set_default_leaves_no_phantom_sequence` in
 //!   `pglet`'s own `lib.rs` tests for that half.
 
-// A test harness: `.unwrap()`/`.expect()` surface a setup failure loudly here.
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![expect(
+    clippy::expect_used,
+    reason = "helpers outside the `#[test]` fns `.expect()` setup, so a failed setup fails the test where it happens"
+)]
 
 use crate::common;
 

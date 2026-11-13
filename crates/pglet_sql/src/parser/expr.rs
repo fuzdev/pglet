@@ -1276,9 +1276,10 @@ impl Parser<'_> {
     /// per boundary cell, and a lexer test,
     /// `no_number_literal_is_refused_by_a_message_that_names_it`, which runs the 2 523
     /// short spellings the scanner admits as one number through this same parse.
-    // chained if-let reads clearer than `map_or_else` here (the else branches do
-    // real work).
-    #[allow(clippy::option_if_let_else)]
+    #[expect(
+        clippy::option_if_let_else,
+        reason = "the chained if-let reads clearer than `map_or_else`, since the else branches do real work"
+    )]
     fn number_literal(&mut self, tok: &Token) -> Expr {
         let raw = self.ts.text(tok);
         if let Ok(i) = raw.parse::<i64>() {
@@ -2243,7 +2244,6 @@ fn binop(left: Expr, op: BinaryOp, right: Expr) -> Expr {
 }
 
 #[cfg(test)]
-#[allow(clippy::panic)]
 mod tests {
     use crate::catalog::Schema;
     use crate::parser::parse_expr;

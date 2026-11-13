@@ -1053,8 +1053,10 @@ fn parse_frac_micros(frac: &str) -> Option<i64> {
         return None;
     }
     let fraction: f64 = format!("0.{frac}").parse().ok()?;
-    // In `0.0 ..= 1_000_000.0`, so the cast is exact.
-    #[allow(clippy::cast_possible_truncation)]
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "in `0.0 ..= 1_000_000.0`, so the cast is exact"
+    )]
     Some((fraction * 1_000_000.0).round_ties_even() as i64)
 }
 

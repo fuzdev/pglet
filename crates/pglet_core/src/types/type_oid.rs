@@ -154,8 +154,10 @@ impl TypeOid {
     /// This is used in `RowDescription` messages to tell clients how many bytes
     /// to expect when reading binary format data.
     #[must_use]
-    // arms kept one-per-variant in enum order for documentation; several share a body intentionally
-    #[allow(clippy::match_same_arms)]
+    #[expect(
+        clippy::match_same_arms,
+        reason = "arms kept one per variant in enum order, as a table; several share a body"
+    )]
     pub const fn wire_size(self) -> i16 {
         match self {
             Self::Bool => 1,
@@ -290,8 +292,10 @@ impl TypeOid {
     /// Per `PostgreSQL` wire protocol, OID 0 means "unspecified" - the client
     /// wants the server to infer the type.
     #[must_use]
-    // the 0 and `_` arms share a `None` body but document distinct meanings (unspecified vs unknown OID)
-    #[allow(clippy::match_same_arms)]
+    #[expect(
+        clippy::match_same_arms,
+        reason = "the `0` and `_` arms share a `None` body but mean different things (unspecified vs an unknown OID)"
+    )]
     pub const fn from_oid(oid: i32) -> Option<Self> {
         // Note: OID values from PostgreSQL pg_type catalog
         match oid as u32 {

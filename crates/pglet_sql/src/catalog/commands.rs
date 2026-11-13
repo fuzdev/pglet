@@ -803,8 +803,10 @@ pub fn parse_lock_timeout(value: &str) -> Result<u64> {
     if !(f64::from(i32::MIN)..=f64::from(i32::MAX)).contains(&ms) {
         return Err(invalid(Some("Value exceeds integer range.")));
     }
-    // In range for an `i32` by the check above.
-    #[allow(clippy::cast_possible_truncation)]
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "in range for an `i32` by the check above"
+    )]
     let ms = ms as i64;
     if !(0..=LOCK_TIMEOUT_MAX_MS).contains(&ms) {
         return Err(Error::InvalidParameterValue {
@@ -857,8 +859,10 @@ fn parse_guc_number(text: &str) -> Option<(f64, &str)> {
         return parse_guc_decimal(text, start);
     }
     let magnitude = i64::from_str_radix(&digits[..len], radix).ok()?;
-    // `strtol` overflows past `long`, which `parse_int` then re-reads with `strtod`.
-    #[allow(clippy::cast_precision_loss)]
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "`parse_int` stores `strtol`'s `long` in a `double` too, so the value rounds as 18.6's does"
+    )]
     let value = if negative { -magnitude } else { magnitude } as f64;
     Some((value, after))
 }

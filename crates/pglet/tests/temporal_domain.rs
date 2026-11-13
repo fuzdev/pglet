@@ -13,8 +13,10 @@
 //!   `psql -f` exits `0` with the table empty. Each write route is refused, the table
 //!   keeps its in-domain rows, and the dump carries the edges and nothing past them.
 
-// A test harness: `.expect()` / `panic!` surface a setup failure loudly right here.
-#![allow(clippy::expect_used, clippy::panic)]
+#![expect(
+    clippy::panic,
+    reason = "helpers outside the `#[test]` fns `panic!` on a failed statement or an unexpected shape, so it surfaces where it happens"
+)]
 
 use pglet::Database;
 

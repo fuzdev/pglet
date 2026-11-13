@@ -8,8 +8,10 @@
 //!   `timestamp - timestamp` difference projects as `postgres`-style text
 //!   regardless of which row's value is NULL.
 
-// A test harness: the `rows` helper `.expect()`s so a setup failure surfaces loudly here.
-#![allow(clippy::expect_used)]
+#![expect(
+    clippy::expect_used,
+    reason = "the `rows` helper `.expect()`s, so a failed setup fails the test where it happens"
+)]
 
 use pglet::Database;
 use pglet_sql::types::Value;

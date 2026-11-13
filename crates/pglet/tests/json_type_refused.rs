@@ -25,9 +25,6 @@
 //! harness's `serde_json` reparse of the answer rather than the answer, so the duplicate
 //! is gone from the record and what is left is byte-identical to `::jsonb`'s.
 
-// A test harness: `.expect()`/`.unwrap()` surface a setup failure loudly right here.
-#![allow(clippy::expect_used, clippy::unwrap_used)]
-
 use pglet::Database;
 use pglet_sql::types::Value;
 

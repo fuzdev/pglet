@@ -103,8 +103,5 @@ pub(crate) use query::{
 };
 pub use unknown_types::{coerce_unknown_types, set_coerce_unknown_types, unsupported_type_oid};
 
-// `clippy::panic` has no test-allowance in this clippy (only unwrap/expect do), so the
-// panic!-based assertions below need an explicit allow on the test module.
 #[cfg(test)]
-#[allow(clippy::panic)]
 mod tests;

@@ -3656,8 +3656,6 @@ impl Plan {
     /// Read-only plans can use MVCC snapshots for lock-free execution.
     /// Transaction control statements are NOT considered read-only since
     /// they modify connection state.
-    // arms grouped by operation category (DDL / DML / transaction control) for documentation; several share the `false` body but are kept separate intentionally
-    #[allow(clippy::match_same_arms)]
     pub fn is_read_only(&self) -> bool {
         match self {
             // A top-level sequence-function projection (`SELECT nextval/currval/
@@ -3852,10 +3850,8 @@ impl Plan {
     /// `is_read_only`: transaction control is non-read-only yet does not mutate
     /// storage, so an auto-commit persist must gate on `mutates_storage`, not on
     /// `!is_read_only`.
-    // arms grouped by category for documentation; several share a body but are kept separate intentionally
     // Not `const`: the `Values` arm walks the projection expressions for a sequence
     // advance (`nextval`/`setval`), which const evaluation can't do over a `Vec`.
-    #[allow(clippy::match_same_arms)]
     pub fn mutates_storage(&self) -> bool {
         match self {
             // DDL writes schema/catalog.

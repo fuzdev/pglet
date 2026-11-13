@@ -242,7 +242,10 @@ fn substitute_nextval(
 ///
 /// Reads only — `storage` is borrowed shared, and callers mutate after collecting the
 /// targets, so the returned `RowId`s stay valid and no write is seen by the collection.
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the target's name, columns, alias, filter and probe, plus the storage/schema/env context, threaded individually as across the executor"
+)]
 fn scan_matching_rows<S: Storage>(
     storage: &S,
     table: &str,
@@ -333,7 +336,10 @@ fn scan_matching_rows<S: Storage>(
 /// column is `Expr::Default` — so they flow through the **same** per-row insert
 /// loop as the `Values` form (DEFAULT-fill, enum validation, the row-scoped
 /// NOT NULL/CHECK pair, ON CONFLICT, RETURNING all run unchanged).
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "one argument per field of the planned statement, plus the schema/storage context every executor takes"
+)]
 pub fn execute_insert<S: Storage>(
     schema: &mut Schema,
     storage: &mut S,
@@ -706,7 +712,10 @@ const EXCLUDED_ALIAS: &str = "excluded";
 /// loose: the frame's identity is `excluded`, `EXCLUDED` folds to it, and a **quoted**
 /// `"EXCLUDED"` names no relation and is `42P01` — as on 18.6. A qualifier naming neither
 /// the target nor `excluded` is `42P01` too, and it used to store the excluded value.
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the target's column facts plus the existing and excluded rows, threaded individually as across the executor"
+)]
 fn eval_do_update(
     expr: &Expr,
     table: &str,
@@ -844,7 +853,10 @@ fn in_column_order<'a>(
 /// `RETURNING` read the one namespace the statement's `FROM` clause defines: the
 /// target under its effective name plus the source under its own, so `RETURNING s.k`
 /// answers the source's column exactly as `WHERE s.k = 1` filters on it.
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "one argument per field of the planned statement, plus the schema/storage context every executor takes"
+)]
 pub fn execute_update<S: Storage>(
     schema: &mut Schema,
     storage: &mut S,

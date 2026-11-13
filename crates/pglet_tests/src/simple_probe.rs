@@ -280,7 +280,7 @@ fn parse_row_description(body: &[u8]) -> Result<Vec<DeclaredColumn>, ProbeError>
         pos = next + 18;
         columns.push(DeclaredColumn {
             name,
-            #[allow(clippy::cast_sign_loss)] // OIDs are unsigned on the wire
+            #[expect(clippy::cast_sign_loss, reason = "OIDs are unsigned on the wire")]
             type_oid: type_oid as u32,
         });
     }
@@ -362,10 +362,6 @@ fn read_cstring(body: &[u8], pos: usize) -> Result<(String, usize), ProbeError> 
 }
 
 #[cfg(test)]
-#[allow(
-    clippy::expect_used,
-    reason = "a failed setup in a test is a test failure, and the message is the diagnosis"
-)]
 mod tests {
     use super::*;
     use tokio::net::TcpListener;

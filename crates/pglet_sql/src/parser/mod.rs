@@ -268,12 +268,10 @@ const fn is_scanner_space(c: char) -> bool {
 /// `SplitIdentifierString`: an unquoted part is downcased, a quoted one taken
 /// verbatim. See [`reduce_name_literal`] for the grammar and the three deliberate
 /// divergences.
-// The quoted and unquoted arms both open `let mut name = String::new()`, which
-// `branches_sharing_code` wants hoisted. They stay apart deliberately: this reader is
-// the name-literal half of the one fold (`Token::name` is the other), and the two arms
-// are the *quoted-verbatim* and *unquoted-downcased* rules. Sharing a binding across
-// them makes the split read as incidental.
-#[allow(clippy::branches_sharing_code)]
+#[expect(
+    clippy::branches_sharing_code,
+    reason = "the quoted and unquoted arms are the quoted-verbatim and unquoted-downcased rules of the one name-literal fold (`Token::name` is the other half); a shared `let mut name` would make the split read as incidental"
+)]
 pub(crate) fn split_name_literal(literal: &str) -> Result<Vec<String>> {
     let mut chars = literal.chars().peekable();
     let mut parts = Vec::new();
@@ -335,7 +333,10 @@ pub(crate) fn split_name_literal(literal: &str) -> Result<Vec<String>> {
 }
 
 /// The recursive-descent + Pratt parser over a token stream.
-#[allow(clippy::struct_excessive_bools)] // independent facts the parse records, one per flag
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "independent facts the parse records, one per flag"
+)]
 struct Parser<'a> {
     ts: TokenStream<'a>,
     /// Schema context — consulted for FROM-table resolution, WHERE

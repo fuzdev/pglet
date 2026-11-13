@@ -18,9 +18,11 @@
 //!   — by `Database::copy_in` / `copy_out`. Nothing in the fixture harness exercises
 //!   either, because the native server installs at sites of its own.
 
-// A test harness: `.unwrap()`/`.expect()`/`panic!` surface a setup failure — or a
-// statement that unexpectedly succeeded — loudly right here.
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![expect(
+    clippy::expect_used,
+    clippy::panic,
+    reason = "helpers outside the `#[test]` fns `.expect()` setup and `panic!` on a statement that unexpectedly succeeded, so either surfaces where it happens"
+)]
 
 use pglet::Database;
 use pglet_sql::catalog::SessionSettings;

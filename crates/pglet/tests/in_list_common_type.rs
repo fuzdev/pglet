@@ -12,9 +12,11 @@
 //!   transaction; the same statements are read here on memory storage too, in
 //!   autocommit and in a block, a `DELETE` through the list included.
 
-// A test harness: `.expect()`/`.unwrap()`/`panic!` surface an unexpected shape loudly
-// right here.
-#![allow(clippy::expect_used, clippy::unwrap_used, clippy::panic)]
+#![expect(
+    clippy::expect_used,
+    clippy::panic,
+    reason = "helpers outside the `#[test]` fns `.expect()` and `panic!` on a failed statement or an unexpected shape, so it surfaces where it happens"
+)]
 
 use pglet::{BoundExecError, Database};
 use pglet_sql::types::{TypeOid, Value};

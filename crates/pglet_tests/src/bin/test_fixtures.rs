@@ -15,10 +15,10 @@
 //! `PGLET_NO_INDEX_ACCEL=1`, which makes the spawned server `--no-default-features`):
 //!   cargo run -p `pglet_tests` --bin `test_fixtures` -- --profile-lock
 
-// These futures hold non-`Send` bound-param boxes (`dyn ToSql + Sync`) across awaits.
-// This is a test-runner binary on a local tokio runtime — the futures never cross a
-// thread boundary, so `future_not_send` doesn't apply.
-#![allow(clippy::future_not_send)]
+#![expect(
+    clippy::future_not_send,
+    reason = "the futures hold non-`Send` bound-param boxes (`dyn ToSql + Sync`) across awaits; they are awaited in place and never `tokio::spawn`ed, so nothing needs them `Send`"
+)]
 
 use pglet_testing::server::stripped_profile_requested;
 use pglet_tests::{

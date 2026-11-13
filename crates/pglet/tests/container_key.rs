@@ -8,8 +8,11 @@
 //! file store reopened over them. The expected rows are 18.6's for the same statements
 //! (measured, the fixtures' own corpora).
 
-// A test harness: a failed setup statement should fail the test where it happens.
-#![allow(clippy::panic, clippy::expect_used)]
+#![expect(
+    clippy::panic,
+    clippy::expect_used,
+    reason = "helpers outside the `#[test]` fns `.expect()` setup and `panic!` on a failed setup statement, so it fails the test where it happens"
+)]
 
 use crate::common;
 

@@ -831,8 +831,6 @@ fn violations(package: &str, nodes: &[TreeNode]) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::expect_used, clippy::panic)]
-
     use super::*;
 
     fn nodes(rows: &[(usize, &str)]) -> Vec<TreeNode> {

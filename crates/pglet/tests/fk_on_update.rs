@@ -7,8 +7,10 @@
 //! counterpart that runs without a server and additionally proves durability of the
 //! `on_update` catalog field across a file-backed reopen (the `PGMB` store bump).
 
-// A test harness: `.unwrap()`/`.expect()` surface a setup failure loudly here.
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![expect(
+    clippy::expect_used,
+    reason = "helpers outside the `#[test]` fns `.expect()` setup, so a failed setup fails the test where it happens"
+)]
 
 use crate::common;
 

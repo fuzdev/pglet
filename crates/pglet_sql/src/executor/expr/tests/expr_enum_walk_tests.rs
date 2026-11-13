@@ -31,7 +31,7 @@ fn leaf(_table: Option<&str>, name: &str) -> Option<String> {
 /// catalog, and what the arm has to be pinned on is that it **asks** — the arm was a
 /// bare `None` for a whole slice, which is why every test below that reaches it
 /// would have passed against a plan of any shape.
-#[allow(
+#[expect(
     clippy::unnecessary_wraps,
     reason = "the shape is `EnumLeaves::subquery`'s, and `walk_blind` is the same \
                   signature answering `None`"

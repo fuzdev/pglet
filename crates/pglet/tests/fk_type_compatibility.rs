@@ -4,10 +4,6 @@
 //! (every fixture runs inside `BEGIN … ROLLBACK`, which restores it), and the error
 //! fields the harness scores as agreement when pglet omits one.
 
-// A test harness: `.unwrap()`/`panic!` surface a setup failure or an unexpected cell
-// shape loudly right here.
-#![allow(clippy::unwrap_used, clippy::panic)]
-
 use pglet::Database;
 use pglet_core::Severity;
 

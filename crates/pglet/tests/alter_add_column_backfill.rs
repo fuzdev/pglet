@@ -7,9 +7,11 @@
 //! each behavior is validated byte-for-byte against a live Postgres there and
 //! exercised without a server here.
 
-// A test harness: `.unwrap()`/`panic!` surface a setup failure or an unexpected cell
-// shape loudly right here.
-#![allow(clippy::unwrap_used, clippy::panic)]
+#![expect(
+    clippy::unwrap_used,
+    clippy::panic,
+    reason = "helpers outside the `#[test]` fns `.unwrap()` setup and `panic!` on an unexpected cell shape, so a failure surfaces where it happens"
+)]
 
 use pglet::Database;
 use pglet_sql::types::Value;

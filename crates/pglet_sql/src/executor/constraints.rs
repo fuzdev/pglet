@@ -1725,7 +1725,10 @@ pub(super) fn fk_child_tuple(row: &[Value], positions: &[usize]) -> Option<Vec<V
 /// (INSERT validates inside its build loop; COPY / DO UPDATE validate just before
 /// calling this), and INSERT's normal path stays out of this helper because its
 /// CHECK runs before the ON CONFLICT probe (separated from its unique/FK pass).
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the table facts the row is checked against plus the row itself, threaded individually as across the executor"
+)]
 pub fn enforce_row_constraints<S: super::Storage>(
     storage: &S,
     schema: &Schema,
@@ -1752,7 +1755,10 @@ pub fn enforce_row_constraints<S: super::Storage>(
 ///
 /// `Error::NotNullViolation`, `Error::CheckViolation`, `Error::UniqueViolation` or an
 /// index-size refusal; an evaluation or storage error from a check or a probe.
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the table facts the row is checked against plus the row itself, threaded individually as across the executor"
+)]
 pub fn enforce_row_checks<S: super::Storage>(
     storage: &S,
     schema: &Schema,

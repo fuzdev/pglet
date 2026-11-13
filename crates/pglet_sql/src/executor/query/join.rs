@@ -115,7 +115,10 @@ fn coalesce_pair(a: &Value, b: &Value) -> Value {
 /// so a `JOIN` chain costs one frame of that function per level and this one only
 /// once (`crate::depth`).
 #[inline(never)]
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "both inputs, the join's own fields, and the schema/env context, threaded individually as across the executor"
+)]
 pub(super) fn execute_join(
     l: (Vec<Vec<Value>>, Vec<ColumnDesc>),
     r: (Vec<Vec<Value>>, Vec<ColumnDesc>),

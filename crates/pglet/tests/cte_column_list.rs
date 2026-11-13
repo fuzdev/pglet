@@ -19,9 +19,11 @@
 //! data-modifying one materializes (`Plan::CteScan` plan-side, `MaterializedCte`
 //! executed-side — two independent derivations of the same relation).
 
-// A test harness: setup `.unwrap()`s, so a setup failure surfaces loudly here rather
-// than as a confusing assertion mismatch.
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![expect(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "helpers outside the `#[test]` fns `.unwrap()` and `.expect()` setup, so a failed setup surfaces where it happens rather than as a confusing assertion mismatch"
+)]
 
 use pglet::Database;
 use pglet_sql::types::Value;

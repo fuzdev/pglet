@@ -170,10 +170,12 @@ pub fn wall_clock() -> Result<time::OffsetDateTime> {
     thread_local! {
         static LAST_READ: Cell<i128> = const { Cell::new(i128::MIN) };
     }
-    // `Date.now()` is integer milliseconds (exact in f64); go through integer
-    // microseconds rather than scaling the float.
+    // Go through integer microseconds rather than scaling the float.
     // Through `crate::host`, which catches: `Date.now` is a global a page can replace.
-    #[allow(clippy::cast_possible_truncation)]
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "`Date.now()` is a whole number of milliseconds, so the cast drops no fraction"
+    )]
     let millis = crate::host::date_now()? as i64;
     let micros = step_host_clock(LAST_READ.get(), millis);
     LAST_READ.set(micros);
@@ -292,7 +294,11 @@ pub fn random_uuid() -> Result<Value> {
     // in the previous draw's place. The version and variant bits are stamped over either.
     let mut bits = 0u128;
     for _ in 0..3 {
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "the draw is in `[0, 2^48)`, and an out-of-range host answer saturates"
+        )]
         let draw = (crate::host::math_random()? * 281_474_976_710_656.0) as u64; // 2^48
         bits = (bits << 48) | u128::from(draw);
     }
@@ -355,8 +361,10 @@ pub fn random() -> Result<Value> {
 /// The `[0, 1)` value of 52 of `bits`' bits: the high 52, over `2^52`.
 #[cfg(any(not(target_arch = "wasm32"), test))]
 fn unit_interval(bits: u64) -> f64 {
-    // a 52-bit integer is exact in an `f64`
-    #[allow(clippy::cast_precision_loss)]
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "a 52-bit integer is exact in an `f64`"
+    )]
     let mantissa = (bits >> 12) as f64;
     mantissa / 4_503_599_627_370_496.0 // 2^52
 }
@@ -368,10 +376,11 @@ fn unit_interval(bits: u64) -> f64 {
 #[cfg(any(target_arch = "wasm32", test))]
 fn unit_interval_from_host(draw: f64) -> f64 {
     const MASK: u64 = (1 << 52) - 1;
-    #[allow(
+    #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
-        clippy::cast_precision_loss
+        clippy::cast_precision_loss,
+        reason = "the cast saturates an out-of-range host draw, and the masked 52 bits are exact in an `f64`"
     )]
     let fraction = ((draw * 4_503_599_627_370_496.0) as u64 & MASK) as f64; // 2^52
     fraction / 4_503_599_627_370_496.0

@@ -879,12 +879,10 @@ pub fn certain_expr_type_oid(expr: &Expr, scope: ProjectionScope<'_>) -> Option<
 /// are one shared arm below; the rest stay this walk's own, and
 /// [`shared_leaf_cell_type`]'s doc says which of
 /// those are later mechanical work and which are a decision against the oracle.
-// `match_same_arms`: the `BinaryOp` arms are grouped by category for documentation
-// (comparison/logical and array-containment both yield Bool) but kept separate, mirroring
-// the planner's `Expr::infer_type`.
-// `option_if_let_else`: the `find` predicate's else branch allocates via `format!` and the `Some`
-// arm needs a `ref` binding, so the if-let reads clearer than a `map_or`.
-#[allow(clippy::match_same_arms, clippy::option_if_let_else)]
+#[expect(
+    clippy::match_same_arms,
+    reason = "the `BinaryOp` arms are grouped by category (comparison/logical and array-containment both yield `Bool`) but kept apart, mirroring the planner's `Expr::infer_type`"
+)]
 fn expr_type_oid(expr: &Expr, scope: ProjectionScope<'_>) -> TypeOid {
     match expr {
         Expr::Column { .. } => scope

@@ -36,9 +36,6 @@
 //! export (`22021`), the renderer's escape having hidden the NUL from the COPY payload's
 //! own encoding gate.
 
-// A test harness: `.expect()`/`.unwrap()` surface a setup failure loudly right here.
-#![allow(clippy::expect_used, clippy::unwrap_used)]
-
 use pglet::{BoundExecError, Database};
 use pglet_sql::types::{TypeOid, Value};
 

@@ -26,9 +26,11 @@
 //! `is_err` pin above it panics otherwise), so what the row assertions guard is a refusal
 //! placed *after* the writes — the shape this engine has shipped before.
 
-// A test harness: setup `.unwrap()`s and the `rows` helper `.expect()`s, so a setup
-// failure surfaces loudly here rather than as a confusing assertion mismatch.
-#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![expect(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "setup helpers `.unwrap()` and the `rows` helper `.expect()`s, so a failed setup surfaces where it happens rather than as a confusing assertion mismatch"
+)]
 
 use pglet::Database;
 use pglet_sql::types::Value;

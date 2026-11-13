@@ -53,7 +53,10 @@ enum SelectLeaf {
 /// parenthesized query's own clauses before the ones written after it (`EDGES.md` row
 /// 167).
 #[derive(Clone, Copy, Default)]
-#[allow(clippy::struct_excessive_bools)] // independent facts, one per clause the merge reads
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "independent facts, one per clause the merge reads"
+)]
 pub(super) struct QueryClauses {
     pub(super) order_by: bool,
     pub(super) offset: bool,
@@ -734,7 +737,10 @@ impl Parser<'_> {
 
     /// The clauses over a whole query — `ORDER BY`, then `LIMIT` / `OFFSET`, then a
     /// locking clause — and what they carry.
-    #[allow(clippy::type_complexity)]
+    #[expect(
+        clippy::type_complexity,
+        reason = "every caller destructures the clause triple on the spot, so a named struct would add a type and nothing else"
+    )]
     fn parse_query_clauses(
         &mut self,
     ) -> Result<(

@@ -42,7 +42,10 @@ pub(super) fn chunk_catalog(blob: &[u8]) -> Vec<Vec<u8>> {
 pub(super) fn encode_sys_table(name: &str, next_row_id: u64) -> Vec<u8> {
     let name = name.as_bytes();
     let mut out = Vec::with_capacity(4 + name.len() + 8);
-    #[allow(clippy::cast_possible_truncation)]
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "a table name is far under `u32::MAX` bytes"
+    )]
     out.extend_from_slice(&(name.len() as u32).to_le_bytes());
     out.extend_from_slice(name);
     out.extend_from_slice(&next_row_id.to_le_bytes());
@@ -82,7 +85,10 @@ pub(super) fn encode_freelist_body(next_page: PageId, next_crc: u32, ids: &[Page
     let mut out = Vec::with_capacity(FREELIST_HEADER + count * 8);
     out.extend_from_slice(&next_page.to_le_bytes());
     out.extend_from_slice(&next_crc.to_le_bytes());
-    #[allow(clippy::cast_possible_truncation)]
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "`count` is capped at `FREELIST_IDS_PER_PAGE`"
+    )]
     out.extend_from_slice(&(count as u32).to_le_bytes());
     for &id in ids.iter().take(count) {
         out.extend_from_slice(&id.to_le_bytes());
@@ -143,7 +149,10 @@ pub(super) fn encode_retired_body(
     out.extend_from_slice(&next_page.to_le_bytes());
     out.extend_from_slice(&next_crc.to_le_bytes());
     out.extend_from_slice(&next_max.to_le_bytes());
-    #[allow(clippy::cast_possible_truncation)]
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "`count` is capped at `RETIRED_PER_PAGE`"
+    )]
     out.extend_from_slice(&(count as u32).to_le_bytes());
     for &(id, freed_version) in entries.iter().take(count) {
         out.extend_from_slice(&id.to_le_bytes());
@@ -174,7 +183,10 @@ pub(super) fn decode_retired_body(buf: &[u8]) -> Option<RetiredBody> {
 /// `[count: u32 LE][(PageId: u64 LE, freed_version: u64 LE); count]`.
 pub(super) fn encode_retired_entries(entries: &[RetiredEntry]) -> Vec<u8> {
     let mut out = Vec::with_capacity(4 + entries.len() * 16);
-    #[allow(clippy::cast_possible_truncation)]
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "a meta slot carries at most `RETIRED_INLINE_MAX` retired entries"
+    )]
     out.extend_from_slice(&(entries.len() as u32).to_le_bytes());
     for &(id, freed_version) in entries {
         out.extend_from_slice(&id.to_le_bytes());

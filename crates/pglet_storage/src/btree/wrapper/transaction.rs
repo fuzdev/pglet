@@ -1537,9 +1537,10 @@ impl BtreeStorageWrapper {
     }
 
     /// Add a column to all rows within a transaction.
-    // `default` is cloned into each existing row below; taking `&Value` would only move the
-    // needless-by-value lint onto the `add_column` forwarders (server + wasm) without removing a clone.
-    #[allow(clippy::needless_pass_by_value)]
+    #[expect(
+        clippy::needless_pass_by_value,
+        reason = "`default` is cloned into each existing row; taking `&Value` would only move the lint onto the `add_column` forwarders (server and wasm) without removing a clone"
+    )]
     pub fn add_column_in_tx(&mut self, conn_id: i32, table: &str, default: Value) -> Result<()> {
         let table_id = self.get_table_id(table)?;
 

@@ -6,8 +6,10 @@
 //! through `Database::copy_in`/`copy_out` (not `execute`); `execute("COPY …")`
 //! itself fails loud, directing callers here.
 
-// A test harness: setup/read helpers `.unwrap()` so a failure surfaces loudly right here.
-#![allow(clippy::unwrap_used)]
+#![expect(
+    clippy::unwrap_used,
+    reason = "the setup and read helpers `.unwrap()`, so a failure surfaces where it happens"
+)]
 
 use pglet::Database;
 use pglet_sql::executor::copy_unescape_field;

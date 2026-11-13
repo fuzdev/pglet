@@ -410,10 +410,11 @@ pub fn execute_copy_from<S: Storage>(
     let mut skip_header = params.header;
     while !rest.is_empty() {
         let line_start = data.len() - rest.len();
-        // Carve off the next line (up to `\n`, or the remainder if none). A `match`
-        // (not `map_or`) keeps the empty-default slice lazy and reads clearer than the
-        // nested closure form.
-        #[allow(clippy::option_if_let_else)]
+        // Carve off the next line (up to `\n`, or the remainder if none).
+        #[expect(
+            clippy::option_if_let_else,
+            reason = "a `match` keeps the empty-default slice lazy and reads clearer than the nested closure form"
+        )]
         let (mut line, next) = match rest.iter().position(|&b| b == b'\n') {
             Some(p) => (&rest[..p], &rest[p + 1..]),
             None => (rest, &rest[rest.len()..]),

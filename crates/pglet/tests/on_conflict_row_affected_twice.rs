@@ -10,9 +10,11 @@
 //! `(1, 'a')`; the same statement inside a block leaves the block aborted (`25P02`) and a
 //! `ROLLBACK` restores the table as the block found it.
 
-// A test harness: `.expect()`/`panic!` surface a setup failure or an unexpected cell
-// shape loudly right here.
-#![allow(clippy::expect_used, clippy::panic)]
+#![expect(
+    clippy::expect_used,
+    clippy::panic,
+    reason = "helpers outside the `#[test]` fns `.expect()` setup and `panic!` on an unexpected cell shape, so a failure surfaces where it happens"
+)]
 
 use crate::common;
 

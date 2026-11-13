@@ -4,6 +4,9 @@
 //! uses it (`tests/integration.rs`, `tests/crash.rs`), while the implementations live
 //! in one place. Each binary compiles its own copy, so one using only a subset of the
 //! re-exports would otherwise warn.
-#![allow(unused_imports)]
+#![allow(
+    unused_imports,
+    reason = "each test binary compiles its own copy, and one that uses only some of the re-exports warns on the rest"
+)]
 
 pub use pglet_testing::db::{ScratchDir, open_database};

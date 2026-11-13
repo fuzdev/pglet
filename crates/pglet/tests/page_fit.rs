@@ -15,7 +15,11 @@
 //! through the page codec), and the in-memory B+tree (`Database::with_btree`), whose
 //! page store refuses a page that would not fit rather than holding it — the reason
 //! the fixture harness, which runs that store, guards this class at all.
-#![allow(clippy::panic, clippy::expect_used)]
+#![expect(
+    clippy::panic,
+    clippy::expect_used,
+    reason = "helpers outside the `#[test]` fns `.expect()` setup and `panic!` on a failed statement or an unexpected shape, so a failure surfaces where it happens"
+)]
 
 use crate::common;
 

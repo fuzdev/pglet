@@ -339,8 +339,10 @@ mod tests {
     use super::{format_float4_text, format_float8_text};
 
     /// 18.6's answers, measured with `SELECT <v>::float4` / `::float8`.
-    // Each literal is the exact value measured, not a rounding of it.
-    #[allow(clippy::excessive_precision)]
+    #[expect(
+        clippy::excessive_precision,
+        reason = "each literal is the exact value measured, not a rounding of it"
+    )]
     #[test]
     fn answers_as_18_6_does() {
         for (v, want) in [

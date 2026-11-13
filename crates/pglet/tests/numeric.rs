@@ -7,9 +7,11 @@
 //! counterpart, and — as with DATE — the place a `Value` wildcard fallthrough (a
 //! comparison or index-probe arm the compiler can't force) would surface.
 
-// A test harness: the `rows` helper `.expect()`s and the shape helpers `panic!` so a
-// setup failure or an unexpected cell type surfaces loudly right here.
-#![allow(clippy::expect_used, clippy::panic)]
+#![expect(
+    clippy::expect_used,
+    clippy::panic,
+    reason = "the `rows` helper `.expect()`s and the shape helpers `panic!`, so a failed setup or an unexpected cell type fails the test where it happens"
+)]
 
 use pglet::Database;
 use pglet_sql::types::{TypeOid, Value};

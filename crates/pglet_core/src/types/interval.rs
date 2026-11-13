@@ -743,7 +743,6 @@ fn parse_iso8601(s: &str, orig: &str, itm: &mut Itm) -> Result<()> {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use super::{PgInterval, format_interval_text};
 

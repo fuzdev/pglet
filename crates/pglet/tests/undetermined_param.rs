@@ -17,9 +17,11 @@
 //!   returns that type's value, whatever its sibling operand's is. A fold over such an
 //!   operator has to convert it to the type the fold declares.
 
-// A test harness: `.expect()`/`.unwrap()`/`panic!` surface an unexpected verdict shape
-// loudly right here.
-#![allow(clippy::expect_used, clippy::unwrap_used, clippy::panic)]
+#![expect(
+    clippy::expect_used,
+    clippy::panic,
+    reason = "helpers outside the `#[test]` fns `.expect()` and `panic!` on an unexpected verdict shape, so it surfaces where it happens"
+)]
 
 use std::cell::Cell;
 
@@ -185,7 +187,10 @@ fn an_insert_select_entry_is_bound_as_its_target_column() {
 /// not — whole, an `int8`; fractional, a `float8`.
 fn js_number(n: f64, inferred: Option<TypeOid>) -> Value {
     let whole = n.fract() == 0.0;
-    #[allow(clippy::cast_possible_truncation)] // the test binds small whole numbers
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "the test binds small whole numbers"
+    )]
     match inferred {
         Some(TypeOid::Int2) if whole => Value::Int2(n as i16),
         Some(TypeOid::Int4) if whole => Value::Int4(n as i32),

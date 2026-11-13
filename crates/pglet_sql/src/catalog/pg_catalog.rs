@@ -614,8 +614,10 @@ impl<'a> PgCatalog<'a> {
 /// type of at most a machine word by value and everything else by reference (measured
 /// over its whole `pg_type`: `name`(64), `uuid`(16) and `interval`(16) are the
 /// fixed-width types that are not) — so the two facts cannot be given inconsistently.
-// One row of a ten-column catalog relation; the arguments are its columns.
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "one `pg_type` row: each argument is one of its columns, and the rest are derived or constant"
+)]
 fn type_row(
     oid: i32,
     name: &str,

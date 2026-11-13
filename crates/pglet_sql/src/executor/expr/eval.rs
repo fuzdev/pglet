@@ -365,7 +365,10 @@ fn eval_expr_typed<R: ColumnResolver>(
 /// operand: coerce to the target type, then apply the modifier with `is_explicit =
 /// true` (a length over-run truncates silently; a numeric overflow still fails loud).
 #[inline(never)]
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the node's operands, their evaluated values, and the resolver/env context, threaded individually as across the evaluator"
+)]
 fn eval_cast_typmod_node<R: ColumnResolver>(
     expr: &Expr,
     inner: &Expr,
@@ -487,7 +490,10 @@ fn eval_in_subquery_node(val: &Value, set: &[Value], negated: bool) -> Result<Va
 
 /// `lval op ANY|ALL (right)`, `lval` being the evaluated left operand.
 #[inline(never)]
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the node's operands, their evaluated values, and the resolver/env context, threaded individually as across the evaluator"
+)]
 fn eval_any_all_node<R: ColumnResolver>(
     [left, right]: [&Expr; 2],
     op: BinaryOp,
@@ -537,7 +543,10 @@ fn eval_not_node(val: &Value) -> Result<Value> {
 /// A cast over its evaluated operand: the operand's declared type read once, the
 /// node's own derived for a reader that asked, then the cast.
 #[inline(never)]
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the node's operands, their evaluated values, and the resolver/env context, threaded individually as across the evaluator"
+)]
 fn eval_cast_node<R: ColumnResolver>(
     expr: &Expr,
     inner: &Expr,
@@ -559,7 +568,10 @@ fn eval_cast_node<R: ColumnResolver>(
 /// A binary operator over its evaluated operands: the declared-type gates, then the
 /// operator, then the node's own declared type for a reader that asked.
 #[inline(never)]
-#[allow(clippy::too_many_arguments)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the node's operands, their evaluated values, and the resolver/env context, threaded individually as across the evaluator"
+)]
 fn eval_binary_node<R: ColumnResolver>(
     left: &Expr,
     op: BinaryOp,
@@ -1320,7 +1332,10 @@ pub fn literal_to_value(lit: &Literal) -> Value {
         Literal::Int(n) => {
             // Use Int4 if value fits, otherwise Int8 (matches Postgres literal typing)
             if i32::try_from(*n).is_ok() {
-                #[allow(clippy::cast_possible_truncation)]
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    reason = "in range for an `i32` by the `try_from` check above"
+                )]
                 Value::Int4(*n as i32)
             } else {
                 Value::Int8(*n)

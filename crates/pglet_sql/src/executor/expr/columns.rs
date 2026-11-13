@@ -601,10 +601,8 @@ impl JoinColumnMap {
     }
 
     /// Find a column by name (optionally qualified with table).
-    // The `0` (not found) and `_` (ambiguous) arms share a `None` body but are kept
-    // separate so the ambiguity case stays legible — `resolve` re-counts the bare
-    // matches to raise `42702` for it, so `None` here means "no single match".
-    #[allow(clippy::match_same_arms)]
+    // `None` means "no single match": `resolve` re-counts the bare matches to raise
+    // `42702` for an ambiguous one.
     pub fn find(&self, table: Option<&str>, name: &str) -> Option<(usize, TypeOid)> {
         self.find_column(table, name).map(|c| (c.index, c.type_oid))
     }

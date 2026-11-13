@@ -57,8 +57,6 @@ impl Protocol {
     }
 
     /// The result format codes (Extended only; empty for Simple = all text).
-    // not const: `Vec`→slice deref coercion isn't allowed in a const fn
-    #[allow(clippy::missing_const_for_fn)]
     fn result_formats(&self) -> &[FormatCode] {
         match self {
             Self::Simple => &[],

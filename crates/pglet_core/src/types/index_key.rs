@@ -46,9 +46,6 @@ impl Value {
     ///
     /// None: every value has a key. The `Result` stays for the callers, each of which
     /// carries an encoder error to its own (`pglet_storage`'s `unindexable`).
-    // arms kept one-per-variant for the per-type encoding table; several integer
-    // arms share the sign-flip shape but differ in width
-    #[allow(clippy::match_same_arms)]
     pub fn encode_index_key(&self) -> Result<Vec<u8>> {
         // Flip the sign bit so two's-complement negatives (high bit set) sort
         // before non-negatives under unsigned big-endian byte order.

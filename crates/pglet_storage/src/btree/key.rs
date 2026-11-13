@@ -173,11 +173,11 @@ fn escaped_value_len(value: &[u8]) -> usize {
 /// Panics if no `0x00 0x00` terminator is found before the end of `bytes`, or
 /// `bytes` ends mid-escape. Callers decoding a key we wrote ourselves never hit
 /// this; [`BtreeKey::try_decode`] guards untrusted/truncated input first.
-// Mirrors `decode`'s contract: a well-formed key (the only thing we decode in
-// the hot path) is always terminated, so the `panic!` is unreachable there and
-// the `bytes[i + 1]` index is in bounds; truncated input goes through
-// `try_decode`/`escaped_value_end` instead.
-#[allow(clippy::indexing_slicing, clippy::panic)]
+#[expect(
+    clippy::indexing_slicing,
+    clippy::panic,
+    reason = "a well-formed key, the only thing decoded on the hot path, is always terminated, so the `panic!` is unreachable and `bytes[i + 1]` is in bounds; truncated input goes through `try_decode`/`escaped_value_end`"
+)]
 fn unescape_value(bytes: &[u8]) -> (Vec<u8>, usize) {
     let mut value = Vec::new();
     let mut i = 0;
@@ -434,10 +434,10 @@ impl BtreeKey {
     ///
     /// Panics if `bytes` is shorter than the encoded key. Callers that may have
     /// a truncated buffer should use [`try_decode`](Self::try_decode).
-    // Fixed-layout decode: the `try_into` targets are statically-sized slices of
-    // a length the caller guarantees (a well-formed page we wrote), so they
-    // never fail.
-    #[allow(clippy::unwrap_used)]
+    #[expect(
+        clippy::unwrap_used,
+        reason = "fixed-layout decode: the `try_into` targets are statically sized slices of a length the caller guarantees (a well-formed page this engine wrote), so they never fail"
+    )]
     pub fn decode(bytes: &[u8]) -> (Self, usize) {
         if bytes[0] == TAG_INDEX {
             let index_id = u32::from_be_bytes(bytes[1..5].try_into().unwrap());

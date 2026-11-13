@@ -252,10 +252,10 @@ pub fn subquery_enum_name(plan: &Plan, schema: &Schema) -> Option<String> {
 /// `greatest`/`least`,
 /// subquery-against-subquery, and a `DELETE` / `UPDATE` predicate. So the arm asks
 /// [`EnumLeaves::subquery`], and what it cannot answer is stated there.
-// The arms are grouped by *why* each answers what it does, and that grouping is the
-// documentation: merging two same-bodied arms from different groups would erase the
-// reason the next reader needs.
-#[allow(clippy::match_same_arms)]
+#[expect(
+    clippy::match_same_arms,
+    reason = "the arms are grouped by why each answers what it does; merging two same-bodied arms from different groups would erase that"
+)]
 pub fn expr_enum_with<T: PartialEq>(expr: &Expr, leaf: &EnumLeaves<'_, T>) -> Option<T> {
     match expr {
         // The leaf: the one place a *column's* enum identity enters the walk.

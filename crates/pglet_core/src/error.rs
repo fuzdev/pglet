@@ -110,8 +110,10 @@ pub enum CatalogError {
 
 impl CatalogError {
     /// Returns the SQLSTATE code for this error.
-    // arms grouped one-per-variant to mirror Postgres's SQLSTATE catalog; TableAlreadyExists, IndexAlreadyExists and SequenceAlreadyExists intentionally share 42P07 (duplicate_table) but are kept separate for the per-variant mapping
-    #[allow(clippy::match_same_arms)]
+    #[expect(
+        clippy::match_same_arms,
+        reason = "arms mirror Postgres's SQLSTATE catalog one variant each: `TableAlreadyExists`, `IndexAlreadyExists` and `SequenceAlreadyExists` share `42P07` (duplicate_table) but keep their own arms"
+    )]
     pub const fn sqlstate(&self) -> &'static str {
         match self {
             Self::TableNotFound { .. } => "42P01",
@@ -1999,10 +2001,10 @@ pub enum Error {
 
 impl Error {
     /// Returns the SQLSTATE code for this error.
-    // arms grouped one-per-variant to mirror Postgres's SQLSTATE catalog;
-    // UnindexableType and NotImplemented intentionally share 0A000
-    // (feature_not_supported) but stay separate for the per-variant mapping
-    #[allow(clippy::match_same_arms)]
+    #[expect(
+        clippy::match_same_arms,
+        reason = "arms mirror Postgres's SQLSTATE catalog one variant each: `UnindexableType` and `NotImplemented` share `0A000` (feature_not_supported) but keep their own arms"
+    )]
     pub const fn sqlstate(&self) -> &'static str {
         match self {
             Self::Syntax { .. } => "42601",

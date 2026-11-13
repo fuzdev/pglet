@@ -669,9 +669,10 @@ pub(super) fn eval_power(left: &Value, right: &Value) -> Result<Value> {
 /// `1^NaN = 1`, else `NaN`), then the SQL-mandated domain errors — `0 ^ negative`
 /// and negative-base `^` non-integer both `2201F` — and finally a finite-operand
 /// overflow to `±inf` as `22003`.
-// Exact float comparisons are intentional here (they mirror `dpow`'s `arg1 == 1.0`
-// / `floor(arg2) != arg2` domain tests byte-for-byte), not accidental.
-#[allow(clippy::float_cmp)]
+#[expect(
+    clippy::float_cmp,
+    reason = "exact comparisons mirror `dpow`'s `arg1 == 1.0` / `floor(arg2) != arg2` domain tests byte for byte"
+)]
 fn eval_power_f64(base: f64, exp: f64) -> Result<f64> {
     // NaN handling (explicit, per POSIX — not trusting the platform `powf`).
     if base.is_nan() {
@@ -923,8 +924,10 @@ pub fn interval_scale(span: &PgInterval, factor: f64, is_mul: bool) -> Result<Pg
     if sec_remainder.abs() >= 86_400.0 {
         let extra = (sec_remainder / 86_400.0) as i32;
         day = day.checked_add(extra).ok_or_else(oor)?;
-        // not `mul_add`: `timestamp.c` rounds the product before the subtraction
-        #[allow(clippy::suboptimal_flops)]
+        #[expect(
+            clippy::suboptimal_flops,
+            reason = "not `mul_add`: `timestamp.c` rounds the product before the subtraction"
+        )]
         {
             sec_remainder -= f64::from(extra) * 86_400.0;
         }
@@ -933,8 +936,10 @@ pub fn interval_scale(span: &PgInterval, factor: f64, is_mul: bool) -> Result<Pg
         .checked_add(month_remainder_days as i32)
         .ok_or_else(oor)?;
 
-    // not `mul_add`: `timestamp.c` rounds the product before the addition
-    #[allow(clippy::suboptimal_flops)]
+    #[expect(
+        clippy::suboptimal_flops,
+        reason = "not `mul_add`: `timestamp.c` rounds the product before the addition"
+    )]
     let time_d = (apply(span.micros as f64) + sec_remainder * 1_000_000.0).round_ties_even();
     if !time_d.is_finite() || !fits_i64(time_d) {
         return Err(oor());

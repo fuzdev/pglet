@@ -13,7 +13,11 @@
 //!   which is why a write takes no other kind. Counted through the B+tree wrapper's
 //!   `table_scans_in_tx`, which every in-transaction table read moves.
 
-#![allow(clippy::unwrap_used, clippy::panic)]
+#![expect(
+    clippy::unwrap_used,
+    clippy::panic,
+    reason = "helpers outside the `#[test]` fns `.unwrap()` setup and `panic!` on a failed statement or an unexpected shape, so a failure surfaces where it happens"
+)]
 
 use pglet::{Database, StorageAdapter, StorageBackend};
 use pglet_sql::executor::{EvalEnv, SequenceSession, execute_with_storage};

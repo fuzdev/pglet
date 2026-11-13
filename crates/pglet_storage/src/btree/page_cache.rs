@@ -113,9 +113,10 @@ impl ShardedPageCache {
             return 0;
         }
         let hash = page_id.wrapping_mul(FIBONACCI_HASH_MULTIPLIER);
-        // The shift keeps exactly `log2(shard_count)` high bits, so the result is
-        // already in `0..shard_count` — no mask, and never wider than `usize`.
-        #[allow(clippy::cast_possible_truncation)]
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "the shift keeps exactly `log2(shard_count)` high bits, so the result is already in `0..shard_count`"
+        )]
         let index = (hash >> self.shard_shift) as usize;
         index
     }

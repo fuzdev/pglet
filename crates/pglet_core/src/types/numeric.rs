@@ -608,8 +608,11 @@ impl PgNumeric {
         }
         // Result scale: same rule as `power_var` (≥ MIN_SIG_DIGITS sig digits, and
         // not below either input's display scale).
-        #[allow(clippy::cast_possible_truncation)]
-        let mut rscale = MIN_SIG_DIGITS - f as i32; // C `(int) f` truncates toward zero
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "C's `(int) f` truncates toward zero, and so does this cast"
+        )]
+        let mut rscale = MIN_SIG_DIGITS - f as i32;
         rscale = rscale.max(i32::from(base.dscale));
         rscale = rscale.max(i32::from(exp_dscale));
         rscale = rscale.max(0);
@@ -759,8 +762,10 @@ impl PgNumeric {
         // mantissa = d0.d1d2… ∈ [1, 10); |self| ≈ mantissa · 10^weight.
         let mut mantissa = 0f64;
         for (i, &d) in v.digits.iter().take(16).enumerate() {
-            // `mul_add` fuses the rounding step and so changes the estimate's bits
-            #[allow(clippy::suboptimal_flops)]
+            #[expect(
+                clippy::suboptimal_flops,
+                reason = "`mul_add` fuses the rounding step and so changes the estimate's bits"
+            )]
             {
                 mantissa += f64::from(d) * 10f64.powi(-(i as i32));
             }
@@ -2046,8 +2051,10 @@ mod tests {
         assert!(PgNumeric::NaN.div(&n("2")).unwrap().is_nan());
     }
 
-    // `a`..`f` are one case each of the same rule; naming them would obscure the table.
-    #[allow(clippy::many_single_char_names)]
+    #[expect(
+        clippy::many_single_char_names,
+        reason = "`a`..`f` are one case each of the same rule; naming them would obscure the table"
+    )]
     #[test]
     fn round_half_away_from_zero() {
         let mut a = n("1.25");

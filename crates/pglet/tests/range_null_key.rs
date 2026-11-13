@@ -9,7 +9,10 @@
 //! [`plans`] holds that the read still goes through the index — an answer cannot show
 //! that.
 
-#![allow(clippy::unwrap_used, clippy::panic)]
+#![expect(
+    clippy::panic,
+    reason = "helpers outside the `#[test]` fns `panic!` on a failed statement or an unexpected shape, so it surfaces where it happens"
+)]
 
 use crate::common::ScratchDir;
 use pglet::Database;

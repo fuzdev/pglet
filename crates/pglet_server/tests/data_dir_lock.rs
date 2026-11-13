@@ -29,7 +29,11 @@
 //! outlives the run and holds a port and a directory. (Measured: it did, on the
 //! deliberate red-on-revert run that proved these two tests are not vacuous.)
 
-#![allow(clippy::expect_used, clippy::panic, clippy::unwrap_used)]
+#![expect(
+    clippy::expect_used,
+    clippy::panic,
+    reason = "helpers outside the `#[test]` fns `.expect()` the server harness and `panic!` on an unexpected outcome, so a failure surfaces where it happens"
+)]
 
 use std::io::{BufRead as _, BufReader, Read as _};
 use std::net::TcpStream;
