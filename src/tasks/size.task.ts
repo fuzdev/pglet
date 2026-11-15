@@ -38,7 +38,7 @@ export type Args = s.Infer<typeof Args>;
 export const task: Task<Args> = {
 	summary: 'gate the raw wasm size against benches/size_baseline.json (npm run size:check)',
 	Args,
-	run: async ({ args }) => {
+	run: async ({ task_args }) => {
 		const checkout = await fs.open_dir(to_task_checkout_path(import.meta.url));
 		let release: FsReadDir | null = null;
 		try {
@@ -57,7 +57,7 @@ export const task: Task<Args> = {
 				print: (text) => console.log(text),
 				print_error: (text) => console.error(text)
 			},
-			{ mode: args.update ? 'update' : 'check', wasm: args.wasm }
+			{ mode: task_args.update ? 'update' : 'check', wasm: task_args.wasm }
 		);
 	}
 };

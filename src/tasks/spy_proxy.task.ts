@@ -39,8 +39,8 @@ export const task: Task<Args> = {
 	summary:
 		'log the Postgres wire protocol between a client and a server on loopback (npm run spy:start -- 5434 5432)',
 	Args,
-	run: async ({ args }) => {
-		const parsed = parse_spy_proxy_args(args._);
+	run: async ({ task_args }) => {
+		const parsed = parse_spy_proxy_args(task_args._);
 		if (!parsed.ok) throw new TaskError(parsed.error);
 		const { listen_port, server_port, output } = parsed.args;
 		const checkout = await fs.open_dir(to_task_checkout_path(import.meta.url));

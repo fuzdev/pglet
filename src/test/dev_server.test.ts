@@ -541,7 +541,9 @@ describe('run_dev_server', () => {
 	});
 
 	test('cargo failing to launch ends the watch and rejects with its error', async () => {
-		const error = new SpawnError('launch_failed', 'cargo', 'cargo: not found');
+		const error = new SpawnError('launch_failed', 'cargo', {
+			cause: new Error('cargo: not found')
+		});
 		const dev = await start(error);
 		try {
 			await dev.done;

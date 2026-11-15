@@ -1,9 +1,10 @@
 import * as s from '@fuzdev/fuz_schema/schema.ts';
 import { meta } from '@fuzdev/fuz_schema/meta.ts';
-import { to_raw_rest_args } from '@fuzdev/gro/args.ts';
+import { to_raw_rest_args } from '@fuzdev/gro/task_args.ts';
 import { fs } from '@fuzdev/gro/fs.ts';
 import { GIT_LOCAL_PASS_ENV } from '@fuzdev/gro/git.ts';
-import { process } from '@fuzdev/gro/process.ts';
+import { env } from '@fuzdev/gro/env.ts';
+import { args } from '@fuzdev/gro/args.ts';
 import { spawn, type SpawnProgramOptions } from '@fuzdev/gro/spawn.ts';
 import type { Task } from '@fuzdev/gro/task.ts';
 
@@ -63,11 +64,11 @@ export const task: Task<Args> = {
 	summary:
 		'release @fuzdev/pglet-wasm, a dry run unless --wetrun (npm run publish:npm -- --wetrun --bump patch)',
 	Args,
-	run: async ({ args }) => {
-		const env = process.env.narrow(PUBLISH_NPM_FLAG_VARS);
+	run: async ({ task_args }) => {
+		const flag_env = env.narrow(PUBLISH_NPM_FLAG_VARS);
 		const stray = [
-			...to_publish_stray_vars((name) => env.get(name)),
-			...to_raw_rest_args(process.args)
+			...to_publish_stray_vars((name) => flag_env.get(name)),
+			...to_raw_rest_args(args)
 		];
 		const checkout = await fs.open_dir(to_task_checkout_path(import.meta.url));
 		const to_program = (name: string, options?: SpawnProgramOptions): ReleaseProgram => ({
@@ -89,7 +90,7 @@ export const task: Task<Args> = {
 				print: (text) => console.log(text),
 				print_error: (text) => console.error(text)
 			},
-			{ ...args, stray }
+			{ ...task_args, stray }
 		);
 	}
 };

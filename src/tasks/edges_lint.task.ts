@@ -25,7 +25,7 @@ export type Args = s.Infer<typeof Args>;
 export const task: Task<Args> = {
 	summary: "check EDGES.md's structural invariants (npm run lint:edges)",
 	Args,
-	run: async ({ args }) => {
+	run: async ({ task_args }) => {
 		const checkout = await fs.open_dir(to_task_checkout_path(import.meta.url));
 		await run_edges_lint_command(
 			{
@@ -33,7 +33,7 @@ export const task: Task<Args> = {
 				print: (text) => console.log(text),
 				print_error: (text) => console.error(text)
 			},
-			args
+			task_args
 		);
 	}
 };
