@@ -20,7 +20,7 @@
 
 import type { FsReadDir } from '@fuzdev/gro/fs.ts';
 import { is_fs_error } from '@fuzdev/gro/fs_error.ts';
-import { SilentError } from '@fuzdev/gro/task.ts';
+import { SilentError } from '@fuzdev/gro/task_error.ts';
 
 /** The release server's dir beneath the checkout. */
 export const MATRIX_RELEASE_DIR = 'target/release';

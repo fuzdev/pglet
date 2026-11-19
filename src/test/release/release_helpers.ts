@@ -1,6 +1,6 @@
 import { fs, type FsDir, type FsReadDir } from '@fuzdev/gro/fs.ts';
 import type { SpawnOutput, SpawnProgram, SpawnResult } from '@fuzdev/gro/spawn.ts';
-import { is_silent_error } from '@fuzdev/gro/task.ts';
+import { is_silent_error } from '@fuzdev/gro/task_error.ts';
 
 import type { ReleaseProgram } from '#lib/release/programs.ts';
 import {

@@ -27,7 +27,7 @@
 
 import type { FsReadDir } from '@fuzdev/gro/fs.ts';
 import { is_fs_error } from '@fuzdev/gro/fs_error.ts';
-import { SilentError } from '@fuzdev/gro/task.ts';
+import { SilentError } from '@fuzdev/gro/task_error.ts';
 
 /** A cell aims at one screen-line; past this bound its material belongs in the row's bullet. */
 export const EDGES_MAX_CELL_CHARS = 300;

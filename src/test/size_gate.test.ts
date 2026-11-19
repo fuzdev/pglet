@@ -1,4 +1,4 @@
-import { is_silent_error } from '@fuzdev/gro/task.ts';
+import { is_silent_error } from '@fuzdev/gro/task_error.ts';
 import { fs, type FsDir } from '@fuzdev/gro/fs.ts';
 import type {
 	SpawnOutOptions,

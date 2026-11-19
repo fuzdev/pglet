@@ -62,7 +62,7 @@
  */
 
 import type { FsDir } from '@fuzdev/gro/fs.ts';
-import { SilentError } from '@fuzdev/gro/task.ts';
+import { SilentError } from '@fuzdev/gro/task_error.ts';
 
 import { NPM_SHARED_METADATA } from '../npm_metadata.ts';
 import {

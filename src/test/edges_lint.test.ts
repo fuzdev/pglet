@@ -1,5 +1,5 @@
 import { fs } from '@fuzdev/gro/fs.ts';
-import { is_silent_error } from '@fuzdev/gro/task.ts';
+import { is_silent_error } from '@fuzdev/gro/task_error.ts';
 import { assert, describe, test } from 'vitest';
 
 import { EDGES_MAX_CELL_CHARS, lint_edges, run_edges_lint_command } from '#lib/edges_lint.ts';

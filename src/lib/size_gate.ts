@@ -16,7 +16,7 @@
 
 import type { FsDir, FsReadDir } from '@fuzdev/gro/fs.ts';
 import type { SpawnProgram } from '@fuzdev/gro/spawn.ts';
-import { SilentError } from '@fuzdev/gro/task.ts';
+import { SilentError } from '@fuzdev/gro/task_error.ts';
 
 import {
 	BENCH_STAMP_UNKNOWN,

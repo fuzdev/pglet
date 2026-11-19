@@ -1,6 +1,7 @@
 import * as s from '@fuzdev/fuz_schema/schema.ts';
 import { fs } from '@fuzdev/gro/fs.ts';
-import { TaskError, type Task } from '@fuzdev/gro/task.ts';
+import type { Task } from '@fuzdev/gro/task.ts';
+import { TaskError } from '@fuzdev/gro/task_error.ts';
 
 import type { StaticMount } from '#lib/static_files.ts';
 import { start_static_server, StaticServerPortInUseError } from '#lib/static_server.ts';
