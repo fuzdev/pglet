@@ -103,8 +103,8 @@
     "spy:spine:fact": "exec gro task src/tasks/spy_proxy.task.ts 5434 5432 tests/captures/spine_fact.jsonl"
   },
   "devDependencies": {
-    "@fuzdev/fuz_util": "0.81.0",
-    "@fuzdev/gro": "0.237.0",
+    "@fuzdev/fuz_util": "0.83.0",
+    "@fuzdev/gro": "0.238.0",
     "@types/node": "24.19.2",
     "@types/pg": "8.16.0",
     "drizzle-orm": "0.45.2",
