@@ -20,7 +20,7 @@
 
 import type { FsReadDir } from '@fuzdev/gro/fs.ts';
 import { is_fs_error } from '@fuzdev/gro/fs_error.ts';
-import { SilentError } from '@fuzdev/gro/task_error.ts';
+import { ReportedError } from '@fuzdev/gro/task_error.ts';
 
 /** The release server's dir beneath the checkout. */
 export const MATRIX_RELEASE_DIR = 'target/release';
@@ -63,7 +63,7 @@ const open_or_null = async (open: () => Promise<FsReadDir>): Promise<FsReadDir |
 /**
  * Prints the matrix setup, or each missing artifact and how to build it.
  *
- * @throws SilentError - exit 1 after naming the missing artifacts
+ * @throws ReportedError - exit 1 after naming the missing artifacts
  */
 export const run_matrix_env_command = async (deps: MatrixEnvCommandDeps): Promise<void> => {
 	const { checkout_path, print, print_error } = deps;
@@ -86,7 +86,7 @@ export const run_matrix_env_command = async (deps: MatrixEnvCommandDeps): Promis
 		print_error(
 			`error: pglet matrix artifact(s) not built:\n  ${missing.join('\n  ')}\nrun: npm run matrix:artifacts`
 		);
-		throw new SilentError();
+		throw new ReportedError();
 	}
 
 	print('# pglet artifacts for the fuz_app `db` matrix — export these (bash), then run');

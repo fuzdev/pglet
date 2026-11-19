@@ -1,6 +1,6 @@
 import { fs, type FsDir, type FsReadDir } from '@fuzdev/gro/fs.ts';
 import type { SpawnOutput, SpawnProgram, SpawnResult } from '@fuzdev/gro/spawn.ts';
-import { is_silent_error } from '@fuzdev/gro/task_error.ts';
+import { is_reported_error } from '@fuzdev/gro/task_error.ts';
 
 import type { ReleaseProgram } from '#lib/release/programs.ts';
 import {
@@ -200,7 +200,7 @@ export interface ReleaseRunOptions {
 
 /** The outcome of one run in a fake world. */
 export interface ReleaseRun extends ReleaseWorld {
-	/** Whether the command failed with a `SilentError`, its one way to fail. */
+	/** Whether the command failed with a `ReportedError`, its one way to fail. */
 	failed: boolean;
 	/** Reads a checkout file as the run left it, null when missing. */
 	read: (path: string) => Promise<string | null>;
@@ -250,7 +250,7 @@ export const run_release = async (
 	try {
 		await run_publish_command(deps, { wetrun: false, git: true, stray: [], ...args });
 	} catch (error) {
-		if (!is_silent_error(error)) throw error;
+		if (!is_reported_error(error)) throw error;
 		failed = true;
 	}
 	// read everything the assertions may ask for before the temp dir is removed

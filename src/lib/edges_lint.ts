@@ -27,7 +27,7 @@
 
 import type { FsReadDir } from '@fuzdev/gro/fs.ts';
 import { is_fs_error } from '@fuzdev/gro/fs_error.ts';
-import { SilentError } from '@fuzdev/gro/task_error.ts';
+import { ReportedError } from '@fuzdev/gro/task_error.ts';
 
 /** A cell aims at one screen-line; past this bound its material belongs in the row's bullet. */
 export const EDGES_MAX_CELL_CHARS = 300;
@@ -174,7 +174,7 @@ export interface EdgesLintCommandDeps {
  * Lints the ledger and prints its counts, then an ok line or each problem and
  * their count.
  *
- * @throws SilentError - exit 1 after printing the problems, or that the ledger is missing
+ * @throws ReportedError - exit 1 after printing the problems, or that the ledger is missing
  */
 export const run_edges_lint_command = async (
 	deps: EdgesLintCommandDeps,
@@ -183,7 +183,7 @@ export const run_edges_lint_command = async (
 	const { checkout, print, print_error } = deps;
 	if (args._.length > 1) {
 		print_error(`lint:edges lints one ledger, got ${args._.length}: ${args._.join(' ')}`);
-		throw new SilentError();
+		throw new ReportedError();
 	}
 	const path = args._[0] ?? EDGES_PATH;
 	let text: string;
@@ -192,7 +192,7 @@ export const run_edges_lint_command = async (
 	} catch (error) {
 		if (!is_fs_error(error, 'not_found')) throw error;
 		print_error(`${path}: no such file in ${checkout.path}`);
-		throw new SilentError();
+		throw new ReportedError();
 	}
 	const result = lint_edges(text);
 	print(
@@ -204,5 +204,5 @@ export const run_edges_lint_command = async (
 	}
 	for (const p of result.problems) print_error(`  ${p}`);
 	print_error(`\n${result.problems.length} problem(s)`);
-	throw new SilentError();
+	throw new ReportedError();
 };

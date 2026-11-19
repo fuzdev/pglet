@@ -1,5 +1,5 @@
 import { fs } from '@fuzdev/gro/fs.ts';
-import { is_silent_error } from '@fuzdev/gro/task_error.ts';
+import { is_reported_error } from '@fuzdev/gro/task_error.ts';
 import { assert, describe, test } from 'vitest';
 
 import { EDGES_MAX_CELL_CHARS, lint_edges, run_edges_lint_command } from '#lib/edges_lint.ts';
@@ -118,7 +118,7 @@ describe('run_edges_lint_command', () => {
 				{ _: args }
 			);
 		} catch (error) {
-			if (!is_silent_error(error)) throw error;
+			if (!is_reported_error(error)) throw error;
 			failed = true;
 		}
 		return { stdout, stderr, failed, path: dir.path };

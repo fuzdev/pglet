@@ -62,7 +62,7 @@
  */
 
 import type { FsDir } from '@fuzdev/gro/fs.ts';
-import { SilentError } from '@fuzdev/gro/task_error.ts';
+import { ReportedError } from '@fuzdev/gro/task_error.ts';
 
 import { NPM_SHARED_METADATA } from '../npm_metadata.ts';
 import {
@@ -185,7 +185,7 @@ export interface PublishCommandDeps {
  * Runs one release, a dry run unless `args.wetrun`; see the module doc for the
  * steps. A refusal or a failed step prints `✗ <reason>` and fails the task.
  *
- * @throws SilentError - exit 1 after printing the reason
+ * @throws ReportedError - exit 1 after printing the reason
  */
 export const run_publish_command = async (
 	deps: PublishCommandDeps,
@@ -197,7 +197,7 @@ export const run_publish_command = async (
 
 	const fail = (message: string): never => {
 		print_error(`✗ ${message}`);
-		throw new SilentError();
+		throw new ReportedError();
 	};
 
 	if (args.stray.length > 0) {

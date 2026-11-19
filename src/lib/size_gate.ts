@@ -16,7 +16,7 @@
 
 import type { FsDir, FsReadDir } from '@fuzdev/gro/fs.ts';
 import type { SpawnProgram } from '@fuzdev/gro/spawn.ts';
-import { SilentError } from '@fuzdev/gro/task_error.ts';
+import { ReportedError } from '@fuzdev/gro/task_error.ts';
 
 import {
 	BENCH_STAMP_UNKNOWN,
@@ -144,7 +144,7 @@ const measure_native = async (deps: SizeGateDeps): Promise<SizeArtifact | null> 
  * Checks the wasm against the baseline, or with `mode: 'update'` records this build as
  * the baseline.
  *
- * @throws SilentError - exit 1 after naming the failure: the wasm is over its ceiling, or
+ * @throws ReportedError - exit 1 after naming the failure: the wasm is over its ceiling, or
  * there is no readable baseline
  * @throws Error - when an artifact can't be measured
  */
@@ -181,7 +181,7 @@ export const run_size_command = async (
 		baseline = JSON.parse(await benches.read_text(SIZE_BASELINE_NAME));
 	} catch {
 		print_error(`no baseline at benches/${SIZE_BASELINE_NAME} — run \`npm run size:update\``);
-		throw new SilentError();
+		throw new ReportedError();
 	}
 
 	const base = baseline.artifacts.find((a) => a.label === artifact.label);
@@ -212,7 +212,7 @@ export const run_size_command = async (
 
 	if (artifact.bytes > ceiling) {
 		print_error(`FAIL: raw size ${kb(artifact.bytes)} exceeds ceiling ${kb(ceiling)}`);
-		throw new SilentError();
+		throw new ReportedError();
 	}
 	print('OK');
 };

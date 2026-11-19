@@ -1,4 +1,4 @@
-import { is_silent_error } from '@fuzdev/gro/task_error.ts';
+import { is_reported_error } from '@fuzdev/gro/task_error.ts';
 import { fs, type FsDir } from '@fuzdev/gro/fs.ts';
 import type {
 	SpawnOutOptions,
@@ -123,7 +123,7 @@ const assert_silent_failure = async (run: Promise<void>): Promise<void> => {
 	} catch (e) {
 		error = e;
 	}
-	assert.isTrue(is_silent_error(error), `expected a SilentError, got ${String(error)}`);
+	assert.isTrue(is_reported_error(error), `expected a ReportedError, got ${String(error)}`);
 };
 
 describe('run_size_command check', () => {
@@ -187,7 +187,7 @@ describe('run_size_command check', () => {
 			error = e;
 		}
 		assert.instanceOf(error, Error);
-		assert.isFalse(is_silent_error(error));
+		assert.isFalse(is_reported_error(error));
 	});
 
 	test('fails one byte over the baseline +2%', async () => {
@@ -276,7 +276,7 @@ describe('run_size_command check', () => {
 			error = e;
 		}
 		assert.instanceOf(error, Error);
-		assert.isFalse(is_silent_error(error));
+		assert.isFalse(is_reported_error(error));
 		assert.strictEqual((error as Error).message, 'gzip failed: gzip: no such file');
 		assert.notInclude(printed, 'OK');
 	});
