@@ -107,7 +107,7 @@ const IGNORABLE_SEARCH_PATH_ELEMENTS: [&str; 2] = ["$user", "pg_catalog"];
 ///
 /// It names the **dialect target**, not feature completeness: pglet implements a
 /// subset of that release's SQL, and `docs/compatibility.md` says which.
-pub const SERVER_VERSION: &str = "18.6";
+pub const SERVER_VERSION: &str = "18.7";
 
 /// [`SERVER_VERSION`] as the number a client feature-gates on — `server_version_num`'s
 /// answer, `major * 10000 + minor`.
@@ -115,7 +115,7 @@ pub const SERVER_VERSION: &str = "18.6";
 /// A literal because a `const` cannot format one, held to [`SERVER_VERSION`] at
 /// compile time by [`version_num_spells`], so moving one without the other fails
 /// the build.
-const SERVER_VERSION_NUM: &str = "180006";
+const SERVER_VERSION_NUM: &str = "180007";
 
 const _: () = assert!(
     version_num_spells(SERVER_VERSION, SERVER_VERSION_NUM),
@@ -2395,8 +2395,8 @@ mod show_tests {
             // (`18.6 (Debian 18.6-1.pgdg13+2)`) that no client parses, so the
             // leading `major.minor` is what is reported and what is pinned here —
             // this is also why the parameter cannot be a plain differential fixture.
-            ("SHOW server_version", "18.6"),
-            ("SHOW server_version_num", "180006"),
+            ("SHOW server_version", "18.7"),
+            ("SHOW server_version_num", "180007"),
             // 18.6's own default, byte for byte: `$user` names a schema a fresh
             // database does not have there either, so both engines resolve this list
             // to `public` alone.
@@ -2477,7 +2477,7 @@ mod show_tests {
             result.rows[0][0],
             crate::types::Value::Text("server_version".into())
         );
-        assert_eq!(result.rows[0][1], crate::types::Value::Text("18.6".into()));
+        assert_eq!(result.rows[0][1], crate::types::Value::Text("18.7".into()));
     }
 }
 

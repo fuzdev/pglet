@@ -3534,7 +3534,7 @@ mod tests {
         // value, and it names the release pglet's differential corpus is asserted
         // against — the dialect target, not feature completeness.
         for (name, value) in [
-            ("server_version", "18.6"),
+            ("server_version", "18.7"),
             ("client_encoding", "UTF8"),
             ("server_encoding", "UTF8"),
             ("DateStyle", "ISO, MDY"),

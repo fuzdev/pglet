@@ -8,7 +8,7 @@
       "lv": "ab",
       "r": "ef",
       "r_max": "abcdef",
-      "r_min": "abcdef",
+      "r_min": "",
       "rv": "ef"
     },
     {
@@ -19,7 +19,7 @@
       "lv": "héll",
       "r": "lo wörld",
       "r_max": "héllo wörld",
-      "r_min": "héllo wörld",
+      "r_min": "",
       "rv": "éllo"
     },
     {
@@ -30,7 +30,7 @@
       "lv": "",
       "r": "",
       "r_max": "abc",
-      "r_min": "abc",
+      "r_min": "",
       "rv": ""
     },
     {
@@ -52,7 +52,7 @@
       "lv": null,
       "r": null,
       "r_max": "abc",
-      "r_min": "abc",
+      "r_min": "",
       "rv": null
     },
     {

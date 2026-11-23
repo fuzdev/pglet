@@ -6,4 +6,4 @@
 -- @test
 SELECT
   current_setting('server_version_num') AS num,
-  current_setting('server_version') LIKE '18.6%' AS same_release;
+  current_setting('server_version') LIKE '18.7%' AS same_release;

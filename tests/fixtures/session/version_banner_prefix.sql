@@ -4,4 +4,4 @@
 -- fixture never looks at**. What is portable, and what every driver's version
 -- sniff actually reads, is the `PostgreSQL <release> (` prefix.
 -- @test
-SELECT version() LIKE 'PostgreSQL 18.6 (%' AS sniffable;
+SELECT version() LIKE 'PostgreSQL 18.7 (%' AS sniffable;

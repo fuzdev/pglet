@@ -728,19 +728,14 @@ fn string_left(s: &str, n: i32) -> Value {
 }
 
 /// `right(str, n)` — the last `n` characters, or for a negative `n` all but the first
-/// `|n|` (18.6's `text_right`).
+/// `|n|` (18.7's `text_right`).
 ///
-/// `n = -2147483648` answers the **whole** string, as the oracle's minor release does:
-/// its `text_right` negates `n`, which overflows back to the same negative value, and a
-/// negative clip length skips nothing. Upstream fixed that negation and back-patched the
-/// fix to every supported branch (PostgreSQL commit `a63df266`), after which it answers the
-/// empty string — so this answer, and `functions/left_right`'s `r_min` expectation, move
-/// when the oracle moves to a minor release carrying the fix.
+/// `n = -2147483648` answers the empty string: its magnitude exceeds every string's
+/// length, as 18.7 answers it (PostgreSQL commit `a63df266` fixed the negation that had
+/// overflowed back to a negative clip length and answered the whole string).
 fn string_right(s: &str, n: i32) -> Value {
     let count = s.chars().count();
-    let skip = if n == i32::MIN {
-        0
-    } else if n < 0 {
+    let skip = if n < 0 {
         usize::try_from(n.unsigned_abs()).unwrap_or(usize::MAX)
     } else {
         count.saturating_sub(usize::try_from(n).unwrap_or(usize::MAX))

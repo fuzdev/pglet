@@ -1,9 +1,8 @@
 -- left / right: characters, not bytes (a multibyte string counts each character once);
 -- a negative n is all but |n| from the other end; NULL in either argument is NULL; an
 -- int2 count widens to the int4 overload; a string-literal count is resolved to int4.
--- `r_min` is the oracle minor's whole-string answer for right(t, -2147483648); upstream
--- back-patched a fix answering the empty string (commit a63df266), so this expectation
--- moves when the oracle moves to a minor release carrying it.
+-- `r_min` is right(t, -2147483648): the empty string, as 18.7 answers it (earlier minors
+-- overflowed the negation and answered the whole string; PostgreSQL commit a63df266).
 -- @setup
 CREATE TABLE lr (id INT, t TEXT, v VARCHAR(10), n INT, s SMALLINT);
 INSERT INTO lr VALUES

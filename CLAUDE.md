@@ -49,6 +49,10 @@ runs end-to-end** on both pglet legs (native server and in-process wasm) in fuz_
 real Postgres. The feature list and its caveats live in **`docs/compatibility.md`**;
 this file doesn't repeat them.
 
+**The oracle is PostgreSQL 18.7** (`SERVER_VERSION`), and the fixtures are recorded
+against it. The docs and comments that name 18.6 describe behavior 18.7 shares; a
+reference that differs between the two minors names 18.7.
+
 The engine-wide rules are worth having here. Each one is written out in full
 (mechanism, examples, residuals) in its `docs/` file:
 
