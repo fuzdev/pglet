@@ -11,6 +11,8 @@ released version under a fresh `## Unreleased` declaring a patch.
 ## Unreleased
 <!-- bump: patch -->
 
+## 0.2.1
+
 - feat: `pg_advisory_xact_lock_shared`, over a `bigint` or two `integer`s, answering where
   `pg_advisory_xact_lock` does and taking the same lock. On the package's one connection
   every call is granted; across connections a shared and an exclusive holder of a key wait
