@@ -9,7 +9,7 @@ requires `<level>` to repeat it and a non-empty section, then stamps the section
 released version under a fresh `## Unreleased` declaring a patch.
 
 ## Unreleased
-<!-- bump: patch -->
+<!-- bump: minor -->
 
 - the package no longer claims Deno support: the README and the `db.js` and `index.d.ts`
   comments name Node and Bun as the runtimes the Node entry serves
