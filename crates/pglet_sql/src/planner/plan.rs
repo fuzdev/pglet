@@ -1350,6 +1350,24 @@ pub enum Plan {
         table_if_exists: bool,
     },
 
+    /// `ALTER TABLE [IF EXISTS] [ONLY] t DROP CONSTRAINT [IF EXISTS] n [CASCADE |
+    /// RESTRICT] [, DROP CONSTRAINT …]` — one or more constraint drops, run in written
+    /// order as 18.6 runs a list of them, so a name written twice is dropped once and
+    /// then missing.
+    ///
+    /// A `FOREIGN KEY` or `CHECK` is removed from its table's catalog record: nothing
+    /// depends on either, so `CASCADE` and `RESTRICT` choose nothing. A `PRIMARY KEY`,
+    /// `UNIQUE` or `NOT NULL` is refused `0A000` (see
+    /// `executor::ddl::execute_alter_table_drop_constraint`). Every action is resolved
+    /// before any is applied, so a failing one leaves the table as it was.
+    AlterTableDropConstraint {
+        table: String,
+        /// The `DROP CONSTRAINT` actions, in written order (never empty).
+        drops: Vec<DropConstraintAction>,
+        /// `ALTER TABLE IF EXISTS` — the table's; see [`Plan::AlterTableAddColumn`].
+        table_if_exists: bool,
+    },
+
     /// Add a table-level `CHECK` constraint (`ALTER TABLE … ADD CONSTRAINT … CHECK`).
     /// The executor validates existing rows against the predicate, then records it
     /// on the table's `checks` (enforced on every future write, and visible in
@@ -1434,7 +1452,8 @@ pub enum Plan {
     /// An `ALTER TABLE` operation pglet parses and does not perform: a clause it
     /// tolerates as a no-op (`OWNER TO`, `SET STATISTICS`, and the other `pg_dump`
     /// spellings with no data effect here), or one it refuses (`RENAME`,
-    /// `DROP CONSTRAINT`, `ALTER COLUMN … TYPE`, `DROP NOT NULL`, …).
+    /// `ALTER COLUMN … TYPE`, `DROP NOT NULL`, a `DROP CONSTRAINT` list with another
+    /// action in it, …).
     ///
     /// It is a plan rather than a parse-time answer so that the relation is looked up
     /// first, as 18.6 looks it up before it analyses any action: under `IF EXISTS` a
@@ -2074,6 +2093,21 @@ impl NoopCommand {
             Self::DropExtension => "DROP EXTENSION",
         }
     }
+}
+
+/// One `DROP CONSTRAINT [IF EXISTS] name [CASCADE | RESTRICT]` action of a
+/// [`Plan::AlterTableDropConstraint`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct DropConstraintAction {
+    /// The constraint's name, folded as the parser folds every identifier.
+    pub name: String,
+    /// The action's own `IF EXISTS`: a name no constraint of the table holds is a
+    /// `NOTICE` and a skip instead of `42704`.
+    pub if_exists: bool,
+    /// `CASCADE` (`RESTRICT`, the default, is `false`). Read by no kind pglet drops —
+    /// nothing depends on a `FOREIGN KEY` or a `CHECK` — and carried so the plan says
+    /// what was written.
+    pub cascade: bool,
 }
 
 /// What a [`Plan::AlterTableUnperformed`] answers.
@@ -3194,6 +3228,7 @@ impl Plan {
             | Self::CreateSchema { .. }
             | Self::AlterTableAddColumn { .. }
             | Self::AlterTableDropColumn { .. }
+            | Self::AlterTableDropConstraint { .. }
             | Self::AlterTableAddCheck { .. }
             | Self::AlterTableAddConstraint { .. }
             | Self::AlterTableSetDefault { .. }
@@ -3737,6 +3772,7 @@ impl Plan {
             | Self::CreateSchema { .. }
             | Self::AlterTableAddColumn { .. }
             | Self::AlterTableDropColumn { .. }
+            | Self::AlterTableDropConstraint { .. }
             | Self::AlterTableAddCheck { .. }
             | Self::AlterTableAddConstraint { .. }
             | Self::AlterTableSetDefault { .. }
@@ -3867,6 +3903,7 @@ impl Plan {
             | Self::CreateSchema { .. }
             | Self::AlterTableAddColumn { .. }
             | Self::AlterTableDropColumn { .. }
+            | Self::AlterTableDropConstraint { .. }
             | Self::AlterTableAddCheck { .. }
             | Self::AlterTableAddConstraint { .. }
             | Self::AlterTableSetDefault { .. }
@@ -3973,6 +4010,11 @@ impl Plan {
                 table_if_exists,
                 ..
             }
+            | Self::AlterTableDropConstraint {
+                table,
+                table_if_exists,
+                ..
+            }
             | Self::AlterTableAddCheck {
                 table,
                 table_if_exists,
@@ -4037,6 +4079,7 @@ impl Plan {
                 | Self::CreateSchema { .. }
                 | Self::AlterTableAddColumn { .. }
                 | Self::AlterTableDropColumn { .. }
+                | Self::AlterTableDropConstraint { .. }
                 | Self::AlterTableAddCheck { .. }
                 // ADD CONSTRAINT (PK/UNIQUE/FK) and SET/DROP DEFAULT change a table's
                 // shape/defaults, so invalidate any cached plan.

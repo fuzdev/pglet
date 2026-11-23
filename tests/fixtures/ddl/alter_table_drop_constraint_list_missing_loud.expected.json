@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42704",
+    "message": "constraint \"dclm_nope\" of relation \"dclm\" does not exist"
+  }
+}

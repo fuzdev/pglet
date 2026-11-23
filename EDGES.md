@@ -295,7 +295,7 @@ inside a table.
 | 285 | an index key expression or predicate calling a function 18.6 does not mark `IMMUTABLE` — `((now()))`, `(concat(b, 'x'))`, `((ts::text))`, `WHERE current_user = 'x'` | builds the index | `42P17 functions in index expression must be marked IMMUTABLE` (`… index predicate …`) | **silent** — and the dump's `CREATE INDEX` is refused by 18.6, psql exiting `0` | — none; pglet accepts where 18.6 errors | builds over a function 18.6 does not mark |
 | 286 | `information_schema.columns.column_default` for a `nextval` default whose sequence name needs quoting — mixed case, a space, a non-ASCII letter | the bare name inside the literal: `nextval('Up_id_seq'::regclass)` | the quoted name: `nextval('"Up_id_seq"'::regclass)` | silent — a rendering, the schema differ's; the dump quotes the name | — a faithful fixture is red | bare inside the literal |
 | 289 | a foreign key's referential action written twice — `REFERENCES p ON DELETE CASCADE ON DELETE SET NULL`, the `ON UPDATE` pair — at a column, a table constraint, `ADD CONSTRAINT` or `ADD COLUMN` | accepted, the later action kept | `42601 syntax error at or near "DELETE"` | **silent** — a statement 18.6 refuses builds a constraint | — none; pglet accepts where 18.6 errors | the later action kept |
-| 290 | a declared constraint named as the engine names a column's `NOT NULL` — `CREATE TABLE s (a INT NOT NULL, CONSTRAINT s_a_not_null CHECK (a > 0))`, or one added by `ALTER TABLE` over an existing `NOT NULL` column | accepted; two `pg_constraint` rows share the name | the `CHECK` at `CREATE TABLE` is accepted, the `NOT NULL` named `s_a_not_null1`; a `UNIQUE` or foreign key of that name, and the `ALTER TABLE`, are `42710` | **silent** — an accept where 18.6 refuses, and the `CHECK` table's dump loses the `CHECK` on 18.6, psql exiting `0` | — a faithful fixture is red | holds no record for a `NOT NULL` |
+| 290 | a declared constraint named as the engine names a column's `NOT NULL` — `CREATE TABLE s (a INT NOT NULL, CONSTRAINT s_a_not_null CHECK (a > 0))`, or one added by `ALTER TABLE` over an existing `NOT NULL` column | accepted; two `pg_constraint` rows share the name, and `DROP CONSTRAINT` of it is `0A000` | the `CHECK` at `CREATE TABLE` is accepted, the `NOT NULL` named `s_a_not_null1`; a `UNIQUE` or foreign key of that name, and the `ALTER TABLE`, are `42710` | **silent** — an accept where 18.6 refuses, and the `CHECK` table's dump loses the `CHECK` on 18.6, psql exiting `0` | — a faithful fixture is red | holds no record for a `NOT NULL` |
 
 **Index & build profile**
 
@@ -431,6 +431,7 @@ inside a table.
 | 271 | a correlated `IN (SELECT …)` whose sub-plan raises in a row 18.6 does not read — after the one its scan matches, or in a join that hashes an empty outer side — `SELECT x IN (SELECT 2/a FROM rz WHERE x IS NOT NULL) FROM t1` | `22012`: the sub-plan runs to its end before any comparison | `t`: its scan stops at the first match; `0` from that join | loud — a refusal where 18.6 answers | — none; a faithful fixture is red | to its end before any comparison |
 | 273 | a strict operator or comparison with a constant `NULL` operand beside one that raises — `NULL::int = 1/y`, `NULL::int IN (1, 1/y)` over `y` = `0` | `22012`: both operands are evaluated | `NULL`: its planner folds the call without evaluating the other operand | loud — a refusal where 18.6 answers | — none; a faithful fixture is red | still evaluates its other operand |
 | 296 | a `SELECT` with no `FROM` followed by a `WHERE`, `GROUP BY` or `HAVING` clause — `SELECT 1 WHERE true`, `SELECT 1 GROUP BY 1`, `SELECT 1 HAVING true` | `42601 syntax error: expected ';' or end of input, found '<clause>'` | answers — one row (none for `WHERE false`) | loud — a refusal where 18.6 answers | — none; a faithful fixture is red | ends a select with no `FROM` before its `WHERE` |
+| 328 | a relation named `t*` — `relation_expr`'s "the table and its descendants" — in `SELECT … FROM`, `UPDATE`, `DELETE FROM` or `TRUNCATE` | `42601` | the table itself (no table inherits from it) | loud — a refusal where 18.6 answers | — none; a faithful fixture is red; the `ALTER TABLE` half is `ddl/alter_table_star_*` | names the table and its descendants |
 | 321 | a FROM-clause `generate_series` spelling 18.6 answers — the `numeric` and timestamp series, an argument naming a column or holding a subquery, one of no certain type, a call decoration — and a series past 1 000 000 rows | `0A000`, `42601` or `42P01`; `54000` past the bound | rows, or its own error | loud | `generate_series/*_refused.sql`, `crates/pglet/tests/generate_series.rs` | spelling 18.6 answers is declined |
 
 - **~~171~~ · Closed — a long operator chain aborted the native server's process — a
@@ -6426,15 +6427,16 @@ inside a table.
     statements are planned before any of them runs, and `ALTER TABLE IF EXISTS` over a
     table the body itself creates adds the column. An operation pglet does not perform is
     a plan too, `Plan::AlterTableUnperformed`: a tolerated clause (`OWNER TO`, `SET
-    STATISTICS`, …) reports `ALTER TABLE`, and a refused one (`RENAME`, `DROP
-    CONSTRAINT`, `ALTER COLUMN … TYPE`, `DROP NOT NULL`, …) answers its `0A000` only over a
-    relation that exists — so under `IF EXISTS` it is the skip, and without it a missing
-    relation is `42P01`, as on 18.6, where the parser used to answer `0A000` (and
-    `42601` for `DROP CONSTRAINT`, whose `CONSTRAINT` it read as a column name).
-    `pg_dump --clean --if-exists` writes `ALTER TABLE IF EXISTS ONLY t DROP CONSTRAINT IF
-    EXISTS c` for every constraint; over a missing table it is the skip, and over one that
-    exists it is now `0A000` where it was a silent no-op — 18.6 drops the constraint, or,
-    with it absent, notices and skips. A two-part name whose qualifier is neither `public`
+    STATISTICS`, …) reports `ALTER TABLE`, and a refused one (`RENAME`, `ALTER COLUMN …
+    TYPE`, `DROP NOT NULL`, …) answers its `0A000` only over a relation that exists — so
+    under `IF EXISTS` it is the skip, and without it a missing relation is `42P01`, as on
+    18.6, where the parser used to answer `0A000` (and `42601` for `DROP CONSTRAINT`,
+    whose `CONSTRAINT` it read as a column name). `pg_dump --clean --if-exists` writes
+    `ALTER TABLE IF EXISTS ONLY t DROP CONSTRAINT IF EXISTS c` for every constraint; over
+    a missing table it is the skip, and over one that exists it is now 18.6's answer for
+    a `FOREIGN KEY` or a `CHECK` (the drop) and for an absent name (the notice and skip),
+    where it was a silent no-op; a `PRIMARY KEY`, `UNIQUE` or `NOT NULL` is `0A000`
+    (`docs/ddl.md` § A `DROP` decides). A two-part name whose qualifier is neither `public`
     nor a system schema (`information_schema`, or a `pg_` name — the prefix 18.6 reserves,
     `42939` at `CREATE SCHEMA`) is the skip too, decided where the statement is parsed:
     pglet creates no other schema, so no relation can be there, and in a database
@@ -6509,17 +6511,17 @@ inside a table.
   NOT EXISTS` over an existing column, and `ALTER TABLE … DROP COLUMN IF EXISTS` over a
   missing one. The last two really do skip — the column is neither duplicated nor
   dropped, and the same `DROP COLUMN IF EXISTS` drops a column that *is* there — they
-  just say nothing. Seven spellings notice, with Postgres's wording: `CREATE SEQUENCE IF
+  just say nothing. These spellings notice, with Postgres's wording: `CREATE SEQUENCE IF
   NOT EXISTS`, `ALTER SEQUENCE IF EXISTS`, `DROP TABLE IF EXISTS`, `DROP INDEX IF
-  EXISTS`, `DROP SEQUENCE IF EXISTS`, `DROP SCHEMA IF EXISTS` and `DROP TYPE IF
-  EXISTS`; of these, `CREATE SEQUENCE IF NOT EXISTS` sends SQLSTATE `00000` where 18.6
-  sends `42P07`, and the six does-not-exist notices send `00000` on both (measured, psql
-  `VERBOSITY verbose`). A third group is **loud**
-  rather than silent, so it is a different divergence — the statement's *outcome*
-  differs, not just its diagnostic: `ALTER TABLE … DROP CONSTRAINT IF EXISTS` over a
-  table that exists is `0A000` (the drop is refused, the sub-bullet above), and `ALTER
-  INDEX IF EXISTS …` and `ALTER VIEW IF EXISTS …` are `42601` (the parser has neither
-  statement), while
+  EXISTS`, `DROP SEQUENCE IF EXISTS`, `DROP SCHEMA IF EXISTS`, `DROP TYPE IF
+  EXISTS` and `ALTER TABLE … DROP CONSTRAINT IF EXISTS`; of these, `CREATE SEQUENCE IF
+  NOT EXISTS` sends SQLSTATE `00000` where 18.6 sends `42P07`, and the does-not-exist
+  notices send `00000` on both (measured, psql `VERBOSITY verbose`). A third group is
+  **loud** rather than silent, so it is a different divergence — the statement's
+  *outcome* differs, not just its diagnostic: `ALTER TABLE … DROP CONSTRAINT IF EXISTS`
+  naming a `PRIMARY KEY`, `UNIQUE` or `NOT NULL` constraint is `0A000` (the drop is
+  refused, the sub-bullet above), and `ALTER INDEX IF EXISTS …` and `ALTER VIEW IF
+  EXISTS …` are `42601` (the parser has neither statement), while
   `DROP VIEW IF EXISTS` and the `MATERIALIZED VIEW` /
   `FUNCTION` / `TRIGGER` spellings are `0A000` — every one of them a
   `NOTICE` + skip on Postgres (the object-dispatch arm behind them is row 99). `DROP EXTENSION IF EXISTS` used to be in that list
@@ -21482,6 +21484,7 @@ inside a table.
   | `CREATE TABLE s9 (a INT NOT NULL, b INT CONSTRAINT s9_a_not_null REFERENCES s8)` | accepted | `42710` |
   | `CREATE TABLE s5 (a INT CONSTRAINT nn NOT NULL, CONSTRAINT nn CHECK (a > 0))` | accepted | `23505 … "pg_constraint_conrelid_contypid_conname_index"` |
   | `CREATE TABLE s5 (a INT CONSTRAINT nn NOT NULL)` — a declared `NOT NULL` name, read back from `pg_constraint` | `s5_a_not_null` | `nn` |
+  | `ALTER TABLE s DROP CONSTRAINT s_a_not_null`, over the first line's `s` | `0A000` — two constraints of `s` hold the name, and the drop refuses to pick one; the `CHECK` still enforces | drops the `CHECK` |
 
   The first line is accepted on both and costs a dump: the native server's dump of `s`
   writes `ALTER TABLE s ADD CONSTRAINT s_a_not_null CHECK ((a > 0))` after a `CREATE TABLE`
@@ -21489,7 +21492,8 @@ inside a table.
   `42710`, psql exits `0`, and the table stands without its `CHECK` (measured) — the
   database-state invariant `docs/sequences.md` states, broken by short names. **Silent** —
   a lost constraint on the first line, an accept where 18.6 refuses on the lines after it,
-  and another name read back on the last.
+  and another name read back on the next; the drop is loud (`crates/pglet`'s
+  `drop_constraint` tests).
   Reach: ordinary for the DDL through the npm package, which has no dump; the dump is the
   native server's. No fixture: a faithful one is red.
 
@@ -22553,3 +22557,19 @@ inside a table.
   already, its message residual row 124's. **Loud** wherever the conversion runs — the wrong code,
   never a value; an `UPDATE … SET` of such a string over no row answers `UPDATE 0`, row 5's zero-row residual, where 18.6 refuses. Reach: ordinary. No fixture: an `@expect-error` one compares its code
   with 18.6's `22003` and is red on `22P02`.
+
+- **328 · A relation named `t*` is refused outside `ALTER TABLE`.** 18.6's
+  `relation_expr` takes `name *`, which names the table and its descendants; with no table
+  inheriting from it — pglet models no inheritance — that is the table alone. pglet's
+  readers of a relation name stop at the name, so the `*` is the next token their
+  statement meets. Measured through the native server over `t (a INT)`: `SELECT * FROM
+  t*`, `UPDATE t* SET a = 1`, `DELETE FROM t*` and `TRUNCATE t*` are `42601` here, and on
+  18.7, over the same table empty, zero rows, `UPDATE 0`, `DELETE 0` and `TRUNCATE
+  TABLE`. `ONLY t*` is `42601` on 18.7 (`UPDATE ONLY t* …` measured), since `ONLY`
+  takes a bare name. `ALTER TABLE` was the silent member — the `*` fell to the tolerated
+  tail, so `ALTER TABLE t* DROP CONSTRAINT …`, `… DROP COLUMN …` and `… ADD COLUMN …`
+  reported `ALTER TABLE` and did nothing — and is closed: `parse_alter_table_body` reads
+  the `*` and refuses it after `ONLY` (`ddl/alter_table_star_*`,
+  `ddl/alter_table_only_star_loud`). **Loud** for the rest — a refusal, never a wrong
+  answer. Reach: rare; the spelling is an inheritance idiom. No fixture holds it: a
+  faithful one is red.

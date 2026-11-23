@@ -5,14 +5,14 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use crate::catalog::{
-    CheckConstraint, Column, ColumnDefault, ConstraintKind, EnumType, ForeignKey,
-    IdentityGeneration, Index, IndexKey, Schema, Sequence, SequenceOwner, Table, Uniqueness,
-    is_system_column_name, make_object_name,
+    CheckConstraint, Column, ColumnDefault, ConstraintEntryKind, ConstraintKind, EnumType,
+    ForeignKey, IdentityGeneration, Index, IndexKey, Schema, Sequence, SequenceOwner, Table,
+    Uniqueness, is_system_column_name, make_object_name,
 };
 use crate::planner::{
-    AddConstraint, BoolContext, CheckConstraintDef, Expr, ForeignKeyDef, PlannerScope,
-    SequenceOwnerSpec, SequenceRestart, UniqueConstraint, branch_unification_legality,
-    check_boolean_operand, check_expr_node_operand_types,
+    AddConstraint, BoolContext, CheckConstraintDef, DropConstraintAction, Expr, ForeignKeyDef,
+    PlannerScope, SequenceOwnerSpec, SequenceRestart, UniqueConstraint,
+    branch_unification_legality, check_boolean_operand, check_expr_node_operand_types,
 };
 use crate::types::Value;
 use crate::{Error, RelationKind, Result, WrongTypeRoute};
@@ -2470,9 +2470,9 @@ fn create_unique_index<S: Storage>(
     // writes, for the reason `execute_create_index` states in full: the autocommit
     // path rolls storage back and leaves `schema` mutated, so a catalog write ahead of
     // a failed build is durable — and on this route the index is **constraint-marked**,
-    // so `DROP INDEX` refuses it `2BP01` and pglet has no `ALTER TABLE … DROP
-    // CONSTRAINT` to reach it with. Sound only because `Storage::create_index` is
-    // all-or-nothing.
+    // so `DROP INDEX` refuses it `2BP01` and pglet's `ALTER TABLE … DROP CONSTRAINT`
+    // refuses a PRIMARY KEY / UNIQUE, so nothing reaches it. Sound only because
+    // `Storage::create_index` is all-or-nothing.
     storage.create_index(spec)?;
     // The counter moves on this route's own success path rather than at the end of the
     // calling statement: two of the four call sites (`execute_create_table`'s constraint
@@ -5945,6 +5945,147 @@ pub fn execute_alter_table_drop_column<S: Storage>(
     storage.drop_column(table_name, idx)?;
 
     Ok(QueryResult::ddl("ALTER TABLE"))
+}
+
+/// Execute `ALTER TABLE … DROP CONSTRAINT [IF EXISTS] name [CASCADE | RESTRICT] [, …]`.
+///
+/// A name is looked up among **the table's own** constraints, through the one
+/// enumeration `pg_constraint` reads (`catalog::constraint_entries`), so a name is
+/// found here exactly when that view lists it on this table. The actions run in
+/// written order, each against what the earlier ones left: a name written twice is
+/// dropped once and then missing — `42704`, or under its own `IF EXISTS` the `NOTICE`
+/// and skip (18.6's `ATExecDropConstraint`, both measured).
+///
+/// What each kind does:
+///
+/// - **`FOREIGN KEY`** and **`CHECK`** are removed from the table's record, after
+///   which no write checks them and no parent delete or update acts through the
+///   foreign key. Nothing depends on either, so `CASCADE` and `RESTRICT` choose
+///   nothing, as on 18.6. The record is a `Vec` whose element shape does not change,
+///   so the persisted catalog's format does not either.
+/// - **`PRIMARY KEY`** and **`UNIQUE`** are refused `0A000`: dropping one drops its
+///   index, which a foreign key on another table may need (18.6's `2BP01`, or with
+///   `CASCADE` that key dropped too), so it is not a catalog-record removal.
+/// - **`NOT NULL`** is refused `0A000`: 18.6 makes the column nullable, or refuses
+///   `42P16` when the column is in a primary key, and pglet's `NOT NULL` is a
+///   column bit with none of that resolved here.
+/// - A name **two** constraints of the table hold (pglet's naming gates do not make
+///   that unreachable, `docs/ddl.md` § A `DROP` decides) is refused `0A000` rather
+///   than dropping one of them by guess.
+///
+/// **Every action is resolved before any is applied**, so a list whose later action
+/// fails leaves the table as it was: the autocommit path cannot undo a catalog write
+/// (`docs/ddl.md` § A failed DDL statement must leave the catalog untouched).
+pub fn execute_alter_table_drop_constraint(
+    schema: &mut Schema,
+    table_name: &str,
+    drops: &[DropConstraintAction],
+) -> Result<QueryResult> {
+    /// A constraint of the table, as the drop resolves it.
+    enum Found {
+        Check(usize),
+        ForeignKey(usize),
+        Refused(&'static str),
+    }
+    // The target's existence and kind (`ATSimplePermissions`: an index or a sequence is
+    // `42809`, with or without `IF EXISTS` — the name resolves, so there is no skip).
+    let table = get_table_or_err(schema, table_name)?;
+    // The enumeration hands back references into this table's record; each CHECK and
+    // FOREIGN KEY is turned into its position there, the handle the removal below uses.
+    let position_of = |found: Option<usize>, name: String| {
+        found.ok_or_else(|| {
+            Error::Execution(format!(
+                "constraint \"{name}\" is not in relation \"{table_name}\"'s record"
+            ))
+        })
+    };
+    let entries: Vec<(String, Found)> = crate::catalog::constraint_entries(schema)
+        .into_iter()
+        .filter(|entry| std::ptr::eq(entry.table, table))
+        .map(|entry| {
+            let name = entry.name();
+            let found = match entry.kind {
+                ConstraintEntryKind::Check(check) => Found::Check(position_of(
+                    table.checks.iter().position(|c| std::ptr::eq(c, check)),
+                    name.clone(),
+                )?),
+                ConstraintEntryKind::ForeignKey(fk) => Found::ForeignKey(position_of(
+                    table.foreign_keys.iter().position(|f| std::ptr::eq(f, fk)),
+                    name.clone(),
+                )?),
+                ConstraintEntryKind::Index(_, ConstraintKind::PrimaryKey) => Found::Refused(
+                    "ALTER TABLE … DROP CONSTRAINT of a PRIMARY KEY is not supported",
+                ),
+                ConstraintEntryKind::Index(_, ConstraintKind::Unique) => Found::Refused(
+                    "ALTER TABLE … DROP CONSTRAINT of a UNIQUE constraint is not supported",
+                ),
+                ConstraintEntryKind::NotNull(_) => Found::Refused(
+                    "ALTER TABLE … DROP CONSTRAINT of a NOT NULL constraint is not supported",
+                ),
+            };
+            Ok((name, found))
+        })
+        .collect::<Result<_>>()?;
+
+    let mut dropped = vec![false; entries.len()];
+    let mut notices = Vec::new();
+    for action in drops {
+        let mut matching = entries
+            .iter()
+            .enumerate()
+            .filter(|(i, (name, _))| !dropped[*i] && *name == action.name);
+        let Some((at, (_, found))) = matching.next() else {
+            if action.if_exists {
+                notices.push(format!(
+                    "constraint \"{}\" of relation \"{table_name}\" does not exist, skipping",
+                    action.name
+                ));
+                continue;
+            }
+            return Err(crate::CatalogError::ConstraintNotFound {
+                constraint: action.name.clone(),
+                table: table_name.to_string(),
+            }
+            .into());
+        };
+        if matching.next().is_some() {
+            return Err(Error::NotImplemented(format!(
+                "ALTER TABLE … DROP CONSTRAINT \"{}\": more than one constraint of relation \
+                 \"{table_name}\" has that name",
+                action.name
+            )));
+        }
+        match found {
+            Found::Check(_) | Found::ForeignKey(_) => dropped[at] = true,
+            Found::Refused(refusal) => return Err(Error::NotImplemented((*refusal).to_string())),
+        }
+    }
+
+    // Apply, last position first so each removal leaves the earlier positions valid.
+    let mut checks: Vec<usize> = Vec::new();
+    let mut foreign_keys: Vec<usize> = Vec::new();
+    for (i, (_, found)) in entries.iter().enumerate() {
+        match found {
+            Found::Check(at) if dropped[i] => checks.push(*at),
+            Found::ForeignKey(at) if dropped[i] => foreign_keys.push(*at),
+            _ => {}
+        }
+    }
+    let table =
+        schema
+            .get_table_mut(table_name)
+            .ok_or_else(|| crate::CatalogError::TableNotFound {
+                table: table_name.to_string(),
+            })?;
+    checks.sort_unstable();
+    for at in checks.into_iter().rev() {
+        table.checks.remove(at);
+    }
+    foreign_keys.sort_unstable();
+    for at in foreign_keys.into_iter().rev() {
+        table.foreign_keys.remove(at);
+    }
+    Ok(QueryResult::ddl_with_notices("ALTER TABLE", notices))
 }
 
 /// Why dropping the column at row position `idx` would invalidate `index`'s stored

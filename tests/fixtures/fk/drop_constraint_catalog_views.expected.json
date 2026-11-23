@@ -1,0 +1,25 @@
+{
+  "rows": [
+    {
+      "name": "dccv_c_b_fkey",
+      "surface": "pg_constraint"
+    },
+    {
+      "name": "dccv_p_id_not_null",
+      "surface": "pg_constraint"
+    },
+    {
+      "name": "dccv_p_pkey",
+      "surface": "pg_constraint"
+    },
+    {
+      "name": "dccv_c_b_fkey",
+      "surface": "referential_constraints"
+    },
+    {
+      "name": "dccv_c_b_fkey",
+      "surface": "table_constraints"
+    }
+  ],
+  "rowCount": 5
+}

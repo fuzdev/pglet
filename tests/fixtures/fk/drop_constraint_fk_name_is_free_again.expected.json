@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "conname": "dcfn_c_a_fkey",
+      "pg_get_constraintdef": "FOREIGN KEY (a) REFERENCES dcfn_p(id)"
+    },
+    {
+      "conname": "dcfn_named",
+      "pg_get_constraintdef": "FOREIGN KEY (b) REFERENCES dcfn_p(id) ON DELETE CASCADE"
+    },
+    {
+      "conname": "dcfn_p_id_not_null",
+      "pg_get_constraintdef": "NOT NULL id"
+    },
+    {
+      "conname": "dcfn_p_pkey",
+      "pg_get_constraintdef": "PRIMARY KEY (id)"
+    }
+  ],
+  "rowCount": 4
+}

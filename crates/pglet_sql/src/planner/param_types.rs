@@ -1259,6 +1259,7 @@ impl Inference {
             | Plan::CreateSchema { .. }
             | Plan::AlterTableAddColumn { .. }
             | Plan::AlterTableDropColumn { .. }
+            | Plan::AlterTableDropConstraint { .. }
             | Plan::AlterTableAddCheck { .. }
             | Plan::AlterTableAddConstraint { .. }
             | Plan::AlterTableSetDefault { .. }

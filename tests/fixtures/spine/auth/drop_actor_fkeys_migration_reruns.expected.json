@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "conname": "actor_id_not_null",
+      "contype": "n"
+    },
+    {
+      "conname": "actor_pkey",
+      "contype": "p"
+    },
+    {
+      "conname": "role_grant_id_not_null",
+      "contype": "n"
+    },
+    {
+      "conname": "role_grant_pkey",
+      "contype": "p"
+    }
+  ],
+  "rowCount": 4
+}

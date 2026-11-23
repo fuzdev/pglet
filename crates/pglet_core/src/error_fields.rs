@@ -474,8 +474,9 @@ impl Error {
                 dep.column, dep.table
             )),
             Self::IndexRequiredByConstraint { index, table } => Some(format!(
-                "You can drop constraint {index} on table {table} instead — pglet has no \
-                 ALTER TABLE ... DROP CONSTRAINT, so that means dropping table {table}."
+                "You can drop constraint {index} on table {table} instead — pglet's \
+                 ALTER TABLE ... DROP CONSTRAINT refuses a PRIMARY KEY or UNIQUE \
+                 constraint, so that means dropping table {table}."
             )),
             // 18.6 sends this hint on the INSERT route only; the UPDATE route
             // (`column "a" can only be updated to DEFAULT`) is `[SVCMDFLR]` — detail,

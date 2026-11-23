@@ -78,9 +78,9 @@ pub use legality::{
 pub use param_types::{ParamTargets, infer_param_targets, infer_param_types};
 pub use plan::{
     AddConstraint, CertainTypes, CheckConstraintDef, ColumnDef, ConflictTarget, CopyDirection,
-    CopyFormat, CopyOptions, CteBody, CtePlan, DoExceptionHandler, EnclosingColumn,
-    EnclosingColumns, ForeignKeyDef, IndexBound, InsertRows, JoinType, LeafScope, LimitCount,
-    NoopCommand, OnConflictAction, OnConflictClause, Overriding, Plan, PlannerScope,
+    CopyFormat, CopyOptions, CteBody, CtePlan, DoExceptionHandler, DropConstraintAction,
+    EnclosingColumn, EnclosingColumns, ForeignKeyDef, IndexBound, InsertRows, JoinType, LeafScope,
+    LimitCount, NoopCommand, OnConflictAction, OnConflictClause, Overriding, Plan, PlannerScope,
     SequenceOwnerSpec, SequenceRestart, SetOpKind, SetOpOuterTypes, SideReferenceTypes, TypeScope,
     UniqueConstraint, UnperformedAlter, UsingMatch, alias_relation_columns, find_enclosing,
     function_scan_column_types, match_names, scan_effective_name, using_column_match,

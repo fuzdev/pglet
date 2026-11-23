@@ -96,6 +96,13 @@ pub enum CatalogError {
     #[error("constraint \"{constraint}\" for relation \"{table}\" already exists")]
     ConstraintAlreadyExists { constraint: String, table: String },
 
+    /// `ALTER TABLE … DROP CONSTRAINT` naming no constraint of the table — 18.6's
+    /// `ATExecDropConstraint` wording, which says `of relation` where the duplicate
+    /// above says `for relation` (both measured). A constraint of that name on
+    /// another table is not found either: the lookup is the table's own.
+    #[error("constraint \"{constraint}\" of relation \"{table}\" does not exist")]
+    ConstraintNotFound { constraint: String, table: String },
+
     /// A second `PRIMARY KEY` on one table. Postgres allows exactly one, and says so
     /// with its own SQLSTATE (`42P16`, `invalid_table_definition`) rather than a name
     /// collision — the two primary keys may be perfectly well named.
@@ -128,6 +135,7 @@ impl CatalogError {
             Self::IndexAlreadyExists { .. } => "42P07", // duplicate_table
             Self::SequenceAlreadyExists { .. } => "42P07", // duplicate_table
             Self::ConstraintAlreadyExists { .. } => "42710", // duplicate_object
+            Self::ConstraintNotFound { .. } => "42704", // undefined_object
             Self::MultiplePrimaryKeys { .. } => "42P16", // invalid_table_definition
         }
     }

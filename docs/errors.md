@@ -287,8 +287,8 @@ oracle byte for byte: `cannot drop table p_dep because other objects depend on i
 to drop the dependent objects too.` `DropTargetName::unquoted` is the only renderer for them.
 
 The one deliberate divergence here is `DROP INDEX` over a constraint's index. 18.6's
-hint suggests `ALTER TABLE … DROP CONSTRAINT`, which pglet doesn't implement (it's
-refused with `0A000`), so pointing a reader at it would be worse than diverging. Its
+hint suggests `ALTER TABLE … DROP CONSTRAINT`, which pglet refuses for a `PRIMARY KEY`
+or `UNIQUE` (`0A000`), so pointing a reader at it would be worse than diverging. Its
 fixtures carry the waiver.
 
 ## How the harness sees it

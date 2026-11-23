@@ -1,0 +1,15 @@
+{
+  "rows": [
+    {
+      "gone": 1,
+      "id": 10,
+      "nulled": 1
+    },
+    {
+      "gone": 2,
+      "id": 20,
+      "nulled": 2
+    }
+  ],
+  "rowCount": 2
+}

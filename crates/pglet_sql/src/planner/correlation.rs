@@ -898,6 +898,7 @@ fn walk_level_rest(
         | Plan::CreateSchema { .. }
         | Plan::AlterTableAddColumn { .. }
         | Plan::AlterTableDropColumn { .. }
+        | Plan::AlterTableDropConstraint { .. }
         | Plan::AlterTableAddCheck { .. }
         | Plan::AlterTableAddConstraint { .. }
         | Plan::AlterTableSetDefault { .. }
@@ -1170,6 +1171,7 @@ fn contains_subplan(plan: &Plan) -> bool {
         | Plan::CreateSchema { .. }
         | Plan::AlterTableAddColumn { .. }
         | Plan::AlterTableDropColumn { .. }
+        | Plan::AlterTableDropConstraint { .. }
         | Plan::AlterTableAddCheck { .. }
         | Plan::AlterTableAddConstraint { .. }
         | Plan::AlterTableSetDefault { .. }
@@ -1376,6 +1378,7 @@ fn push_level_relations(scope: &mut ColumnScope, plan: &Plan, schema: &Schema) {
         | Plan::CreateSchema { .. }
         | Plan::AlterTableAddColumn { .. }
         | Plan::AlterTableDropColumn { .. }
+        | Plan::AlterTableDropConstraint { .. }
         | Plan::AlterTableAddCheck { .. }
         | Plan::AlterTableAddConstraint { .. }
         | Plan::AlterTableSetDefault { .. }

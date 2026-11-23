@@ -12,9 +12,9 @@ use crate::executor::{IndexMethod, IsolationLevel};
 use crate::lexer::{Keyword, TokenKind};
 use crate::planner::{
     AddConstraint, BuiltinFn, CheckConstraintDef, ColumnDef, CopyDirection, CopyFormat,
-    CopyOptions, Expr, ForeignKeyDef, Literal, NoopCommand, Plan, SequenceFunc, SequenceOwnerSpec,
-    SequenceRestart, UniqueConstraint, UnperformedAlter, contains_aggregate, contains_window,
-    expr_contains_subquery, is_serial_type,
+    CopyOptions, DropConstraintAction, Expr, ForeignKeyDef, Literal, NoopCommand, Plan,
+    SequenceFunc, SequenceOwnerSpec, SequenceRestart, UniqueConstraint, UnperformedAlter,
+    contains_aggregate, contains_window, expr_contains_subquery, is_serial_type,
 };
 use crate::types::Value;
 use crate::{Error, Result};
@@ -948,7 +948,7 @@ impl Parser<'_> {
 
     /// Parse an `ALTER TABLE [IF EXISTS] [ONLY] name <operation>` body into the matching
     /// `Plan::AlterTable*`, or a [`Plan::AlterTableUnperformed`] for an operation pglet
-    /// tolerates as a no-op (`OWNER TO`, …) or refuses (`RENAME`, `DROP CONSTRAINT`, …).
+    /// tolerates as a no-op (`OWNER TO`, …) or refuses (`RENAME`, …).
     /// The `ONLY` modifier (no table inheritance in pglet) is accepted and ignored.
     ///
     /// **`IF EXISTS` is carried to the executor, not decided against the catalog here.**
@@ -966,17 +966,19 @@ impl Parser<'_> {
     /// `EXISTS` is the clause, which is how `ALTER TABLE if DROP COLUMN b` still names a
     /// table `if` (on 18.6 too — no action begins with `EXISTS`).
     fn parse_alter_table_body(&mut self) -> Result<Plan> {
-        let if_exists = if self.ts.at_kw(Keyword::If)
-            && matches!(self.ts.peek2_kind(), TokenKind::Keyword(Keyword::Exists))
-        {
-            self.ts.bump()?;
-            self.ts.bump()?;
-            true
-        } else {
-            false
-        };
-        self.eat_ident("only")?; // `ALTER TABLE ONLY …` — ignored (no inheritance)
+        let if_exists = self.eat_if_exists_before_name()?;
+        let only = self.eat_ident("only")?; // `ALTER TABLE ONLY …` — ignored (no inheritance)
         let parts = self.parse_dotted_name()?;
+        // `relation_expr`'s `name *` — the table and its descendants, which is the table
+        // alone here (no inheritance). `ONLY` takes a bare name, so `ONLY t*` is 18.6's
+        // `42601`. Left unread, the `*` fell to the tolerated tail and the statement did
+        // nothing.
+        if self.ts.at(&TokenKind::Star) {
+            if only {
+                return Err(self.ts.expected("an ALTER TABLE action"));
+            }
+            self.ts.bump()?;
+        }
         if if_exists && qualifier_holds_no_relation(&parts) {
             // The operation is still read — a grammar error in it is raised, as 18.6's
             // raw parse raises it — and its plan then discarded for the skip.
@@ -998,17 +1000,7 @@ impl Parser<'_> {
             self.parse_alter_table_add(table, if_exists)
         } else if self.ts.eat_kw(Keyword::Drop)? {
             if self.ts.eat_kw(Keyword::Constraint)? {
-                // `DROP CONSTRAINT [IF EXISTS] name [CASCADE | RESTRICT]` — the grammar is
-                // read, and the drop refused where it would run. The spelling matters for
-                // what it skips: `pg_dump --clean --if-exists` emits `ALTER TABLE IF EXISTS
-                // ONLY t DROP CONSTRAINT IF EXISTS c` for every constraint, so over a
-                // table that is not there it is 18.6's skip, and the refusal is reached
-                // only over one that is.
-                return self.alter_table_unperformed(
-                    table,
-                    if_exists,
-                    Some("ALTER TABLE … DROP CONSTRAINT is not supported"),
-                );
+                return self.parse_alter_table_drop_constraints(table, if_exists);
             }
             self.ts.eat_kw(Keyword::Column)?;
             let column_if_exists = self.parse_if_exists()?;
@@ -1049,6 +1041,79 @@ impl Parser<'_> {
             // trip the "expected ';'" check.
             self.alter_table_unperformed(table, if_exists, None)
         }
+    }
+
+    /// An `IF EXISTS` clause where a name may follow instead. `IF` is an unreserved
+    /// keyword, so it is a name too: only an `IF` followed by `EXISTS` is the clause, and
+    /// a lone `IF` is left for the name reader (`ALTER TABLE if …`, `DROP CONSTRAINT if`,
+    /// as on 18.6 — no name position here can begin with `EXISTS`).
+    fn eat_if_exists_before_name(&mut self) -> Result<bool> {
+        if self.ts.at_kw(Keyword::If)
+            && matches!(self.ts.peek2_kind(), TokenKind::Keyword(Keyword::Exists))
+        {
+            self.ts.bump()?;
+            self.ts.bump()?;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    /// The `DROP CONSTRAINT` list of an `ALTER TABLE`, its first `DROP CONSTRAINT`
+    /// already read: `[IF EXISTS] name [CASCADE | RESTRICT]`, then any number of `,
+    /// DROP CONSTRAINT …` more, into one [`Plan::AlterTableDropConstraint`].
+    ///
+    /// `DROP CONSTRAINT if` names a constraint called `if`
+    /// ([`Self::eat_if_exists_before_name`]).
+    ///
+    /// A list is performed only when every action in it is a `DROP CONSTRAINT`. Any
+    /// other action after a comma makes the whole statement pglet's `0A000` refusal,
+    /// reached once the relation is found (where 18.6 runs every action), with the
+    /// tail consumed unread. A comma with nothing after it is `42601`, as on 18.6.
+    fn parse_alter_table_drop_constraints(
+        &mut self,
+        table: String,
+        table_if_exists: bool,
+    ) -> Result<Plan> {
+        let mut drops = Vec::new();
+        loop {
+            let if_exists = self.eat_if_exists_before_name()?;
+            let name = self.expect_name("a constraint name")?;
+            let cascade = self.parse_drop_behavior()?;
+            drops.push(DropConstraintAction {
+                name,
+                if_exists,
+                cascade,
+            });
+            if !self.ts.eat(&TokenKind::Comma)? {
+                break;
+            }
+            if self.ts.at_eof() || self.ts.at(&TokenKind::Semicolon) {
+                return Err(self.ts.expected("an ALTER TABLE action"));
+            }
+            if !(self.ts.at_kw(Keyword::Drop)
+                && matches!(
+                    self.ts.peek2_kind(),
+                    TokenKind::Keyword(Keyword::Constraint)
+                ))
+            {
+                return self.alter_table_unperformed(
+                    table,
+                    table_if_exists,
+                    Some(
+                        "an ALTER TABLE with several actions is supported only when every \
+                         action is DROP CONSTRAINT",
+                    ),
+                );
+            }
+            self.ts.bump()?;
+            self.ts.bump()?;
+        }
+        Ok(Plan::AlterTableDropConstraint {
+            table,
+            drops,
+            table_if_exists,
+        })
     }
 
     /// Consume the rest of an `ALTER TABLE` statement and return the

@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "column_name": "a"
+    },
+    {
+      "column_name": "c"
+    }
+  ],
+  "rowCount": 2
+}

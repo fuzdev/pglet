@@ -259,6 +259,10 @@ pub fn execute_with_storage<S: Storage>(
             schema, storage, table, column, *if_exists, *cascade,
         ),
 
+        Plan::AlterTableDropConstraint { table, drops, .. } => {
+            ddl::execute_alter_table_drop_constraint(schema, table, drops)
+        }
+
         Plan::AlterTableAddCheck { table, check, .. } => {
             ddl::execute_alter_table_add_check(schema, storage, table, check)
         }

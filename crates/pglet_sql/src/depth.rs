@@ -970,6 +970,7 @@ fn plan_children<'a>(plan: &'a Plan, push: &mut dyn FnMut(Node<'a>)) {
         | Plan::DropSchema { .. }
         | Plan::CreateSchema { .. }
         | Plan::AlterTableDropColumn { .. }
+        | Plan::AlterTableDropConstraint { .. }
         | Plan::AlterTableSetNotNull { .. }
         | Plan::AlterTableAddIdentity { .. }
         | Plan::CreateSequence { .. }

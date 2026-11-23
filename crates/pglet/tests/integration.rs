@@ -38,6 +38,7 @@ mod descriptor_column_identity;
 mod dml_target_probe_hosts;
 mod do_block;
 mod double_meta;
+mod drop_constraint;
 mod drop_dependencies;
 mod durability;
 mod enclosing_column_identity;

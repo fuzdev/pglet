@@ -357,6 +357,43 @@ fn test_plan_alter_table_if_exists_is_two_clauses() {
     assert!(!table_if_exists);
 }
 
+/// A `DROP CONSTRAINT` list is one plan whose actions keep their written order, each
+/// with its own `IF EXISTS` and drop behavior; `IF` not followed by `EXISTS` is a
+/// constraint named `if`, and a quoted name keeps its case.
+#[test]
+fn test_plan_alter_table_drop_constraint_list() {
+    use crate::planner::DropConstraintAction;
+    let schema = Schema::new();
+    let plan = plan_select(
+        &schema,
+        "ALTER TABLE IF EXISTS ONLY t DROP CONSTRAINT IF EXISTS a CASCADE, \
+         DROP CONSTRAINT if, DROP CONSTRAINT \"Mixed\" RESTRICT",
+    );
+    let Plan::AlterTableDropConstraint {
+        table,
+        drops,
+        table_if_exists,
+    } = plan
+    else {
+        panic!("expected AlterTableDropConstraint plan");
+    };
+    assert_eq!(table, "t");
+    assert!(table_if_exists);
+    let action = |name: &str, if_exists, cascade| DropConstraintAction {
+        name: name.to_string(),
+        if_exists,
+        cascade,
+    };
+    assert_eq!(
+        drops,
+        vec![
+            action("a", true, true),
+            action("if", false, false),
+            action("Mixed", false, false),
+        ]
+    );
+}
+
 #[test]
 fn test_plan_begin_transaction() {
     let schema = Schema::new();

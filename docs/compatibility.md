@@ -26,7 +26,7 @@ seem to disagree, the record wins.
 | [`UPDATE … [alias] SET … FROM other [a] WHERE …`](#update--alias-set--from-other-a-where-) | ⚠️ | Joins a source into an `UPDATE`; `SET`, `WHERE` and `RETURNING` resolve over target and source together. `DELETE … USING` is `42601`, as are an alias on a `DELETE`'s target (`DELETE FROM t AS x`) and `DELETE FROM ONLY t`. |
 | [TRUNCATE](#truncate) | ✅ | Several tables, `CASCADE`, `RESTART` / `CONTINUE IDENTITY`; the tail clauses are accepted in either order, where PostgreSQL requires one order. |
 | [`DROP SCHEMA` / `CREATE SCHEMA`](#drop-schema--create-schema) | ⚠️ | Only `public` is modelled: `DROP SCHEMA public CASCADE; CREATE SCHEMA public` resets the catalog, and another schema name is refused. |
-| [`DROP TABLE` / `DROP INDEX` dependencies](#drop-table--drop-index-dependencies) | ⚠️ | Foreign-key and owned-sequence dependents block (`2BP01`) or cascade as in PostgreSQL; `ALTER TABLE … DROP CONSTRAINT` is `0A000`. |
+| [`DROP TABLE` / `DROP INDEX` dependencies](#drop-table--drop-index-dependencies) | ⚠️ | Foreign-key and owned-sequence dependents block (`2BP01`) or cascade as in PostgreSQL; a declared `PRIMARY KEY` / `UNIQUE` can't be removed short of `DROP TABLE`. |
 | [Arithmetic (`+` `-` `*` `/` `%` `^`)](#arithmetic-------) | ⚠️ | Integer, float and `numeric` arithmetic at PostgreSQL's result types, `22003` on overflow, `22012` on division by zero; a `text` operand and unary `+` are under-checked. |
 | [Numeric narrowing casts (`int8::int4`, `float8::int4`, …)](#numeric-narrowing-casts-int8int4-float8int4-) | ✅ | Out of range is `22003`, never a wrap; float to integer rounds half to even. |
 | [INNER/LEFT/RIGHT/FULL / CROSS JOIN, comma-join, `JOIN … USING`](#innerleftrightfull--cross-join-comma-join-join--using) | ⚠️ | Every join kind, run as a nested loop, with `USING` merging its columns; `NATURAL JOIN` is `0A000`, an `ON` naming a table out of its scope errors only once a row is evaluated, and a `USING` merge of differently-typed columns named bare is declared at the left side's type (`EDGES.md` row 309). |
@@ -88,7 +88,8 @@ seem to disagree, the record wins.
 | [`generate_series` in `FROM`](#generate_series-in-from) | ⚠️ | The `integer` and `bigint` series over constant and parameter arguments, up to 1 000 000 rows (`54000` past it); the `numeric` and timestamp series, an argument naming a column (the lateral form) or holding a subquery, and the select-list form are refused (`EDGES.md` row 321). |
 | [pg_catalog introspection (drizzle-kit push etc.)](#pg_catalog-introspection-drizzle-kit-push-etc) | ⚠️ | The catalogs and functions ORM introspection reads (`pg_class`, `pg_attribute`, `pg_type`, `pg_constraint`, `pg_index`, `pg_enum`, `pg_tables`, `pg_indexes`, …), several with a subset of their columns. |
 | [`information_schema`](#information_schema) | ⚠️ | `tables`, `columns`, `table_constraints`, `key_column_usage`, `referential_constraints`, `constraint_column_usage`; a `char(n)` column reads as `character varying`. |
-| [`ALTER TABLE … ADD CONSTRAINT`](#alter-table--add-constraint) | ⚠️ | `CHECK`, `PRIMARY KEY`, `UNIQUE` and `FOREIGN KEY`, each validated against the existing rows, then enforced; `DROP CONSTRAINT` is `0A000`. |
+| [`ALTER TABLE … ADD CONSTRAINT`](#alter-table--add-constraint) | ⚠️ | `CHECK`, `PRIMARY KEY`, `UNIQUE` and `FOREIGN KEY`, each validated against the existing rows, then enforced. |
+| [`ALTER TABLE … DROP CONSTRAINT`](#alter-table--drop-constraint) | ⚠️ | A `FOREIGN KEY` or `CHECK`, by name, `IF EXISTS` and comma lists included; a `PRIMARY KEY`, `UNIQUE` or `NOT NULL` is `0A000`. |
 | [`CREATE SEQUENCE` / `ALTER SEQUENCE` / `GRANT` / `REVOKE` / `COMMENT ON` / `ALTER TABLE … OWNER TO`](#create-sequence--alter-sequence--grant--revoke--comment-on--alter-table--owner-to) | ⚠️ | Enough to get through a `pg_dump` preamble: a named sequence honors `START WITH`, `RESTART` and `OWNED BY`; `GRANT`, `REVOKE`, `COMMENT ON` and `OWNER TO` succeed as no-ops. |
 | [`SET` / `SHOW` / `DEALLOCATE` / `DISCARD` / `RESET`](#set--show--deallocate--discard--reset) | ⚠️ | `SET`, `SHOW`, `RESET`, `DEALLOCATE`, `DISCARD`; a setting pglet holds fixed (`TimeZone` `UTC`, `DateStyle`, …) takes only that value, and a `search_path` naming another schema is `0A000`. |
 | [`COPY … FROM STDIN` / `TO STDOUT`](#copy--from-stdin--to-stdout) | ⚠️ | Text format over the wire and the embed API, through the same checks as `INSERT`; `csv` and `binary` are `0A000`, `COPY (query) TO` is `42601`. |
@@ -384,11 +385,12 @@ Postgres makes. Dropping a constraint's index would silently stop enforcing the 
 (duplicates get written and survive a restart) *and* remove it from `dump_sql`, which
 classifies PK/UNIQUE from that same marker.
 
-**Gaps:** `ALTER TABLE … DROP CONSTRAINT` isn't implemented (it's parsed and refused with
-`0A000` over a table that exists). With the `DROP INDEX` route refused too, a declared
-`PRIMARY KEY`/`UNIQUE` can't be removed short of `DROP TABLE`. Postgres's hint for the
-refusal names `DROP CONSTRAINT`. pglet's message deliberately doesn't, since that statement
-is refused here, and suggests dropping the table instead. A `CASCADE` emits no `NOTICE`.
+**Gaps:** `ALTER TABLE … DROP CONSTRAINT` refuses a `PRIMARY KEY` / `UNIQUE` with `0A000`
+(it drops a `FOREIGN KEY` or a `CHECK`, § `ALTER TABLE … DROP CONSTRAINT`). With the
+`DROP INDEX` route refused too, a declared `PRIMARY KEY`/`UNIQUE` can't be removed short of
+`DROP TABLE`. Postgres's hint for the refusal names `DROP CONSTRAINT`. pglet's message
+deliberately doesn't, since that statement refuses this kind here, and suggests dropping
+the table instead. A `CASCADE` emits no `NOTICE`.
 `DROP INDEX` does **not** yet block on an FK that depends on a *plain* unique index covering
 its referenced columns (PG gives `2BP01`). pglet's FK existence probe falls back to a scan
 when the covering index is gone, so enforcement gets slower but stays correct.
@@ -3145,7 +3147,7 @@ wordings), `428C9`, `42601`'s `P` (a **1-based codepoint** index), and `2BP01` o
 its five shapes: `DROP TABLE` with a dependent FK, `DROP COLUMN` with a dependent sequence
 default, and `DROP SEQUENCE` for an identity column. The other two differ on purpose or
 because of a gap. `DROP INDEX` over a constraint's index sends a **deliberately different**
-`H` (18.6 suggests `ALTER TABLE … DROP CONSTRAINT`, which pglet refuses), and a
+`H` (18.6 suggests `ALTER TABLE … DROP CONSTRAINT`, which pglet refuses for that kind), and a
 non-`CASCADE` `DROP SCHEMA public` sends **no `D`** where 18.6 lists every dependent.
 
 A field pglet can't fill truthfully is **omitted**, never made up: `F`/`L`/`R` always
@@ -3506,14 +3508,16 @@ rebuild them on drop).
 - A *referenced* column always has a covering unique index, so `DROP COLUMN … CASCADE` on
   one still fails the drift guard with `0A000` where PG succeeds (pglet can't rebuild the
   index the constraint's removal would orphan).
-- `ALTER TABLE … DROP CONSTRAINT` isn't implemented. It's parsed and refused with `0A000`
-  over a table that exists (`42P01` over a missing one, and the skip under `IF EXISTS`).
-  That's also why a constraint index's `2BP01` suggests dropping the table instead of
-  giving PG's hint.
+- `ALTER TABLE … DROP CONSTRAINT` drops a `FOREIGN KEY` or a `CHECK` and refuses a
+  `PRIMARY KEY` / `UNIQUE` / `NOT NULL` (§ `ALTER TABLE … DROP CONSTRAINT`). That's also
+  why a constraint index's `2BP01` suggests dropping the table instead of giving PG's
+  hint.
 - A column-level `CONSTRAINT <n> NOT NULL` loses its name, where PG 15+ materializes it as
   a named CHECK.
 - `ALTER TABLE IF EXISTS <t> …` performs the action over a relation that exists, and skips
   with 18.6's `NOTICE` over a name nothing holds (`EDGES.md` row 15 keeps its residuals).
+- `ALTER TABLE t* …` acts on `t` (no table inherits from it), and `ONLY t*` is `42601`, as
+  on 18.6. Elsewhere a relation named `t*` is `42601` (`EDGES.md` row 328).
 
 `ADD COLUMN … NOT NULL DEFAULT NULL` is `23502` like PG. The check reads the resolved
 backfill values, not whether a DEFAULT is present, and `DEFAULT NULL` is normalized to *no*
@@ -3524,6 +3528,43 @@ nothing: it's refused with `55000` over a column not already declared `NOT NULL`
 its rows hold, as on 18.6 (`ddl/add_identity_*`). `SET NOT NULL` first is the way in. A
 store where an earlier build accepted it over a NULL still holds that row, which the
 accelerated profile's `ORDER BY` drops (`EDGES.md` row 38).
+
+### `ALTER TABLE … DROP CONSTRAINT`
+
+`ALTER TABLE [IF EXISTS] [ONLY] t DROP CONSTRAINT [IF EXISTS] n [CASCADE | RESTRICT]`, and a
+comma list of such actions, drop a **`FOREIGN KEY`** or a **`CHECK`** by name. Afterwards no
+write checks the constraint, a foreign key no longer acts on a parent's delete or update, and
+every catalog surface (`pg_constraint`, `information_schema`, the dump) leaves it out. The
+name is freed for the next constraint, so an unnamed foreign key added later on the same
+column takes `<table>_<column>_fkey` itself (`fk/drop_constraint_*`,
+`constraint/drop_constraint_check_stops_enforcing`, `ddl/alter_table_drop_constraint_*`, and
+`spine/auth/drop_actor_fkeys_migration`, the spine migration's own statements).
+
+The name is looked up among the table's own constraints, in the enumeration
+`pg_constraint` reads, so an inline foreign key is found under PostgreSQL's default
+`<table>_<columns>_fkey` and a column `CHECK` under `<table>_<column>_check`. A name no
+constraint of the table holds is `42704` (`constraint "n" of relation "t" does not exist`),
+or with the action's own `IF EXISTS` the `NOTICE` (`… does not exist, skipping`) and the
+next action. A list runs in written order, so a name written twice is dropped once and then
+missing. Every action is resolved before any is applied, so a failing list leaves the table
+as it was. A table that's missing is `42P01`, or the skip under `ALTER TABLE IF EXISTS`; an
+index or a sequence is `42809`. `CASCADE` and `RESTRICT` choose nothing for the two kinds,
+since nothing depends on either.
+
+**Gaps (each `0A000`, where 18.6 performs the drop):**
+
+- A `PRIMARY KEY` or `UNIQUE` constraint, whose drop removes its index and, with `CASCADE`,
+  the foreign keys on other tables that need it. pglet doesn't drop it, so a declared one
+  can't be removed short of `DROP TABLE` (§ `DROP TABLE` / `DROP INDEX` dependencies).
+- A `NOT NULL` constraint under its `<table>_<column>_not_null` name, which 18.6 drops by
+  making the column nullable (or refuses with `42P16` on a primary-key column).
+  `ALTER COLUMN … DROP NOT NULL` is refused too.
+- A list that mixes `DROP CONSTRAINT` with any other action.
+- A name two constraints of the table hold, which pglet's naming gates don't make
+  impossible (§ `ALTER TABLE … ADD CONSTRAINT`); 18.6 can't hold that state.
+
+The OID `pg_constraint` synthesizes for every later constraint shifts with a drop, as it
+does with an add (`catalog/constraints_view.rs`).
 
 ### `CREATE SEQUENCE` / `ALTER SEQUENCE` / `GRANT` / `REVOKE` / `COMMENT ON` / `ALTER TABLE … OWNER TO`
 

@@ -62,15 +62,31 @@ which is neither OID direction.
 declared `PRIMARY KEY`/`UNIQUE` is refused outright, since dropping it would stop
 enforcing the key *and* erase it from the dump.
 
+**`ALTER TABLE … DROP CONSTRAINT` drops a constraint nothing depends on, and refuses
+the kinds something can.** A `FOREIGN KEY` and a `CHECK` have no dependents in
+`pg_depend` terms, so dropping one is removing its record from the table, and
+`CASCADE` / `RESTRICT` choose nothing (as on 18.6). A `PRIMARY KEY` / `UNIQUE` owns
+an index another table's foreign key may need, which is a NORMAL edge this resolver
+would have to walk and an index storage would have to drop, and a `NOT NULL` is a
+column bit whose drop 18.6 refuses on a primary-key column (`42P16`). pglet refuses
+those three with `0A000` instead of dropping half of one. The name is looked up in
+the enumeration `pg_constraint` reads (`catalog/constraints_view.rs`), restricted to
+the table, so a name resolves here exactly when that view lists it there. A name two
+constraints of the table hold (the reachable pair described below) is refused, never
+resolved by guess. The actions of a list resolve in written order against what the
+earlier ones left, and all of them resolve before the first record changes, which is
+the next section's rule (`executor::ddl::execute_alter_table_drop_constraint`).
+
 Two consequences about **names** matter here, and neither is obvious.
 
 First, **a constraint's name is not its identity.** The resolver identifies a
 foreign key by `(table, position)`, because removing by name would also remove a
-sibling with the same name. The resolver has to be right on its own terms, because
-the `42710` gate doesn't make a same-named pair unreachable. Incomplete corners of
-the naming gate produce exactly that pair (a route that claims nothing, an
-auto-name gated instead of disambiguated), and a name-keyed resolver would turn
-each one into silent integrity loss instead of a duplicate row.
+sibling with the same name. `DROP CONSTRAINT`, which can only be given a name, finds
+the record by it and then removes it by position. The resolver has to be right on
+its own terms, because the `42710` gate doesn't make a same-named pair unreachable.
+Incomplete corners of the naming gate produce exactly that pair (a route that claims
+nothing, an auto-name gated instead of disambiguated), and a name-keyed resolver
+would turn each one into silent integrity loss instead of a duplicate row.
 
 Second, **a constraint's index is named after the constraint**, using the declared
 `CONSTRAINT <n>` when there is one, so nothing may re-derive that name from the
@@ -261,9 +277,10 @@ leaving behind:
 
 - **Catalog.** The index is in `pg_indexes` and its name is `42P07` forever. Through
   `create_unique_index` it's **constraint-marked**, so `DROP INDEX` refuses it with
-  `2BP01`, and pglet has no `ALTER TABLE … DROP CONSTRAINT`, so it can't be fixed
-  short of `DROP TABLE`. It isn't only in memory either: one later ordinary statement
-  serializes the whole catalog, so it survives a restart on a `--data-dir` store. The
+  `2BP01`, and pglet's `ALTER TABLE … DROP CONSTRAINT` refuses a `PRIMARY KEY` /
+  `UNIQUE`, so it can't be fixed short of `DROP TABLE`. It isn't only in memory
+  either: one later ordinary statement serializes the whole catalog, so it survives a
+  restart on a `--data-dir` store. The
   store's own dump then emits the failing statement, giving a database that reloads
   into stock Postgres but that pglet refuses.
 - **Storage.** On the B+tree backend the def stays and the table becomes unwritable:

@@ -1,0 +1,41 @@
+{
+  "rows": [
+    {
+      "kind": "actor",
+      "v": "00000000-0000-0000-0000-000000000002/00000000-0000-0000-0000-000000000001/00000000-0000-0000-0000-000000000001"
+    },
+    {
+      "kind": "constraint",
+      "v": "actor_id_not_null:n"
+    },
+    {
+      "kind": "constraint",
+      "v": "actor_pkey:p"
+    },
+    {
+      "kind": "constraint",
+      "v": "role_grant_id_not_null:n"
+    },
+    {
+      "kind": "constraint",
+      "v": "role_grant_offer_id_not_null:n"
+    },
+    {
+      "kind": "constraint",
+      "v": "role_grant_offer_pkey:p"
+    },
+    {
+      "kind": "constraint",
+      "v": "role_grant_pkey:p"
+    },
+    {
+      "kind": "grant",
+      "v": "00000000-0000-0000-0000-0000000000b1/00000000-0000-0000-0000-000000000001/00000000-0000-0000-0000-0000000000a1"
+    },
+    {
+      "kind": "grant",
+      "v": "00000000-0000-0000-0000-0000000000b2/00000000-0000-0000-0000-0000000000ff/00000000-0000-0000-0000-0000000000fe"
+    }
+  ],
+  "rowCount": 9
+}

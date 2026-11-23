@@ -207,7 +207,8 @@ The engine-wide rules are worth having here. Each one is written out in full
   `pg_depend`'s edge kinds for `DROP TABLE`, `DROP COLUMN`, `DROP SEQUENCE` and
   `DROP TYPE`. `DROP TYPE` still drops an enum that a column uses (`EDGES.md` row 261,
   open). A constraint is identified by `(table, position)`, never by its name.
-  `docs/ddl.md`.
+  `ALTER TABLE … DROP CONSTRAINT` drops a `FOREIGN KEY` or `CHECK`, which nothing depends
+  on, and refuses a `PRIMARY KEY` / `UNIQUE` / `NOT NULL` (`0A000`). `docs/ddl.md`.
 - **A failed DDL statement must leave the catalog untouched.** The autocommit path
   can't undo it, so writing to the catalog and then failing leaves a durable phantom.
   Everything that can fail runs before the first catalog write, and catalog facts the
