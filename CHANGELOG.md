@@ -12,9 +12,10 @@ released version under a fresh `## Unreleased` declaring a patch.
 <!-- bump: patch -->
 
 - feat: `pg_advisory_xact_lock_shared`, over a `bigint` or two `integer`s, answering where
-  `pg_advisory_xact_lock` does. Its lock is the same one: a shared and an exclusive holder of
-  a key wait on each other as on Postgres, and two shared holders wait on each other too,
-  where Postgres grants both. `pg_try_advisory_xact_lock_shared` is still refused `0A000`
+  `pg_advisory_xact_lock` does and taking the same lock. On the package's one connection
+  every call is granted; across connections a shared and an exclusive holder of a key wait
+  on each other as on Postgres, and two shared holders wait on each other too, where
+  Postgres grants both. `pg_try_advisory_xact_lock_shared` is still refused `0A000`
 
 ## 0.2.0
 
