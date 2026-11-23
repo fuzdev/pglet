@@ -17,6 +17,21 @@ released version under a fresh `## Unreleased` declaring a patch.
   `54001`. Re-measured on Node's V8 under both tiers and on Bun's JavaScriptCore, the
   shortest stack edge (Bun's, 2 001 levels) left 2 000 too little margin; 1 300 is under
   two thirds of it
+- feat: `ALTER TABLE … DROP CONSTRAINT [IF EXISTS]` for foreign keys and `CHECK`s, alone or
+  in a list; a primary key, `UNIQUE` or `NOT NULL` constraint is still refused `0A000`
+- fix: `ALTER TABLE t* …` (the inheritance star) no longer reports success and does nothing
+- feat: session-level advisory locks — `pg_advisory_lock`, `pg_advisory_unlock` and
+  `pg_advisory_unlock_all`, over a `bigint` or two `integer`s, counted per key and held until
+  the last unlock or the session ends; an unlock of a key not held answers `false`. A call
+  now answers in the statement's own select list over any `FROM`, `WHERE` or CTE, once per
+  row, `pg_advisory_xact_lock` included. kysely 0.28.19's `Migrator`, whose stock Postgres
+  adapter takes its lock this way, runs through `@fuzdev/pglet-wasm/kysely`. The `try_`
+  forms are still refused `0A000`
+- feat: `set_config('lock_timeout', value, is_local)` applies as `SET` / `SET LOCAL` do
+  (was refused `0A000`)
+- the dialect target is PostgreSQL 18.7 (was 18.6): `server_version` reports `18.7` and
+  `server_version_num` `180007`, and `right(s, -2147483648)` answers the empty string, as
+  18.7 does (was the whole string)
 
 ## 0.1.2
 
