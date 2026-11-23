@@ -354,7 +354,15 @@ pub fn execute_plan_node<S: Storage>(
             ..
         } => {
             let child = execute_plan_node(input, schema, storage, env)?;
-            project_materialized(child, input, (exprs, enclosing), schema, storage, env)
+            project_materialized(
+                child,
+                input,
+                (exprs, enclosing),
+                schema,
+                storage,
+                env,
+                &mut |expr, eval| eval(expr),
+            )
         }
         Plan::Join {
             left,
@@ -429,7 +437,45 @@ fn filter_materialized<S: Storage>(
     Ok((filtered, columns))
 }
 
-/// A `Project` over its input's rows, executed.
+/// How [`project_materialized`] answers one projected item over one row: handed the item
+/// and the row's ordinary evaluator, which evaluates any expression over that row. The
+/// ordinary projection hands the item to it; the advisory projection answers its
+/// top-level calls against the session first (`super::advisory`).
+pub type ProjectItem<'h> =
+    dyn FnMut(&Expr, &mut dyn FnMut(&Expr) -> Result<Value>) -> Result<Value> + 'h;
+
+/// Execute a `Project` root — its input's rows, produced whole, then each row's items in
+/// order, each answered by `item` ([`ProjectItem`]). `plan` is a [`Plan::Project`]; the
+/// one caller, the advisory projection, has checked it is.
+///
+/// # Errors
+///
+/// The input's or an item's own; `0A000` if `plan` is no `Project`.
+pub fn execute_project_with<S: Storage>(
+    plan: &Plan,
+    schema: &Schema,
+    storage: &S,
+    env: EvalEnv<'_>,
+    item: &mut ProjectItem<'_>,
+) -> Result<(Vec<Vec<Value>>, Vec<ColumnDesc>)> {
+    crate::depth::check_stack()?;
+    let env = env.with_schema(schema).with_toast_status(storage);
+    let Plan::Project {
+        input,
+        exprs,
+        enclosing,
+        ..
+    } = plan
+    else {
+        return Err(Error::NotImplemented(
+            "an advisory projection over no Project".into(),
+        ));
+    };
+    let child = execute_plan_node(input, schema, storage, env)?;
+    project_materialized(child, input, (exprs, enclosing), schema, storage, env, item)
+}
+
+/// A `Project` over its input's rows, executed, each item answered by `item`.
 #[inline(never)]
 fn project_materialized<S: Storage>(
     child: (Vec<Vec<Value>>, Vec<ColumnDesc>),
@@ -438,6 +484,7 @@ fn project_materialized<S: Storage>(
     schema: &Schema,
     storage: &S,
     env: EvalEnv<'_>,
+    item: &mut ProjectItem<'_>,
 ) -> Result<(Vec<Vec<Value>>, Vec<ColumnDesc>)> {
     let (rows, input_columns) = child;
     let col_names: Vec<&str> = input_columns.iter().map(|c| c.name.as_str()).collect();
@@ -473,10 +520,12 @@ fn project_materialized<S: Storage>(
     for row in &rows {
         let mut projected_row = Vec::with_capacity(exprs.len());
         for expr in exprs {
-            let val = eval_expr_subquery(
-                expr, &col_names, &col_types, &col_enums, identity, row, schema, storage, env,
-            )?;
-            projected_row.push(val);
+            let mut eval = |e: &Expr| {
+                eval_expr_subquery(
+                    e, &col_names, &col_types, &col_enums, identity, row, schema, storage, env,
+                )
+            };
+            projected_row.push(item(expr, &mut eval)?);
         }
         projected.push(projected_row);
     }

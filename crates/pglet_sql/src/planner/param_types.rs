@@ -1666,7 +1666,7 @@ impl Inference {
                     if let Expr::Parameter { index } = e {
                         if string_fn_text_arg(*func, i) {
                             self.record(*index, TypeOid::Text, PRIO_CONTEXT);
-                        } else if let Some(t) = string_fn_integer_arg(*func, i, args.len()) {
+                        } else if let Some(t) = string_fn_typed_arg(*func, i, args.len()) {
                             self.record(*index, t, PRIO_CONTEXT);
                         }
                     }
@@ -2171,8 +2171,15 @@ const fn string_fn_text_arg(func: StringFunc, i: usize) -> bool {
         // (date | timestamp | timestamptz) — no text position.
         StringFunc::IsFinite => false,
         // (oid, int4) and (bigint) / (int4, int4) — integer positions, typed by
-        // `string_fn_integer_arg`.
-        StringFunc::ColDescription | StringFunc::AdvisoryXactLock => false,
+        // `string_fn_typed_arg`.
+        StringFunc::ColDescription
+        | StringFunc::AdvisoryXactLock
+        | StringFunc::AdvisoryLock
+        | StringFunc::AdvisoryUnlock
+        | StringFunc::AdvisoryUnlockAll => false,
+        // (setting, value, is_local) — the setting and its value are text; `is_local`
+        // is boolean.
+        StringFunc::SetConfigLockTimeout => i <= 1,
         // (name), (table, column), (schema, privilege) — every argument text.
         StringFunc::QuoteIdent
         | StringFunc::PgGetSerialSequence
@@ -2184,22 +2191,30 @@ const fn string_fn_text_arg(func: StringFunc, i: usize) -> bool {
         // preferred type, as an unknown literal there does.
         StringFunc::Md5 | StringFunc::OctetLength => i == 0,
         // (str, n) and (str, start [, length]) — the integer positions are
-        // `string_fn_integer_arg`'s; an untyped `$1` resolves to `text` there too.
+        // `string_fn_typed_arg`'s; an untyped `$1` resolves to `text` there too.
         StringFunc::Left | StringFunc::Right | StringFunc::Substr => i == 0,
     }
 }
 
-/// The integer type 18.6 resolves argument `i` of a call to `func` with `n` arguments to,
+/// The non-text type 18.6 resolves argument `i` of a call to `func` with `n` arguments to,
 /// where every overload of that arity agrees — so a bare `$N` there types as 18.6 types it
 /// (`pg_advisory_xact_lock($1)` is `bigint`, `pg_advisory_xact_lock($1, $2)` two `integer`s,
-/// `col_description`'s column number `integer`). `None` elsewhere, left to the argument's
+/// `col_description`'s column number `integer`, `set_config`'s `is_local` `boolean`).
+/// `None` elsewhere, left to the argument's
 /// own typing: `col_description`'s `oid` position among them, which pglet has no parameter
 /// decoding for.
-const fn string_fn_integer_arg(func: StringFunc, i: usize, n: usize) -> Option<TypeOid> {
+const fn string_fn_typed_arg(func: StringFunc, i: usize, n: usize) -> Option<TypeOid> {
     match (func, n) {
-        (StringFunc::AdvisoryXactLock, 1) => Some(TypeOid::Int8),
-        (StringFunc::AdvisoryXactLock, 2) => Some(TypeOid::Int4),
+        (
+            StringFunc::AdvisoryXactLock | StringFunc::AdvisoryLock | StringFunc::AdvisoryUnlock,
+            1,
+        ) => Some(TypeOid::Int8),
+        (
+            StringFunc::AdvisoryXactLock | StringFunc::AdvisoryLock | StringFunc::AdvisoryUnlock,
+            2,
+        ) => Some(TypeOid::Int4),
         (StringFunc::ColDescription, 2) if i == 1 => Some(TypeOid::Int4),
+        (StringFunc::SetConfigLockTimeout, 3) if i == 2 => Some(TypeOid::Bool),
         // Every overload takes an `integer` past the first argument.
         (StringFunc::Left | StringFunc::Right | StringFunc::Substr, _) if i > 0 => {
             Some(TypeOid::Int4)

@@ -216,7 +216,12 @@ fn cook_column_default(
     let probe = match default {
         ColumnDefault::Expr(expr) => {
             check_default_expr_nodes(expr)?;
-            let probe = match eval_default_expr(expr, &mut BTreeMap::new(), SequenceDraw::Probe) {
+            // A probe 18.6 never runs: an assignment `set_config` evaluates here is kept
+            // nowhere (`SessionSettings::without_set_config_effects`).
+            let evaluated = crate::catalog::SessionSettings::without_set_config_effects(|| {
+                eval_default_expr(expr, &mut BTreeMap::new(), SequenceDraw::Probe)
+            });
+            let probe = match evaluated {
                 Ok(value) => Some(value),
                 // A conversion to an enum that reaches evaluation is one of a *value* —
                 // `'q'::text::mq` — which 18.6 runs per row, not in parse analysis: a
@@ -674,7 +679,12 @@ fn validate_stored_expr(
     // No enum orders: this probe only asks whether the expression *resolves* (it keeps
     // only `UndefinedFunction` / `NotImplemented`), and a comparison's verdict is not
     // read, so the member order cannot change its answer.
-    match super::expr::eval_expr(expr, &names, &types, &[], &row) {
+    // A probe 18.6 never runs, so an assignment `set_config` evaluates in it is kept
+    // nowhere (`SessionSettings::without_set_config_effects`).
+    let evaluated = crate::catalog::SessionSettings::without_set_config_effects(|| {
+        super::expr::eval_expr(expr, &names, &types, &[], &row)
+    });
+    match evaluated {
         Err(e @ (Error::UndefinedFunction(_) | Error::NotImplemented(_))) => Err(e),
         _ => Ok(()),
     }

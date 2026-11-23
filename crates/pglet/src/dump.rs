@@ -1979,10 +1979,12 @@ COPY g (id, \"order\", tags, note) FROM stdin;
     /// function-family member is not among them.
     /// The [`StringFunc`] members no corpus entry can reach, and why.
     ///
-    /// `pg_advisory_xact_lock` answers only as a top-level `SELECT` item, where the host
-    /// has taken the writer for it; a stored expression is evaluated by the ordinary
-    /// evaluator, which refuses a non-NULL call (`0A000`), so the DDL-time probe refuses
-    /// the expression.
+    /// The advisory-lock functions answer only as a top-level item of a statement's own
+    /// projection, where the host has taken the writer and lends the session's holds; a
+    /// stored expression is evaluated by the ordinary evaluator, which refuses a non-NULL
+    /// call (`0A000`), so the DDL-time probe refuses the expression. `set_config` is not
+    /// classified as unstorable: its `lock_timeout` form is stored as any call is, and the
+    /// corpus reaches it through `set_config(…) IS NOT NULL`.
     ///
     /// The other three read the **catalog**, which a stored expression's DDL-time probe has
     /// none of to lend (`pg_get_serial_sequence` looks its table up), so `CHECK (pg_get_constraintdef(a) IS NOT NULL)` and
@@ -1999,6 +2001,9 @@ COPY g (id, \"order\", tags, note) FROM stdin;
         StringFunc::PgGetConstraintdef,
         StringFunc::Regclass,
         StringFunc::AdvisoryXactLock,
+        StringFunc::AdvisoryLock,
+        StringFunc::AdvisoryUnlock,
+        StringFunc::AdvisoryUnlockAll,
         StringFunc::PgGetSerialSequence,
     ];
 
@@ -2178,6 +2183,8 @@ COPY g (id, \"order\", tags, note) FROM stdin;
         // ...and the two argument-taking session calls, which are `StringFn`s.
         "current_setting('search_path') IS NOT NULL",
         "current_setting('search_path', TRUE) IS NOT NULL",
+        // `set_config`'s one evaluated form, `StringFunc::SetConfigLockTimeout`.
+        "set_config('lock_timeout', '5s', false) IS NOT NULL",
         "current_schemas(TRUE) IS NOT NULL",
         // A cast to an enum over a non-constant operand — `StringFunc::EnumIn` under the
         // `text` cast it is planned as, rendered as the one written cast `(m)::rt_mood`.

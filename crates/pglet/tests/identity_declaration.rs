@@ -360,7 +360,11 @@ fn which_refusal_wins_beside_the_declaration() {
             .unwrap()
             .remove(0);
         assert_eq!(
-            skipped.notices,
+            skipped
+                .notices
+                .iter()
+                .map(|n| n.message.clone())
+                .collect::<Vec<_>>(),
             vec!["relation \"ai_missing\" does not exist, skipping".to_string()],
             "{store}"
         );

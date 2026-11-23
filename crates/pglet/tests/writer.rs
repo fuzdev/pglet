@@ -1039,6 +1039,310 @@ fn a_hosts_default_lock_timeout_outlives_a_rollback_and_carries_to_a_fork() {
     assert_eq!(answer(&mut fork, "SHOW lock_timeout", 0), text("5s"));
 }
 
+/// `pg_advisory_lock` is the writer, held by the logical connection past its statement
+/// and its block, on every backend: another connection's lock of any key, its write and
+/// its block's write are refused `55P03`; its unlock gives back nothing of the holder's
+/// (`false`, the holder's holds parked out of its way); holds stack, a `ROLLBACK` keeps
+/// them, and the last unlock, `pg_advisory_unlock_all()` and `DISCARD ALL` give the writer
+/// back. kysely 0.28's two calls run as kysely issues them.
+///
+/// Red for a session lock that takes no writer (connection 4's write goes through), for
+/// one released at its statement's or its block's end, and for an unlock that reads the
+/// holder's holds from another connection (`true` there).
+#[test]
+fn an_advisory_session_lock_is_the_writer_and_the_sessions() {
+    for (backend, mut db, _) in backends() {
+        db.execute("CREATE TABLE t (i INT)").unwrap();
+        let void = "Text(\"\")";
+        let kysely_lock = "with set_timeout as (select set_config('lock_timeout', '3600000', true) as config_val) select pg_advisory_lock(3853314791062309107) from set_timeout";
+        let kysely_unlock = "select pg_advisory_unlock(3853314791062309107)";
+        assert_eq!(answer(&mut db, kysely_lock, 3), void, "{backend}");
+        assert_eq!(
+            answer(&mut db, "SELECT pg_advisory_lock(3853314791062309107)", 3),
+            void,
+            "{backend}"
+        );
+        for (sql, why) in [
+            ("SELECT pg_advisory_lock(8)", "another key"),
+            (
+                "SELECT pg_advisory_xact_lock(3853314791062309107)",
+                "a transaction-level lock",
+            ),
+            ("INSERT INTO t VALUES (1)", "a write"),
+        ] {
+            assert_eq!(answer(&mut db, sql, 4), "ERR 55P03", "{backend}: {why}");
+        }
+        assert_eq!(
+            answer(&mut db, kysely_unlock, 4),
+            "Bool(false)",
+            "{backend}: not its lock"
+        );
+        assert_eq!(
+            answer(&mut db, "SELECT pg_advisory_unlock_all()", 4),
+            void,
+            "{backend}"
+        );
+        assert_eq!(answer(&mut db, "DISCARD ALL", 4), "", "{backend}");
+        assert_eq!(answer(&mut db, "BEGIN", 3), "", "{backend}");
+        assert_eq!(
+            answer(&mut db, "INSERT INTO t VALUES (2)", 3),
+            "",
+            "{backend}"
+        );
+        assert_eq!(answer(&mut db, "ROLLBACK", 3), "", "{backend}");
+        assert_eq!(
+            answer(&mut db, "INSERT INTO t VALUES (3)", 4),
+            "ERR 55P03",
+            "{backend}: past ROLLBACK"
+        );
+        assert_eq!(answer(&mut db, kysely_unlock, 3), "Bool(true)", "{backend}");
+        assert_eq!(
+            answer(&mut db, "INSERT INTO t VALUES (4)", 4),
+            "ERR 55P03",
+            "{backend}: one hold left"
+        );
+        assert_eq!(answer(&mut db, kysely_unlock, 3), "Bool(true)", "{backend}");
+        assert_eq!(
+            answer(&mut db, kysely_unlock, 3),
+            "Bool(false)",
+            "{backend}: none left"
+        );
+        assert_eq!(
+            answer(&mut db, "INSERT INTO t VALUES (5)", 4),
+            "",
+            "{backend}: released"
+        );
+        // `pg_advisory_unlock_all()` and `DISCARD ALL` give the writer back.
+        for release in ["SELECT pg_advisory_unlock_all()", "DISCARD ALL"] {
+            assert_eq!(
+                answer(
+                    &mut db,
+                    "SELECT pg_advisory_lock(1), pg_advisory_lock(1, 1)",
+                    4
+                ),
+                format!("{void}|{void}"),
+                "{backend}"
+            );
+            assert_eq!(
+                answer(&mut db, "INSERT INTO t VALUES (6)", 3),
+                "ERR 55P03",
+                "{backend}: {release}"
+            );
+            answer(&mut db, release, 4);
+            assert_eq!(
+                answer(&mut db, "INSERT INTO t VALUES (7)", 3),
+                "",
+                "{backend}: {release}"
+            );
+        }
+        // The kysely lock's `set_config` was local to its statement.
+        assert_eq!(
+            answer(&mut db, "SHOW lock_timeout", 3),
+            "Text(\"1s\")",
+            "{backend}"
+        );
+        // A lock in a materialized `WITH`'s body is the writer too: another connection's
+        // is refused while connection 3 holds one (and reaches no hold the writer did not
+        // cover — a debug assertion before the predicate read through the body).
+        let with_lock = "WITH RECURSIVE r(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM r WHERE x < 2) SELECT pg_advisory_lock(x) FROM r";
+        assert_eq!(
+            answer(&mut db, "SELECT pg_advisory_lock(9)", 3),
+            void,
+            "{backend}"
+        );
+        assert_eq!(
+            answer(&mut db, with_lock, 4),
+            "ERR 55P03",
+            "{backend}: WITH body"
+        );
+        assert_eq!(
+            answer(&mut db, "SELECT pg_advisory_unlock(9)", 3),
+            "Bool(true)",
+            "{backend}"
+        );
+        assert_eq!(
+            answer(&mut db, with_lock, 4),
+            format!("{void},{void}"),
+            "{backend}"
+        );
+        assert_eq!(
+            answer(&mut db, "INSERT INTO t VALUES (8)", 3),
+            "ERR 55P03",
+            "{backend}: held"
+        );
+        assert_eq!(
+            answer(&mut db, "SELECT pg_advisory_unlock_all()", 4),
+            void,
+            "{backend}"
+        );
+    }
+}
+
+/// A session-level lock taken inside a block is the session's hold, not the block's: the
+/// block re-bases only at a real write after it, so a block that only locked and unlocked
+/// gives the writer back at the unlock, a `REPEATABLE READ` block past whose snapshot
+/// another connection committed is not refused at the lock, and the block's write is kept
+/// by its `COMMIT` and taken back by its `ROLLBACK` while the lock outlives both.
+///
+/// Red with the block re-based at the lock (connection 4's write is refused after the
+/// unlock, and the `REPEATABLE READ` lock answers `40001`).
+#[test]
+fn a_session_lock_in_a_block_is_the_sessions_hold() {
+    for (backend, mut db, _) in backends() {
+        db.execute("CREATE TABLE t (i INT)").unwrap();
+        let void = "Text(\"\")";
+        assert_eq!(answer(&mut db, "BEGIN", 3), "", "{backend}");
+        assert_eq!(
+            answer(&mut db, "SELECT pg_advisory_lock(6)", 3),
+            void,
+            "{backend}"
+        );
+        assert_eq!(
+            answer(&mut db, "INSERT INTO t VALUES (1)", 4),
+            "ERR 55P03",
+            "{backend}: held"
+        );
+        assert_eq!(
+            answer(&mut db, "SELECT pg_advisory_unlock(6)", 3),
+            "Bool(true)",
+            "{backend}"
+        );
+        assert_eq!(
+            answer(&mut db, "SELECT pg_advisory_lock(6)", 4),
+            void,
+            "{backend}: given back"
+        );
+        assert_eq!(
+            answer(&mut db, "SELECT pg_advisory_unlock(6)", 4),
+            "Bool(true)",
+            "{backend}"
+        );
+        assert_eq!(answer(&mut db, "COMMIT", 3), "", "{backend}");
+        for (end, rows) in [("COMMIT", "Int8(1)"), ("ROLLBACK", "Int8(0)")] {
+            let cell = format!("{backend}, {end}");
+            answer(&mut db, "DELETE FROM t", 3);
+            assert_eq!(answer(&mut db, "BEGIN", 3), "", "{cell}");
+            assert_eq!(
+                answer(&mut db, "SELECT pg_advisory_lock(7)", 3),
+                void,
+                "{cell}"
+            );
+            assert_eq!(answer(&mut db, "INSERT INTO t VALUES (2)", 3), "", "{cell}");
+            assert_eq!(answer(&mut db, end, 3), "", "{cell}");
+            assert_eq!(answer(&mut db, "SELECT count(*) FROM t", 3), rows, "{cell}");
+            assert_eq!(
+                answer(&mut db, "INSERT INTO t VALUES (3)", 4),
+                "ERR 55P03",
+                "{cell}: the lock outlives the block"
+            );
+            assert_eq!(
+                answer(&mut db, "SELECT pg_advisory_unlock(7)", 3),
+                "Bool(true)",
+                "{cell}"
+            );
+        }
+        assert_eq!(
+            answer(&mut db, "BEGIN ISOLATION LEVEL REPEATABLE READ", 3),
+            "",
+            "{backend}"
+        );
+        assert!(
+            !answer(&mut db, "SELECT count(*) FROM t", 3).is_empty(),
+            "{backend}"
+        );
+        assert_eq!(
+            answer(&mut db, "INSERT INTO t VALUES (4)", 4),
+            "",
+            "{backend}: another commits"
+        );
+        assert_eq!(
+            answer(&mut db, "SELECT pg_advisory_lock(8)", 3),
+            void,
+            "{backend}: no 40001 at the lock"
+        );
+        assert_eq!(answer(&mut db, "ROLLBACK", 3), "", "{backend}");
+        assert_eq!(
+            answer(&mut db, "SELECT pg_advisory_unlock(8)", 3),
+            "Bool(true)",
+            "{backend}"
+        );
+        // The lock as the block's first statement takes its snapshot, and the write after
+        // it is accepted, as on 18.6.
+        assert_eq!(
+            answer(&mut db, "BEGIN ISOLATION LEVEL REPEATABLE READ", 3),
+            "",
+            "{backend}"
+        );
+        assert_eq!(
+            answer(&mut db, "INSERT INTO t VALUES (5)", 4),
+            "",
+            "{backend}"
+        );
+        assert_eq!(
+            answer(&mut db, "SELECT pg_advisory_lock(1)", 3),
+            void,
+            "{backend}"
+        );
+        assert_eq!(
+            answer(&mut db, "INSERT INTO t VALUES (6)", 3),
+            "",
+            "{backend}: the first write after the first statement's lock"
+        );
+        assert_eq!(answer(&mut db, "COMMIT", 3), "", "{backend}");
+        assert_eq!(
+            answer(&mut db, "SELECT pg_advisory_unlock(1)", 3),
+            "Bool(true)",
+            "{backend}"
+        );
+    }
+}
+
+/// `set_config('lock_timeout', $1, $2)` through bound parameters: `$1` is reported `text`
+/// and `$2` `boolean`, as 18.6 infers them, and the call assigns the setting.
+#[test]
+fn a_bound_set_config_of_lock_timeout_types_is_local_boolean() {
+    let mut db = Database::with_btree();
+    let mut seen = Vec::new();
+    let result = db
+        .execute_bound("SELECT set_config('lock_timeout', $1, $2)", 0, |types| {
+            seen = types.to_vec();
+            Ok::<_, ()>(vec![
+                Some(pglet_sql::types::Value::Text("6s".into())),
+                Some(pglet_sql::types::Value::Bool(false)),
+            ])
+        })
+        .unwrap();
+    assert_eq!(
+        seen,
+        vec![
+            Some(pglet_sql::types::TypeOid::Text),
+            Some(pglet_sql::types::TypeOid::Bool)
+        ]
+    );
+    assert_eq!(
+        result.rows,
+        vec![vec![pglet_sql::types::Value::Text("6s".into())]]
+    );
+    assert_eq!(answer(&mut db, "SHOW lock_timeout", 0), "Text(\"6s\")");
+}
+
+/// A `set_config('lock_timeout', …)` a column default evaluates is kept as a statement's
+/// is, through an `INSERT` and through `copy_in`; the DDL statement that stores it keeps
+/// none (its probe evaluates the default, and 18.6 does not).
+#[test]
+fn a_defaults_set_config_is_kept_where_it_is_evaluated() {
+    let mut db = Database::with_btree();
+    let show = |db: &mut Database| answer(db, "SHOW lock_timeout", 0);
+    db.execute("CREATE TABLE d (a INT, s TEXT DEFAULT set_config('lock_timeout', '5s', false))")
+        .unwrap();
+    assert_eq!(show(&mut db), "Text(\"1s\")", "the DDL probe keeps nothing");
+    db.execute("INSERT INTO d (a) VALUES (1)").unwrap();
+    assert_eq!(show(&mut db), "Text(\"5s\")", "INSERT");
+    db.execute("SET lock_timeout = '2s'").unwrap();
+    db.copy_in("COPY d (a) FROM STDIN", b"2\n").unwrap();
+    assert_eq!(show(&mut db), "Text(\"5s\")", "copy_in");
+}
+
 /// `pg_advisory_xact_lock` takes the writer as a write does, on every backend: a block's
 /// call holds it, so another logical connection's call — and its write — is refused
 /// `55P03` without aborting the block, and admitted once the block ends, at `COMMIT` or at

@@ -25,7 +25,11 @@ fn every_operation_skips_with_a_notice_over_a_missing_table() {
         let result = db.execute(sql).unwrap().remove(0);
         assert_eq!(result.command_tag, "ALTER TABLE", "{sql}");
         assert_eq!(
-            result.notices,
+            result
+                .notices
+                .iter()
+                .map(|n| n.message.clone())
+                .collect::<Vec<_>>(),
             vec!["relation \"nz\" does not exist, skipping".to_string()],
             "{sql}"
         );
@@ -94,7 +98,11 @@ fn another_schemas_qualifier_skips_with_the_relations_own_name() {
         let result = db.execute(sql).unwrap().remove(0);
         assert_eq!(result.command_tag, "ALTER TABLE", "{sql}");
         assert_eq!(
-            result.notices,
+            result
+                .notices
+                .iter()
+                .map(|n| n.message.clone())
+                .collect::<Vec<_>>(),
             vec!["relation \"nz\" does not exist, skipping".to_string()],
             "{sql}"
         );
@@ -104,7 +112,11 @@ fn another_schemas_qualifier_skips_with_the_relations_own_name() {
         .unwrap()
         .remove(0);
     assert_eq!(
-        result.notices,
+        result
+            .notices
+            .iter()
+            .map(|n| n.message.clone())
+            .collect::<Vec<_>>(),
         vec!["relation \"NZ\" does not exist, skipping".to_string()]
     );
     assert_eq!(db.schema().get_table("nz").unwrap().columns.len(), 1);

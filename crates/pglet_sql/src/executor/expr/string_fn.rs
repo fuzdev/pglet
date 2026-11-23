@@ -28,6 +28,11 @@ pub(super) fn eval_string_fn(
     args: &[Value],
     schema: Option<&Schema>,
 ) -> Result<Value> {
+    // `set_config` is not strict on 18.6 (`proisstrict = f`): it is answered ahead of the
+    // family's NULL rule ([`StringFunc::SetConfigLockTimeout`]).
+    if func == StringFunc::SetConfigLockTimeout {
+        return eval_set_config_lock_timeout(args);
+    }
     if args.iter().any(Value::is_null) {
         return Ok(Value::Null);
     }
@@ -181,9 +186,6 @@ pub(super) fn eval_string_fn(
             )),
         },
         StringFunc::ColDescription => eval_col_description(args),
-        // Reached here, a non-NULL call is not a top-level projection item, so no host
-        // took the writer for it: answering would report a lock nothing holds. The one
-        // place it answers is `eval_advisory_xact_lock`, from the projection path.
         StringFunc::QuoteIdent => match &args[0] {
             Value::Text(name) => Ok(Value::Text(crate::lexer::pg_quote::quote_identifier(name))),
             _ => Err(no_such_overload("quote_ident", args)),
@@ -209,13 +211,49 @@ pub(super) fn eval_string_fn(
             Value::Bytea(b) => Ok(Value::Text(super::super::md5::md5_hex(b))),
             _ => Err(no_such_overload("md5", args)),
         },
-        StringFunc::AdvisoryXactLock => {
-            eval_advisory_xact_lock(args)?;
-            Err(Error::NotImplemented(
-                "pg_advisory_xact_lock is supported only as a top-level item of a SELECT with no FROM".into(),
-            ))
+        // Reached here, a non-NULL call is not a top-level item of the statement's own
+        // projection, so no host took the writer for it and nothing here holds the
+        // session's locks: answering would report a lock nothing took. The one place it
+        // answers is `crate::executor::advisory`, from the projection path.
+        StringFunc::AdvisoryXactLock
+        | StringFunc::AdvisoryLock
+        | StringFunc::AdvisoryUnlock
+        | StringFunc::AdvisoryUnlockAll => {
+            let Some(func) = crate::planner::AdvisoryFunc::of(func) else {
+                unreachable!("an advisory member")
+            };
+            crate::executor::advisory::advisory_key(func, args)?;
+            Err(crate::executor::advisory::off_projection(func))
         }
+        StringFunc::SetConfigLockTimeout => eval_set_config_lock_timeout(args),
     }
+}
+
+/// `set_config('lock_timeout', value, is_local)` over its evaluated arguments: the
+/// assignment, through the ambient session
+/// ([`crate::catalog::SessionSettings::set_config_lock_timeout`]), and its answer.
+///
+/// A NULL `value` resets the setting and a NULL `is_local` is `false`, as on 18.6.
+///
+/// # Errors
+///
+/// `22023` for a value `lock_timeout` refuses; `42883` for a value or an `is_local` of a
+/// type no `set_config` takes.
+fn eval_set_config_lock_timeout(args: &[Value]) -> Result<Value> {
+    let [_, value, is_local] = args else {
+        return Err(no_such_overload("set_config", args));
+    };
+    let value = match value {
+        Value::Null => None,
+        Value::Text(v) => Some(v.as_str()),
+        _ => return Err(no_such_overload("set_config", args)),
+    };
+    let is_local = match is_local {
+        Value::Null => false,
+        Value::Bool(b) => *b,
+        _ => return Err(no_such_overload("set_config", args)),
+    };
+    crate::catalog::SessionSettings::set_config_lock_timeout(value, is_local).map(Value::Text)
 }
 
 /// `<value>::<enum>` — 18.6's conversion to an enum, over a value already evaluated.
@@ -251,7 +289,7 @@ pub(super) fn eval_enum_in(
 /// The `function <name>(<arg types>) does not exist` refusal 18.6's `ParseFuncOrColumn`
 /// raises when no overload takes the arguments (`42883`), spelled with each argument's
 /// display type name.
-fn no_such_overload(func: &str, args: &[Value]) -> Error {
+pub fn no_such_overload(func: &str, args: &[Value]) -> Error {
     let types: Vec<&str> = args
         .iter()
         .map(|v| opt_type_oid_display_name(v.type_oid()))
@@ -464,34 +502,6 @@ fn eval_has_schema_privilege(args: &[Value]) -> Result<Value> {
         }
     }
     Ok(Value::Bool(true))
-}
-
-/// `pg_advisory_xact_lock`'s overload check over non-NULL arguments, and its `void` answer
-/// — the empty text a [`TypeOid::Void`] descriptor carries.
-///
-/// `(bigint)` takes an `int2` / `int4` / `int8`; `(int4, int4)` takes an `int2` / `int4`
-/// in each place and refuses an `int8` (`42883`), as 18.6 does (measured:
-/// `pg_advisory_xact_lock(1::bigint, 2)`). A string argument is refused where 18.6 takes
-/// an unknown literal (`pg_advisory_xact_lock('1')`), for [`eval_col_description`]'s
-/// reason.
-///
-/// The lock itself is not taken here: it is the writer, which the host took before the
-/// statement ran ([`crate::planner::Plan::takes_writer`]).
-///
-/// # Errors
-///
-/// `42883` for an argument list no overload takes.
-pub fn eval_advisory_xact_lock(args: &[Value]) -> Result<Value> {
-    let small = |v: &Value| matches!(v, Value::Int2(_) | Value::Int4(_));
-    let fits = match args {
-        [Value::Int2(_) | Value::Int4(_) | Value::Int8(_)] => true,
-        [a, b] => small(a) && small(b),
-        _ => false,
-    };
-    if !fits {
-        return Err(no_such_overload("pg_advisory_xact_lock", args));
-    }
-    Ok(Value::Text(String::new()))
 }
 
 /// The catalog an env lends, or `0A000` naming the expression that needed it.

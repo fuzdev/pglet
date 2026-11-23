@@ -8,7 +8,7 @@ use crate::types::{ColumnDesc, ResultShape, TypeOid};
 use serde::{Deserialize, Serialize};
 
 use super::common_type::{EnumIdentity, ResolvedType};
-use super::expr::{Expr, OrderKey};
+use super::expr::{AdvisoryFunc, Expr, OrderKey};
 use super::function_scan::FromFunction;
 
 /// The effective resolvable name of a scan node — its FROM-clause `alias` if
@@ -3657,21 +3657,81 @@ impl Plan {
                 && rows[0].iter().any(|e| e.as_sequence_fn().is_some()))
     }
 
-    /// Whether this is a top-level advisory-lock projection: a **single-row** no-FROM
-    /// `VALUES` in which some projected expression is a top-level `pg_advisory_xact_lock`
-    /// call (a bare one or an `Alias`-wrapped one) — `SELECT pg_advisory_xact_lock(k)`,
-    /// the spelling kysely's migration lock issues.
+    /// The items of the statement's own projection when an advisory call may answer
+    /// among them: a **single-row** no-FROM `VALUES`, or a `Project` at the plan's root —
+    /// whose rows are exactly its input's, each item evaluated once per row, in row order
+    /// (`crate::executor::advisory`). Any other node above the `Project` — a `LIMIT`,
+    /// `DISTINCT`, a grouping, a window, a set operation, an `ORDER BY` whose key the
+    /// select list also names (sorted above the projection) — leaves `None`, since the
+    /// calls' count there would not be the rows' count. (An `ORDER BY` over input columns
+    /// alone sorts the input, below the `Project`: each row is projected once, in the
+    /// sorted order — as 18.6 evaluates a volatile select-list item, after the sort.)
     ///
-    /// The one position the call answers in: [`Self::takes_writer`] reads this, so the
-    /// host takes the writer before the statement runs, and the executor's `Plan::Values`
-    /// arm evaluates the call on the projection path. A call anywhere else is reached by
-    /// the ordinary evaluator, where a non-NULL one is `0A000` because nothing took the
-    /// writer for it.
+    /// **Read through the nodes the statement executor forwards to**, and only those: a
+    /// materialized `WITH`'s body and a locking clause's input, which
+    /// `executor::execute_with_storage` runs as a statement of their own — so its advisory
+    /// arm, dispatched on the node it reaches, and [`Self::takes_writer`], asked of the
+    /// root, read one answer. A node forwarded to elsewhere (a CTE's entry, a subquery, a
+    /// join's side) runs through the ordinary query path, where the call is refused.
     #[must_use]
-    pub fn is_advisory_lock_projection(&self) -> bool {
-        matches!(self, Self::Values { rows, .. }
-            if rows.len() == 1
-                && rows[0].iter().any(|e| e.as_advisory_lock().is_some()))
+    pub fn advisory_projection_items(&self) -> Option<&[Expr]> {
+        match self {
+            Self::Values { rows, .. } if rows.len() == 1 => Some(&rows[0]),
+            Self::Project { exprs, .. } => Some(exprs),
+            Self::With { body, .. } => body.advisory_projection_items(),
+            Self::LockRows { input } => input.advisory_projection_items(),
+            _ => None,
+        }
+    }
+
+    /// Whether this statement's own projection ([`Self::advisory_projection_items`])
+    /// carries a top-level advisory call — `pg_advisory_xact_lock`, `pg_advisory_lock`,
+    /// `pg_advisory_unlock` or `pg_advisory_unlock_all`, bare or aliased.
+    ///
+    /// The one position those calls answer in: the executor runs such a plan with the
+    /// session's holds, so it is not read-only ([`Self::is_read_only`]); a locking call
+    /// makes the host take the writer before it runs ([`Self::takes_writer`]). A call
+    /// anywhere else is reached by the ordinary evaluator, where a non-NULL one is
+    /// `0A000` because nothing took the writer or holds the session's locks for it.
+    #[must_use]
+    pub fn is_advisory_projection(&self) -> bool {
+        self.advisory_projection_items()
+            .is_some_and(|items| items.iter().any(|e| e.as_advisory_call().is_some()))
+    }
+
+    /// Whether this statement's own projection takes an advisory lock — the writer
+    /// ([`Self::takes_writer`]).
+    fn takes_advisory_lock(&self) -> bool {
+        self.advisory_projection_items()
+            .is_some_and(|items| items.iter().any(crate::executor::advisory::is_locking_call))
+    }
+
+    /// Whether this statement's own projection takes a transaction-level advisory lock
+    /// (`pg_advisory_xact_lock`), which is the block's writer to its end.
+    fn takes_xact_advisory_lock(&self) -> bool {
+        self.advisory_projection_items().is_some_and(|items| {
+            items
+                .iter()
+                .any(|e| matches!(e.as_advisory_call(), Some((AdvisoryFunc::XactLock, _))))
+        })
+    }
+
+    /// Whether a **block** running this statement takes the writer *as the block's* — the
+    /// re-base a block's first write makes (`pglet::TransactionSession::take_writer`) and
+    /// the hold to the block's end. Every statement
+    /// [`Self::takes_writer`] answers for but one whose only claim on the writer is a
+    /// session-level `pg_advisory_lock`: that lock is the **session's** hold, kept by the
+    /// connection past the block and given back at its last unlock — mid-block included,
+    /// as 18.6 releases it there — and the block takes the writer as its own only at a
+    /// later write, re-basing then while the session's hold keeps anything from
+    /// committing in between. (A `REPEATABLE READ` block's snapshot is still taken at the
+    /// lock's statement where it is the block's first, as at a write's: the hold keeps the
+    /// stamp from moving before the write, so the write meets no `40001` the lock did not.)
+    #[must_use]
+    pub fn block_takes_writer(&self) -> bool {
+        self.mutates_storage()
+            || matches!(self, Self::LockRows { .. })
+            || self.takes_xact_advisory_lock()
     }
 
     /// Whether this sequence projection advances a counter (any top-level
@@ -3696,13 +3756,12 @@ impl Plan {
             // A top-level sequence-function projection (`SELECT nextval/currval/
             // setval(...)`) is NOT read-only: it must run with `&mut Schema` + the
             // per-session state on the write path, never on a throwaway MVCC-snapshot
-            // clone (which would advance a discarded sequence). A top-level
-            // `pg_advisory_xact_lock` projection is not read-only either: it takes the
-            // writer, which the lock-free path never does. A plain no-FROM `VALUES` is
-            // read-only as before.
-            Self::Values { .. } => {
-                !self.is_sequence_projection() && !self.is_advisory_lock_projection()
-            }
+            // clone (which would advance a discarded sequence). An advisory projection is
+            // not read-only either: it reads and moves the session's holds, and a locking
+            // one takes the writer, which the lock-free path never does. A plain no-FROM
+            // `VALUES` is read-only as before.
+            Self::Values { .. } => !self.is_sequence_projection() && !self.is_advisory_projection(),
+            Self::Project { .. } if self.is_advisory_projection() => false,
             // Pure read operations
             Self::Scan { .. }
             | Self::VirtualScan { .. }
@@ -3857,9 +3916,10 @@ impl Plan {
     /// end — before it runs: every statement that stages a write or writes the catalog
     /// ([`Self::mutates_storage`], a `nextval`/`setval` projection and a `DO` block
     /// among them), a read carrying a row-locking clause ([`Plan::LockRows`]), which
-    /// on 18.6 holds a row lock the rest of the block writes under, and a top-level
-    /// `pg_advisory_xact_lock` projection ([`Self::is_advisory_lock_projection`]), whose
-    /// lock the writer is.
+    /// on 18.6 holds a row lock the rest of the block writes under, and a projection
+    /// taking an advisory lock (`pg_advisory_xact_lock` or `pg_advisory_lock` among
+    /// [`Self::advisory_projection_items`]), whose lock the writer is — a session-level
+    /// one's held by the session past the block, while it holds any.
     ///
     /// A host asks it before the statement stages anything. An auto-commit statement
     /// takes the writer for its own duration when it stages a write. An auto-commit
@@ -3874,7 +3934,7 @@ impl Plan {
     pub fn takes_writer(&self) -> bool {
         self.mutates_storage()
             || matches!(self, Self::LockRows { .. })
-            || self.is_advisory_lock_projection()
+            || self.takes_advisory_lock()
     }
 
     /// Whether executing this plan writes data or schema to storage.

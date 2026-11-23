@@ -44,10 +44,18 @@ here and not a stopgap.
 **The writer is held for a whole block.** At most one connection's block stages writes at
 a time. A block takes **the writer** at its first write (DML, DDL, `COPY … FROM`, `DO`, a
 `nextval`/`setval`, a `SELECT … FOR UPDATE`/`SHARE`) or at its first
-`pg_advisory_xact_lock`, whose lock is the writer (`EDGES.md` row 250). It holds it until
-the block ends: `COMMIT`, `ROLLBACK`, a disconnect, a failed-store reopen, or an embedded
-`Database` being dropped. An autocommit write or `pg_advisory_xact_lock` holds it for its
-own statement, and any other read takes it only to lock rows. A host's own change while a
+`pg_advisory_xact_lock`, whose lock is the writer (`EDGES.md` row 250).
+It holds it until the block ends: `COMMIT`, `ROLLBACK`, a disconnect, a failed-store reopen,
+or an embedded `Database` being dropped. An autocommit write or `pg_advisory_xact_lock`
+holds it for its own statement, and any other read takes it only to lock rows. **A
+session-level advisory lock holds it for the session**: while a session holds any
+(`pg_advisory_lock`, stacked per call), it keeps the writer past its statements and its
+blocks — a rollback does not give it back — until its last `pg_advisory_unlock`,
+`pg_advisory_unlock_all()`, `DISCARD ALL` or its end (`Connection::settle_writer`, the
+embedded `Database`'s `advisory_holder`). That hold is the session's, not a block's: a
+`pg_advisory_lock` inside a block re-bases nothing, the block taking the writer as its own
+(and re-basing) only at its first write, so a block that locked and unlocked without
+writing gives the writer back at the unlock (`Plan::block_takes_writer`). A host's own change while a
 block is open takes it too (`Database::schema_mut`, `storage_mut`,
 `reattach_persisted_indexes`) and counts as the block's: the block's rollback takes back a
 `schema_mut` change along with its own. `Database::copy_in` takes it as the `COPY … FROM`

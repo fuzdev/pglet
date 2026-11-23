@@ -1,8 +1,9 @@
 /**
  * kysely's `Migrator` end to end on the wasm leg, unstubbed: its introspector's
  * `getTables` query (`col_description`, `pg_get_serial_sequence` over `quote_ident`-built
- * names, `has_schema_privilege`, `nspname !~ $1`) and its migration lock
- * (`pg_advisory_xact_lock`) run on the engine as kysely issues them.
+ * names, `has_schema_privilege`, `nspname !~ $1`) and its migration lock (kysely 0.28's
+ * `pg_advisory_lock` over a `set_config('lock_timeout', …)` CTE, and `pg_advisory_unlock`)
+ * run on the engine as kysely issues them.
  */
 import {test} from 'vitest';
 import {assert_equal} from '../lib/assert.ts';

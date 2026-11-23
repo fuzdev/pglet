@@ -224,6 +224,11 @@ where
     F: Fn(&Schema) -> pglet_sql::Result<Cow<'c, Plan>>,
 {
     let outcome = run_one_locked(conn, env, &resolve);
+    // The `set_config('lock_timeout', …)` assignments the statement evaluated, kept only
+    // when it succeeded — a failed one's are taken back with it, as 18.6's are.
+    if outcome.is_ok() {
+        conn.settings.absorb_set_config();
+    }
     conn.settle_writer();
     outcome.map_err(|e| format_error(conn, &e, protocol))
 }
@@ -327,7 +332,14 @@ where
     // The writer, before anything stages — waited for with no guard and no snapshot
     // held. A statement already on a block that holds it takes nothing.
     let takes_writer = planned.takes_writer();
-    // A statement the block runs takes its snapshot, the first fixing its isolation level.
+    // Whether the block takes it as its own (`Plan::block_takes_writer`): a statement whose
+    // only claim is a session-level advisory lock holds it for the session alone, and the
+    // block re-bases at its first real write, under that hold.
+    let block_takes_writer = planned.block_takes_writer();
+    // A statement the block runs takes its snapshot, the first fixing its isolation level
+    // — at this moment for one that takes the writer, a session-level advisory lock's
+    // included: from the lock on, the session's hold keeps anything from committing before
+    // the block's first write, so the lock's stamp is that write's snapshot too.
     if in_block && !planned.is_transaction_control() {
         conn.tx.note_snapshot(
             conn_id,
@@ -340,7 +352,7 @@ where
     }
 
     let (mut schema, mut storage) = conn.shared.lock_both();
-    if takes_writer && in_block && !conn.tx.holds_writer() {
+    if block_takes_writer && in_block && !conn.tx.holds_writer() {
         // Nothing is staged yet: every frame the block holds is re-based on what is
         // committed now, which the writer keeps from moving under it — or, for a
         // `REPEATABLE READ` / `SERIALIZABLE` block something committed past, the write is
@@ -353,7 +365,8 @@ where
             .take_writer(conn_id, uses_snapshot, &schema, &mut storage)
         {
             drop((schema, storage));
-            conn.shared.writer.release(conn_id);
+            // A session-level advisory lock the session holds keeps the writer.
+            conn.settle_writer();
             return Err(e);
         }
     }
@@ -702,6 +715,9 @@ pub fn execute_query_core(
         ) {
             match outcome {
                 Ok(result) => {
+                    // `DISCARD ALL` gives back every session-level advisory lock, and
+                    // with the last the writer they held.
+                    conn.settle_writer();
                     messages.extend(format_result_no_ready(
                         &result,
                         &result.command_tag,

@@ -176,7 +176,8 @@ inside a table.
 | 228 | a write — an `INSERT`, a `nextval`, any statement that takes the writer — whose target no other connection touches, while another connection's block has written; on the native server | waits for that block to end; past `lock_timeout` (pglet's default `1s`) `55P03 canceling statement due to lock timeout` | runs at once: only a conflicting row, relation or key waits | loud past the bound; a delay within it | `test_concurrent`'s `every writing door waits` (a `nextval` of a sequence the block never touched) | One writer serializes unrelated writes |
 | 229 | on one embedded `Database`, another logical connection's write while a block holds the writer, an unrelated table's included, and its statement whose plan fails because of a catalog change that block made | `55P03` at once, the block untouched; a plan failing on the block's change answers `55P03` in place of its own error | the write runs where nothing conflicts, else waits; a plan waits on a relation the block's DDL locked (by the lock model) | loud | `writer.rs`'s `another_connections_write_is_refused_only_while_a_block_holds_the_writer`, `a_plan_failing_against_the_writers_uncommitted_catalog_is_refused_55p03` and `…_copy_column_list_…`; `a_plans_own_failure_is_answered_behind_another_blocks_catalog_change` pins the accept side | cannot make a statement wait for another |
 | 230 | a block that wrote and then failed a statement — with no savepoint open, or inside a savepoint it then rolls back to — beside another connection's write | the other write waits until the block ends — `ROLLBACK`, a converted `COMMIT`, a disconnect; not a `ROLLBACK TO` — and answers `55P03` past the bound | a failed transaction releases its locks at the error, and a failed subtransaction the locks it took: the other write runs at once, a key written only inside the aborted savepoint included | loud past the bound; a delay within it | `test_concurrent`'s `an aborted block holds the writer until it ends`, which pins pglet's answer | An aborted block holds the writer until it ends |
-| 250 | `pg_advisory_xact_lock`, whose lock is the writer | another key, a write and a `NULL`-argument call wait; `ROLLBACK TO`, an error do not release; a multi-statement `Query` or a pipeline **releases at the statement**; off a top-level no-`FROM` item `0A000`/`42601` | only the same key waits; released at `ROLLBACK TO`, at the error, and at the message's or `Sync`'s end; answers anywhere | loud past the bound; **silent** where it releases early | `test_concurrent`'s `pg_advisory_xact_lock is the writer`; `functions/advisory_xact_lock_per_row_loud.sql` | The advisory lock is the writer |
+| 250 | the advisory locks, whose lock is the writer — `pg_advisory_xact_lock`, and `pg_advisory_lock`, which the session holds past its block | another key, a write and a `NULL`-argument call wait; `ROLLBACK TO`, an error do not release; a multi-statement `Query` or a pipeline **releases at the statement**; off the statement's own projection `0A000`/`42601`; `try` forms `0A000` | only the same key waits; released at `ROLLBACK TO`, at the error, and at the message's or `Sync`'s end; answers anywhere; the `try` forms answer | loud past the bound; **silent** where it releases early | `test_concurrent`'s `pg_advisory_xact_lock is the writer` and `pg_advisory_lock is the writer, held by the session`; `crates/pglet`'s `an_advisory_session_lock_is_the_writer_and_the_sessions`; `functions/advisory_unlock_under_limit_loud.sql` | The advisory lock is the writer |
+| 329 | `set_config('lock_timeout', …)` in a statement that waits for the writer — kysely 0.28's migration lock, `with set_timeout as (select set_config('lock_timeout', '3600000', true) …) select pg_advisory_lock(…) from set_timeout`; on the native server | the wait is bounded by the `lock_timeout` in force when the statement starts (pglet's default `1s`), the assignment applying from the call on | the assignment bounds the lock call evaluated after it (an hour) | loud — `55P03` sooner than 18.6 would answer it | — none; a fixture cannot script the second connection | A statement's own `lock_timeout` does not bound its wait |
 | 251 | a POSIX-regex `~` / `!~` whose pattern is not `^` followed by literal characters; `~*` / `!~*`; a `char(n)` operand | `0A000` for the first — a malformed pattern included; `42883` for `~*` / `!~*`; the unpadded answer | a match, or `2201B` for a malformed pattern; `~*` / `!~*` answer; the padded answer | loud; **silent** over `char(n)` (row 95) | `functions/regex_*_loud.sql`, which pin pglet's refusals | The regex operators answer an anchored literal prefix |
 | 252 | `pg_get_serial_sequence` over a catalog relation, an index, or a column owning more than one sequence; `has_schema_privilege` over `pg_toast`, a role or an `oid`; a mistyped argument of the new catalog functions over no rows | `0A000`; `3F000`; `0A000`; no rows | an answer; `t`; `t`; `42883` | loud; the empty answer and a `col_description` rendering silent | `functions/has_schema_privilege_role_overload_loud.sql` | The catalog functions answer a narrower set |
 | 314 | a sequence an identity column owns beside its own — a `SERIAL`'s, left when the column was made an identity column, or one attached by `OWNED BY` | absent from `information_schema.sequences`; `nextval` over it answers | listed | **silent** — a catalog view short of a sequence that exists | — a faithful fixture is red | hides every sequence an identity column owns |
@@ -237,7 +238,7 @@ inside a table.
 | 175 | a multi-statement simple `Query` whose later statement fails 18.6's raw parse — `INSERT …; SELECT 1 1`, `…; SELECT (`, `BEGIN; INSERT …; COMMIT; SELECT 1 1` | runs and commits the statements before it, then answers the `42601` | raw-parses the whole string first: runs nothing, keeps no row | **silent** — a write 18.6 never makes | — none; a fixture's `@test` is one statement | raw-parsed whole on 18.6 |
 | 141 | an **extended-protocol pipeline** with no open block — `Parse`/`Bind`/`Execute` messages up to one `Sync` — whose `Execute`s write | each `Execute` commits on its own: an earlier write stays when a later message fails or a later `BEGIN … ROLLBACK` runs, and a statement that refuses a transaction block runs | a later error or `BEGIN … ROLLBACK` in the same pipeline undoes the earlier write unless a `COMMIT` came between, and once an `Execute` has completed a later `CREATE INDEX CONCURRENTLY` or `DISCARD ALL` is `25001` | silent | — nothing pins it; `handlers.rs`'s `an_error_at_any_extended_phase_fails_an_open_transaction_block` covers the explicit block only | An extended-protocol pipeline is not one transaction |
 | 236 | `SET application_name` inside a block that the block's `ROLLBACK` then ends | the value stands: `SHOW application_name` answers the rolled-back value, and no `ParameterStatus` reports a change back | the rollback puts the value back and reports it again in a `ParameterStatus` (by the source, not run) | silent | — none; a single-connection fixture could hold it, and would be red | `application_name` is not transactional |
-| 69 | a parameter whose value pglet holds fixed — `TimeZone`, `DateStyle`, `IntervalStyle`, `standard_conforming_strings` — set to another value by `SET`, `SET TIME ZONE`, `set_config` or the startup packet; `set_config` of `application_name` or `lock_timeout` | `0A000`, the value unchanged; the value pglet has is accepted | the new value, honored and announced by `ParameterStatus` | loud — the accepted-and-ignored half is closed; the bullet's tail holds what is still silent | `commands/set_time_zone_*`, `set_timezone_*`, `set_datestyle_*`, `set_intervalstyle_*`, `set_standard_conforming_strings_*`, `set_config_*`; `catalog::commands`' `a_fixed_parameter_takes_only_the_value_pglet_has` | A parameter's value is fixed, and a `SET` that moves it is refused |
+| 69 | a parameter whose value pglet holds fixed — `TimeZone`, `DateStyle`, `IntervalStyle`, `standard_conforming_strings` — set to another value by `SET`, `SET TIME ZONE`, `set_config` or the startup packet; `set_config` of `application_name` | `0A000`, the value unchanged; the value pglet has is accepted | the new value, honored and announced by `ParameterStatus` | loud — the accepted-and-ignored half is closed; the bullet's tail holds what is still silent | `commands/set_time_zone_*`, `set_timezone_*`, `set_datestyle_*`, `set_intervalstyle_*`, `set_standard_conforming_strings_*`, `set_config_*`; `catalog::commands`' `a_fixed_parameter_takes_only_the_value_pglet_has` | A parameter's value is fixed, and a `SET` that moves it is refused |
 | 70 | `set_config` whose **setting name** is not a literal string (`'search' \|\| '_path'`, `lower('SEARCH_PATH')`, `$N`), a checked GUC's value the planner cannot read, and expressions 18.6 never evaluates | `0A000` | accepted, and the GUC is set | loud (pglet-stricter) | `commands/set_config_computed_setting_name.sql`; the `$N` and never-evaluated halves have none | `set_config` reads its setting name as a literal |
 | 132 | `COPY … FROM STDIN` text holding `\.` after other data on its line — measured in a data field, on a `HEADER` line and as a field past the table's last column | takes `\.` as the marker only at a line's start, so a later one goes where the rest of its line goes and pglet answers what that line earns | `22P04 end-of-copy marker is not alone on its line`, no row, at each member measured | **silent** at some members, where pglet answers with no error; **loud** at others, where pglet refuses, under `22P02` or `22P04` among those measured — the bullet's table | — a `copy/` fixture would be red where pglet answers or refuses under another code, and compares only the SQLSTATE where pglet refuses under `22P04` | a marker after data on its line |
 | 134 | `COPY … FROM STDIN` text whose lines do not all end alike, or end in a bare CR — measured at data lines, after a `HEADER` line and at the end-of-copy marker | splits on LF alone and strips one trailing CR from each piece, so no line's ending is compared with another's and a CR elsewhere stays in the data; pglet answers what those pieces earn | reads the first line's ending as the input's style and refuses a later line or marker ending otherwise with `22P04`; a bare CR ends a line | **silent** at some members, answering with no error where 18.6 refuses or loads other rows; **loud** at others, refusing where 18.6 loads or refuses under another code — the bullet's table | — a `copy/` fixture would be red at each member measured | line endings pglet does not compare |
@@ -7623,21 +7624,86 @@ inside a table.
   Elsewhere nothing measured releases earlier than 18.6 does. On the embedded `Database` B's
   calls are refused `55P03` at once instead of waiting (row 229).
 
-  **Where the call answers.** Only as a top-level item — bare or aliased — of a `SELECT` with
-  no `FROM` (`Plan::is_advisory_lock_projection`), the position a host takes the writer for;
-  a non-NULL call anywhere else reaches the ordinary evaluator and is `0A000
-  pg_advisory_xact_lock is supported only as a top-level item of a SELECT with no FROM`, since
-  answering there would report a lock nothing took. Measured `0A000` here where 18.6 answers:
-  `SELECT pg_advisory_xact_lock(a) FROM t` (a lock per row), `SELECT pg_advisory_xact_lock(1)
-  FROM (VALUES (1)) v(x)`, `… LIMIT 1`, a scalar subquery, a CTE body, `… || 'x'` (`x` on
-  18.6), and a `CHECK` / `DEFAULT` holding the call, which `CREATE TABLE` refuses at its
-  probe. `SELECT DISTINCT pg_advisory_xact_lock(1)` and `pg_advisory_xact_lock(1) =
-  pg_advisory_xact_lock(1)` are `0A000` here against 18.6's `42883` (`void` has no equality
-  operator). In `FROM` the call is a syntax error before anything else: `SELECT * FROM
-  pg_advisory_xact_lock(1)` is `42601` here, pglet's grammar taking no function in `FROM`
-  but `unnest` and the integer `generate_series` (row 321), and one row holding an empty
-  `void` on 18.6 (measured). A NULL-argument call nested anywhere answers NULL on both, since neither takes
-  a lock for it.
+  **The session-level lock is the same writer, held by the session.** `pg_advisory_lock(bigint)`
+  and `pg_advisory_lock(int4, int4)` take the writer as the transaction-level call does, and
+  the session keeps it past its statement and its block while it holds any session-level
+  lock: an idle session holding one keeps the writer (`Connection::settle_writer` on the
+  native server, the embedded `Database`'s `advisory_holder`). Each call stacks one hold of
+  its key and each `pg_advisory_unlock` gives one back, `false` with 18.6's `WARNING 01000
+  you don't own a lock of type ExclusiveLock` where the session holds none of that key — a
+  transaction-level hold included, which no unlock gives back on 18.6 either; the two key
+  forms are separate keys (`pg_advisory_lock(1)` and `(0, 1)`). The writer goes back with
+  the last hold, at `pg_advisory_unlock_all()`, `DISCARD ALL` and the session's end, and
+  not at a `ROLLBACK`, a `ROLLBACK TO` or an error, as on 18.6. Measured over two
+  connections against 18.6, agreeing: a second connection's call of the held key, and its
+  `pg_advisory_xact_lock` of it, wait and answer `55P03` past a short `lock_timeout`; its
+  unlock of the key answers `false`; the holder's `ROLLBACK` keeps it; one unlock per hold
+  then releases it, and so do `DISCARD ALL` and the holder's disconnect. They differ where
+  the transaction-level call does: the second connection's call of **another** key, and
+  its unrelated `INSERT`, wait (`55P03`) where 18.6 grants both — for as long as the holder
+  holds the lock, idle or not, which makes a session-level lock a longer hold of the one
+  writer than a block's. **A lock taken inside a block is the session's hold, not the
+  block's** (`Plan::block_takes_writer`): the call takes the writer for the session alone,
+  and the block takes it as its own — re-basing its frames — only at a later real write,
+  while the session's hold keeps anything from committing in between. So `BEGIN; SELECT pg_advisory_lock(5); SELECT
+  pg_advisory_unlock(5)` gives the writer back at the unlock, and a second connection's
+  `pg_advisory_lock(5)` is granted there, inside the block, as on 18.7 (measured); a block
+  that locked and then wrote keeps the writer to its end, as its write would. A
+  `REPEATABLE READ` block another connection committed past takes the lock without `40001`,
+  as on 18.7 (measured). Where the lock's statement is the block's first that takes a
+  snapshot, the snapshot is taken there, as on 18.7, and the hold keeps the stamp from
+  moving to the block's first write, so that write meets no `40001` either
+  (`BEGIN ISOLATION LEVEL REPEATABLE READ`, B commits, A locks, A writes — accepted on
+  both, measured on 18.7). Where an earlier read took the snapshot and another connection
+  committed after it, the write after the lock is row 232's coarse refusal, as it is
+  without the lock. `pg_advisory_xact_lock` is still the block's writer at the call, so there it is
+  refused `40001` where 18.7 grants it — row 232's refusal, reached through the lock.
+  Taking the writer this way adds no wait: it is still the one waitable resource, taken
+  with no guard held (two blocks each locking a key and then writing contend on it, the
+  second `55P03` at its lock past its bound, where 18.7 grants both). On the embedded `Database` another logical connection's lock or
+  write is refused `55P03` at once (row 229), and its unlock answers `false`, the holder's
+  holds parked out of its way. `pg_advisory_unlock` takes no writer. Its `WARNING` reaches
+  native-server clients only: the embedded `Database` returns it on `QueryResult::notices`,
+  and the npm package's `query` surfaces no notices at all, so a wasm client sees the
+  `false` alone. The `try` forms
+  (`pg_try_advisory_lock`, `pg_try_advisory_xact_lock`) stay `0A000`: a host takes the
+  writer before the statement runs, so no call can answer that it was not granted.
+
+  **Where the call answers.** Only as a top-level item — bare or aliased — of the
+  statement's own projection (`Plan::advisory_projection_items`): a `SELECT` with no `FROM`,
+  or a `Project` at the plan's root over any `FROM`, `WHERE` and `WITH` — kysely 0.28's
+  `with set_timeout as (…) select pg_advisory_lock(…) from set_timeout` among them —
+  evaluated once per row the input produces, in row order, so a call over `n` rows takes
+  `n` holds as 18.6's does (`functions/advisory_lock_per_row.sql`,
+  `functions/advisory_xact_lock_per_row.sql`). An `ORDER BY` over input columns alone
+  sorts below the projection, so its rows are projected in the sorted order — as 18.7
+  evaluates a volatile select-list item, after the sort (measured: `SELECT nextval('s')
+  FROM t ORDER BY a DESC` answers `1, 2, 3` in output order;
+  `functions/advisory_unlock_after_the_sort.sql`). A locking clause's input is the
+  statement's projection too: `SELECT pg_advisory_lock(a) FROM t FOR UPDATE` answers once
+  per row, as on 18.7, its writer taken for the clause. A `WITH RECURSIVE`'s body is the
+  statement's projection as well — the predicate reads through the nodes the statement
+  executor forwards to, so the writer and the call's answer are decided by one reading. A
+  body beside a **data-modifying** CTE is not reached: the parser refuses any body that is
+  not read-only there (`Parser::wrap_with_ctes`), and an advisory projection is not, so
+  `WITH d AS (DELETE FROM t RETURNING a) SELECT pg_advisory_lock(a) FROM d` (or
+  `pg_advisory_unlock`) is `0A000 an advisory-lock call, after data-modifying WITH query
+  "d"` here, where 18.7 answers per row (measured;
+  `functions/advisory_lock_beside_a_data_modifying_cte_loud.sql`). Every other position reaches the ordinary evaluator
+  and a non-NULL call there is `0A000 <name> is supported only as a top-level item of the
+  statement's own SELECT list, …`, since answering there would report a lock nothing took.
+  Measured `0A000` here where 18.6 answers: a node above the projection — `… LIMIT 1`
+  (`functions/advisory_unlock_under_limit_loud.sql`), `DISTINCT`, an `ORDER BY` key the
+  select list also names, a grouping — a scalar subquery, a CTE's entry (its own
+  projection is not the statement's), `… || 'x'` (`x` on 18.6), `pg_advisory_unlock(1) IS
+  NULL`, and a `CHECK` / `DEFAULT` holding the call, which `CREATE TABLE` refuses at its
+  probe. `SELECT pg_advisory_xact_lock(1) = pg_advisory_xact_lock(1)` is `0A000` here
+  against 18.6's `42883` (`void` has no equality operator). In `FROM` the call is a syntax
+  error before anything else: `SELECT * FROM pg_advisory_xact_lock(1)` is `42601` here,
+  pglet's grammar taking no function in `FROM` but `unnest` and the integer
+  `generate_series` (row 321), and one row holding an empty `void` on 18.6 (measured). A
+  no-`FROM` `SELECT … WHERE` is `42601` here (row 296). A NULL-argument call nested
+  anywhere answers NULL on both, since neither takes a lock for it.
 
   **Argument checks run on the values**, as the rest of `Expr::StringFn`'s family's do, for
   this function and `col_description` alike: a mistyped call over no rows answers nothing
@@ -7649,10 +7715,29 @@ inside a table.
   `col_description('t'::regclass, 1)`, pglet's `::regclass` answering the relation's name as
   `text` (row 85), where 18.6 answers the column's comment or NULL.
 
-  `functions/advisory_xact_lock_per_row_loud.sql` pins the per-row refusal and
-  `test_concurrent`'s `pg_advisory_xact_lock is the writer` pins the other-key wait, both as
-  pglet's answer rather than 18.6's; no fixture can script the second connection the rest
-  needs (tests/README.md § Transaction isolation).
+  `functions/advisory_unlock_under_limit_loud.sql` pins the refusal under a `LIMIT`, and
+  `test_concurrent`'s `pg_advisory_xact_lock is the writer` and `pg_advisory_lock is the
+  writer, held by the session` pin the other-key wait, as pglet's answer rather than
+  18.6's; no fixture can script the second connection the rest needs (tests/README.md
+  § Transaction isolation). The single-connection answers — stacking, `false` for a key not
+  held, kysely's two calls — are fixtures (`functions/advisory_lock_*.sql`,
+  `functions/advisory_unlock_not_held.sql`).
+
+- **329 · A statement's own `lock_timeout` does not bound its wait.** A statement that
+  takes the writer waits for it before it runs, so the wait is bounded by the `lock_timeout`
+  in force as the statement starts; a `set_config('lock_timeout', …)` the statement itself
+  evaluates applies from the call on — to a `current_setting` after it, and, kept, to the
+  statements after it — and not to that wait. On 18.6 the lock is taken where the call is
+  evaluated, after the assignment ahead of it, so kysely 0.28's migration lock (`with
+  set_timeout as (select set_config('lock_timeout', '3600000', true) as config_val) select
+  pg_advisory_lock(3853314791062309107) from set_timeout`) waits up to an hour there and up
+  to pglet's default `1s` here (the server's `--lock-timeout`, a startup `lock_timeout` or a
+  `SET` before it move that). A second migrator against a native server whose first
+  migration runs longer than the bound is `55P03` where 18.6 waits. Loud. Only the native
+  server reaches it: the embedded `Database` never waits (row 229), and the npm package is
+  one connection. Closing it would mean reading the statement's assignments ahead of its
+  wait, which a plan cannot do in general (a computed value, a call a row never reaches).
+  No fixture can script the second connection.
 
 - **251 · The regex operators answer an anchored literal prefix.** `~` and `!~` resolve
   over the string types as 18.6's do (`text`, `varchar`, `name` on the left, a `text` on the
@@ -7806,7 +7891,10 @@ inside a table.
   'LATIN1', false)` are `0A000` here and `42704` there, and `set_config(' application_name ',
   'x', false)` answers `x` here, `42704` there (all measured). Loud but for `SET "names" 'UTF8'`,
   `"NAMES"` and a padded undecided name, which are silent — row 67's accept of a name 18.6 does not have. The
-  `SET NAMES` form is read off the folded name, not the unquoted keyword. No fixture.
+  `SET NAMES` form is read off the folded name, not the unquoted keyword. `lock_timeout`, the
+  one name `set_config` assigns, is matched unpadded: `set_config(' lock_timeout', '7s',
+  false)` is `42704 unrecognized configuration parameter " lock_timeout"` on both (measured
+  on 18.7; the planner's `set_config_moves_lock_timeout_where_it_is_evaluated`). No fixture.
 
 - **258 · An `application_name` is stored as given.** 18.6 stores it as its
   `check_application_name` does: truncated to at most 63 bytes, at a character boundary, as a
@@ -7885,7 +7973,12 @@ inside a table.
   lock_timeout`, `SHOW transaction_isolation`, `SAVEPOINT s`, A's own `SELECT nextval(…)` or a
   writing `DO` block run first — the last two being A's first write — `50` on both engines
   (measured, npm `pg`, the in-memory B+tree and `--storage memory`). Where nothing moved
-  the stamp, the block writes and commits as it would at `READ COMMITTED`.
+  the stamp, the block writes and commits as it would at `READ COMMITTED`. A
+  `pg_advisory_xact_lock` is a first write here (it is the block's writer); a
+  session-level `pg_advisory_lock` is not, so it is granted past a moved stamp, as on 18.7;
+  where it is the block's first snapshot-taking statement it takes the snapshot, and its
+  hold keeps the stamp still to the block's first write, which is then accepted — a later
+  write is refused only where an earlier read's snapshot was passed (row 250).
 
   On `--storage memory`, which keeps no snapshot, A's second read in the first member is
   `5`, where the B+tree and 18.6 read `0`; the refusal and the final value are the
@@ -13084,8 +13177,11 @@ inside a table.
   `ROLLBACK TO` it (`writer.rs`'s `the_settings_pglet_acts_on_are_transactional`, embedded;
   18.6's side read in `guc.c`, not run). The server's `--lock-timeout`
   and the embed's `Database::set_default_lock_timeout` move the default. `set_config`
-  cannot set it at all: `set_config('lock_timeout', '5s', false)` is refused `0A000 not
-  implemented: set_config cannot set lock_timeout; use SET` (row 69). The default is
+  sets it as `SET` (`is_local` false) and `SET LOCAL` do, where the call is evaluated, and
+  answers it as `SHOW` renders it (`'3600000'` answers `1h`); a local one outside a block
+  lasts for its statement, a failed statement's is taken back, and a DDL statement's
+  probe of a stored expression keeps none (`commands/set_config_lock_timeout*.sql`). It
+  does not bound the wait of the statement that evaluates it (row 329). The default is
   pglet's `1s`, where 18.6's `0` waits without a bound — deliberately, so a block left open
   by a client that went quiet fails the next writer loudly instead of hanging it. A
   `CancelRequest` during a writer wait is ignored like any other, and the cancelled write
@@ -13110,7 +13206,11 @@ inside a table.
   block `READ COMMITTED` (measured) — silent: a later wait uses the value, and the next
   block runs `SERIALIZABLE`, under row 232's refusals. The settings are transactional
   only within an explicit block (`SessionSettings`), which a `Query` of its own does not
-  open. A later statement that fails 18.6's **raw parse** is a different
+  open. The same holds for a **local** assignment, the other way round: `SET LOCAL
+  lock_timeout = '6s'; SHOW lock_timeout` or `SELECT set_config('lock_timeout', '5s',
+  true); SHOW lock_timeout` as one `Query` answers `6s` / `5s` on 18.6, the implicit block
+  lasting to the message's end (measured on 18.7), and `1s` here, each statement its own
+  transaction — silent. A later statement that fails 18.6's **raw parse** is a different
   mechanism — 18.6 runs no statement of the message at all, an explicit `COMMIT` before it
   included — and is row 175.
 - **141 · An extended-protocol pipeline is not one transaction.** pglet commits each
@@ -13171,7 +13271,7 @@ inside a table.
   | `SET DateStyle = 'MDY, ISO'`, `'US'`, `'ISO, US'`, `'NonEuropean'`, `'DEFAULT'`, `' ISO , MDY '`, `'ISO, ISO'` | `0A000` | `SET`; `SHOW` answers `ISO, MDY` |
   | `SET DateStyle = 'ISO', 'MDY'` and `"ISO", "MDY"` (a list of quoted elements) | `0A000` | `SET`; `SHOW` answers `ISO, MDY` |
   | `set_config('timezone', 'U' \|\| 'TC', false)` (a value that is not a literal) | `0A000` | `UTC` |
-  | `set_config('application_name', 'zz', false)`, `set_config('lock_timeout', '5s', false)` | `0A000 set_config cannot set <name>; use SET` | the setting moved, and `SHOW` answers it |
+  | `set_config('application_name', 'zz', false)` | `0A000 set_config cannot set application_name; use SET` | the setting moved, and `SHOW` answers it |
 
   The first row is deliberate rather than a missing spelling: 18.6 shows a zero-offset zone
   under its own name, pglet's `SHOW` answers `UTC`, and accepting one would put back the

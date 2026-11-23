@@ -1598,6 +1598,287 @@ async fn test_advisory_xact_lock_is_the_writer() -> Result<(), Box<dyn std::erro
     Ok(())
 }
 
+/// `pg_advisory_lock` **is the writer, held by the session**: an autocommit call keeps
+/// it past its statement and a block's past its `ROLLBACK`, so a second connection's call
+/// of the key — session-level or transaction-level — waits and, under a short
+/// `lock_timeout`, answers `55P03`; another connection's unlock gives back nothing of it
+/// (`false`); holds stack, and the writer goes back with the last unlock, `DISCARD ALL`,
+/// or the holder's disconnect. Each is 18.6's answer for one key (measured over two
+/// connections). The cost the one writer carries — another key and an unrelated write
+/// contend, where 18.6 grants both at once — is pinned too, so a per-key lock turns it red
+/// on purpose (the repo's `EDGES.md` row 250).
+async fn test_advisory_session_lock_is_the_writer() -> Result<(), Box<dyn std::error::Error>> {
+    let a = connect().await;
+    let hurried = connect().await;
+    exec(&hurried, "SET lock_timeout = '200ms'").await;
+    exec(&a, "DROP TABLE IF EXISTS w_adv").await;
+    exec(&a, "CREATE TABLE w_adv (i INT)").await;
+    let lock = "SELECT pg_advisory_lock(7)";
+    let unlock = "SELECT pg_advisory_unlock(7)";
+    // An autocommit call keeps it past its statement, twice stacked.
+    exec(&a, lock).await;
+    exec(&a, lock).await;
+    for (sql, why) in [
+        (lock, "the same key"),
+        (
+            "SELECT pg_advisory_xact_lock(7)",
+            "its transaction-level lock",
+        ),
+        (
+            "SELECT pg_advisory_lock(8)",
+            "another key: the one writer (18.6 grants it)",
+        ),
+        (
+            "INSERT INTO w_adv VALUES (1)",
+            "an unrelated write (18.6 runs it)",
+        ),
+    ] {
+        assert_eq!(
+            sqlstate(&hurried, sql).await.as_deref(),
+            Some("55P03"),
+            "{why}"
+        );
+    }
+    let foreign = hurried.query_one(unlock, &[]).await?.get::<_, bool>(0);
+    assert!(!foreign, "another session holds nothing of it");
+    // A block's rollback does not give it back.
+    exec(&a, "BEGIN").await;
+    exec(&a, "INSERT INTO w_adv VALUES (2)").await;
+    exec(&a, "ROLLBACK").await;
+    assert_eq!(
+        sqlstate(&hurried, lock).await.as_deref(),
+        Some("55P03"),
+        "past the ROLLBACK"
+    );
+    // One unlock per hold: after the first it is still held.
+    assert!(a.query_one(unlock, &[]).await?.get::<_, bool>(0));
+    assert_eq!(
+        sqlstate(&hurried, lock).await.as_deref(),
+        Some("55P03"),
+        "one hold left"
+    );
+    assert!(a.query_one(unlock, &[]).await?.get::<_, bool>(0));
+    assert!(
+        !a.query_one(unlock, &[]).await?.get::<_, bool>(0),
+        "none left"
+    );
+    assert_eq!(
+        sqlstate(&hurried, lock).await,
+        None,
+        "released at the last unlock"
+    );
+    assert!(hurried.query_one(unlock, &[]).await?.get::<_, bool>(0));
+
+    // `DISCARD ALL` gives every hold back, and so does a disconnect.
+    exec(&a, lock).await;
+    exec(&a, "DISCARD ALL").await;
+    assert_eq!(
+        sqlstate(&hurried, "INSERT INTO w_adv VALUES (3)").await,
+        None,
+        "DISCARD ALL"
+    );
+    let gone = connect().await;
+    exec(&gone, lock).await;
+    assert_eq!(
+        sqlstate(&hurried, lock).await.as_deref(),
+        Some("55P03"),
+        "held while open"
+    );
+    drop(gone);
+    settle().await;
+    assert_eq!(
+        sqlstate(&hurried, lock).await,
+        None,
+        "released at the disconnect"
+    );
+    assert!(hurried.query_one(unlock, &[]).await?.get::<_, bool>(0));
+
+    // kysely 0.28's two calls, as its `Migrator` sends them: the lock over a CTE, a
+    // second migrator's lock refused while it is held, then granted after the unlock.
+    let kysely_lock = "with set_timeout as (select set_config('lock_timeout', '3600000', true) as config_val) select pg_advisory_lock(3853314791062309107) from set_timeout";
+    let kysely_unlock = "select pg_advisory_unlock(3853314791062309107)";
+    exec(&a, kysely_lock).await;
+    // (here the second session's wait is its own `200ms`, not the CTE's hour: row 329)
+    assert_eq!(
+        sqlstate(&hurried, kysely_lock).await.as_deref(),
+        Some("55P03"),
+        "kysely: held"
+    );
+    assert!(a.query_one(kysely_unlock, &[]).await?.get::<_, bool>(0));
+    assert_eq!(
+        sqlstate(&hurried, kysely_lock).await,
+        None,
+        "kysely: granted after the unlock"
+    );
+    assert!(
+        hurried
+            .query_one(kysely_unlock, &[])
+            .await?
+            .get::<_, bool>(0)
+    );
+
+    // A lock in a materialized `WITH`'s body takes the writer as the bare call does — in
+    // autocommit and in a block (where a hold the writer did not cover was a panic).
+    let with_lock = "WITH RECURSIVE r(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM r WHERE x < 2) SELECT pg_advisory_lock(x) FROM r";
+    for block in [false, true] {
+        if block {
+            exec(&a, "BEGIN").await;
+        }
+        assert_eq!(sqlstate(&a, with_lock).await, None, "WITH (block {block})");
+        assert_eq!(
+            sqlstate(&hurried, "SELECT pg_advisory_lock(1)")
+                .await
+                .as_deref(),
+            Some("55P03"),
+            "WITH body's lock is the writer (block {block})"
+        );
+        if block {
+            exec(&a, "ROLLBACK").await;
+        }
+        for key in [1, 2] {
+            let sql = format!("SELECT pg_advisory_unlock({key})");
+            assert!(
+                a.query_one(&sql, &[]).await?.get::<_, bool>(0),
+                "{sql} (block {block})"
+            );
+        }
+        assert_eq!(
+            sqlstate(&hurried, "SELECT pg_advisory_lock(1)").await,
+            None,
+            "released (block {block})"
+        );
+        assert!(
+            hurried
+                .query_one("SELECT pg_advisory_unlock(1)", &[])
+                .await?
+                .get::<_, bool>(0)
+        );
+    }
+
+    // The last hold given back inside a block that has not written gives the writer back
+    // there, as 18.6 releases the lock at its unlock (`Connection::settle_writer`).
+    exec(&a, "SELECT pg_advisory_lock(5)").await;
+    exec(&a, "BEGIN").await;
+    assert!(
+        a.query_one("SELECT pg_advisory_unlock(5)", &[])
+            .await?
+            .get::<_, bool>(0)
+    );
+    assert_eq!(
+        sqlstate(&hurried, "SELECT pg_advisory_lock(5)").await,
+        None,
+        "released inside the block"
+    );
+    assert!(
+        hurried
+            .query_one("SELECT pg_advisory_unlock(5)", &[])
+            .await?
+            .get::<_, bool>(0)
+    );
+    exec(&a, "COMMIT").await;
+    // A lock taken *inside* a block is the session's hold too, not the block's: given back
+    // at the unlock there, as 18.6 gives it back (`Plan::block_takes_writer`).
+    exec(&a, "BEGIN").await;
+    exec(&a, "SELECT pg_advisory_lock(6)").await;
+    assert_eq!(
+        sqlstate(&hurried, "SELECT pg_advisory_lock(6)")
+            .await
+            .as_deref(),
+        Some("55P03"),
+        "held inside the block"
+    );
+    assert!(
+        a.query_one("SELECT pg_advisory_unlock(6)", &[])
+            .await?
+            .get::<_, bool>(0)
+    );
+    assert_eq!(
+        sqlstate(&hurried, "SELECT pg_advisory_lock(6)").await,
+        None,
+        "given back at the unlock"
+    );
+    assert!(
+        hurried
+            .query_one("SELECT pg_advisory_unlock(6)", &[])
+            .await?
+            .get::<_, bool>(0)
+    );
+    exec(&a, "COMMIT").await;
+
+    // A lock in a block, then a write: the block takes the writer as its own there, and
+    // its end keeps or takes back the write while the session keeps the lock.
+    for (end, rows) in [("COMMIT", 1_i64), ("ROLLBACK", 0)] {
+        exec(&a, "BEGIN").await;
+        exec(&a, "SELECT pg_advisory_lock(7)").await;
+        assert_eq!(
+            sqlstate(&a, "INSERT INTO w_adv VALUES (70)").await,
+            None,
+            "{end}: the write"
+        );
+        exec(&a, end).await;
+        let count = hurried
+            .query_one("SELECT count(*) FROM w_adv WHERE i = 70", &[])
+            .await?
+            .get::<_, i64>(0);
+        assert_eq!(count, rows, "{end}: the block's write kept or taken back");
+        assert_eq!(
+            sqlstate(&hurried, "SELECT pg_advisory_lock(7)")
+                .await
+                .as_deref(),
+            Some("55P03"),
+            "{end}: the lock outlives the block"
+        );
+        assert!(
+            a.query_one("SELECT pg_advisory_unlock(7)", &[])
+                .await?
+                .get::<_, bool>(0)
+        );
+        exec(&a, "DELETE FROM w_adv").await;
+    }
+
+    // A `REPEATABLE READ` block past whose snapshot another connection committed takes the
+    // lock without `40001`, as 18.6 does: the lock is no write (`EDGES.md` row 232 is a
+    // later write's).
+    exec(&a, "BEGIN ISOLATION LEVEL REPEATABLE READ").await;
+    exec(&a, "SELECT count(*) FROM w_adv").await;
+    exec(&hurried, "INSERT INTO w_adv VALUES (71)").await;
+    assert_eq!(
+        sqlstate(&a, "SELECT pg_advisory_lock(4)").await,
+        None,
+        "no 40001 at the lock"
+    );
+    exec(&a, "ROLLBACK").await;
+    assert!(
+        a.query_one("SELECT pg_advisory_unlock(4)", &[])
+            .await?
+            .get::<_, bool>(0)
+    );
+
+    // ...and where the lock is the block's first statement, its snapshot is taken there, as
+    // on 18.6, so the write after it is accepted: the session's hold kept anything from
+    // committing in between.
+    exec(&a, "BEGIN ISOLATION LEVEL REPEATABLE READ").await;
+    exec(&hurried, "INSERT INTO w_adv VALUES (72)").await;
+    exec(&a, "SELECT pg_advisory_lock(1)").await;
+    assert_eq!(
+        sqlstate(&a, "INSERT INTO w_adv VALUES (73)").await,
+        None,
+        "a REPEATABLE READ block's first write after its first statement's lock"
+    );
+    exec(&a, "COMMIT").await;
+    assert!(
+        a.query_one("SELECT pg_advisory_unlock(1)", &[])
+            .await?
+            .get::<_, bool>(0)
+    );
+
+    exec(&a, "DROP TABLE w_adv").await;
+    println!(
+        "✓ pg_advisory_lock is the writer, held by the session (stacked, past ROLLBACK, kysely's calls, a WITH body, released at the last unlock, DISCARD ALL, disconnect)"
+    );
+    Ok(())
+}
+
 /// An **aborted** block holds the writer until its block ends — with no savepoint open
 /// as with one. With none, 18.6 releases at the error and a second writer goes through at
 /// once; pglet's waits for the `ROLLBACK`, with the same final rows. With a savepoint
@@ -2420,6 +2701,10 @@ async fn main() {
     run_test!(
         "pg_advisory_xact_lock is the writer",
         test_advisory_xact_lock_is_the_writer()
+    );
+    run_test!(
+        "pg_advisory_lock is the writer, held by the session",
+        test_advisory_session_lock_is_the_writer()
     );
     run_test!("readers never wait", test_readers_never_wait());
     run_test!(

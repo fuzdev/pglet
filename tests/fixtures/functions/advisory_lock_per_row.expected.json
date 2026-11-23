@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "a": 1,
+      "released": true
+    },
+    {
+      "a": 2,
+      "released": true
+    },
+    {
+      "a": 1,
+      "released": true
+    }
+  ],
+  "rowCount": 3
+}

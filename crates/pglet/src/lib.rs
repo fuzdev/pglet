@@ -319,6 +319,13 @@ pub struct Database {
     /// repo's `EDGES.md` row 223). Kept outside `Schema` (which persists) because
     /// `currval` is a per-session, non-durable notion.
     sequence_session: SequenceSession,
+    /// The logical connection whose session-level advisory locks `sequence_session`
+    /// holds, while it holds any (`pg_advisory_lock`, `EDGES.md` row 250). Its locks are
+    /// the writer: another connection's write or lock is refused `55P03`
+    /// ([`Self::claim_writer`]), and while another runs a statement the holder's locks
+    /// are parked out of its way ([`Self::park_advisory_locks`]), so an unlock there
+    /// gives back nothing of the holder's.
+    advisory_holder: Option<i32>,
     /// The runtime parameters whose value belongs to the session — `application_name`,
     /// `lock_timeout`, the isolation level — one set per logical connection.
     ///
@@ -419,6 +426,7 @@ impl Database {
         let mut db = Self {
             schema,
             sequence_session: SequenceSession::new(),
+            advisory_holder: None,
             settings: ConnectionSettings::default(),
             tx: TransactionSession::new(),
             storage: StorageBackend::Btree(storage),
@@ -472,6 +480,7 @@ impl Database {
             schema: Schema::new(),
             storage: StorageBackend::Btree(storage),
             sequence_session: SequenceSession::new(),
+            advisory_holder: None,
             settings: ConnectionSettings::default(),
             tx: TransactionSession::new(),
             stack_budget: None,
@@ -499,6 +508,7 @@ impl Database {
             schema: Schema::new(),
             storage: StorageBackend::Memory(MemoryStorage::new()),
             sequence_session: SequenceSession::new(),
+            advisory_holder: None,
             settings: ConnectionSettings::default(),
             tx: TransactionSession::new(),
             stack_budget: None,
@@ -523,6 +533,7 @@ impl Database {
             schema,
             storage,
             sequence_session: SequenceSession::new(),
+            advisory_holder: None,
             settings: ConnectionSettings::default(),
             tx: TransactionSession::new(),
             stack_budget: None,
@@ -645,6 +656,7 @@ impl Database {
             // nor does any connection's `SET`; a host's own `lock_timeout` does.
             // Its transaction block cannot: the gate above refused one.
             sequence_session: SequenceSession::new(),
+            advisory_holder: None,
             settings: self.settings.fork(),
             tx: TransactionSession::new(),
             stack_budget: self.stack_budget,
@@ -724,7 +736,18 @@ impl Database {
     ///
     /// `55P03` ([`Error::WriterHeldElsewhere`]) when another connection's block holds
     /// the writer.
-    fn claim_writer(&mut self, conn_id: i32) -> Result<(), Error> {
+    ///
+    /// `for_block`: the block takes it as its own and re-bases; `false` for a statement
+    /// whose only claim is a session-level advisory lock, refused where another's write is
+    /// and re-basing nothing ([`Plan::block_takes_writer`]).
+    fn claim_writer(&mut self, conn_id: i32, for_block: bool) -> Result<(), Error> {
+        if let Some(holder) = self.advisory_holder
+            && holder != conn_id
+        {
+            return Err(Error::WriterHeldElsewhere(format!(
+                "could not obtain the writer for connection {conn_id}: connection {holder} holds a session-level advisory lock, and an embedded database cannot wait"
+            )));
+        }
         match self.tx.owner() {
             Some(owner) if owner != conn_id => {
                 if self.tx.holds_writer() {
@@ -735,6 +758,7 @@ impl Database {
                     Ok(())
                 }
             }
+            Some(_) if !for_block => Ok(()),
             Some(_) => {
                 let Self {
                     schema,
@@ -959,13 +983,16 @@ impl Database {
             // namespace, which answers exactly what 18.6 answers for a session that
             // has prepared nothing, so `ALL` succeeds and a name is `26000`.
             let in_block = self.tx.owns(conn_id) && self.tx.status() != TransactionStatus::Idle;
-            if let Some(outcome) = pglet_sql::catalog::execute_session_command(
+            let parked = self.park_advisory_locks(conn_id);
+            let session_command = pglet_sql::catalog::execute_session_command(
                 stmt_sql,
                 &mut (),
                 &mut self.sequence_session,
                 self.settings.of_mut(conn_id),
                 in_block,
-            ) {
+            );
+            self.unpark_advisory_locks(conn_id, parked);
+            if let Some(outcome) = session_command {
                 match outcome {
                     Ok(result) => results.push(result),
                     Err(e) => return Err(self.abort_block_with(conn_id, e)),
@@ -1196,13 +1223,16 @@ impl Database {
                 // must not answer the parser's `0A000` where the other entry point answers
                 // the setting.
                 let in_block = self.tx.owns(conn_id) && self.tx.status() != TransactionStatus::Idle;
-                if let Some(outcome) = pglet_sql::catalog::execute_session_command(
+                let parked = self.park_advisory_locks(conn_id);
+                let session_command = pglet_sql::catalog::execute_session_command(
                     sql,
                     &mut (),
                     &mut self.sequence_session,
                     self.settings.of_mut(conn_id),
                     in_block,
-                ) {
+                );
+                self.unpark_advisory_locks(conn_id, parked);
+                if let Some(outcome) = session_command {
                     return outcome
                         .map_err(|e| BoundExecError::Engine(self.abort_block_with(conn_id, e)));
                 }
@@ -1322,6 +1352,57 @@ impl Database {
         conn_id: i32,
         env: EvalEnv<'_>,
     ) -> Result<QueryResult, Error> {
+        let parked = self.park_advisory_locks(conn_id);
+        let result = self.run_planned_env_parked(planned, conn_id, env);
+        self.unpark_advisory_locks(conn_id, parked);
+        // The `set_config('lock_timeout', …)` assignments the statement evaluated, kept
+        // only when it succeeded, as 18.6 keeps them.
+        if result.is_ok() && pglet_sql::catalog::SessionSettings::set_config_pending() {
+            self.settings.of_mut(conn_id).absorb_set_config();
+        }
+        result
+    }
+
+    /// Take another logical connection's session-level advisory locks out of
+    /// `sequence_session` while `conn_id` runs a statement — what `conn_id` then holds
+    /// is its own, none. `None` when there are none to park.
+    fn park_advisory_locks(&mut self, conn_id: i32) -> Option<pglet_sql::executor::AdvisoryLocks> {
+        match self.advisory_holder {
+            Some(holder) if holder != conn_id => {
+                Some(std::mem::take(self.sequence_session.advisory_locks_mut()))
+            }
+            _ => None,
+        }
+    }
+
+    /// Put back what [`Self::park_advisory_locks`] took, or — where nothing was parked —
+    /// record whether `conn_id` now holds session-level locks.
+    fn unpark_advisory_locks(
+        &mut self,
+        conn_id: i32,
+        parked: Option<pglet_sql::executor::AdvisoryLocks>,
+    ) {
+        match parked {
+            Some(locks) => {
+                // A connection that is not the holder can take no lock: the writer is
+                // refused it (`claim_writer`).
+                debug_assert!(self.sequence_session.advisory_locks().is_empty());
+                *self.sequence_session.advisory_locks_mut() = locks;
+            }
+            None => {
+                self.advisory_holder =
+                    (!self.sequence_session.advisory_locks().is_empty()).then_some(conn_id);
+            }
+        }
+    }
+
+    /// [`Self::run_planned_env`]'s body, with another connection's advisory locks parked.
+    fn run_planned_env_parked(
+        &mut self,
+        planned: &Plan,
+        conn_id: i32,
+        env: EvalEnv<'_>,
+    ) -> Result<QueryResult, Error> {
         // The `25001` gate — `CREATE`/`DROP INDEX CONCURRENTLY` inside a transaction
         // block. Asked of the plan (`Plan::forbidden_in_transaction_block`, the one
         // rule) at this host's single execute-one-statement choke point, which is
@@ -1342,13 +1423,17 @@ impl Database {
         // level; a first write's is this moment's
         // (`TransactionSession::note_snapshot`).
         if !planned.is_transaction_control() {
+            // A session-level advisory lock's statement included: its hold keeps anything
+            // from committing before the block's first write (`Plan::block_takes_writer`).
             let first_write_at = planned.takes_writer().then(|| self.storage.commit_stamp());
             self.tx
                 .note_snapshot(conn_id, self.settings.of_mut(conn_id), first_write_at);
         }
-        // Before anything stages: the writer's refusal or its re-base.
+        // Before anything stages: the writer's refusal or its re-base — no re-base for a
+        // statement whose only claim is a session-level advisory lock, the session's hold
+        // and not the block's (`Plan::block_takes_writer`).
         if planned.takes_writer() {
-            self.claim_writer(conn_id)?;
+            self.claim_writer(conn_id, planned.block_takes_writer())?;
         }
         // Auto-commit durability: a write applied outside an explicit transaction
         // must persist the meta root, or a restart loses it. The explicit-COMMIT
@@ -1574,7 +1659,7 @@ impl Database {
             return Err(self.abort_block_with(conn_id, e));
         }
         // A door that stages writes: the writer's refusal or its re-base, before any.
-        if let Err(e) = self.claim_writer(conn_id) {
+        if let Err(e) = self.claim_writer(conn_id, true) {
             return Err(self.abort_block_with(conn_id, e));
         }
         // Wrap an auto-commit COPY ingest in an implicit storage transaction so a bad
@@ -1597,6 +1682,11 @@ impl Database {
                     // a column default advances, which no rollback puts back — so a
                     // refused write can drop its rows.
                     self.publish_autocommit(conn_id, true)?;
+                }
+                // A column default's `set_config('lock_timeout', …)`, kept as a
+                // statement's is (`run_planned_env`'s twin).
+                if pglet_sql::catalog::SessionSettings::set_config_pending() {
+                    self.settings.of_mut(conn_id).absorb_set_config();
                 }
                 Ok(n)
             }

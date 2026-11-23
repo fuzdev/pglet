@@ -13,6 +13,7 @@
 
 use std::collections::HashMap;
 
+use super::advisory::{AdvisoryLocks, eval_advisory_call};
 use crate::catalog::Schema;
 use crate::planner::{Expr, Literal, PlannerScope, SequenceFunc};
 use crate::types::{ResultShape, TypeOid, Value, opt_type_oid_display_name};
@@ -37,6 +38,10 @@ pub struct SequenceSession {
     /// The last value `nextval` returned per sequence this session, keyed by the
     /// bare sequence name. Presence of a key is what makes `currval` defined.
     currval: HashMap<String, i64>,
+    /// The session-level advisory locks this session holds — the other per-session
+    /// state a top-level projection reads and moves ([`super::advisory`]). A host keeps
+    /// the writer while this is not empty, and empties it at the session's end.
+    advisory: AdvisoryLocks,
 }
 
 impl SequenceSession {
@@ -67,24 +72,38 @@ impl SequenceSession {
     pub fn clear_currval(&mut self) {
         self.currval.clear();
     }
+
+    /// The session-level advisory locks this session holds.
+    #[must_use]
+    pub const fn advisory_locks(&self) -> &AdvisoryLocks {
+        &self.advisory
+    }
+
+    /// The session-level advisory locks this session holds, to move — a host's, for
+    /// `DISCARD ALL` and the session's end (`AdvisoryLocks::unlock_all`), and the
+    /// embedded `Database`'s, which parks one logical connection's holds while another
+    /// runs.
+    pub const fn advisory_locks_mut(&mut self) -> &mut AdvisoryLocks {
+        &mut self.advisory
+    }
 }
 
-/// Execute a top-level sequence-function projection (`SELECT nextval/currval/
-/// setval(...)`) or advisory-lock projection (`SELECT pg_advisory_xact_lock(…)`),
-/// returning its single result row.
+/// Execute a no-FROM top-level sequence-function projection (`SELECT nextval/currval/
+/// setval(...)`) or advisory projection (`SELECT pg_advisory_lock(…)`), returning its
+/// single result row.
 ///
 /// `row` is the projection's single row — the caller (`Plan::Values` dispatch via
 /// [`Plan::is_sequence_projection`](crate::planner::Plan::is_sequence_projection) or
-/// [`Plan::is_advisory_lock_projection`](crate::planner::Plan::is_advisory_lock_projection))
+/// [`Plan::is_advisory_projection`](crate::planner::Plan::is_advisory_projection))
 /// guarantees a single-row projection.
 ///
 /// Each projected expression is a top-level sequence function — evaluated against
-/// `&mut schema.sequences` + `session` — a top-level `pg_advisory_xact_lock` call, whose
-/// lock the host took as the writer before the statement ran, so it answers here
-/// (`void`, or NULL over a NULL argument), or an ordinary expression (a mixed
-/// projection like pg_dump's `set_config(...), setval(...)`), evaluated via the usual
-/// subquery-capable path. Either function nested inside a larger expression is *not*
-/// top-level, so it flows to the ordinary path and fails loud there.
+/// `&mut schema.sequences` + `session` — a top-level advisory call, answered against the
+/// session's holds (`super::advisory`; a locking one's writer the host took before the
+/// statement ran), or an ordinary expression (a mixed projection like pg_dump's
+/// `set_config(...), setval(...)`), evaluated via the usual subquery-capable path.
+/// Either function nested inside a larger expression is *not* top-level, so it flows to
+/// the ordinary path and fails loud there.
 ///
 /// # Errors
 ///
@@ -102,11 +121,13 @@ pub(super) fn execute_sequence_projection<S: Storage>(
     // ordinary columns are described exactly as anywhere else.
     let columns = expr_column_descs(row, ProjectionScope::empty().with_schema(schema));
     let mut values = Vec::with_capacity(row.len());
+    let mut notices = Vec::new();
     for expr in row {
         let value = if let Some((func, seq, args)) = expr.as_sequence_fn() {
             eval_sequence_fn(func, seq, args, schema, session, env)?
-        } else if let Some(args) = expr.as_advisory_lock() {
-            // The arguments evaluate as any function's do, and the call is strict.
+        } else if let Some((func, args)) = expr.as_advisory_call() {
+            // The arguments evaluate as any function's do; the call is answered against
+            // the session's holds (`super::advisory`).
             let mut values = Vec::with_capacity(args.len());
             for arg in args {
                 values.push(eval_expr_subquery(
@@ -121,11 +142,7 @@ pub(super) fn execute_sequence_projection<S: Storage>(
                     env,
                 )?);
             }
-            if values.iter().any(Value::is_null) {
-                Value::Null
-            } else {
-                super::expr::eval_advisory_xact_lock(&values)?
-            }
+            eval_advisory_call(func, &values, &mut session.advisory, &mut notices)?
         } else {
             // An ordinary projected expression: evaluate it normally. A *nested*
             // sequence function or advisory lock inside it fails loud there.
@@ -147,7 +164,7 @@ pub(super) fn execute_sequence_projection<S: Storage>(
         shape: ResultShape::Columns(columns),
         rows: vec![values],
         command_tag: "SELECT 1".to_string(),
-        notices: Vec::new(),
+        notices,
         tx_command: None,
         swapped_sequences: Vec::new(),
     })

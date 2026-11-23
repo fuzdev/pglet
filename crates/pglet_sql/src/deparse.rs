@@ -649,12 +649,16 @@ pub const fn string_fn_name(func: StringFunc) -> &'static str {
         StringFunc::Right => "right",
         StringFunc::Substr => "substr",
         StringFunc::OctetLength => "octet_length",
+        StringFunc::AdvisoryLock => "pg_advisory_lock",
+        StringFunc::AdvisoryUnlock => "pg_advisory_unlock",
+        StringFunc::AdvisoryUnlockAll => "pg_advisory_unlock_all",
+        StringFunc::SetConfigLockTimeout => "set_config",
     }
 }
 
 /// Every [`StringFunc`], for the corpus completeness check. See
 /// `pglet::dump`'s `ROUND_TRIP_CORPUS`.
-pub const STRING_FUNCS: [StringFunc; 29] = [
+pub const STRING_FUNCS: [StringFunc; 33] = [
     StringFunc::PgGetConstraintdef,
     StringFunc::Regclass,
     StringFunc::Upper,
@@ -684,6 +688,10 @@ pub const STRING_FUNCS: [StringFunc; 29] = [
     StringFunc::Right,
     StringFunc::Substr,
     StringFunc::OctetLength,
+    StringFunc::AdvisoryLock,
+    StringFunc::AdvisoryUnlock,
+    StringFunc::AdvisoryUnlockAll,
+    StringFunc::SetConfigLockTimeout,
 ];
 
 /// Render a [`Expr::StringFn`] call, special-casing [`StringFunc::Position`].
@@ -801,7 +809,8 @@ const fn string_fn_arg_text(func: StringFunc, idx: usize) -> bool {
         | StringFunc::Md5
         | StringFunc::OctetLength => true,
         StringFunc::Lpad | StringFunc::Rpad => idx == 0 || idx == 2,
-        StringFunc::SplitPart => idx < 2,
+        // (setting, value, is_local) — the setting and its value are text.
+        StringFunc::SplitPart | StringFunc::SetConfigLockTimeout => idx < 2,
         StringFunc::Substring
         | StringFunc::Substr
         | StringFunc::Left
@@ -814,6 +823,9 @@ const fn string_fn_arg_text(func: StringFunc, idx: usize) -> bool {
         | StringFunc::IsFinite
         | StringFunc::ColDescription
         | StringFunc::AdvisoryXactLock
+        | StringFunc::AdvisoryLock
+        | StringFunc::AdvisoryUnlock
+        | StringFunc::AdvisoryUnlockAll
         | StringFunc::EnumIn => false,
     }
 }

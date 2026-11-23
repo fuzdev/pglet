@@ -14,6 +14,7 @@
 //! - `type_resolution.rs` - DDL type-name → `TypeOid` resolution
 //! - `helpers.rs` - Projection/descriptor helpers + OID generation
 
+pub(crate) mod advisory;
 mod array_parse;
 mod coerce;
 mod constraints;
@@ -61,12 +62,13 @@ pub(crate) use dependencies::{DropTarget, owned_sequences};
 // The storage index specs follow `Schema.enums` wherever it moves; the DDL that moves
 // it forward is in this crate, and the rollback that moves it back is `pglet`'s
 // `TransactionSession` — so the resync it calls is re-exported here.
+pub use advisory::{AdvisoryKey, AdvisoryLocks};
 pub use ddl::{enums_moved_by_restore, rebuild_indexes_over_enums};
 pub use helpers::{get_table_or_err, unified_enum_type};
 pub use pglet_core::{NoopStorage, Storage};
 pub use sequence::SequenceSession;
 pub use types::{
-    ColumnDesc, IndexMethod, IndexSpec, IsolationLevel, QueryResult, ResultShape, RowId,
+    ColumnDesc, IndexMethod, IndexSpec, IsolationLevel, Notice, QueryResult, ResultShape, RowId,
     TransactionCommand, index_spec_from_catalog,
 };
 // `index_method_for` (the GIN/B-tree derivation) is crate-internal: the executor builds
@@ -505,18 +507,25 @@ pub fn execute_with_storage<S: Storage>(
         }
         // A top-level `SELECT nextval/currval/setval(...)` projection is the one
         // place a sequence function is evaluated — with `&mut Schema` + the session
-        // state — and a top-level `SELECT pg_advisory_xact_lock(…)` the one place that
-        // call answers, the host having taken the writer for it. Every other no-FROM
-        // `VALUES` routes through `execute_query` (so its
-        // projections evaluate with subquery context — required for a no-FROM
+        // state — and a top-level advisory call's projection the one place that call
+        // answers, against the session's holds, the host having taken the writer for a
+        // locking one. Every other no-FROM `VALUES` routes through `execute_query` (so
+        // its projections evaluate with subquery context — required for a no-FROM
         // `SELECT EXISTS(SELECT ... FROM t ...)` like the spine's `query_has_fact`).
         Plan::Values { rows, .. } => {
-            if plan.is_sequence_projection() || plan.is_advisory_lock_projection() {
+            if plan.is_sequence_projection() || plan.is_advisory_projection() {
                 // Both predicates guarantee a single-row projection.
                 sequence::execute_sequence_projection(&rows[0], schema, storage, session, env)
             } else {
                 query::execute_query(plan, schema, storage, env)
             }
+        }
+
+        // The same call's projection over a FROM — kysely's `with set_timeout as (…)
+        // select pg_advisory_lock(…) from set_timeout`.
+        Plan::Project { .. } if plan.is_advisory_projection() => {
+            let locks = session.advisory_locks_mut();
+            advisory::execute_advisory_project(plan, schema, storage, locks, env)
         }
 
         Plan::Scan { .. }

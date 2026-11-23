@@ -332,6 +332,20 @@ thread_local! {
     /// The current thread's session — see [`SessionSettings::install_ambient`].
     static AMBIENT_SESSION: std::cell::RefCell<SessionSettings> =
         std::cell::RefCell::new(SessionSettings::default());
+    /// The `set_config('lock_timeout', …)` assignments the current statement has
+    /// evaluated, in order — what its host applies to its own settings once the statement
+    /// succeeds ([`SessionSettings::absorb_set_config`]). Emptied by
+    /// [`SessionSettings::install_ambient`], so a failed statement's are dropped with it.
+    static SET_CONFIG_ASSIGNMENTS: std::cell::RefCell<Vec<LockTimeoutAssignment>> =
+        const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// One evaluated `set_config('lock_timeout', value, is_local)`: the value (`None`: reset)
+/// and whether it was local.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct LockTimeoutAssignment {
+    ms: Option<u64>,
+    local: bool,
 }
 
 /// What the `user` / `database` session facts answer on a host that carries no
@@ -643,11 +657,94 @@ impl SessionSettings {
     /// becomes site 3's defect the day the facade takes one.
     pub fn install_ambient(&self) {
         AMBIENT_SESSION.with(|cell| cell.replace(self.clone()));
+        SET_CONFIG_ASSIGNMENTS.with(|cell| cell.borrow_mut().clear());
         crate::builtins::set_block_start(
             self.block
                 .as_ref()
                 .map_or(crate::builtins::NO_INSTANT, |block| block.started),
         );
+    }
+
+    /// `set_config('lock_timeout', value, is_local)`, evaluated: the assignment `SET`
+    /// (`is_local` false) or `SET LOCAL` makes, applied to the ambient session at once — so
+    /// a later `current_setting('lock_timeout')` in the statement reads it, as on 18.6 —
+    /// and recorded for the host, which applies it to its own settings once the statement
+    /// succeeds ([`Self::absorb_set_config`]). Answers the setting as `SHOW` renders it,
+    /// as 18.6's `set_config` does (`'3600000'` answers `1h`). `value` `None` resets it.
+    ///
+    /// A local assignment outside a block lasts for the statement alone: the statement is
+    /// its own transaction on 18.6, and a host's [`Self::absorb_set_config`] keeps
+    /// nothing of it.
+    ///
+    /// # Errors
+    ///
+    /// `22023` for a value `lock_timeout` refuses ([`parse_lock_timeout`]).
+    pub fn set_config_lock_timeout(value: Option<&str>, is_local: bool) -> Result<String> {
+        let ms = value.map(parse_lock_timeout).transpose()?;
+        let assignment = LockTimeoutAssignment {
+            ms,
+            local: is_local,
+        };
+        SET_CONFIG_ASSIGNMENTS.with(|cell| cell.borrow_mut().push(assignment));
+        Ok(AMBIENT_SESSION.with(|cell| {
+            let mut ambient = cell.borrow_mut();
+            ambient.apply_lock_timeout_assignment(assignment, true);
+            format_lock_timeout(ambient.lock_timeout_ms())
+        }))
+    }
+
+    /// Whether the statement running on this thread has evaluated a
+    /// `set_config('lock_timeout', …)` assignment its host has not absorbed yet
+    /// ([`Self::absorb_set_config`]).
+    #[must_use]
+    pub fn set_config_pending() -> bool {
+        SET_CONFIG_ASSIGNMENTS.with(|cell| !cell.borrow().is_empty())
+    }
+
+    /// Apply the `set_config('lock_timeout', …)` assignments the statement just run on
+    /// this thread evaluated, in order — what a host calls once a statement succeeds,
+    /// after the statement ran under [`Self::install_ambient`] of these settings. Each is
+    /// `SET`'s or `SET LOCAL`'s assignment here, so it is transactional as theirs is.
+    pub fn absorb_set_config(&mut self) {
+        let assignments = SET_CONFIG_ASSIGNMENTS.with(std::cell::RefCell::take);
+        for assignment in assignments {
+            self.apply_lock_timeout_assignment(assignment, false);
+        }
+    }
+
+    /// Run `probe` — a DDL statement's evaluation of an expression it stores, which
+    /// 18.6 never evaluates there — keeping none of the `set_config` assignments it
+    /// evaluates: neither the ambient session's value nor the host's record.
+    pub fn without_set_config_effects<T>(probe: impl FnOnce() -> T) -> T {
+        let recorded = SET_CONFIG_ASSIGNMENTS.with(|cell| cell.borrow().len());
+        let saved = AMBIENT_SESSION.with(|cell| {
+            let ambient = cell.borrow();
+            (ambient.gucs, ambient.local)
+        });
+        let answer = probe();
+        SET_CONFIG_ASSIGNMENTS.with(|cell| cell.borrow_mut().truncate(recorded));
+        AMBIENT_SESSION.with(|cell| {
+            let mut ambient = cell.borrow_mut();
+            (ambient.gucs, ambient.local) = saved;
+        });
+        answer
+    }
+
+    /// One `set_config('lock_timeout', …)` assignment, at the scope its `is_local` and
+    /// the open block give it. `within_statement`: the ambient session's view while the
+    /// statement runs, where a local assignment outside a block still holds.
+    fn apply_lock_timeout_assignment(
+        &mut self,
+        assignment: LockTimeoutAssignment,
+        within_statement: bool,
+    ) {
+        let ms = assignment.ms.unwrap_or(self.reset.lock_timeout);
+        if !assignment.local {
+            self.gucs.lock_timeout = ms;
+            self.local.lock_timeout = None;
+        } else if self.block.is_some() || within_statement {
+            self.local.lock_timeout = Some(ms);
+        }
     }
 
     /// Read the current thread's ambient session — see [`Self::install_ambient`].
@@ -2850,6 +2947,9 @@ pub fn execute_discard(
         DiscardTarget::All => {
             prepared.clear_named_prepared();
             sequences.clear_currval();
+            // `DISCARD ALL` runs `pg_advisory_unlock_all()` on 18.6; the host gives the
+            // writer back once the session holds no lock (`AdvisoryLocks::is_empty`).
+            sequences.advisory_locks_mut().unlock_all();
             settings.reset_all();
         }
         DiscardTarget::Sequences => sequences.clear_currval(),

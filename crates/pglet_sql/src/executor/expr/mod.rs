@@ -49,4 +49,4 @@ pub use enum_order::{
 };
 pub use env::{EvalEnv, MaterializedCte, OuterFrame, SubqueryExec};
 pub use eval::{eval_expr, eval_expr_env, eval_expr_full, literal_to_value};
-pub use string_fn::eval_advisory_xact_lock;
+pub use string_fn::no_such_overload;

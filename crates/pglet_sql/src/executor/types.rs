@@ -28,11 +28,12 @@ pub struct QueryResult {
     pub shape: ResultShape,
     pub rows: Vec<Vec<Value>>,
     pub command_tag: String,
-    /// `NOTICE` messages this statement raised, emitted before `CommandComplete`
+    /// The `NoticeResponse`s this statement raised, emitted before `CommandComplete`
     /// by the wire server. Postgres notices a no-op skip (`DROP TABLE IF EXISTS`
-    /// of a missing table → `table "x" does not exist, skipping`); pglet carries
-    /// that text here rather than swallowing it silently. Usually empty.
-    pub notices: Vec<String>,
+    /// of a missing table → `table "x" does not exist, skipping`) and warns of an
+    /// advisory unlock of a lock the session does not hold; pglet carries each here
+    /// rather than swallowing it silently. Usually empty.
+    pub notices: Vec<Notice>,
     /// The transaction-lifecycle effect this statement calls for, or `None` for
     /// every statement that has none.
     ///
@@ -136,6 +137,41 @@ impl IsolationLevel {
     }
 }
 
+/// One `NoticeResponse` a statement raises beside its result ([`QueryResult::notices`]).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Notice {
+    /// `NOTICE` or `WARNING` — the `S` and `V` fields.
+    pub severity: crate::Severity,
+    /// The SQLSTATE — the `C` field.
+    pub sqlstate: &'static str,
+    /// The primary message — the `M` field.
+    pub message: String,
+}
+
+impl Notice {
+    /// A `NOTICE` with no explicit errcode (`00000`), as an `ereport(NOTICE, …)` without
+    /// one sends — the `IF EXISTS` skip.
+    #[must_use]
+    pub const fn new_notice(message: String) -> Self {
+        Self {
+            severity: crate::Severity::Notice,
+            sqlstate: "00000",
+            message,
+        }
+    }
+
+    /// A `WARNING` with no explicit errcode — 18.6's `01000` (`warning`), the class
+    /// `elog(WARNING, …)` sends.
+    #[must_use]
+    pub const fn warning(message: String) -> Self {
+        Self {
+            severity: crate::Severity::Warning,
+            sqlstate: "01000",
+            message,
+        }
+    }
+}
+
 impl QueryResult {
     /// The result set's columns, or an empty slice when the statement returned no
     /// result set. Shorthand for `self.shape.columns()`.
@@ -197,7 +233,7 @@ impl QueryResult {
             shape: ResultShape::NoResultSet,
             rows: Vec::new(),
             command_tag: tag.to_string(),
-            notices,
+            notices: notices.into_iter().map(Notice::new_notice).collect(),
             tx_command: None,
             swapped_sequences: Vec::new(),
         }

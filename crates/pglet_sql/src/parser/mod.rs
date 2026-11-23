@@ -1532,8 +1532,15 @@ impl Parser<'_> {
         };
         let writer = &ctes[write].name;
         if !body.is_read_only() {
+            // An advisory call's projection is no write, but it moves the session's holds,
+            // which keeps it off the read path all the same (`Plan::is_read_only`).
+            let what = if body.is_advisory_projection() {
+                "an advisory-lock call"
+            } else {
+                "a statement that writes"
+            };
             return Err(Error::NotImplemented(format!(
-                "a statement that writes, after data-modifying WITH query \"{writer}\""
+                "{what}, after data-modifying WITH query \"{writer}\""
             )));
         }
         if let Some(read) = ctes[write..]

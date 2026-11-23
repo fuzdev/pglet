@@ -152,9 +152,17 @@ impl WriterLock {
     /// Record what `conn_id` found on taking the writer — the catalog `generation`, and
     /// for a block the catalog `committed` then — read under the schema lock before it
     /// changed anything. A no-op unless `conn_id` holds it and has not said yet.
+    ///
+    /// A block's note replaces one that recorded no committed catalog — the writer the
+    /// session held for a session-level advisory lock before its block took it as its own
+    /// at its first write, which is when the block's changes begin.
     pub fn note_grant(&self, conn_id: i32, generation: u64, committed: Option<Arc<Schema>>) {
         let mut state = self.state.lock();
-        if state.holder == Some(conn_id) && state.grant.is_none() {
+        let open = state
+            .grant
+            .as_ref()
+            .is_none_or(|grant| grant.committed.is_none() && committed.is_some());
+        if state.holder == Some(conn_id) && open {
             state.grant = Some(Grant {
                 generation,
                 committed,
@@ -179,6 +187,17 @@ impl WriterLock {
             .as_ref()
             .filter(|grant| grant.generation != generation)
             .and_then(|grant| grant.committed.clone())
+    }
+
+    /// Forget what `conn_id` found on taking the writer, keeping the writer — an idle
+    /// session holding it for a session-level advisory lock, whose changes are committed
+    /// (as an auto-commit holder's are), and whose next block notes what it finds anew.
+    /// A no-op unless `conn_id` holds it.
+    pub fn forget_grant(&self, conn_id: i32) {
+        let mut state = self.state.lock();
+        if state.holder == Some(conn_id) {
+            state.grant = None;
+        }
     }
 
     /// Release the writer if `conn_id` holds it, waking the waiters. A no-op otherwise.
@@ -313,6 +332,13 @@ mod tests {
         assert!(
             lock.foreign_grant_catalog(2, 6).is_none(),
             "an auto-commit holder"
+        );
+        // The session's hold for an advisory lock, then its block's first write: the
+        // block's note replaces the one that recorded no catalog.
+        lock.note_grant(3, 6, Some(Arc::new(Schema::default())));
+        assert!(
+            lock.foreign_grant_catalog(2, 7).is_some(),
+            "the block's note, at its first write"
         );
     }
 }

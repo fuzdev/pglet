@@ -783,7 +783,11 @@ fn a_multi_drop_if_exists_notices_once_per_written_name() {
     let mut results = db.execute("DROP TABLE IF EXISTS q1, nz, q1").unwrap();
     let result = results.remove(0);
     assert_eq!(
-        result.notices,
+        result
+            .notices
+            .iter()
+            .map(|n| n.message.clone())
+            .collect::<Vec<_>>(),
         vec!["table \"nz\" does not exist, skipping".to_string()],
     );
     assert!(db.schema().get_table("q1").is_none());

@@ -1,7 +1,7 @@
 {
   "rows": [
     {
-      "set_config": "5s"
+      "pg_advisory_unlock": true
     }
   ],
   "rowCount": 1

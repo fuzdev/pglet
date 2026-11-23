@@ -49,7 +49,11 @@ fn an_if_exists_skip_notices_per_action() {
         .remove(0);
     assert_eq!(result.command_tag, "ALTER TABLE");
     assert_eq!(
-        result.notices,
+        result
+            .notices
+            .iter()
+            .map(|n| n.message.clone())
+            .collect::<Vec<_>>(),
         vec![
             "constraint \"nope\" of relation \"c\" does not exist, skipping".to_string(),
             "constraint \"c_pid_fkey\" of relation \"c\" does not exist, skipping".to_string(),

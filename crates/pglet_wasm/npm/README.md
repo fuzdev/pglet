@@ -175,7 +175,8 @@ implemented yet.
 
 The package's tests drive kysely's CRUD queries, its transactions and its `Migrator` through the dialect —
 migrating to the latest, a rerun that does nothing, a failing migration rolled back whole, and `migrateDown`.
-The `Migrator` locks with `pg_advisory_xact_lock`, which on one in-process connection is always granted.
+The `Migrator` locks with kysely's stock `PostgresAdapter` calls — `pg_advisory_lock` over a
+`set_config('lock_timeout', …)` CTE, then `pg_advisory_unlock` — which on one in-process connection are always granted.
 
 **drizzle** — its `node-postgres` driver wraps a `PgletDb` directly, no pglet-side code:
 
@@ -569,7 +570,7 @@ statement over an empty table is refused too, except where an item says otherwis
   `to_jsonb`, `row_to_json`, `json_build_object`; `jsonb || jsonb`; `jsonb - 'key'` (`42804`, raised when a row is
   evaluated). `->`, `->>`, `#>`, `#>>`, `?`, `@>` and `jsonb_build_object` work. Beside an uncast string or a
   parameter, `jsonb ||` is not refused but joins as text (*Known differences*, above).
-- **Server:** `pg_sleep`, `pg_notify`, `pg_advisory_lock` (`pg_advisory_xact_lock` works), `txid_current`.
+- **Server:** `pg_sleep`, `pg_notify`, `pg_try_advisory_lock` (`pg_advisory_lock`, `pg_advisory_unlock` and `pg_advisory_xact_lock` work), `txid_current`.
 
 **Schema:**
 

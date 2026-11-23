@@ -1,0 +1,12 @@
+{
+  "rows": [
+    {
+      "local_value": "5s",
+      "read_after": "1h",
+      "read_local": "5s",
+      "session_value": "1h",
+      "zero": "0"
+    }
+  ],
+  "rowCount": 1
+}

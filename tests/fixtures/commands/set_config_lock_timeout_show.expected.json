@@ -1,0 +1,8 @@
+{
+  "rows": [
+    {
+      "lock_timeout": "7s"
+    }
+  ],
+  "rowCount": 1
+}

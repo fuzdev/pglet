@@ -429,6 +429,12 @@ fn finish_copy_in(conn: &mut Connection) -> Vec<BackendMessage> {
         return Vec::new();
     };
     let outcome = ingest_copy_in(conn, &state);
+    // A column default's `set_config('lock_timeout', …)`, evaluated by the ingest, kept as
+    // a statement's is — when it succeeded (`execute::run_one`'s twin). The ambient
+    // session it ran under is `dispatch_copy`'s, and nothing runs between.
+    if outcome.is_ok() {
+        conn.settings.absorb_set_config();
+    }
     conn.settle_writer();
     match outcome {
         Ok(n) => {
@@ -465,7 +471,9 @@ fn ingest_copy_in(conn: &mut Connection, state: &CopyInState) -> Result<u64, Err
                 .take_writer(conn_id, uses_snapshot, &schema, &mut storage)
             {
                 drop((schema, storage));
-                conn.shared.writer.release(conn_id);
+                // A session-level advisory lock the session holds keeps the writer
+                // (`Connection::settle_writer`, as `execute::run_one_locked` settles it).
+                conn.settle_writer();
                 return Err(e);
             }
         }

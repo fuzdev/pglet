@@ -1,0 +1,9 @@
+{
+  "rows": [
+    {
+      "pg_advisory_lock": "",
+      "pg_advisory_unlock": true
+    }
+  ],
+  "rowCount": 1
+}

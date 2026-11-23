@@ -610,8 +610,6 @@ fn test_set_config_takes_a_fixed_parameter_only_at_the_value_pglet_has() {
         // the session's own values move through `SET` alone
         "SELECT set_config('application_name', 'probe', false)",
         "SELECT set_config('application_name', NULL, false)",
-        "SELECT set_config('lock_timeout', '5s', false)",
-        "SELECT set_config('lock_timeout', '0', true)",
     ] {
         assert_eq!(err_of(sql), "0A000", "{sql}");
     }
@@ -620,6 +618,139 @@ fn test_set_config_takes_a_fixed_parameter_only_at_the_value_pglet_has() {
         err_of("SELECT set_config('standard_conforming_strings', 'maybe', false)"),
         "22023"
     );
+}
+
+#[test]
+fn set_config_moves_lock_timeout_where_it_is_evaluated() {
+    // `set_config('lock_timeout', …)` is evaluated, as 18.6 evaluates it: `SET`'s
+    // assignment, and an answer `SHOW` would render. Here the statement runs with no block,
+    // so the local form holds for the statement alone and the host keeps the session one.
+    let schema = Schema::new();
+    let mut settings = crate::catalog::SessionSettings::default();
+    for (sql, answer, kept) in [
+        (
+            "SELECT set_config('lock_timeout', '3600000', true)",
+            "1h",
+            "1s",
+        ),
+        ("SELECT set_config('lock_timeout', '5s', false)", "5s", "5s"),
+        (
+            "SELECT set_config('lock_timeout'::text, '0', false)",
+            "0",
+            "0",
+        ),
+        // a NULL value is a reset; a NULL `is_local` is `false`
+        ("SELECT set_config('lock_timeout', NULL, false)", "1s", "1s"),
+        ("SELECT set_config('lock_timeout', '2s', NULL)", "2s", "2s"),
+        // an unknown `is_local` resolves to `boolean`, as on 18.6
+        (
+            "SELECT set_config('lock_timeout', '4s', 'true')",
+            "4s",
+            "2s",
+        ),
+        ("SELECT set_config('LOCK_TIMEOUT', '2s', 'off')", "2s", "2s"),
+        // a value the planner cannot read is read at evaluation
+        (
+            "SELECT set_config('lock_timeout', '3' || 's', false)",
+            "3s",
+            "3s",
+        ),
+    ] {
+        settings.install_ambient();
+        let plan = plan_select(&schema, sql);
+        let result = crate::executor::execute(&plan, &mut Schema::new())
+            .unwrap_or_else(|e| panic!("{sql}: {e}"));
+        assert_eq!(
+            result.rows,
+            vec![vec![crate::types::Value::Text(answer.into())]],
+            "{sql}"
+        );
+        settings.absorb_set_config();
+        assert_eq!(
+            crate::catalog::format_lock_timeout(settings.lock_timeout_ms()),
+            kept,
+            "{sql}"
+        );
+    }
+    // A padded name is no setting on 18.6: `42704`, where the other padded names are
+    // read trimmed (`EDGES.md` row 257).
+    let err =
+        crate::parser::parse_single("SELECT set_config(' lock_timeout', '7s', false)", &schema)
+            .expect_err("padded");
+    assert_eq!(err.sqlstate(), "42704");
+    assert_eq!(
+        err.to_string(),
+        "unrecognized configuration parameter \" lock_timeout\""
+    );
+    // A malformed value is the evaluation's `22023`, and nothing is kept.
+    settings.install_ambient();
+    let plan = plan_select(&schema, "SELECT set_config('lock_timeout', 'abc', false)");
+    let err = crate::executor::execute(&plan, &mut Schema::new()).expect_err("abc");
+    assert_eq!(err.sqlstate(), "22023");
+    assert!(!crate::catalog::SessionSettings::set_config_pending());
+}
+
+#[test]
+fn an_advisory_call_answers_in_the_statements_own_projection() {
+    let mut schema = Schema::new();
+    let create = plan_select(&schema, "CREATE TABLE t (a INT)");
+    crate::executor::execute(&create, &mut schema).expect("create");
+    // (sql, is an advisory projection, takes the writer)
+    for (sql, advisory, writer) in [
+        // kysely 0.28's migration lock, exactly as it is issued
+        (
+            "with set_timeout as (select set_config('lock_timeout', '3600000', true) as config_val) select pg_advisory_lock(3853314791062309107) from set_timeout",
+            true,
+            true,
+        ),
+        (
+            "select pg_advisory_unlock(3853314791062309107)",
+            true,
+            false,
+        ),
+        ("select pg_advisory_unlock_all()", true, false),
+        ("select pg_advisory_lock(1, 2) as k, 1", true, true),
+        (
+            "select pg_advisory_xact_lock(a) from t where a > 0",
+            true,
+            true,
+        ),
+        ("select pg_advisory_unlock(a) from t", true, false),
+        // the nodes the statement executor forwards to: a locking clause's input and a
+        // materialized `WITH`'s body
+        ("select pg_advisory_lock(a) from t for update", true, true),
+        (
+            "with recursive r(x) as (select 1 union all select x + 1 from r where x < 2) select pg_advisory_lock(x) from r",
+            true,
+            true,
+        ),
+        (
+            "with recursive r(x) as (select 1) select pg_advisory_xact_lock(1)",
+            true,
+            true,
+        ),
+        // a node above the projection: the call's count would not be the rows'
+        ("select pg_advisory_lock(a) from t limit 1", false, false),
+        // an `ORDER BY` an input column decides sorts the input, below the projection:
+        // each row is still projected once
+        ("select pg_advisory_lock(a) from t order by a", true, true),
+        // ...and above it when the select list names the key
+        (
+            "select a, pg_advisory_lock(a) from t order by a",
+            false,
+            false,
+        ),
+        ("select distinct pg_advisory_lock(a) from t", false, false),
+        // not top-level
+        ("select pg_advisory_unlock(1) is null", false, false),
+        ("select (select pg_advisory_lock(1))", false, false),
+    ] {
+        let plan = plan_select(&schema, sql);
+        assert_eq!(plan.is_advisory_projection(), advisory, "{sql}");
+        assert_eq!(plan.takes_writer(), writer, "{sql}");
+        // the session's holds are read and moved on the write path, never a snapshot's
+        assert!(!advisory || !plan.is_read_only(), "{sql}");
+    }
 }
 
 #[test]

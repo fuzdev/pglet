@@ -1,0 +1,13 @@
+{
+  "rows": [
+    {
+      "first": true,
+      "pair": true,
+      "pair_again": false,
+      "pair_swapped": false,
+      "second": true,
+      "third": false
+    }
+  ],
+  "rowCount": 1
+}

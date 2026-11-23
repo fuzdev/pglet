@@ -950,9 +950,14 @@ Recorded and open: `EDGES.md` rows 211 and 216, and the writer's own costs again
 Those are: unrelated writes serialize (228), the embed refuses where it can't wait (229),
 an aborted block holds the writer (230), a client can wait on its own block (231), the
 coarse `40001` (232), no keepalive (233), and an unwinding holder (234).
-`pg_advisory_xact_lock` (both overloads, supported as a top-level item of a `SELECT` with
-no `FROM`) takes the writer, so every key is one lock and every write contends with it
-(250). A statement whose plan fails on the block's uncommitted catalog waits for it on the
+`pg_advisory_xact_lock` and the session-level `pg_advisory_lock` (both overloads of each,
+supported as a top-level item of the statement's own projection, over no `FROM` or over a
+`FROM` no `LIMIT`, `DISTINCT`, grouping or set operation follows) take the writer, so every
+key is one lock and every write contends with it; a session holding a session-level lock
+keeps the writer past its block, to its last `pg_advisory_unlock`, `pg_advisory_unlock_all()`,
+`DISCARD ALL` or its end (250). `pg_advisory_unlock` answers 18.6's `true`, or `false` and
+its `WARNING` for a key the session holds no session-level lock of. The `try` forms are
+`0A000`. A statement whose plan fails on the block's uncommitted catalog waits for it on the
 native server (the embed refuses it with `55P03`, 229). That's keyed on the plan, not on
 18.6's locks (238, 240), and a read whose plan succeeds reads that catalog (221).
 
@@ -3598,8 +3603,9 @@ included. **A parameter whose value pglet holds fixed only takes that value**:
 `TimeZone` (`UTC`), `DateStyle` (`ISO, MDY`), `IntervalStyle` (`postgres`) and
 `standard_conforming_strings` (`on`) are `0A000` for any other value, through `SET`,
 `SET TIME ZONE`, `set_config` and the native server's startup packet, where 18.6 honors
-it. A reset is accepted, and `set_config` of `application_name` or `lock_timeout`, which
-that function can't change, is `0A000` (row 69). A transaction-mode `SET` asking for
+it. A reset is accepted, and `set_config` of `application_name`, which that function can't
+change, is `0A000` (row 69); `set_config` of `lock_timeout` assigns it as `SET` / `SET
+LOCAL` does, where the call is evaluated (row 329 is what it does not bound). A transaction-mode `SET` asking for
 `READ ONLY` is `0A000`, matching `BEGIN`.
 
 All five are intercepted **per statement** of a simple-query batch, on the native server

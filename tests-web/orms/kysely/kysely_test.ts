@@ -423,8 +423,9 @@ test("kysely - insert and query related tables", async () => {
 });
 
 // kysely's `Migrator` over the stock `PostgresDialect` on the native server, unstubbed: the
-// introspector's `getTables` query and the migration lock (`pg_advisory_xact_lock`, the
-// writer here) run as kysely issues them. The npm leg's twin is
+// introspector's `getTables` query and the migration lock (kysely 0.28's session-level
+// `pg_advisory_lock` over a `set_config('lock_timeout', …)` CTE and its `pg_advisory_unlock`
+// — the writer here, held by the connection between them) run as kysely issues them. The npm leg's twin is
 // `tests-web/npm/kysely_migrator_test.ts`.
 test("kysely - Migrator migrates, reruns as a no-op, rolls a failing migration back, migrates down", async () => {
   const pool = new Pool(CONFIG);

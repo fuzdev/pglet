@@ -1608,10 +1608,11 @@ pub enum StringFunc {
     /// logical connection) exactly where a write would, and is released where the writer
     /// is — at the block's end, or at the statement's in autocommit.
     ///
-    /// Answered only as a **top-level item of a `SELECT` with no `FROM`**
-    /// ([`super::Plan::is_advisory_lock_projection`], which [`super::Plan::takes_writer`]
-    /// reads), the spelling kysely's migration lock issues; anywhere else a non-NULL call
-    /// is `0A000`, because nothing there took the writer. Strict: a NULL argument answers
+    /// Answered only as a **top-level item of the statement's own projection** — a
+    /// `SELECT` with no `FROM`, or one over a `FROM` no later node follows
+    /// ([`super::Plan::advisory_projection_items`], which [`super::Plan::takes_writer`]
+    /// reads); anywhere else a non-NULL call is `0A000`, because nothing there took the
+    /// writer. Strict: a NULL argument answers
     /// NULL (18.6 takes no lock for it; here the projection still took the writer). What
     /// the one-writer mapping costs against 18.6 — two keys contend, an ordinary write
     /// contends, a `ROLLBACK TO` or an error does not release — is `EDGES.md` row 250.
@@ -1687,6 +1688,86 @@ pub enum StringFunc {
     /// `octet_length(text | bytea) → int4` — the byte count: a `text` value's UTF-8
     /// length, a `bytea` value's own. Appended last for postcard-discriminant stability.
     OctetLength,
+    /// `pg_advisory_lock(bigint)` / `pg_advisory_lock(int4, int4) → void` — a
+    /// **session-level** advisory lock, taken as **the writer** as
+    /// [`Self::AdvisoryXactLock`] is, and held past the block: the session keeps the
+    /// writer while it holds any session-level lock, and each call stacks one more hold
+    /// of its key, as 18.6 counts them (`crate::executor::AdvisoryLocks`). Released by
+    /// as many [`Self::AdvisoryUnlock`] calls, by [`Self::AdvisoryUnlockAll`] and
+    /// `DISCARD ALL`, and at the session's end; never by a rollback.
+    ///
+    /// Answered only as a top-level item of the statement's own projection
+    /// ([`super::Plan::advisory_projection_items`]), as `pg_advisory_xact_lock` is.
+    /// Strict. Appended last for postcard-discriminant stability.
+    AdvisoryLock,
+    /// `pg_advisory_unlock(bigint)` / `pg_advisory_unlock(int4, int4) → boolean` —
+    /// release one hold of a session-level lock this session holds: `true`, or `false`
+    /// with 18.6's `WARNING` (`01000 you don't own a lock of type ExclusiveLock`) where
+    /// it holds none — a transaction-level hold of the key does not count. Takes no
+    /// writer. Answered where [`Self::AdvisoryLock`] is. Strict. Appended last for
+    /// postcard-discriminant stability.
+    AdvisoryUnlock,
+    /// `pg_advisory_unlock_all() → void` — release every session-level hold this session
+    /// has, as `DISCARD ALL` does. Answered where [`Self::AdvisoryLock`] is. Appended
+    /// last for postcard-discriminant stability.
+    AdvisoryUnlockAll,
+    /// `set_config('lock_timeout', value, is_local) → text`, its three arguments as
+    /// written — the one setting `set_config` moves: the evaluation assigns
+    /// `lock_timeout` as `SET` / `SET LOCAL` does and answers the value as `SHOW`
+    /// renders it (`crate::catalog::SessionSettings::set_config_lock_timeout`).
+    ///
+    /// **Not strict**, as 18.6's `set_config` is not: a NULL value resets the setting,
+    /// and a NULL `is_local` is `false` — the one member of this family answered ahead
+    /// of its NULL rule. Appended last for postcard-discriminant stability.
+    SetConfigLockTimeout,
+}
+
+/// The advisory-lock members of [`StringFunc`] — the calls that answer only as a
+/// top-level item of a statement's own projection, against the session's holds
+/// ([`super::Plan::advisory_projection_items`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AdvisoryFunc {
+    /// `pg_advisory_xact_lock` — the writer, to the block's end.
+    XactLock,
+    /// `pg_advisory_lock` — the writer, plus one session-level hold of the key.
+    Lock,
+    /// `pg_advisory_unlock` — one session-level hold given back.
+    Unlock,
+    /// `pg_advisory_unlock_all` — every session-level hold given back.
+    UnlockAll,
+}
+
+impl AdvisoryFunc {
+    /// The member `func` is, if it is one.
+    #[must_use]
+    pub const fn of(func: StringFunc) -> Option<Self> {
+        match func {
+            StringFunc::AdvisoryXactLock => Some(Self::XactLock),
+            StringFunc::AdvisoryLock => Some(Self::Lock),
+            StringFunc::AdvisoryUnlock => Some(Self::Unlock),
+            StringFunc::AdvisoryUnlockAll => Some(Self::UnlockAll),
+            _ => None,
+        }
+    }
+
+    /// Whether the call takes a lock — the writer, which the host takes before the
+    /// statement runs ([`super::Plan::takes_writer`]). The unlocking calls give back
+    /// only what the session already holds, and wait for nothing.
+    #[must_use]
+    pub const fn locks(self) -> bool {
+        matches!(self, Self::XactLock | Self::Lock)
+    }
+
+    /// The SQL name, for a message.
+    #[must_use]
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::XactLock => "pg_advisory_xact_lock",
+            Self::Lock => "pg_advisory_lock",
+            Self::Unlock => "pg_advisory_unlock",
+            Self::UnlockAll => "pg_advisory_unlock_all",
+        }
+    }
 }
 
 /// A non-strict variadic function (see [`Expr::VariadicFn`]) — each applies its own
@@ -2465,7 +2546,11 @@ pub const fn string_fn_result_type(func: StringFunc) -> TypeOid {
         StringFunc::PgGetConstraintdef | StringFunc::Regclass => TypeOid::Text,
         StringFunc::IsFinite => TypeOid::Bool,
         StringFunc::ColDescription => TypeOid::Text,
-        StringFunc::AdvisoryXactLock => TypeOid::Void,
+        StringFunc::AdvisoryXactLock | StringFunc::AdvisoryLock | StringFunc::AdvisoryUnlockAll => {
+            TypeOid::Void
+        }
+        StringFunc::AdvisoryUnlock => TypeOid::Bool,
+        StringFunc::SetConfigLockTimeout => TypeOid::Text,
         StringFunc::QuoteIdent | StringFunc::PgGetSerialSequence => TypeOid::Text,
         StringFunc::HasSchemaPrivilege => TypeOid::Bool,
         // The label, as `text` — an enum value's `TypeOid` here (`docs/enums.md`).
@@ -3259,11 +3344,14 @@ fn dispatch_call(
         "current_schemas" => string_call(StringFunc::CurrentSchemas, args, 1..=1),
         "pg_get_constraintdef" => string_call(StringFunc::PgGetConstraintdef, args, 1..=1),
         "col_description" => string_call(StringFunc::ColDescription, args, 2..=2),
-        // Both overloads, `(bigint)` and `(int4, int4)`: one lock, the writer, either way.
-        // The other advisory functions stay the default arm's `0A000` — the session-level
-        // ones hold past the block, which the writer cannot, and a `try` form answers
-        // without waiting, which no host's writer acquisition can.
+        // Both overloads, `(bigint)` and `(int4, int4)`: one lock, the writer, either way —
+        // the session-level ones holding it past the block. The `try` forms stay the
+        // default arm's `0A000`: one answers without waiting, which no host's writer
+        // acquisition, taken before the statement runs, can report (`EDGES.md` row 250).
         "pg_advisory_xact_lock" => string_call(StringFunc::AdvisoryXactLock, args, 1..=2),
+        "pg_advisory_lock" => string_call(StringFunc::AdvisoryLock, args, 1..=2),
+        "pg_advisory_unlock" => string_call(StringFunc::AdvisoryUnlock, args, 1..=2),
+        "pg_advisory_unlock_all" => string_call(StringFunc::AdvisoryUnlockAll, args, 0..=0),
         "quote_ident" => string_call(StringFunc::QuoteIdent, args, 1..=1),
         "md5" => string_call(StringFunc::Md5, args, 1..=1),
         "left" => string_call(StringFunc::Left, int4_positions(args), 2..=2),
@@ -3304,9 +3392,11 @@ fn dispatch_call(
                 args: vec![a, b],
             })
         }
-        // `set_config(setting, value, is_local)` (pg_dump preamble): pglet models no
-        // GUCs, so this is a no-op that echoes the `value` argument as text. Aliased
-        // so the output column is named `set_config`, matching Postgres.
+        // `set_config(setting, value, is_local)` (pg_dump preamble): for a setting
+        // pglet keeps no value of, a no-op that echoes the `value` argument as text;
+        // `lock_timeout`, which the session keeps, is assigned
+        // ([`StringFunc::SetConfigLockTimeout`]). Aliased so the output column is
+        // named `set_config`, matching Postgres.
         //
         // **`search_path` is checked here rather than at the `SET` seam** — a GUC's
         // value is a property of the *request*, not of the statement that spelled it,
@@ -3335,7 +3425,7 @@ fn dispatch_call(
         // value pglet holds fixed (`catalog::fixed_guc_value`); for every other GUC the
         // restored default is not modelled and the NULL is echoed — `EDGES.md` row 69.
         "set_config" => {
-            let [setting, value, _is_local] = <[Expr; 3]>::try_from(args).map_err(|_| {
+            let [setting, value, is_local] = <[Expr; 3]>::try_from(args).map_err(|_| {
                 Error::NotImplemented("set_config expects exactly 3 arguments".into())
             })?;
             let alias = |expr| {
@@ -3367,7 +3457,8 @@ fn dispatch_call(
                     "set_config requires a literal setting name".into(),
                 ));
             };
-            let name = name.trim().to_ascii_lowercase();
+            let written = name.to_ascii_lowercase();
+            let name = written.trim().to_string();
             if name == "search_path" {
                 return match &value {
                     Expr::Literal(Literal::Null) => alias(Expr::Literal(Literal::String(
@@ -3382,6 +3473,35 @@ fn dispatch_call(
                     }),
                 };
             }
+            // `lock_timeout` is a value the session keeps, and this spelling moves it: the
+            // call is evaluated, as 18.6 evaluates it, assigning the setting where the
+            // evaluation runs (a `SET` or a `SET LOCAL`) and answering it as `SHOW` renders
+            // it. Its value is read then, so a computed one is read too, and a malformed
+            // one is the evaluation's `22023` — after anything evaluated ahead of it.
+            // Not aliased: the call's own output name is `set_config`
+            // (`deparse::string_fn_name`), and a stored one renders as written. The name
+            // is matched as written, unpadded — 18.6 looks a padded one up as it is and
+            // finds no setting (`set_config(' lock_timeout', …)` is `42704`, measured).
+            // An `is_local` string literal is the `boolean` its unknown resolves to.
+            if name == "lock_timeout" {
+                if written != name {
+                    let Expr::Literal(Literal::String(original)) = setting_literal else {
+                        unreachable!("read as a string literal above")
+                    };
+                    return Err(Error::UnrecognizedParameter(original.clone()));
+                }
+                let is_local = match is_local {
+                    Expr::Literal(Literal::String(_)) => Expr::Cast {
+                        expr: Box::new(is_local),
+                        target_type: TypeOid::Bool,
+                    },
+                    other => other,
+                };
+                return Ok(Expr::StringFn {
+                    func: StringFunc::SetConfigLockTimeout,
+                    args: vec![setting, value, is_local],
+                });
+            }
             // Every other GUC whose value pglet decides (`catalog::guc_value_is_checked`) —
             // goes through the same one decider the `SET` statement reaches. A value
             // this cannot read is refused for those and echoed for the rest, which is
@@ -3391,13 +3511,13 @@ fn dispatch_call(
             // The isolation levels are acted on through `SET` alone: this spelling lowers
             // to an echo the session never sees, so a level it would move a block to is
             // refused rather than answered as set — the downgrade the statement spelling
-            // no longer makes. `application_name` and `lock_timeout` are the session's
-            // other two values, and this spelling cannot move them either.
+            // no longer makes. `application_name` is the session's other value, and this
+            // spelling cannot move it either (it would owe a `ParameterStatus`).
             let isolation = matches!(
                 name.as_str(),
                 "transaction_isolation" | "default_transaction_isolation"
             );
-            if isolation || matches!(name.as_str(), "application_name" | "lock_timeout") {
+            if isolation || name == "application_name" {
                 let level = match &value {
                     Expr::Literal(Literal::String(v)) if isolation => {
                         Some(crate::catalog::parse_isolation_setting(&name, v)?)
@@ -4425,7 +4545,8 @@ impl Expr {
     }
 
     /// Whether this node is itself a call 18.6 marks `VOLATILE` — a volatile
-    /// [`BuiltinFn`], a sequence function, or `pg_advisory_xact_lock` — whatever its
+    /// [`BuiltinFn`], a sequence function, an advisory-lock function, or `set_config` —
+    /// whatever its
     /// children are. The reading of volatility its readers share — the GIN probe and guard
     /// selection (`planner::index_selection`), an `ADD COLUMN` default's backfill
     /// (`executor::ddl`), and through [`Self::contains_volatile_call`] a projection's
@@ -4437,7 +4558,12 @@ impl Expr {
             Self::Builtin(func) => func.is_volatile(),
             Self::SequenceFn { .. }
             | Self::StringFn {
-                func: StringFunc::AdvisoryXactLock,
+                func:
+                    StringFunc::AdvisoryXactLock
+                    | StringFunc::AdvisoryLock
+                    | StringFunc::AdvisoryUnlock
+                    | StringFunc::AdvisoryUnlockAll
+                    | StringFunc::SetConfigLockTimeout,
                 ..
             } => true,
             _ => false,
@@ -4481,17 +4607,14 @@ impl Expr {
         }
     }
 
-    /// The arguments of a **top-level** `pg_advisory_xact_lock` call — a bare
-    /// [`StringFunc::AdvisoryXactLock`] or one wrapped only in an [`Self::Alias`] — as
-    /// [`Self::as_sequence_fn`] finds a top-level sequence function. A call nested any
-    /// deeper yields `None`.
-    pub(crate) fn as_advisory_lock(&self) -> Option<&[Self]> {
+    /// A **top-level** advisory-lock call — a bare [`AdvisoryFunc`] member of
+    /// [`Self::StringFn`] or one wrapped only in an [`Self::Alias`] — and its arguments,
+    /// as [`Self::as_sequence_fn`] finds a top-level sequence function. A call nested
+    /// any deeper yields `None`.
+    pub(crate) fn as_advisory_call(&self) -> Option<(AdvisoryFunc, &[Self])> {
         match self {
-            Self::StringFn {
-                func: StringFunc::AdvisoryXactLock,
-                args,
-            } => Some(args),
-            Self::Alias { expr, .. } => expr.as_advisory_lock(),
+            Self::StringFn { func, args } => AdvisoryFunc::of(*func).map(|f| (f, args.as_slice())),
+            Self::Alias { expr, .. } => expr.as_advisory_call(),
             _ => None,
         }
     }
@@ -5619,6 +5742,10 @@ mod postcard_layout {
                 (26, StringFunc::Right),
                 (27, StringFunc::Substr),
                 (28, StringFunc::OctetLength),
+                (29, StringFunc::AdvisoryLock),
+                (30, StringFunc::AdvisoryUnlock),
+                (31, StringFunc::AdvisoryUnlockAll),
+                (32, StringFunc::SetConfigLockTimeout),
             ],
         );
         pin_tags(
@@ -5856,7 +5983,11 @@ mod postcard_layout {
                 | StringFunc::Left
                 | StringFunc::Right
                 | StringFunc::Substr
-                | StringFunc::OctetLength => (),
+                | StringFunc::OctetLength
+                | StringFunc::AdvisoryLock
+                | StringFunc::AdvisoryUnlock
+                | StringFunc::AdvisoryUnlockAll
+                | StringFunc::SetConfigLockTimeout => (),
             }
         }
         fn _variadic_func(v: VariadicFunc) {

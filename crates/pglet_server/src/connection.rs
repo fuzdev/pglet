@@ -440,19 +440,36 @@ impl Connection {
     /// statement or a block can end, and a no-op while a block is open, healthy or
     /// aborted — where it checks, in debug builds, that the block holds the writer
     /// exactly when its session says it took it.
+    ///
+    /// **A session-level advisory lock holds the writer past the block**
+    /// (`pg_advisory_lock`, `EDGES.md` row 250): while the session holds any, an idle
+    /// session keeps the writer — what it found on taking it forgotten, its changes being
+    /// committed — and gives it back with its last unlock, `DISCARD ALL`, or its end
+    /// ([`Self::cleanup_on_disconnect`]).
     pub fn settle_writer(&mut self) {
         let pid = self.session.process_id;
+        let session_locked = !self.sequence_session.advisory_locks().is_empty();
         if self.transaction_status() == TransactionStatus::Idle {
-            self.shared.writer.release(pid);
+            if session_locked {
+                self.shared.writer.forget_grant(pid);
+            } else {
+                self.shared.writer.release(pid);
+            }
             // A block ends through `apply_transaction_command` or `rollback_transaction`,
             // each of which closes the settings' block first; one that ended any other way
             // is taken as rolled back.
             self.settings.end_block(false);
         } else {
+            if !session_locked && !self.tx.holds_writer() {
+                // The writer was the session-level locks' alone — the last given back
+                // inside a block that has not written, or a block refused its first write
+                // (`40001`) — and goes back now, as 18.6 releases the lock at its unlock.
+                self.shared.writer.release(pid);
+            }
             debug_assert_eq!(
                 self.shared.writer.is_held_by(pid),
-                self.tx.holds_writer(),
-                "a block holds the writer exactly when its session took it"
+                self.tx.holds_writer() || session_locked,
+                "a block holds the writer exactly when its session took it, or holds a session-level advisory lock"
             );
         }
     }
@@ -575,6 +592,8 @@ impl Connection {
     /// transaction (returns to `Idle`, clears the frames) and releases the writer even
     /// when a step fails.
     pub fn cleanup_on_disconnect(&mut self) {
+        // The session's end releases its session-level advisory locks, as 18.6's does.
+        self.sequence_session.advisory_locks_mut().unlock_all();
         if self.transaction_status() == TransactionStatus::Idle {
             self.settle_writer();
             return;

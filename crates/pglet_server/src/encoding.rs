@@ -179,17 +179,18 @@ pub fn query_result_to_extended(
     messages
 }
 
-/// A `NoticeResponse` carrying a `NOTICE`-severity, `00000`
-/// (`successful_completion`) message — the SQLSTATE Postgres's `DROP … IF EXISTS`
-/// skip notice uses (an `ereport(NOTICE, …)` with no explicit errcode).
+/// A statement's `NoticeResponse` — its severity and SQLSTATE as the statement raised
+/// them: a `NOTICE` at `00000` for Postgres's `DROP … IF EXISTS` skip (an
+/// `ereport(NOTICE, …)` with no explicit errcode), a `WARNING` at `01000` for an advisory
+/// unlock of a lock the session does not hold.
 ///
 /// Built through the same `pglet_core::plain_wire_fields` every other send site uses,
 /// so the severity pair (`S` **and** the unlocalized `V`) cannot be right on one path
 /// and missing on another — which is exactly what it was: three hand-written `[SCM]`
 /// triples, none of them sending `V`.
-fn notice_response(message: &str) -> BackendMessage {
+fn notice_response(notice: &pglet_sql::executor::Notice) -> BackendMessage {
     BackendMessage::NoticeResponse {
-        fields: plain_wire_fields(Severity::Notice, "00000", message),
+        fields: plain_wire_fields(notice.severity, notice.sqlstate, &notice.message),
     }
 }
 
@@ -329,11 +330,22 @@ mod tests {
 
     #[test]
     fn a_notice_carries_the_severity_pair() {
-        let message = notice_response("table \"x\" does not exist, skipping");
+        use pglet_sql::executor::Notice;
+        let message = notice_response(&Notice::new_notice(
+            "table \"x\" does not exist, skipping".into(),
+        ));
         assert_eq!(codes(&message), "SVCM");
         assert_eq!(value_of(&message, b'S').as_deref(), Some("NOTICE"));
         assert_eq!(value_of(&message, b'V').as_deref(), Some("NOTICE"));
         assert_eq!(value_of(&message, b'C').as_deref(), Some("00000"));
+        // An advisory unlock of a lock the session does not hold: 18.6's `elog(WARNING)`.
+        let message = notice_response(&Notice::warning(
+            "you don't own a lock of type ExclusiveLock".into(),
+        ));
+        assert_eq!(codes(&message), "SVCM");
+        assert_eq!(value_of(&message, b'S').as_deref(), Some("WARNING"));
+        assert_eq!(value_of(&message, b'V').as_deref(), Some("WARNING"));
+        assert_eq!(value_of(&message, b'C').as_deref(), Some("01000"));
     }
 
     // A text-format `bytea` parameter is read by the type's input function with no lexer in
