@@ -45,6 +45,23 @@ test('pg_advisory_xact_lock answers void, in autocommit and inside a transaction
 	await db.close();
 });
 
+test('pg_advisory_xact_lock_shared answers void in both overloads, beside the exclusive form', async () => {
+	const db = create_pglet_db();
+	const auto = await db.query('SELECT pg_advisory_xact_lock_shared(3853314791062309107)');
+	assert_equal(auto.rows, [{pg_advisory_xact_lock_shared: ''}]);
+	assert_equal(auto.fields.map((f) => f.dataTypeID), [VOID_OID]);
+	const inside = await db.transaction(async (tx) => {
+		// a scoped writer's shape: two `integer` parameters
+		const shared = await tx.query('SELECT pg_advisory_xact_lock_shared($1, $2) AS k', [1, 2]);
+		// the block's own shared hold never conflicts with its exclusive one
+		const exclusive = await tx.query('SELECT pg_advisory_xact_lock(1, 2) AS k');
+		return [shared.rows, exclusive.rows];
+	});
+	assert_equal(inside, [[{k: ''}], [{k: ''}]]);
+	assert_equal((await db.query('SELECT pg_advisory_xact_lock_shared(NULL, 1) AS k')).rows, [{k: null}]);
+	await db.close();
+});
+
 test("kysely's migration lock and unlock, as its Migrator issues them around a transaction", async () => {
 	const pglet = create_pglet_db();
 	const db = new Kysely<Record<string, never>>({dialect: new PgletDialect({db: pglet})});

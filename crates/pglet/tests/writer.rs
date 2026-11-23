@@ -1343,6 +1343,47 @@ fn a_defaults_set_config_is_kept_where_it_is_evaluated() {
     assert_eq!(show(&mut db), "Text(\"5s\")", "copy_in");
 }
 
+/// `pg_advisory_xact_lock_shared` is the same writer, in both overloads, on every backend:
+/// a block's shared call refuses another logical connection's exclusive call `55P03` and an
+/// exclusive one refuses a shared call, each admitted once the block ends; the block's own
+/// shared and exclusive calls answer `void` together. Two shared holders of one key
+/// contend too, where 18.6 grants both (`EDGES.md` row 250).
+///
+/// Red for a shared lock that takes no writer (connection 3's exclusive call goes through).
+#[test]
+fn an_advisory_xact_lock_shared_is_the_writer() {
+    for (backend, mut db, _) in backends() {
+        let shared = "SELECT pg_advisory_xact_lock_shared(7)";
+        let shared_pair = "SELECT pg_advisory_xact_lock_shared(0, 7)";
+        let exclusive = "SELECT pg_advisory_xact_lock(7)";
+        assert_eq!(
+            answer(&mut db, shared, 3),
+            "Text(\"\")",
+            "{backend}: autocommit"
+        );
+        for (holder, waiter) in [
+            (shared, exclusive),
+            (shared_pair, exclusive),
+            (exclusive, shared),
+            (exclusive, shared_pair),
+            (shared, shared),
+        ] {
+            let cell = format!("{backend}, {holder} then {waiter}");
+            assert_eq!(answer(&mut db, "BEGIN", 0), "", "{cell}");
+            assert_eq!(answer(&mut db, holder, 0), "Text(\"\")", "{cell}");
+            assert_eq!(answer(&mut db, waiter, 0), "Text(\"\")", "{cell}: its own");
+            assert_eq!(answer(&mut db, waiter, 3), "ERR 55P03", "{cell}");
+            assert_eq!(answer(&mut db, "COMMIT", 0), "", "{cell}");
+            assert_eq!(answer(&mut db, waiter, 3), "Text(\"\")", "{cell}: released");
+        }
+        assert_eq!(
+            answer(&mut db, "SELECT pg_advisory_xact_lock_shared(NULL, 1)", 0),
+            "Null",
+            "{backend}: strict"
+        );
+    }
+}
+
 /// `pg_advisory_xact_lock` takes the writer as a write does, on every backend: a block's
 /// call holds it, so another logical connection's call — and its write — is refused
 /// `55P03` without aborting the block, and admitted once the block ends, at `COMMIT` or at

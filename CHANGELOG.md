@@ -11,6 +11,11 @@ released version under a fresh `## Unreleased` declaring a patch.
 ## Unreleased
 <!-- bump: patch -->
 
+- feat: `pg_advisory_xact_lock_shared`, over a `bigint` or two `integer`s, answering where
+  `pg_advisory_xact_lock` does. Its lock is the same one: a shared and an exclusive holder of
+  a key wait on each other as on Postgres, and two shared holders wait on each other too,
+  where Postgres grants both. `pg_try_advisory_xact_lock_shared` is still refused `0A000`
+
 ## 0.2.0
 
 - the package no longer claims Deno support: the README and the `db.js` and `index.d.ts`

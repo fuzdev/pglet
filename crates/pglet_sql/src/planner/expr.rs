@@ -1720,6 +1720,14 @@ pub enum StringFunc {
     /// and a NULL `is_local` is `false` — the one member of this family answered ahead
     /// of its NULL rule. Appended last for postcard-discriminant stability.
     SetConfigLockTimeout,
+    /// `pg_advisory_xact_lock_shared(bigint)` / `(int4, int4) → void` — the shared form
+    /// of [`Self::AdvisoryXactLock`], and the same lock here: **the writer**, to the
+    /// block's end. 18.6 grants shared holders of one key together and makes a shared
+    /// and an exclusive holder wait on each other; the one writer keeps the second half
+    /// and gives up the first, so two shared callers wait on each other too (`EDGES.md`
+    /// row 250). Answered where [`Self::AdvisoryXactLock`] is. Strict. Appended last for
+    /// postcard-discriminant stability.
+    AdvisoryXactLockShared,
 }
 
 /// The advisory-lock members of [`StringFunc`] — the calls that answer only as a
@@ -1729,6 +1737,9 @@ pub enum StringFunc {
 pub enum AdvisoryFunc {
     /// `pg_advisory_xact_lock` — the writer, to the block's end.
     XactLock,
+    /// `pg_advisory_xact_lock_shared` — the writer too, to the block's end: shared
+    /// holders contend here, where 18.6 grants them together.
+    XactLockShared,
     /// `pg_advisory_lock` — the writer, plus one session-level hold of the key.
     Lock,
     /// `pg_advisory_unlock` — one session-level hold given back.
@@ -1743,6 +1754,7 @@ impl AdvisoryFunc {
     pub const fn of(func: StringFunc) -> Option<Self> {
         match func {
             StringFunc::AdvisoryXactLock => Some(Self::XactLock),
+            StringFunc::AdvisoryXactLockShared => Some(Self::XactLockShared),
             StringFunc::AdvisoryLock => Some(Self::Lock),
             StringFunc::AdvisoryUnlock => Some(Self::Unlock),
             StringFunc::AdvisoryUnlockAll => Some(Self::UnlockAll),
@@ -1755,7 +1767,7 @@ impl AdvisoryFunc {
     /// only what the session already holds, and wait for nothing.
     #[must_use]
     pub const fn locks(self) -> bool {
-        matches!(self, Self::XactLock | Self::Lock)
+        matches!(self, Self::XactLock | Self::XactLockShared | Self::Lock)
     }
 
     /// The SQL name, for a message.
@@ -1763,6 +1775,7 @@ impl AdvisoryFunc {
     pub const fn name(self) -> &'static str {
         match self {
             Self::XactLock => "pg_advisory_xact_lock",
+            Self::XactLockShared => "pg_advisory_xact_lock_shared",
             Self::Lock => "pg_advisory_lock",
             Self::Unlock => "pg_advisory_unlock",
             Self::UnlockAll => "pg_advisory_unlock_all",
@@ -2546,9 +2559,10 @@ pub const fn string_fn_result_type(func: StringFunc) -> TypeOid {
         StringFunc::PgGetConstraintdef | StringFunc::Regclass => TypeOid::Text,
         StringFunc::IsFinite => TypeOid::Bool,
         StringFunc::ColDescription => TypeOid::Text,
-        StringFunc::AdvisoryXactLock | StringFunc::AdvisoryLock | StringFunc::AdvisoryUnlockAll => {
-            TypeOid::Void
-        }
+        StringFunc::AdvisoryXactLock
+        | StringFunc::AdvisoryXactLockShared
+        | StringFunc::AdvisoryLock
+        | StringFunc::AdvisoryUnlockAll => TypeOid::Void,
         StringFunc::AdvisoryUnlock => TypeOid::Bool,
         StringFunc::SetConfigLockTimeout => TypeOid::Text,
         StringFunc::QuoteIdent | StringFunc::PgGetSerialSequence => TypeOid::Text,
@@ -3345,10 +3359,14 @@ fn dispatch_call(
         "pg_get_constraintdef" => string_call(StringFunc::PgGetConstraintdef, args, 1..=1),
         "col_description" => string_call(StringFunc::ColDescription, args, 2..=2),
         // Both overloads, `(bigint)` and `(int4, int4)`: one lock, the writer, either way —
-        // the session-level ones holding it past the block. The `try` forms stay the
-        // default arm's `0A000`: one answers without waiting, which no host's writer
-        // acquisition, taken before the statement runs, can report (`EDGES.md` row 250).
+        // the session-level ones holding it past the block, and the shared one taking it
+        // exclusively, as the exclusive one does. The `try` forms stay the default arm's
+        // `0A000`: one answers without waiting, which no host's writer acquisition, taken
+        // before the statement runs, can report (`EDGES.md` row 250).
         "pg_advisory_xact_lock" => string_call(StringFunc::AdvisoryXactLock, args, 1..=2),
+        "pg_advisory_xact_lock_shared" => {
+            string_call(StringFunc::AdvisoryXactLockShared, args, 1..=2)
+        }
         "pg_advisory_lock" => string_call(StringFunc::AdvisoryLock, args, 1..=2),
         "pg_advisory_unlock" => string_call(StringFunc::AdvisoryUnlock, args, 1..=2),
         "pg_advisory_unlock_all" => string_call(StringFunc::AdvisoryUnlockAll, args, 0..=0),
@@ -4560,6 +4578,7 @@ impl Expr {
             | Self::StringFn {
                 func:
                     StringFunc::AdvisoryXactLock
+                    | StringFunc::AdvisoryXactLockShared
                     | StringFunc::AdvisoryLock
                     | StringFunc::AdvisoryUnlock
                     | StringFunc::AdvisoryUnlockAll
@@ -5746,6 +5765,7 @@ mod postcard_layout {
                 (30, StringFunc::AdvisoryUnlock),
                 (31, StringFunc::AdvisoryUnlockAll),
                 (32, StringFunc::SetConfigLockTimeout),
+                (33, StringFunc::AdvisoryXactLockShared),
             ],
         );
         pin_tags(
@@ -5987,7 +6007,8 @@ mod postcard_layout {
                 | StringFunc::AdvisoryLock
                 | StringFunc::AdvisoryUnlock
                 | StringFunc::AdvisoryUnlockAll
-                | StringFunc::SetConfigLockTimeout => (),
+                | StringFunc::SetConfigLockTimeout
+                | StringFunc::AdvisoryXactLockShared => (),
             }
         }
         fn _variadic_func(v: VariadicFunc) {

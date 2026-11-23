@@ -653,12 +653,13 @@ pub const fn string_fn_name(func: StringFunc) -> &'static str {
         StringFunc::AdvisoryUnlock => "pg_advisory_unlock",
         StringFunc::AdvisoryUnlockAll => "pg_advisory_unlock_all",
         StringFunc::SetConfigLockTimeout => "set_config",
+        StringFunc::AdvisoryXactLockShared => "pg_advisory_xact_lock_shared",
     }
 }
 
 /// Every [`StringFunc`], for the corpus completeness check. See
 /// `pglet::dump`'s `ROUND_TRIP_CORPUS`.
-pub const STRING_FUNCS: [StringFunc; 33] = [
+pub const STRING_FUNCS: [StringFunc; 34] = [
     StringFunc::PgGetConstraintdef,
     StringFunc::Regclass,
     StringFunc::Upper,
@@ -692,6 +693,7 @@ pub const STRING_FUNCS: [StringFunc; 33] = [
     StringFunc::AdvisoryUnlock,
     StringFunc::AdvisoryUnlockAll,
     StringFunc::SetConfigLockTimeout,
+    StringFunc::AdvisoryXactLockShared,
 ];
 
 /// Render a [`Expr::StringFn`] call, special-casing [`StringFunc::Position`].
@@ -823,6 +825,7 @@ const fn string_fn_arg_text(func: StringFunc, idx: usize) -> bool {
         | StringFunc::IsFinite
         | StringFunc::ColDescription
         | StringFunc::AdvisoryXactLock
+        | StringFunc::AdvisoryXactLockShared
         | StringFunc::AdvisoryLock
         | StringFunc::AdvisoryUnlock
         | StringFunc::AdvisoryUnlockAll

@@ -3707,12 +3707,16 @@ impl Plan {
     }
 
     /// Whether this statement's own projection takes a transaction-level advisory lock
-    /// (`pg_advisory_xact_lock`), which is the block's writer to its end.
+    /// (`pg_advisory_xact_lock` or its `_shared` form), which is the block's writer to
+    /// its end.
     fn takes_xact_advisory_lock(&self) -> bool {
         self.advisory_projection_items().is_some_and(|items| {
-            items
-                .iter()
-                .any(|e| matches!(e.as_advisory_call(), Some((AdvisoryFunc::XactLock, _))))
+            items.iter().any(|e| {
+                matches!(
+                    e.as_advisory_call(),
+                    Some((AdvisoryFunc::XactLock | AdvisoryFunc::XactLockShared, _))
+                )
+            })
         })
     }
 

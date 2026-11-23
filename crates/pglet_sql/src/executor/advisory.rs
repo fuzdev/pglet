@@ -1,9 +1,10 @@
 //! The advisory-lock functions, answered against the session's holds.
 //!
-//! Every key is **the writer** (`EDGES.md` row 250): a locking call answers only where
-//! the host took the writer before the statement ran, which is a top-level item of the
-//! statement's own projection ([`Plan::advisory_projection_items`]). A
-//! session-level call also counts a hold of its key here, in the session's
+//! Every key is **the writer** (`EDGES.md` row 250), in either mode — a shared
+//! `pg_advisory_xact_lock_shared` takes it as the exclusive form does: a locking call
+//! answers only where the host took the writer before the statement ran, which is a
+//! top-level item of the statement's own projection ([`Plan::advisory_projection_items`]).
+//! A session-level call also counts a hold of its key here, in the session's
 //! [`AdvisoryLocks`], and the host keeps the writer while any is held — past the block,
 //! to the matching unlocks or the session's end, as 18.6 holds a session-level lock.
 //!
@@ -41,9 +42,9 @@ pub enum AdvisoryKey {
 ///
 /// One per session: on the native server every connection's
 /// ([`super::SequenceSession::advisory`]), and on the embedded `Database` the one logical
-/// connection holding the writer's. A transaction-level hold
-/// (`pg_advisory_xact_lock`) is not counted here: it is the writer alone, released where
-/// the block ends, and no unlock gives it back — on 18.6 either.
+/// connection holding the writer's. A transaction-level hold (`pg_advisory_xact_lock`,
+/// shared or not) is not counted here: it is the writer alone, released where the block
+/// ends, and no unlock gives it back — on 18.6 either.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct AdvisoryLocks {
     held: Vec<(AdvisoryKey, u64)>,
@@ -150,7 +151,7 @@ pub fn eval_advisory_call(
     // `void` is the empty text a `TypeOid::Void` descriptor carries.
     let void = Value::Text(String::new());
     Ok(match (func, key) {
-        (AdvisoryFunc::XactLock, _) => void,
+        (AdvisoryFunc::XactLock | AdvisoryFunc::XactLockShared, _) => void,
         (AdvisoryFunc::Lock, Some(key)) => {
             locks.lock(key);
             void

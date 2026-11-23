@@ -2001,6 +2001,7 @@ COPY g (id, \"order\", tags, note) FROM stdin;
         StringFunc::PgGetConstraintdef,
         StringFunc::Regclass,
         StringFunc::AdvisoryXactLock,
+        StringFunc::AdvisoryXactLockShared,
         StringFunc::AdvisoryLock,
         StringFunc::AdvisoryUnlock,
         StringFunc::AdvisoryUnlockAll,

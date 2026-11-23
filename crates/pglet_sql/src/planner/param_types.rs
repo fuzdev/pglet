@@ -2174,6 +2174,7 @@ const fn string_fn_text_arg(func: StringFunc, i: usize) -> bool {
         // `string_fn_typed_arg`.
         StringFunc::ColDescription
         | StringFunc::AdvisoryXactLock
+        | StringFunc::AdvisoryXactLockShared
         | StringFunc::AdvisoryLock
         | StringFunc::AdvisoryUnlock
         | StringFunc::AdvisoryUnlockAll => false,
@@ -2206,11 +2207,17 @@ const fn string_fn_text_arg(func: StringFunc, i: usize) -> bool {
 const fn string_fn_typed_arg(func: StringFunc, i: usize, n: usize) -> Option<TypeOid> {
     match (func, n) {
         (
-            StringFunc::AdvisoryXactLock | StringFunc::AdvisoryLock | StringFunc::AdvisoryUnlock,
+            StringFunc::AdvisoryXactLock
+            | StringFunc::AdvisoryXactLockShared
+            | StringFunc::AdvisoryLock
+            | StringFunc::AdvisoryUnlock,
             1,
         ) => Some(TypeOid::Int8),
         (
-            StringFunc::AdvisoryXactLock | StringFunc::AdvisoryLock | StringFunc::AdvisoryUnlock,
+            StringFunc::AdvisoryXactLock
+            | StringFunc::AdvisoryXactLockShared
+            | StringFunc::AdvisoryLock
+            | StringFunc::AdvisoryUnlock,
             2,
         ) => Some(TypeOid::Int4),
         (StringFunc::ColDescription, 2) if i == 1 => Some(TypeOid::Int4),
@@ -2377,6 +2384,29 @@ mod tests {
             )[0],
             Some(TypeOid::Text)
         );
+    }
+
+    #[test]
+    fn advisory_xact_lock_params_type_per_overload() {
+        // 18.6 resolves a bare `$N` by the arity's one overload: `(bigint)` alone, and
+        // `(integer, integer)` for a pair — the shared form as the exclusive one.
+        let schema = Schema::new();
+        let infer = |sql: &str| {
+            let plan = parse(sql, &schema).unwrap().remove(0);
+            infer_param_types(&plan, &schema, &[]).unwrap()
+        };
+        for func in ["pg_advisory_xact_lock", "pg_advisory_xact_lock_shared"] {
+            assert_eq!(
+                infer(&format!("SELECT {func}($1)")),
+                [Some(TypeOid::Int8)],
+                "{func}($1)"
+            );
+            assert_eq!(
+                infer(&format!("SELECT {func}($1, $2)")),
+                [Some(TypeOid::Int4), Some(TypeOid::Int4)],
+                "{func}($1, $2)"
+            );
+        }
     }
 
     #[test]

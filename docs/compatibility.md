@@ -950,11 +950,12 @@ Recorded and open: `EDGES.md` rows 211 and 216, and the writer's own costs again
 Those are: unrelated writes serialize (228), the embed refuses where it can't wait (229),
 an aborted block holds the writer (230), a client can wait on its own block (231), the
 coarse `40001` (232), no keepalive (233), and an unwinding holder (234).
-`pg_advisory_xact_lock` and the session-level `pg_advisory_lock` (both overloads of each,
-supported as a top-level item of the statement's own projection, over no `FROM` or over a
-`FROM` no `LIMIT`, `DISTINCT`, grouping or set operation follows) take the writer, so every
-key is one lock and every write contends with it; a session holding a session-level lock
-keeps the writer past its block, to its last `pg_advisory_unlock`, `pg_advisory_unlock_all()`,
+`pg_advisory_xact_lock`, its shared form `pg_advisory_xact_lock_shared` and the
+session-level `pg_advisory_lock` (both overloads of each, supported as a top-level item of
+the statement's own projection, over no `FROM` or over a `FROM` no `LIMIT`, `DISTINCT`,
+grouping or set operation follows) take the writer, so every key is one lock and every
+write contends with it — two shared holders included, where 18.7 grants both; a session
+holding a session-level lock keeps the writer past its block, to its last `pg_advisory_unlock`, `pg_advisory_unlock_all()`,
 `DISCARD ALL` or its end (250). `pg_advisory_unlock` answers 18.6's `true`, or `false` and
 its `WARNING` for a key the session holds no session-level lock of. The `try` forms are
 `0A000`. A statement whose plan fails on the block's uncommitted catalog waits for it on the

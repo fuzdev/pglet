@@ -716,6 +716,18 @@ fn an_advisory_call_answers_in_the_statements_own_projection() {
             true,
         ),
         ("select pg_advisory_unlock(a) from t", true, false),
+        // the shared form is the same writer, in both overloads
+        ("select pg_advisory_xact_lock_shared(1)", true, true),
+        (
+            "select pg_advisory_xact_lock_shared(1, 2) as k, a from t",
+            true,
+            true,
+        ),
+        (
+            "select pg_advisory_xact_lock_shared(a) from t limit 1",
+            false,
+            false,
+        ),
         // the nodes the statement executor forwards to: a locking clause's input and a
         // materialized `WITH`'s body
         ("select pg_advisory_lock(a) from t for update", true, true),
@@ -750,6 +762,20 @@ fn an_advisory_call_answers_in_the_statements_own_projection() {
         assert_eq!(plan.takes_writer(), writer, "{sql}");
         // the session's holds are read and moved on the write path, never a snapshot's
         assert!(!advisory || !plan.is_read_only(), "{sql}");
+    }
+    // A transaction-level call, shared or not, is the block's writer to its end; the
+    // session-level one is the session's hold, not the block's.
+    for (sql, block) in [
+        ("select pg_advisory_xact_lock(1)", true),
+        ("select pg_advisory_xact_lock_shared(1)", true),
+        ("select pg_advisory_xact_lock_shared(1, 2)", true),
+        ("select pg_advisory_lock(1)", false),
+    ] {
+        assert_eq!(
+            plan_select(&schema, sql).block_takes_writer(),
+            block,
+            "{sql}"
+        );
     }
 }
 

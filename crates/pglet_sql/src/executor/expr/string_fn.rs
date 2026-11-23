@@ -216,6 +216,7 @@ pub(super) fn eval_string_fn(
         // session's locks: answering would report a lock nothing took. The one place it
         // answers is `crate::executor::advisory`, from the projection path.
         StringFunc::AdvisoryXactLock
+        | StringFunc::AdvisoryXactLockShared
         | StringFunc::AdvisoryLock
         | StringFunc::AdvisoryUnlock
         | StringFunc::AdvisoryUnlockAll => {

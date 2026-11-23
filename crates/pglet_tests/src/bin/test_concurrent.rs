@@ -1598,6 +1598,84 @@ async fn test_advisory_xact_lock_is_the_writer() -> Result<(), Box<dyn std::erro
     Ok(())
 }
 
+/// `pg_advisory_xact_lock_shared` **is the writer too**, in both overloads: a shared hold
+/// and an exclusive one of a key wait on each other, in either order, and go through when
+/// the holder's block ends, as on 18.6 (measured over two connections). One block takes a
+/// key shared and then exclusive at once, its own holds never conflicting. The last step
+/// pins what the mapping costs, so a shared lock mode turns it red on purpose: two shared
+/// holders of one key wait on each other here, where 18.6 grants both (the repo's
+/// `EDGES.md` row 250).
+async fn test_advisory_xact_lock_shared_is_the_writer() -> Result<(), Box<dyn std::error::Error>> {
+    let a = connect().await;
+    let b = connect_patient().await;
+    let hurried = connect().await;
+    exec(&hurried, "SET lock_timeout = '200ms'").await;
+    let shared = "SELECT pg_advisory_xact_lock_shared(7)";
+    let shared_pair = "SELECT pg_advisory_xact_lock_shared(0, 7)";
+    let exclusive = "SELECT pg_advisory_xact_lock(7)";
+
+    // Shared blocks exclusive, and exclusive blocks shared: the waiter goes through at
+    // the holder's end, and past a short bound answers `55P03`.
+    for (holder, waiter) in [
+        (shared, exclusive),
+        (shared_pair, exclusive),
+        (exclusive, shared),
+        (exclusive, shared_pair),
+    ] {
+        for end in ["COMMIT", "ROLLBACK"] {
+            exec(&a, "BEGIN").await;
+            exec(&a, holder).await;
+            let task = spawn_statements(&b, &[waiter]);
+            let label = format!("{holder} then {waiter}, {end}");
+            let codes = after_holder_ends(&a, end, task, &label).await;
+            assert_eq!(codes, vec![None], "{label}: the waiter goes through");
+        }
+        exec(&a, "BEGIN").await;
+        exec(&a, holder).await;
+        assert_eq!(
+            sqlstate(&hurried, waiter).await.as_deref(),
+            Some("55P03"),
+            "{holder} then {waiter}: a bounded wait"
+        );
+        exec(&a, "ROLLBACK").await;
+        assert_eq!(
+            sqlstate(&hurried, waiter).await,
+            None,
+            "{holder} then {waiter}: released at ROLLBACK"
+        );
+    }
+
+    // The holder's own block takes the key shared, then exclusive, then shared, at once.
+    exec(&a, "BEGIN").await;
+    for sql in [shared, exclusive, shared] {
+        assert_eq!(sqlstate(&a, sql).await, None, "the holder's own {sql}");
+    }
+    exec(&a, "COMMIT").await;
+
+    // An autocommit shared call holds it for its statement only.
+    exec(&a, shared).await;
+    assert_eq!(
+        sqlstate(&hurried, exclusive).await,
+        None,
+        "released at the autocommit statement's end"
+    );
+
+    // What the one writer costs: two shared holders of one key contend. 18.6 grants both.
+    exec(&a, "BEGIN").await;
+    exec(&a, shared).await;
+    assert_eq!(
+        sqlstate(&hurried, shared).await.as_deref(),
+        Some("55P03"),
+        "a shared hold is the one writer"
+    );
+    exec(&a, "ROLLBACK").await;
+
+    println!(
+        "✓ pg_advisory_xact_lock_shared is the writer (shared and exclusive wait on each other; two shared holders contend)"
+    );
+    Ok(())
+}
+
 /// `pg_advisory_lock` **is the writer, held by the session**: an autocommit call keeps
 /// it past its statement and a block's past its `ROLLBACK`, so a second connection's call
 /// of the key — session-level or transaction-level — waits and, under a short
@@ -2701,6 +2779,10 @@ async fn main() {
     run_test!(
         "pg_advisory_xact_lock is the writer",
         test_advisory_xact_lock_is_the_writer()
+    );
+    run_test!(
+        "pg_advisory_xact_lock_shared is the writer",
+        test_advisory_xact_lock_shared_is_the_writer()
     );
     run_test!(
         "pg_advisory_lock is the writer, held by the session",
