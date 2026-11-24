@@ -1368,13 +1368,40 @@ fn every_statement_answers_alike_for(shape: DeepShape, levels: usize) {
 /// on a CTE chain at 2 048 (`SIGSEGV`) — the reserve measured from a low end 2 MiB
 /// below the real one. Linux only: elsewhere no mapping is read, and the declaration is
 /// the caller's to get right.
+///
+/// It holds only where a thread's stack is a mapping of its own. Where the kernel shows
+/// the thread in a mapping larger than its stack — merged with a neighbour's, which the
+/// engine cannot tell from its own (`pglet_sql::depth`'s `stack` module) — no declaration
+/// can be held to the mapping, and over-declaring writes through into the neighbour. A C
+/// library that guards a thread's stack without a mapping of its own (glibc's
+/// `MADV_GUARD_INSTALL` guard regions on Linux 6.13 and later — inferred, not measured
+/// here) leaves no thread stack apart from its neighbours. The test then fails, unless
+/// `PGLET_THREAD_STACKS_MAY_MERGE` is set — the opt-in for a machine known to merge them,
+/// which CI's `hermetic` job sets — where it is skipped rather than aborting the binary.
+/// The mapping is read on the thread the declaration is made on, just before it.
 #[cfg(target_os = "linux")]
 #[test]
 fn a_stack_declared_larger_than_its_mapping_is_held_to_the_mapping() {
     let over = on_thread(SMALL_STACK, || {
+        let merged = own_mapping_len().is_none_or(|len| len > SMALL_STACK + 64 * 1024);
+        if merged {
+            assert!(
+                std::env::var_os("PGLET_THREAD_STACKS_MAY_MERGE").is_some(),
+                "a {SMALL_STACK}-byte thread runs in a mapping larger than its stack, so an \
+                 over-declaration cannot be held to it; set PGLET_THREAD_STACKS_MAY_MERGE=1 \
+                 on a machine known to merge thread stacks"
+            );
+            return None;
+        }
         pglet::set_thread_stack(2 * SMALL_STACK);
-        drive_every_shape()
+        Some(drive_every_shape())
     });
+    let Some(over) = over else {
+        eprintln!(
+            "skipped: thread stacks share a mapping here (PGLET_THREAD_STACKS_MAY_MERGE set)"
+        );
+        return;
+    };
     // Past its edge every shape was refused, not overflowed — the abort is the red. And
     // it answers about what a true declaration does, not what twice the stack would: the
     // mapping's start sits a little below a true declaration's low end, which assumes
@@ -1387,4 +1414,19 @@ fn a_stack_declared_larger_than_its_mapping_is_held_to_the_mapping() {
             shape.name
         );
     }
+}
+
+/// The length of the `/proc/self/maps` mapping the calling thread's stack frame is in,
+/// `None` where it cannot be read.
+#[cfg(target_os = "linux")]
+fn own_mapping_len() -> Option<usize> {
+    let marker = 0_u8;
+    let sp = std::ptr::addr_of!(marker) as usize;
+    let maps = std::fs::read_to_string("/proc/self/maps").ok()?;
+    maps.lines().find_map(|line| {
+        let (start, end) = line.split_ascii_whitespace().next()?.split_once('-')?;
+        let start = usize::from_str_radix(start, 16).ok()?;
+        let end = usize::from_str_radix(end, 16).ok()?;
+        (start..end).contains(&sp).then_some(end - start)
+    })
 }

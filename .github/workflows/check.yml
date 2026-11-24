@@ -53,6 +53,11 @@ jobs:
   hermetic:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      # The runner's thread stacks may share one mapping (a C library guarding them inside
+      # it), where `stack_depth`'s over-declaration test cannot hold and skips instead of
+      # failing.
+      PGLET_THREAD_STACKS_MAY_MERGE: "1"
 
     steps:
       # persist-credentials: false keeps the GITHUB_TOKEN out of .git/config (no

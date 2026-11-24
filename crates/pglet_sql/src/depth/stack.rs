@@ -27,7 +27,9 @@
 //! end belongs to. What the mapping does prove is a **floor** — no thread's stack
 //! reaches below the mapping it runs in — so the limit is never below the floor plus
 //! the reserve, which is what stops a smaller-than-assumed thread with a guard of its
-//! own (`RUST_MIN_STACK=524288`) short of it.
+//! own (`RUST_MIN_STACK=524288`) short of it. Where the C library guards a thread's stack
+//! inside the mapping rather than with a mapping of its own, every thread's mapping can
+//! merge with its neighbours' and the floor protects nothing.
 //!
 //! A known stack is a range, and a checkpoint outside it — a thread that has switched to
 //! another stack since (a fiber, `stacker`) — learns again rather than measuring against
@@ -320,7 +322,9 @@ pub fn thread_bounds() -> (usize, usize, usize) {
 /// What stays the caller's to get right: a declaration larger than the stack where the
 /// mapping cannot show it — off Linux, where no mapping is read, and on a thread whose
 /// mapping has merged with a neighbour's below it (a guardless thread directly above
-/// another), whose start is the neighbour's.
+/// another, or any thread under a C library that guards stacks without a mapping of
+/// their own, as glibc's `MADV_GUARD_INSTALL` guard regions do — inferred, not
+/// measured here), whose start is the neighbour's.
 pub fn set_thread_stack(bytes: usize) {
     let top = here();
     let declared = top.saturating_sub(bytes).saturating_add(TOP_OF_STACK);
