@@ -44,12 +44,12 @@ here and not a stopgap.
 **The writer is held for a whole block.** At most one connection's block stages writes at
 a time. A block takes **the writer** at its first write (DML, DDL, `COPY … FROM`, `DO`, a
 `nextval`/`setval`, a `SELECT … FOR UPDATE`/`SHARE`) or at its first
-`pg_advisory_xact_lock` or `pg_advisory_xact_lock_shared`, whose lock is the writer in either
-mode (`EDGES.md` row 250).
+`pg_advisory_xact_lock` or `pg_advisory_xact_lock_shared`, whose lock is the writer in
+either mode (`EDGES.md` row 250).
 It holds it until the block ends: `COMMIT`, `ROLLBACK`, a disconnect, a failed-store reopen,
 or an embedded `Database` being dropped. An autocommit write or either form of
-`pg_advisory_xact_lock` holds it for its own statement, and any other read takes it only to lock rows. **A
-session-level advisory lock holds it for the session**: while a session holds any
+`pg_advisory_xact_lock` holds it for its own statement, and any other read takes it only
+to lock rows. **A session-level advisory lock holds it for the session**: while a session holds any
 (`pg_advisory_lock`, stacked per call), it keeps the writer past its statements and its
 blocks — a rollback does not give it back — until its last `pg_advisory_unlock`,
 `pg_advisory_unlock_all()`, `DISCARD ALL` or its end (`Connection::settle_writer`, the

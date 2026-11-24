@@ -570,7 +570,7 @@ statement over an empty table is refused too, except where an item says otherwis
   `to_jsonb`, `row_to_json`, `json_build_object`; `jsonb || jsonb`; `jsonb - 'key'` (`42804`, raised when a row is
   evaluated). `->`, `->>`, `#>`, `#>>`, `?`, `@>` and `jsonb_build_object` work. Beside an uncast string or a
   parameter, `jsonb ||` is not refused but joins as text (*Known differences*, above).
-- **Server:** `pg_sleep`, `pg_notify`, `pg_try_advisory_lock` (`pg_advisory_lock`, `pg_advisory_unlock`, `pg_advisory_xact_lock` and `pg_advisory_xact_lock_shared` work), `txid_current`.
+- **Server:** `pg_sleep`, `pg_notify`, the `try` advisory forms (`pg_try_advisory_lock`, `pg_try_advisory_xact_lock` and their `_shared` forms) and the session-level shared forms (`pg_advisory_lock_shared`, `pg_advisory_unlock_shared`) (`pg_advisory_lock`, `pg_advisory_unlock`, `pg_advisory_xact_lock` and `pg_advisory_xact_lock_shared` work), `txid_current`.
 
 **Schema:**
 

@@ -7640,9 +7640,10 @@ inside a table.
   shared forms (`pg_advisory_lock_shared`, `pg_advisory_unlock_shared`) are `0A000` as
   unsupported functions. 18.7 lists each advisory hold in `pg_locks` (`ShareLock` or
   `ExclusiveLock`, `objsubid` 1 for the `bigint` key and 2 for the pair); pglet has no
-  `pg_locks`, on either host (embedded or server). Pinned by `test_concurrent`'s `pg_advisory_xact_lock_shared is
-  the writer` and `crates/pglet`'s `an_advisory_xact_lock_shared_is_the_writer`, each of which
-  turns red for a shared lock mode on purpose; the single-connection answers are
+  `pg_locks`, on either host (embedded or server). Pinned by `test_concurrent`'s
+  `pg_advisory_xact_lock_shared is the writer` and `crates/pglet`'s
+  `an_advisory_xact_lock_shared_is_the_writer`, each of which turns red for a shared lock
+  mode on purpose; the single-connection answers are
   `functions/advisory_xact_lock_shared_*.sql`.
 
   **The session-level lock is the same writer, held by the session.** `pg_advisory_lock(bigint)`
