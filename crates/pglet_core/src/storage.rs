@@ -36,6 +36,21 @@ pub trait Storage: Send + Sync {
     /// Returns error if table doesn't exist.
     fn drop_table(&mut self, name: &str) -> Result<()>;
 
+    /// Renames a table: its rows, row ids and indexes stay as they are, under the new
+    /// name. A store that cannot answers loudly, so a rename is never half applied by
+    /// a store that dropped it.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if `name` doesn't exist or `new_name` does, or the store has no
+    /// rename.
+    fn rename_table(&mut self, name: &str, new_name: &str) -> Result<()> {
+        let _ = (name, new_name);
+        Err(crate::Error::NotImplemented(
+            "renaming a table on this store not supported".into(),
+        ))
+    }
+
     /// Inserts a row into a table. Returns the assigned row ID.
     ///
     /// # Errors
@@ -386,6 +401,9 @@ pub struct NoopStorage;
 
 impl Storage for NoopStorage {
     fn create_table(&mut self, _name: &str) -> Result<()> {
+        Ok(())
+    }
+    fn rename_table(&mut self, _name: &str, _new_name: &str) -> Result<()> {
         Ok(())
     }
     fn drop_table(&mut self, _name: &str) -> Result<()> {

@@ -45,6 +45,10 @@ pub struct BtreePendingWrites {
     /// Indexes dropped in this transaction (standalone `DROP INDEX` and the
     /// cascade from a dropped table). Deferred to commit like `dropped_tables`.
     dropped_indexes: HashSet<u32>,
+    /// Tables renamed in this transaction, whose `SYS_TABLE` entry the commit writes
+    /// under the name the directory then gives them. Deferred like a drop, so a
+    /// rollback — which restores the directory — leaves the tree's entry as it was.
+    renamed_tables: HashSet<u32>,
 }
 
 impl BtreePendingWrites {
@@ -55,7 +59,10 @@ impl BtreePendingWrites {
 
     /// Check if there are no pending changes.
     pub fn is_empty(&self) -> bool {
-        self.changes.is_empty() && self.dropped_tables.is_empty() && self.dropped_indexes.is_empty()
+        self.changes.is_empty()
+            && self.dropped_tables.is_empty()
+            && self.dropped_indexes.is_empty()
+            && self.renamed_tables.is_empty()
     }
 
     /// Insert a row.
@@ -87,6 +94,16 @@ impl BtreePendingWrites {
         self.dropped_tables.insert(table_id);
         // Remove any pending changes for this table
         self.changes.remove(&table_id);
+    }
+
+    /// Mark a table as renamed in this transaction (its entry written at commit).
+    pub fn rename_table(&mut self, table_id: u32) {
+        self.renamed_tables.insert(table_id);
+    }
+
+    /// Get renamed tables (for commit).
+    pub const fn renamed_tables(&self) -> &HashSet<u32> {
+        &self.renamed_tables
     }
 
     /// Mark an index as dropped in this transaction (deferred to commit).
@@ -618,6 +635,30 @@ impl BtreeStorageWrapper {
         Ok(())
     }
 
+    /// Rename a table within a transaction: the directory moves now (so the
+    /// transaction's own statements read the table under its new name), and its
+    /// `SYS_TABLE` entry is written under that name at
+    /// [`commit_transaction`](Self::commit_transaction). A rollback restores the
+    /// directory, and the tree's entry was never touched. Counted as own catalog DDL.
+    ///
+    /// # Errors
+    ///
+    /// [`StorageError::TableNotFound`] / [`StorageError::TableExists`] for the names,
+    /// or [`StorageError::NoTransaction`] if `conn_id` has no active transaction.
+    pub fn rename_table_in_tx(&mut self, conn_id: i32, name: &str, new_name: &str) -> Result<()> {
+        if !self.transactions.contains_key(&conn_id) {
+            return Err(StorageError::NoTransaction(conn_id));
+        }
+        let table_id = self.rename_in_directory(name, new_name)?;
+        let tx = self
+            .transactions
+            .get_mut(&conn_id)
+            .ok_or(StorageError::NoTransaction(conn_id))?;
+        tx.own_ddl_ops = tx.own_ddl_ops.saturating_add(1);
+        tx.pending.rename_table(table_id);
+        Ok(())
+    }
+
     /// Drop an index within a transaction — deferred to commit (buffered).
     ///
     /// The index def and its entries are left in place for the duration of the
@@ -719,6 +760,20 @@ impl BtreeStorageWrapper {
                 batch.delete(key);
             }
             batch.delete(BtreeKey::sys_table(table_id));
+        }
+
+        // Renamed tables: each one's `SYS_TABLE` entry under the name the directory
+        // gives it now; one dropped since has no name, and its entry is deleted above.
+        for &table_id in tx.pending.renamed_tables() {
+            if let Some(name) = self
+                .name_to_id
+                .iter()
+                .find(|&(_, id)| *id == table_id)
+                .map(|(n, _)| n.clone())
+            {
+                let (sk, sv) = self.sys_table_kv(table_id, &name);
+                batch.insert(sk, sv);
+            }
         }
 
         // Add row changes to batch. For indexed tables, read the OLD committed
@@ -856,6 +911,7 @@ impl BtreeStorageWrapper {
         self.undo_created_indexes(&tx.created_indexes)?;
 
         self.name_to_id = tx.name_to_id_snapshot;
+        self.resync_index_table_names();
         self.restore_next_table_id(tx.next_table_id_snapshot)
     }
 
@@ -948,6 +1004,7 @@ impl BtreeStorageWrapper {
 
         self.undo_created_indexes(&undo)?;
         self.name_to_id = name_to_id;
+        self.resync_index_table_names();
         self.restore_next_table_id(next_table_id)
     }
 

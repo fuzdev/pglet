@@ -50,7 +50,7 @@ fn a_present_table_runs_the_operation_and_a_missing_one_is_looked_up_first() {
     assert_eq!(db.schema().get_table("t").unwrap().columns.len(), 2);
 
     let err = db
-        .execute("ALTER TABLE IF EXISTS t RENAME TO u")
+        .execute("ALTER TABLE IF EXISTS t RENAME CONSTRAINT c TO d")
         .unwrap_err();
     assert_eq!(err.sqlstate(), "0A000");
     let err = db.execute("ALTER TABLE nz RENAME TO u").unwrap_err();

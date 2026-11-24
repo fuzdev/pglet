@@ -311,6 +311,23 @@ impl Storage for MemoryStorage {
         Ok(())
     }
 
+    fn rename_table(&mut self, name: &str, new_name: &str) -> pglet_core::Result<()> {
+        if self.tables.contains_key(new_name) {
+            return Err(StorageError::TableExists(new_name.to_string()).into());
+        }
+        let data = self
+            .tables
+            .remove(name)
+            .ok_or_else(|| StorageError::TableNotFound(name.to_string()))?;
+        self.tables.insert(new_name.to_string(), data);
+        for def in self.indexes.values_mut() {
+            if def.table == name {
+                new_name.clone_into(&mut def.table);
+            }
+        }
+        Ok(())
+    }
+
     fn insert(&mut self, table: &str, row: Vec<Value>) -> pglet_core::Result<RowId> {
         if !self.tables.contains_key(table) {
             return Err(StorageError::TableNotFound(table.to_string()).into());

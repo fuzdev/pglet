@@ -26,7 +26,9 @@ use pglet_sql::types::Value;
 pub struct IndexDef {
     /// The internal id of the indexed table.
     pub table_id: u32,
-    /// The indexed table's name (for diagnostics; the SQL catalog re-resolves it).
+    /// The indexed table's name, which an in-transaction range or GIN read scans the
+    /// table by. A rename moves it and a rollback puts it back with the directory
+    /// (`resync_index_table_names`).
     pub table_name: String,
     /// The shared row→key-bytes / row-in-index / parse logic, identical across both
     /// storage backends (positions, key expressions, partial predicate, NULL

@@ -1,0 +1,25 @@
+{
+  "rows": [
+    {
+      "conname": "rc_pid_fkey",
+      "contype": "f",
+      "relname": "rc"
+    },
+    {
+      "conname": "rp_n_check",
+      "contype": "c",
+      "relname": "rq"
+    },
+    {
+      "conname": "rp_pkey",
+      "contype": "p",
+      "relname": "rq"
+    },
+    {
+      "conname": "rp_v_key",
+      "contype": "u",
+      "relname": "rq"
+    }
+  ],
+  "rowCount": 4
+}

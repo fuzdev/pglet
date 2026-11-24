@@ -418,6 +418,14 @@ impl Storage for StorageBackend {
         }
     }
 
+    fn rename_table(&mut self, name: &str, new_name: &str) -> Result<(), Error> {
+        match self {
+            #[cfg(feature = "memory_storage")]
+            Self::Memory(s) => s.rename_table(name, new_name),
+            Self::Btree(s) => s.rename_table(name, new_name),
+        }
+    }
+
     fn insert(&mut self, table: &str, row: Vec<Value>) -> Result<RowId, Error> {
         match self {
             #[cfg(feature = "memory_storage")]
@@ -649,6 +657,17 @@ impl Storage for StorageAdapter<'_> {
                 .drop_table_in_tx(self.conn_id, name)
                 .map_err(Error::from),
             _ => Storage::drop_table(self.storage, name),
+        }
+    }
+
+    fn rename_table(&mut self, name: &str, new_name: &str) -> Result<(), Error> {
+        // In a B+tree transaction the `SYS_TABLE` entry is deferred to commit, so a
+        // ROLLBACK, which restores the directory, leaves the tree as it was.
+        match self.storage {
+            StorageBackend::Btree(btree) if btree.has_transaction(self.conn_id) => btree
+                .rename_table_in_tx(self.conn_id, name, new_name)
+                .map_err(Error::from),
+            _ => Storage::rename_table(self.storage, name, new_name),
         }
     }
 

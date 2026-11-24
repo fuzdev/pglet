@@ -162,6 +162,18 @@ impl Storage for MemStorage {
         Ok(())
     }
 
+    fn rename_table(&mut self, name: &str, new_name: &str) -> Result<()> {
+        if let Some(rows) = self.tables.remove(name) {
+            self.tables.insert(new_name.to_string(), rows);
+        }
+        for def in self.indexes.values_mut() {
+            if def.table == name {
+                new_name.clone_into(&mut def.table);
+            }
+        }
+        Ok(())
+    }
+
     fn insert(&mut self, table: &str, row: Vec<Value>) -> Result<RowId> {
         let id = self.next_id;
         self.next_id += 1;

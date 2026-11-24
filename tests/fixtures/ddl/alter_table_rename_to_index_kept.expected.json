@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "indexname": "rp_lower",
+      "tablename": "rq"
+    },
+    {
+      "indexname": "rp_pkey",
+      "tablename": "rq"
+    },
+    {
+      "indexname": "rp_v_key",
+      "tablename": "rq"
+    }
+  ],
+  "rowCount": 3
+}

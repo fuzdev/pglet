@@ -517,6 +517,21 @@ impl Storage for BtreeStorageWrapper {
         Ok(())
     }
 
+    /// Re-key the directory and write the table's `SYS_TABLE` entry under the new name
+    /// at once, as `create_table` writes its own; the rows and index entries are keyed by
+    /// id and stay. Inside a transaction the adapter routes to
+    /// [`Self::rename_table_in_tx`], which defers the entry to the commit.
+    fn rename_table(&mut self, name: &str, new_name: &str) -> pglet_core::Result<()> {
+        let table_id = self.rename_in_directory(name, new_name)?;
+        let (sk, sv) = self.sys_table_kv(table_id, new_name);
+        let mut batch = BatchChanges::new();
+        batch.insert(sk, sv);
+        self.storage
+            .apply_batch(batch)
+            .map_err(StorageError::from)?;
+        Ok(())
+    }
+
     fn insert(&mut self, table: &str, row: Vec<Value>) -> pglet_core::Result<RowId> {
         let table_id = self.get_table_id(table)?;
         let row_id = self.allocate_row_id(table_id);

@@ -31,6 +31,8 @@ released version under a fresh `## Unreleased` declaring a patch.
   body it stays `0A000`
 - feat: `FOR UPDATE SKIP LOCKED` (and the other strengths') answers as a plain locking read
   does (was `0A000`); the package has one connection, so nothing is ever skipped
+- feat: `ALTER TABLE … RENAME TO` (was `0A000`): the table's rows, indexes, constraints,
+  referencing foreign keys and owned sequences follow it, keeping their own names
 
 ## 0.2.1
 

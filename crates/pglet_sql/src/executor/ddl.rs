@@ -4991,6 +4991,101 @@ pub fn execute_alter_table_drop_not_null(
     Ok(QueryResult::ddl("ALTER TABLE"))
 }
 
+/// Execute `ALTER TABLE … RENAME TO new_name`.
+///
+/// 18.6's `RenameRelation` order: the relation (`42P01`, or the wrong kind's error for an
+/// index or a sequence — 18.6 renames those too, through `ALTER TABLE`), then the new
+/// name against the relation namespace (`42P07`, the table's own name included) and the
+/// table's row type against the type namespace (`42710`).
+///
+/// The store's table moves first, the one step that can fail after the checks; then every
+/// catalog fact naming the table follows it, none of which can fail: the table's own
+/// entry, its indexes' table, the foreign keys that reference it (its own included), the
+/// `OWNED BY` of its sequences, and a stored expression's qualifier naming it — a
+/// `CHECK (t.a > 0)` or an index's `WHERE t.a > 0`, which the dump writes as stored and
+/// which would otherwise name a relation the restored database lacks. Index, constraint
+/// and sequence names stay, as on 18.6. A block's rollback restores the catalog and the
+/// store's directory together.
+///
+/// # Errors
+///
+/// As above, and the store's own failure.
+pub fn execute_alter_table_rename<S: Storage>(
+    schema: &mut Schema,
+    storage: &mut S,
+    table_name: &str,
+    new_name: &str,
+) -> Result<QueryResult> {
+    get_table_or_err(schema, table_name)?;
+    if schema.relation_name_taken(new_name) {
+        return Err(crate::CatalogError::TableAlreadyExists {
+            table: new_name.to_string(),
+        }
+        .into());
+    }
+    // `RenameTypeInternal`'s `42710`, which carries no hint — the creating route's
+    // `RelationTypeAlreadyExists` does.
+    if schema.type_name_taken(new_name) {
+        return Err(Error::DuplicateType(new_name.to_string()));
+    }
+    storage.rename_table(table_name, new_name)?;
+
+    if let Some(mut table) = schema.tables.remove(table_name) {
+        new_name.clone_into(&mut table.name);
+        schema.tables.insert(new_name.to_string(), table);
+    }
+    let requalify = |expr: &mut Expr| {
+        rename_column_qualifier(expr, table_name, new_name);
+    };
+    for index in schema.indexes.values_mut() {
+        if index.table_name == table_name {
+            new_name.clone_into(&mut index.table_name);
+            if let IndexKey::Exprs(exprs) = &mut index.key {
+                exprs.iter_mut().for_each(requalify);
+            }
+            if let Some(predicate) = &mut index.predicate {
+                requalify(predicate);
+            }
+        }
+    }
+    for table in schema.tables.values_mut() {
+        for fk in &mut table.foreign_keys {
+            if fk.parent_table == table_name {
+                new_name.clone_into(&mut fk.parent_table);
+            }
+        }
+    }
+    if let Some(table) = schema.tables.get_mut(new_name) {
+        for check in &mut table.checks {
+            requalify(&mut check.expr);
+        }
+    }
+    for sequence in schema.sequences.values_mut() {
+        if let Some(owner) = &mut sequence.owner
+            && owner.table == table_name
+        {
+            new_name.clone_into(&mut owner.table);
+        }
+    }
+    Ok(QueryResult::ddl("ALTER TABLE"))
+}
+
+/// Rename the qualifier `old` to `new` on every column reference in a stored
+/// expression — a `CHECK`'s, an index key's or an index predicate's, none of which can
+/// hold a subquery.
+fn rename_column_qualifier(expr: &mut Expr, old: &str, new: &str) {
+    if let Expr::Column {
+        table: Some(table), ..
+    } = expr
+    {
+        if table == old {
+            new.clone_into(table);
+        }
+        return;
+    }
+    expr.for_each_child_mut(&mut |child| rename_column_qualifier(child, old, new));
+}
+
 /// Execute `ALTER TABLE … ALTER COLUMN col ADD GENERATED { ALWAYS | BY DEFAULT } AS
 /// IDENTITY [( options )]` — make an existing column an identity column.
 ///

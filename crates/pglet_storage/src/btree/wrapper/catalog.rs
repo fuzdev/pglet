@@ -143,6 +143,23 @@ impl BtreeStorageWrapper {
             .ok_or_else(|| StorageError::TableNotFound(name.to_string()))
     }
 
+    /// Move `name`'s directory entry to `new_name` — the name→id map and the index defs'
+    /// table name — and answer the table's id. The tree is not written.
+    pub(super) fn rename_in_directory(&mut self, name: &str, new_name: &str) -> Result<u32> {
+        if self.name_to_id.contains_key(new_name) {
+            return Err(StorageError::TableExists(new_name.to_string()));
+        }
+        let table_id = self.get_table_id(name)?;
+        self.name_to_id.remove(name);
+        self.name_to_id.insert(new_name.to_string(), table_id);
+        for def in self.index_defs.values_mut() {
+            if def.table_id == table_id {
+                new_name.clone_into(&mut def.table_name);
+            }
+        }
+        Ok(table_id)
+    }
+
     /// Take `table_id` out of [`Self::untoasted`] for good: its rows are no longer
     /// known to be laid out as 18.6 would have stored them untoasted. A poisoned lock
     /// leaves the set unread as well as unwritten, which is the same answer.
@@ -299,5 +316,17 @@ impl BtreeStorageWrapper {
     /// Remove row ID counter for a dropped table.
     pub(super) fn remove_row_id_counter(&mut self, table_id: u32) {
         self.row_id_counters.remove(&table_id);
+    }
+
+    /// Point each index def's `table_name` at the name the directory gives its table now —
+    /// after a rollback restores the directory over a `RENAME TO` the block made, since an
+    /// in-transaction range or GIN read scans the table by that name.
+    pub(super) fn resync_index_table_names(&mut self) {
+        let names: HashMap<u32, &String> = self.name_to_id.iter().map(|(n, id)| (*id, n)).collect();
+        for def in self.index_defs.values_mut() {
+            if let Some(name) = names.get(&def.table_id) {
+                (*name).clone_into(&mut def.table_name);
+            }
+        }
     }
 }

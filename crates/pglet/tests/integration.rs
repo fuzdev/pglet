@@ -21,6 +21,7 @@ mod aggregate_walker_arms;
 mod alter_add_column_backfill;
 mod alter_add_column_fk;
 mod alter_table_if_exists;
+mod alter_table_rename;
 mod assignment_cast_verdicts;
 mod autocommit_atomicity;
 mod bool_list_identity;

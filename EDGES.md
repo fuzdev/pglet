@@ -6468,8 +6468,9 @@ inside a table.
     statements are planned before any of them runs, and `ALTER TABLE IF EXISTS` over a
     table the body itself creates adds the column. An operation pglet does not perform is
     a plan too, `Plan::AlterTableUnperformed`: a tolerated clause (`OWNER TO`, `SET
-    STATISTICS`, …) reports `ALTER TABLE`, and a refused one (`RENAME`, `ALTER COLUMN …
-    TYPE`, `DROP IDENTITY`, …) answers its `0A000` only over a relation that exists — so
+    STATISTICS`, …) reports `ALTER TABLE`, and a refused one (`RENAME CONSTRAINT`,
+    `ALTER COLUMN … TYPE`, `DROP IDENTITY`, …) answers its `0A000` only over a relation
+    that exists — so
     under `IF EXISTS` it is the skip, and without it a missing relation is `42P01`, as on
     18.6, where the parser used to answer `0A000` (and `42601` for `DROP CONSTRAINT`,
     whose `CONSTRAINT` it read as a column name). `pg_dump --clean --if-exists` writes
@@ -6493,8 +6494,9 @@ inside a table.
     the comma-separated action list `ADD COLUMN b INT, ADD COLUMN c INT` are `42601` — the
     list being `42601` over a table that exists too, where 18.6 performs both actions.
     Loud. The other direction is silent: the tail of a tolerated or refused operation is
-    consumed unread, so `ALTER TABLE IF EXISTS nosuch RENAME garbage garbage` and `…
-    OWNER TO x y z` skip where 18.6 answers `42601`, as `ALTER TABLE <a table> OWNER TO
+    consumed unread, so `ALTER TABLE IF EXISTS nosuch OWNER TO x y z` skips where 18.6
+    answers `42601` (a `RENAME`'s grammar is read in full, so `… RENAME garbage garbage`
+    is `42601` on both), as `ALTER TABLE <a table> OWNER TO
     x y z` reports success. A tolerated clause without `IF
     EXISTS` does not look its relation up, so `ALTER TABLE <a missing table> OWNER TO x`
     reports success where 18.6 answers `42P01`. The parser's refusal of the *name* wins
@@ -7928,16 +7930,18 @@ inside a table.
   Measured through the fixture harness's `@param`, which binds in binary: that is why
   `functions/kysely_get_tables_introspection.sql` writes those comparisons as literals. Loud.
 
-- **254 · A sequence rename is a no-op.** `ALTER SEQUENCE … RENAME TO` is parsed and tolerated
-  as a `pg_dump` clause that has no effect — `parser::ddl`'s doc names it beside `OWNER TO`
-  and `SET SCHEMA` — so the sequence keeps its name. Measured over `s1 (id serial)` after `ALTER SEQUENCE
-  s1_id_seq RENAME TO "Renamed Seq"`: `pg_get_serial_sequence('s1', 'id')` is
-  `public.s1_id_seq` here and `public."Renamed Seq"` on 18.6; `nextval('s1_id_seq')` answers
-  `1` here and is `42P01` there; `nextval('"Renamed Seq"')` is `42P01` here and `1` there;
-  `information_schema.sequences` lists `s1_id_seq` here and `Renamed Seq` there; and a second
-  rename from the new name is `42P01` here. Silent: the statement reports success and every
-  reader of the name answers the old one. `ALTER TABLE … RENAME` is refused `0A000` instead,
-  which is the loud shape this could take. No fixture: a faithful one is red.
+- **254 · A sequence rename is a no-op.** `ALTER SEQUENCE … RENAME TO` is parsed and
+  tolerated as a `pg_dump` clause that has no effect — `parser::ddl`'s doc names it beside
+  `OWNER TO` and `SET SCHEMA` — so the sequence keeps its name. Measured over `s1 (id
+  serial)` after `ALTER SEQUENCE s1_id_seq RENAME TO "Renamed Seq"`:
+  `pg_get_serial_sequence('s1', 'id')` is `public.s1_id_seq` here and `public."Renamed
+  Seq"` on 18.6; `nextval('s1_id_seq')` answers `1` here and is `42P01` there;
+  `nextval('"Renamed Seq"')` is `42P01` here and `1` there; `information_schema.sequences`
+  lists `s1_id_seq` here and `Renamed Seq` there; and a second rename from the new name is
+  `42P01` here. Silent: the statement reports success and every reader of the name answers
+  the old one. `ALTER TABLE … RENAME TO` renames a table, and leaves the sequences its
+  columns draw from under their old names, as 18.7 does. No fixture: a faithful one is
+  red.
 
 - ~~**255 · A float's text is 18.6's shortest spelling.**~~ **Closed class, silent residual.**
   `pglet_core`'s `format_float4_text` / `format_float8_text` write a `float4` / `float8` as

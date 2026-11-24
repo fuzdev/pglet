@@ -1438,6 +1438,19 @@ pub enum Plan {
         table_if_exists: bool,
     },
 
+    /// `ALTER TABLE … RENAME TO new_name` — give a table a new name. Its rows, indexes,
+    /// constraints and sequences keep their own names, as on 18.6; every catalog fact
+    /// that names the table follows it — its indexes' table, the foreign keys that
+    /// reference it, its sequences' `OWNED BY`, and the qualifier of a stored expression
+    /// that names it — and so does the store's table ([`crate::executor`]'s
+    /// `execute_alter_table_rename`).
+    AlterTableRename {
+        table: String,
+        new_name: String,
+        /// `ALTER TABLE IF EXISTS`; see [`Plan::AlterTableAddColumn`].
+        table_if_exists: bool,
+    },
+
     /// `ALTER TABLE … ALTER [COLUMN] col ADD GENERATED { ALWAYS | BY DEFAULT } AS
     /// IDENTITY [( options )]` — make an existing column an identity column.
     ///
@@ -1464,7 +1477,7 @@ pub enum Plan {
 
     /// An `ALTER TABLE` operation pglet parses and does not perform: a clause it
     /// tolerates as a no-op (`OWNER TO`, `SET STATISTICS`, and the other `pg_dump`
-    /// spellings with no data effect here), or one it refuses (`RENAME`,
+    /// spellings with no data effect here), or one it refuses (`RENAME CONSTRAINT`,
     /// `ALTER COLUMN … TYPE`, `DROP IDENTITY`, a `DROP CONSTRAINT` list with another
     /// action in it, …).
     ///
@@ -3367,6 +3380,7 @@ impl Plan {
             | Self::AlterTableSetDefault { .. }
             | Self::AlterTableSetNotNull { .. }
             | Self::AlterTableDropNotNull { .. }
+            | Self::AlterTableRename { .. }
             | Self::AlterTableAddIdentity { .. }
             | Self::CreateSequence { .. }
             | Self::AlterSequence { .. }
@@ -3977,6 +3991,7 @@ impl Plan {
             | Self::AlterTableSetDefault { .. }
             | Self::AlterTableSetNotNull { .. }
             | Self::AlterTableDropNotNull { .. }
+            | Self::AlterTableRename { .. }
             | Self::AlterTableAddIdentity { .. }
             | Self::CreateSequence { .. }
             | Self::AlterSequence { .. }
@@ -4110,6 +4125,7 @@ impl Plan {
             | Self::AlterTableSetDefault { .. }
             | Self::AlterTableSetNotNull { .. }
             | Self::AlterTableDropNotNull { .. }
+            | Self::AlterTableRename { .. }
             | Self::AlterTableAddIdentity { .. }
             // A new sequence is catalog state that must persist on auto-commit.
             | Self::CreateSequence { .. }
@@ -4242,6 +4258,11 @@ impl Plan {
                 table_if_exists,
                 ..
             }
+            | Self::AlterTableRename {
+                table,
+                table_if_exists,
+                ..
+            }
             | Self::AlterTableAddIdentity {
                 table,
                 table_if_exists,
@@ -4308,6 +4329,7 @@ impl Plan {
                 | Self::AlterTableSetDefault { .. }
                 | Self::AlterTableSetNotNull { .. }
                 | Self::AlterTableDropNotNull { .. }
+                | Self::AlterTableRename { .. }
                 | Self::AlterTableAddIdentity { .. }
                 // A DO block can run DDL (the idempotent `CREATE TYPE`), so treat it
                 // as schema-mutating for plan-cache invalidation.

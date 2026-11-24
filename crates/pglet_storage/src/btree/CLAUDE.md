@@ -410,7 +410,12 @@ BtreeStorageWrapper
 - `commit_transaction(conn_id)` - Applies pending writes atomically
 - `rollback_transaction(conn_id)` - Discards pending and restores the name map and the
   table-id allocator unconditionally: the host's writer keeps every other connection's
-  write out between the re-base and the rollback
+  write out between the re-base and the rollback. The index defs' table names follow the
+  restored name map (`resync_index_table_names`), as `rollback_to_savepoint` does: an
+  in-transaction range or GIN read scans by that name
+- `rename_table_in_tx(conn_id, name, new_name)` - Moves the name map and the index defs'
+  table names now; the table's `SYS_TABLE` entry is written under the new name at commit
+  (`renamed_tables`), so a rollback leaves the tree's entry as it was
 - `end_unwritten_transaction(conn_id)` - Ends a transaction that never took the writer,
   restoring nothing: its snapshots are older than other connections' commits since
 - `unique_key_claimed_elsewhere(conn_id, index_id, values)` - Whether **another**
@@ -488,7 +493,8 @@ let row = snapshot.get("users", row_id)?;
 BtreePendingWrites
 ├── changes: HashMap<table_id, BTreeMap<row_id, PendingRow>>
 ├── dropped_tables: HashSet<u32>
-└── dropped_indexes: HashSet<u32>
+├── dropped_indexes: HashSet<u32>
+└── renamed_tables: HashSet<u32>
 ```
 
 ## Tests

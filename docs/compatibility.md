@@ -91,6 +91,7 @@ seem to disagree, the record wins.
 | [`information_schema`](#information_schema) | ⚠️ | `tables`, `columns`, `table_constraints`, `key_column_usage`, `referential_constraints`, `constraint_column_usage`; a `char(n)` column reads as `character varying`. |
 | [`ALTER TABLE … ADD CONSTRAINT`](#alter-table--add-constraint) | ⚠️ | `CHECK`, `PRIMARY KEY`, `UNIQUE` and `FOREIGN KEY`, each validated against the existing rows, then enforced. |
 | [`ALTER TABLE … DROP CONSTRAINT`](#alter-table--drop-constraint) | ⚠️ | A `FOREIGN KEY` or `CHECK`, by name, `IF EXISTS` and comma lists included; a `PRIMARY KEY`, `UNIQUE` or `NOT NULL` is `0A000`. |
+| [`ALTER TABLE … RENAME TO`](#alter-table--rename-to) | ⚠️ | Renames a table: its rows, indexes, constraints, foreign keys and owned sequences follow it, and their own names stay. `RENAME CONSTRAINT` is `0A000`, and `ALTER TABLE` over an index or a sequence is `42809` where PostgreSQL renames it. |
 | [`ALTER TABLE … ALTER COLUMN … DROP NOT NULL`](#alter-table--alter-column--drop-not-null) | ✅ | Makes the column nullable and drops its `NOT NULL` constraint; a primary-key column is `42P16`, an identity column `42601`. |
 | [`CREATE SEQUENCE` / `ALTER SEQUENCE` / `GRANT` / `REVOKE` / `COMMENT ON` / `ALTER TABLE … OWNER TO`](#create-sequence--alter-sequence--grant--revoke--comment-on--alter-table--owner-to) | ⚠️ | Enough to get through a `pg_dump` preamble: a named sequence honors `START WITH`, `RESTART` and `OWNED BY`; `GRANT`, `REVOKE`, `COMMENT ON` and `OWNER TO` succeed as no-ops. |
 | [`SET` / `SHOW` / `DEALLOCATE` / `DISCARD` / `RESET`](#set--show--deallocate--discard--reset) | ⚠️ | `SET`, `SHOW`, `RESET`, `DEALLOCATE`, `DISCARD`; a setting pglet holds fixed (`TimeZone` `UTC`, `DateStyle`, …) takes only that value, and a `search_path` naming another schema is `0A000`. |
@@ -3649,6 +3650,26 @@ column of the primary key `42P16`. A column already nullable is a success that c
 nothing. Inside a block it rolls back with the block. An ordered index scan, planned on a
 `NOT NULL` declaration, isn't planned once it's dropped. Fixtures:
 `ddl/alter_column_drop_not_null_*.sql`.
+
+### `ALTER TABLE … RENAME TO`
+
+Gives a table a new name. Every catalog fact that names the table follows it: its
+indexes' table, the foreign keys referencing it (its own included), the `OWNED BY` of its
+sequences, and a column qualifier naming it in a stored `CHECK`, index expression or
+index predicate, which the dump writes as stored. Index, constraint and sequence names
+stay, as in PostgreSQL, so a `SERIAL` column keeps drawing from `<old>_id_seq`. The store
+re-keys the table on both backends, and its rows and index entries, keyed by the table's
+id, stay where they are; inside a block the B+tree writes the table's directory entry at
+`COMMIT`, so a `ROLLBACK` (or a `ROLLBACK TO` a savepoint before it) leaves the table under
+its old name, live and after a reopen (`crates/pglet/tests/alter_table_rename.rs`).
+
+PostgreSQL's refusals, in its order: a missing table is `42P01` (`IF EXISTS` skips with a
+notice), a name the relation namespace holds (a table, an index, a sequence, the table's
+own) is `42P07`, and an enum's name is `42710`, since the table's row type is renamed with
+it. A schema-qualified new name is `42601`. `ALTER TABLE` over an index or a sequence, which
+PostgreSQL renames, is refused with the wrong kind's error, `42809`
+(`ddl/alter_table_rename_index_loud.sql`, `…_sequence_loud.sql`). Fixtures:
+`ddl/alter_table_rename_to_*.sql`.
 
 ### `CREATE SEQUENCE` / `ALTER SEQUENCE` / `GRANT` / `REVOKE` / `COMMENT ON` / `ALTER TABLE … OWNER TO`
 
