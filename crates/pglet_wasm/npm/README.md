@@ -4,7 +4,7 @@
 
 [pglet](https://github.com/fuzdev/pglet) — a small Postgres-compatible-ish embedded engine
 in Rust — as an in-process WebAssembly database with a `pg`/PGlite-shaped adapter. Small
-(~647 KB gzip at the last release measurement) and fast to start, it's built for **test fixtures**: spin
+(~647 KB gzip at the 0.1.0 measurement) and fast to start, it's built for **test fixtures**: spin
 up a real Postgres-dialect DB per test, seed it, `fork()` it, throw it away. Measured on a real
 production app's test suite: **~7.5× faster than pglite** on the suite's engine work,
 at **~1/8.2 the gzipped size** (~647 KB vs pglite 0.5.8's ~5.2 MB wasm + data).

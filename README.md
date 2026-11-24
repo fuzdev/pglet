@@ -244,7 +244,7 @@ of recorded divergences.
 
 ## Size and startup
 
-- **Size:** the WASM artifact measured ~1613 KB raw / ~647 KB gzipped over the wire at the last release
+- **Size:** the WASM artifact measured ~1613 KB raw / ~647 KB gzipped over the wire at the 0.1.0
   measurement (`benches/pglite_size_comparison.json`) — about a tenth of pglite's raw payload and an eighth of
   its gzipped one.
   The gate is on raw bytes (deterministic; gzip is reported, not gated) against the
@@ -263,7 +263,7 @@ of recorded divergences.
 A test-fixture engine first, a production-data store later, and full-but-optional
 PostgreSQL conformance over time.
 
-- [x] **0.1 — the test-fixture engine** (this release): a real production app's
+- [x] **0.1 — the test-fixture engine**: a real production app's
       full SQL surface (fuz_app — auth, sessions, and a fact/cell data layer) runs
       end-to-end on both the native-wire and in-process wasm legs, with the
       publicly checkable half of the same claim in `tests/fixtures/` — thousands of
