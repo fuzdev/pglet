@@ -20,6 +20,12 @@
 //! `cargo test -p pglet --test stack_depth` measures the debug constants, and
 //! `cargo test -p pglet --release --test stack_depth` the release ones.
 
+// TODO: the release run fails: the bound parameter chain answers through 968 against its
+// release floor of 2000, and a stored expression the shapes grow to their answered size
+// is `StackDepthExceeded` when an `INSERT` evaluates it (`insert evaluates the stored
+// expression`). The debug run, which the gates run, passes. Either the release floors
+// drifted or the release frames grew; re-measure before moving a floor.
+
 #![expect(
     clippy::expect_used,
     clippy::panic,

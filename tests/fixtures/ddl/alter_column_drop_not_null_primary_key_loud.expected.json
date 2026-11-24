@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P16",
+    "message": "column \"k\" is in a primary key"
+  }
+}

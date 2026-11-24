@@ -550,8 +550,6 @@ statement over an empty table is refused too, except where an item says otherwis
   FROM t x` — `42601`. Name the table itself (`DELETE FROM t WHERE t.id = 1`); `UPDATE t AS x SET …` works.
 - **An aggregate in a `SELECT` with no `FROM`** — `SELECT count(*)`, `INSERT INTO t SELECT max(…)` — `0A000`,
   raised when it is evaluated. Add `FROM (SELECT 1) AS one`.
-- **`SELECT … WHERE` with no `FROM`**, as in `INSERT INTO t SELECT … WHERE NOT EXISTS (…)` — `42601`. Add
-  `FROM (SELECT 1) AS one`, or, where a unique key covers the condition, insert with `ON CONFLICT DO NOTHING`.
 - **`VALUES (1), (2)` as a statement of its own** — `0A000`. `SELECT * FROM (VALUES (1), (2)) AS v(x)` works.
 - **`FETCH FIRST n ROWS ONLY`** — `42601`. `LIMIT` works.
 - **`COLLATE`** — `42601`. Text already compares byte by byte, as `COLLATE "C"` does (*Known differences*, above).
@@ -581,8 +579,8 @@ statement over an empty table is refused too, except where an item says otherwis
 - **`DO` blocks** run plain SQL statements only: PL/pgSQL's `IF` and `PERFORM` are `42601`, `DECLARE` is `0A000`.
 - **Renames** — `ALTER TABLE … RENAME` of a table, a column or a constraint is `0A000`; `ALTER INDEX … RENAME` is
   `42601`.
-- **`ALTER COLUMN … TYPE` and `ALTER COLUMN … DROP NOT NULL`** — `0A000`. `SET NOT NULL`, `SET DEFAULT`,
-  `ADD COLUMN` and `DROP COLUMN` work.
+- **`ALTER COLUMN … TYPE`** — `0A000`. `SET NOT NULL`, `DROP NOT NULL`, `SET DEFAULT`, `ADD COLUMN` and
+  `DROP COLUMN` work.
 - **Generated columns** (`GENERATED ALWAYS AS (…) STORED`) — `0A000`. Identity columns work.
 - **`PARTITION BY`, `(LIKE other)`, `EXCLUDE`, a constraint's `DEFERRABLE` or `NOT VALID`, an index's
   `INCLUDE (…)`** — `42601`; an index `USING hash` is `0A000`.

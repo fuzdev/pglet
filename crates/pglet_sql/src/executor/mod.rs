@@ -284,6 +284,10 @@ pub fn execute_with_storage<S: Storage>(
             ddl::execute_alter_table_set_not_null(schema, storage, table, column)
         }
 
+        Plan::AlterTableDropNotNull { table, column, .. } => {
+            ddl::execute_alter_table_drop_not_null(schema, table, column)
+        }
+
         Plan::AlterTableAddIdentity {
             table,
             column,

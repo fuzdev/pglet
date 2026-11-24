@@ -17,6 +17,11 @@ released version under a fresh `## Unreleased` declaring a patch.
 - feat: `to_regclass(text)`, answering the relation's name as `::regclass` does (`text`, where
   PostgreSQL answers a `regclass`), or NULL where no table, index or sequence answers;
   `to_regclass('public.t') IS NOT NULL` is the existence probe (was `0A000`)
+- feat: a `SELECT` with no `FROM` takes a `WHERE`, `GROUP BY` or `HAVING` over its one row —
+  `INSERT INTO t SELECT 1, 'x' WHERE NOT EXISTS (…)` writes its row or none (was `42601`);
+  a bare `SELECT *` with no `FROM` is `42601`, as in PostgreSQL (was `0A000`)
+- feat: `ALTER TABLE … ALTER COLUMN … DROP NOT NULL` (was `0A000`); a primary-key column is
+  refused `42P16` and an identity column `42601`, as in PostgreSQL
 
 ## 0.2.1
 

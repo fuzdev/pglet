@@ -4934,6 +4934,63 @@ pub fn execute_alter_table_set_not_null<S: Storage>(
     Ok(QueryResult::ddl("ALTER TABLE"))
 }
 
+/// Execute `ALTER TABLE … ALTER COLUMN … DROP NOT NULL`.
+///
+/// 18.6's `ATExecDropNotNull`, in its order: a column the table does not have (`42703`),
+/// a system column (`0A000`), an identity column (`42601`), and a column of the primary
+/// key (`42P16`) are refused; a column already nullable is a success that changes
+/// nothing. Otherwise the column's `nullable` flag is set, which drops its `NOT NULL`
+/// constraint too — pglet derives that `pg_constraint` row from the flag. It reads no
+/// row, and every refusal runs before the one catalog write.
+///
+/// The flag is what an ordered index scan is planned on (`docs/indexes.md` § Index probes
+/// are exact-or-decline), and this statement moves the catalog's generation, so no plan
+/// that read the old declaration is reused.
+pub fn execute_alter_table_drop_not_null(
+    schema: &mut Schema,
+    table_name: &str,
+    column_name: &str,
+) -> Result<QueryResult> {
+    let table = get_table_or_err(schema, table_name)?;
+    let Some(column) = table.columns.iter().find(|c| c.name == column_name) else {
+        if is_system_column_name(column_name) {
+            return Err(Error::SystemColumnAlter {
+                column: column_name.to_string(),
+            });
+        }
+        return Err(crate::CatalogError::ColumnNotFound {
+            table: table_name.to_string(),
+            column: column_name.to_string(),
+        }
+        .into());
+    };
+    if column.identity.is_some() {
+        return Err(Error::IdentityColumnDefault {
+            table: table_name.to_string(),
+            column: column_name.to_string(),
+        });
+    }
+    if column.nullable {
+        return Ok(QueryResult::ddl("ALTER TABLE"));
+    }
+    if schema
+        .primary_key_index(table_name)
+        .and_then(|pk| pk.key.bare_columns())
+        .is_some_and(|key| key.iter().any(|c| c == column_name))
+    {
+        return Err(crate::CatalogError::ColumnInPrimaryKey {
+            column: column_name.to_string(),
+        }
+        .into());
+    }
+    if let Some(table) = schema.get_table_mut(table_name)
+        && let Some(col) = table.columns.iter_mut().find(|c| c.name == column_name)
+    {
+        col.nullable = true;
+    }
+    Ok(QueryResult::ddl("ALTER TABLE"))
+}
+
 /// Execute `ALTER TABLE … ALTER COLUMN col ADD GENERATED { ALWAYS | BY DEFAULT } AS
 /// IDENTITY [( options )]` — make an existing column an identity column.
 ///

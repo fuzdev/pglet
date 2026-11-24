@@ -7,19 +7,19 @@
 # all. A counter that grows is progress and is reported rather than failed.
 # Regenerate rather than hand-editing.
 
-rust.passed = 2486
+rust.passed = 2494
 rust.failed = 0
-fixtures.passed = 5182
+fixtures.passed = 5223
 fixtures.failed = 0
 fixtures.skipped = 38
-fixtures.declared_text = 2167
-fixtures.declared_extended = 2475
+fixtures.declared_text = 2185
+fixtures.declared_extended = 2498
 fixtures.divergent = 0
-fixtures_profile_lock.passed = 713
+fixtures_profile_lock.passed = 715
 fixtures_profile_lock.failed = 0
 fixtures_profile_lock.skipped = 0
-fixtures_profile_lock.declared_text = 300
-fixtures_profile_lock.declared_extended = 375
+fixtures_profile_lock.declared_text = 302
+fixtures_profile_lock.declared_extended = 377
 fixtures_profile_lock.divergent = 0
 dump.passed = 1
 dump.failed = 0
@@ -29,5 +29,5 @@ copy.passed = 38
 copy.failed = 0
 keywords.probes = 448
 keywords.keywords = 109
-concurrent.passed = 39
+concurrent.passed = 40
 concurrent.failed = 0

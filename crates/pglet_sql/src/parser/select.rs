@@ -353,7 +353,8 @@ impl Parser<'_> {
         // produce zero rows (`unnest(ARRAY[]::int[])`), and then no eval-time resolver ever
         // sees them. `scope_is_complete` is what keeps that gate off a level an expression
         // subquery encloses, whose keys may still name the enclosing query's relations.
-        if !self.ts.eat_kw(Keyword::From)? {
+        let from_clause = self.ts.eat_kw(Keyword::From)?;
+        if !from_clause && !self.at_no_from_filter() {
             let scope_is_complete = self.scope_is_complete();
             let plan = plan_select_no_from(projection, self.schema)?;
             let plan = if !distinct_on.is_empty() {
@@ -368,7 +369,7 @@ impl Parser<'_> {
             return Ok(SelectLeaf::NoFrom(Box::new(plan)));
         }
 
-        let (from, tables) = self.parse_from()?;
+        let (from, tables) = self.parse_from_or_empty_row(from_clause, &projection)?;
         let selection = if self.ts.eat_kw(Keyword::Where)? {
             Some(self.parse_expr_bp(0)?)
         } else {
@@ -399,6 +400,36 @@ impl Parser<'_> {
             limit: None,
             scope_is_complete: self.scope_is_complete(),
         })))
+    }
+
+    /// The leaf's FROM relation: its `FROM` clause, or with none — a `WHERE`, `GROUP BY` or
+    /// `HAVING` follows — 18.6's one empty row (its `Result` node over no relation), so the
+    /// clauses run where a FROM query's do and `INSERT … SELECT <constants> WHERE EXISTS
+    /// (…)` writes its row or none.
+    ///
+    /// A function of its own rather than an `if` in [`Self::parse_select_leaf`]: that frame
+    /// is on the stack at every nesting level of a select-list subquery, and a debug build
+    /// gives each arm's `Plan` its own slot there, which a deep nest measured as `54001`
+    /// (`enum_identity_gates`' depth-22 guard).
+    fn parse_from_or_empty_row(
+        &mut self,
+        from_clause: bool,
+        projection: &[Expr],
+    ) -> Result<(Plan, Vec<FromTable>)> {
+        if from_clause {
+            self.parse_from()
+        } else {
+            refuse_no_from_star(projection)?;
+            Ok((empty_row_relation(), Vec::new()))
+        }
+    }
+
+    /// Whether a no-FROM select's projection is followed by a clause that reads its row —
+    /// `WHERE`, `GROUP BY` or `HAVING` — which `simple_select` admits without a `FROM`.
+    fn at_no_from_filter(&self) -> bool {
+        self.ts.at_kw(Keyword::Where)
+            || self.ts.at_kw(Keyword::Group)
+            || self.ts.at_kw(Keyword::Having)
     }
 
     /// Lower a parsed leaf to a [`Plan`] for use as a set-op operand (its own ORDER
@@ -2021,6 +2052,27 @@ impl Parser<'_> {
     }
 }
 
+/// A bare `*` in a select list with no FROM clause names no relation's columns: 18.6's
+/// `42601` (`ExpandAllTables`).
+fn refuse_no_from_star(projection: &[Expr]) -> Result<()> {
+    if projection.iter().any(Expr::is_bare_star) {
+        return Err(Error::syntax(
+            "SELECT * with no tables specified is not valid",
+        ));
+    }
+    Ok(())
+}
+
+/// The relation a no-FROM select's `WHERE` / `GROUP BY` / `HAVING` reads: one row of no
+/// columns, which no name reaches.
+fn empty_row_relation() -> Plan {
+    Plan::Values {
+        rows: vec![Vec::new()],
+        certain: CertainTypes::new(Vec::new()),
+        enclosing: EnclosingColumns::default(),
+    }
+}
+
 /// The name of a FROM function's `WITH ORDINALITY` column, which follows its `functions`
 /// output columns: the alias list's entry at that position, else `ordinality`
 /// (`addRangeTableEntryForFunction`).
@@ -2034,11 +2086,7 @@ fn ordinality_column_name(alias_columns: &[String], functions: usize) -> String 
 /// Plan a `SELECT` with no FROM clause: a single-row `Values`, or `ProjectUnnest`
 /// when a projection-level `unnest()` row-expands.
 fn plan_select_no_from(row: Vec<Expr>, schema: &crate::catalog::Schema) -> Result<Plan> {
-    if row.iter().any(Expr::is_bare_star) {
-        return Err(Error::NotImplemented(
-            "wildcard in SELECT without FROM not supported".into(),
-        ));
-    }
+    refuse_no_from_star(&row)?;
     // This path has no columns to resolve, but a no-FROM projection still needs the
     // full type-resolution pass with an empty column map: comparison-operand coercion
     // (`SELECT true = 'yes'`, `1 <> '1 '`, `'abc' = 1`), CASE/COALESCE branch

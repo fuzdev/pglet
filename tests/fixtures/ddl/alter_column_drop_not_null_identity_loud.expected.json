@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42601",
+    "message": "column \"id\" of relation \"dni\" is an identity column"
+  }
+}

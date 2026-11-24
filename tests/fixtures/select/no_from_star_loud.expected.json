@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42601",
+    "message": "SELECT * with no tables specified is not valid"
+  }
+}

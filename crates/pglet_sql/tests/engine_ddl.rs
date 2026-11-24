@@ -460,14 +460,30 @@ fn test_alter_set_not_null_validates_existing_rows() {
 }
 
 #[test]
-fn test_alter_drop_not_null_and_type_change_fail_loud() {
+fn test_alter_drop_not_null_lets_the_column_hold_null() {
+    let mut db = TestDb::new();
+    db.run("CREATE TABLE t (id INT NOT NULL, name TEXT)");
+    db.run("ALTER TABLE t ALTER COLUMN id DROP NOT NULL");
+    db.run("INSERT INTO t VALUES (NULL, 'a')");
+    // A column already nullable is a success that changes nothing.
+    db.run("ALTER TABLE t ALTER COLUMN name DROP NOT NULL");
+    // `SET NOT NULL` reads the NULL row and refuses, so the two are inverses only over
+    // rows that allow it.
+    let err = db
+        .try_run("ALTER TABLE t ALTER COLUMN id SET NOT NULL")
+        .expect_err("the NULL row blocks SET NOT NULL");
+    assert_eq!(err.sqlstate(), "23502");
+}
+
+#[test]
+fn test_alter_drop_identity_and_type_change_fail_loud() {
     let mut db = TestDb::new();
     db.run("CREATE TABLE t (id INT NOT NULL, name TEXT)");
 
     // Unimplemented, semantically-meaningful column actions fail loud (0A000) rather
     // than silently no-op (the correct-or-loud contract).
     for sql in [
-        "ALTER TABLE t ALTER COLUMN id DROP NOT NULL",
+        "ALTER TABLE t ALTER COLUMN id DROP IDENTITY",
         "ALTER TABLE t ALTER COLUMN id TYPE BIGINT",
         "ALTER TABLE t ALTER COLUMN id SET DATA TYPE BIGINT",
     ] {

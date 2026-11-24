@@ -1,0 +1,19 @@
+{
+  "rows": [
+    {
+      "a": 9,
+      "a_not_null": false,
+      "b": "x",
+      "id": 1,
+      "not_null_constraints": "1"
+    },
+    {
+      "a": null,
+      "a_not_null": false,
+      "b": null,
+      "id": 2,
+      "not_null_constraints": "1"
+    }
+  ],
+  "rowCount": 2
+}

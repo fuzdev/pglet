@@ -90,6 +90,7 @@ seem to disagree, the record wins.
 | [`information_schema`](#information_schema) | ⚠️ | `tables`, `columns`, `table_constraints`, `key_column_usage`, `referential_constraints`, `constraint_column_usage`; a `char(n)` column reads as `character varying`. |
 | [`ALTER TABLE … ADD CONSTRAINT`](#alter-table--add-constraint) | ⚠️ | `CHECK`, `PRIMARY KEY`, `UNIQUE` and `FOREIGN KEY`, each validated against the existing rows, then enforced. |
 | [`ALTER TABLE … DROP CONSTRAINT`](#alter-table--drop-constraint) | ⚠️ | A `FOREIGN KEY` or `CHECK`, by name, `IF EXISTS` and comma lists included; a `PRIMARY KEY`, `UNIQUE` or `NOT NULL` is `0A000`. |
+| [`ALTER TABLE … ALTER COLUMN … DROP NOT NULL`](#alter-table--alter-column--drop-not-null) | ✅ | Makes the column nullable and drops its `NOT NULL` constraint; a primary-key column is `42P16`, an identity column `42601`. |
 | [`CREATE SEQUENCE` / `ALTER SEQUENCE` / `GRANT` / `REVOKE` / `COMMENT ON` / `ALTER TABLE … OWNER TO`](#create-sequence--alter-sequence--grant--revoke--comment-on--alter-table--owner-to) | ⚠️ | Enough to get through a `pg_dump` preamble: a named sequence honors `START WITH`, `RESTART` and `OWNED BY`; `GRANT`, `REVOKE`, `COMMENT ON` and `OWNER TO` succeed as no-ops. |
 | [`SET` / `SHOW` / `DEALLOCATE` / `DISCARD` / `RESET`](#set--show--deallocate--discard--reset) | ⚠️ | `SET`, `SHOW`, `RESET`, `DEALLOCATE`, `DISCARD`; a setting pglet holds fixed (`TimeZone` `UTC`, `DateStyle`, …) takes only that value, and a `search_path` naming another schema is `0A000`. |
 | [`COPY … FROM STDIN` / `TO STDOUT`](#copy--from-stdin--to-stdout) | ⚠️ | Text format over the wire and the embed API, through the same checks as `INSERT`; `csv` and `binary` are `0A000`, `COPY (query) TO` is `42601`. |
@@ -110,6 +111,12 @@ a row 18.6 never reads is still raised. The same happens in a derived table unde
 § SELECT / DML family — details, below.
 
 #### SELECT / DML family — details
+
+A **no-FROM** `SELECT` with a `WHERE`, `GROUP BY` or `HAVING` reads one row of no columns,
+as 18.6's does, through the FROM query's own lowering: `SELECT 1 WHERE false` is no row,
+`SELECT count(*) WHERE false` is `0`, and `INSERT … SELECT <constants> WHERE EXISTS (…)`
+writes its row or none (`EDGES.md` row 296, closed, with its residuals). A bare `*` with no
+`FROM` is `42601`.
 
 A **no-FROM** `SELECT` runs the same tail. Its trailing `ORDER BY`/`LIMIT`/`OFFSET` goes
 through `plan_no_from_order_limit`, which also *binds* its sort keys (a `Plan::Sort` over
@@ -3574,13 +3581,24 @@ since nothing depends on either.
   can't be removed short of `DROP TABLE` (§ `DROP TABLE` / `DROP INDEX` dependencies).
 - A `NOT NULL` constraint under its `<table>_<column>_not_null` name, which 18.6 drops by
   making the column nullable (or refuses with `42P16` on a primary-key column).
-  `ALTER COLUMN … DROP NOT NULL` is refused too.
+  `ALTER COLUMN … DROP NOT NULL` drops it (§ `ALTER TABLE … ALTER COLUMN … DROP NOT NULL`).
 - A list that mixes `DROP CONSTRAINT` with any other action.
 - A name two constraints of the table hold, which pglet's naming gates don't make
   impossible (§ `ALTER TABLE … ADD CONSTRAINT`); 18.6 can't hold that state.
 
 The OID `pg_constraint` synthesizes for every later constraint shifts with a drop, as it
 does with an add (`catalog/constraints_view.rs`).
+
+### `ALTER TABLE … ALTER COLUMN … DROP NOT NULL`
+
+Lets an existing column hold NULL, and drops its `<table>_<column>_not_null` constraint with
+the flag (`pg_constraint`'s `n` row, `pg_attribute.attnotnull`, `information_schema`'s
+`is_nullable` all read it). It reads no row. 18.6's refusals, in its order: a column the
+table doesn't have is `42703`, a system column `0A000`, an identity column `42601`, and a
+column of the primary key `42P16`. A column already nullable is a success that changes
+nothing. Inside a block it rolls back with the block. An ordered index scan, planned on a
+`NOT NULL` declaration, isn't planned once it's dropped. Fixtures:
+`ddl/alter_column_drop_not_null_*.sql`.
 
 ### `CREATE SEQUENCE` / `ALTER SEQUENCE` / `GRANT` / `REVOKE` / `COMMENT ON` / `ALTER TABLE … OWNER TO`
 

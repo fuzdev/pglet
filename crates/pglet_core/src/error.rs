@@ -113,6 +113,12 @@ pub enum CatalogError {
     /// index-name order.
     #[error("multiple primary keys for table \"{table}\" are not allowed")]
     MultiplePrimaryKeys { table: String },
+
+    /// `ALTER COLUMN … DROP NOT NULL` over a column of the primary key, which is `NOT
+    /// NULL` for as long as the key stands (18.6's `dropconstraint_internal`,
+    /// `invalid_table_definition`).
+    #[error("column \"{column}\" is in a primary key")]
+    ColumnInPrimaryKey { column: String },
 }
 
 impl CatalogError {
@@ -137,6 +143,7 @@ impl CatalogError {
             Self::ConstraintAlreadyExists { .. } => "42710", // duplicate_object
             Self::ConstraintNotFound { .. } => "42704", // undefined_object
             Self::MultiplePrimaryKeys { .. } => "42P16", // invalid_table_definition
+            Self::ColumnInPrimaryKey { .. } => "42P16", // invalid_table_definition
         }
     }
 }
@@ -1760,8 +1767,17 @@ pub enum Error {
     /// and the column's default dangles (see
     /// [`Self::IdentitySequenceOwnershipChange`], the same class through the other
     /// half of the fact).
+    ///
+    /// `ALTER COLUMN … DROP NOT NULL` over an identity column raises the same code and
+    /// sentence (`ATExecDropNotNull`): an identity column is `NOT NULL` by definition.
     #[error("column \"{column}\" of relation \"{table}\" is an identity column")]
     IdentityColumnDefault { table: String, column: String },
+
+    /// `ALTER COLUMN <system column> DROP NOT NULL`: a heap's system column (`ctid`,
+    /// `xmin`, …) is not one of the relation's columns to alter (18.6's
+    /// `ATExecDropNotNull`, `feature_not_supported`).
+    #[error("cannot alter system column \"{column}\"")]
+    SystemColumnAlter { column: String },
 
     /// A `WITH RECURSIVE` whose body isn't a well-formed recursive query: a
     /// combinator other than `UNION`/`UNION ALL` between the terms, an aggregate /
@@ -2127,6 +2143,7 @@ impl Error {
             | Self::WrongObjectType { .. } => "42809", // wrong_object_type
             Self::IdentitySequenceOwnershipChange { .. } => "0A000", // feature_not_supported
             Self::IdentityColumnDefault { .. } => "42601", // syntax_error
+            Self::SystemColumnAlter { .. } => "0A000", // feature_not_supported
             Self::CurrvalNotDefined(_) => "55000", // object_not_in_prerequisite_state
             Self::AmbiguousColumn { .. } | Self::AmbiguousClauseKey { .. } => "42702", // ambiguous_column
             Self::GeneratedAlwaysInsert { .. } | Self::GeneratedAlwaysUpdate { .. } => "428C9", // generated_always

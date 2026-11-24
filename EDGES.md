@@ -353,6 +353,7 @@ inside a table.
 | ~~173~~ | **closed** — a B+tree node split by entry **count** into a half over one 4 KB page, and an index row over 18.6's item limit accepted | a node is cut into pieces that each fit, a long value goes out of line, and an index entry is sized as 18.6 sizes it — `54000` at its limits, in its order | `54000 index row size … exceeds btree version 4 maximum 2704`, and its two siblings | closed class; **loud** residuals rows 191 and 192; **silent**, a `char(n)` key (row 95) and an enum key part behind a cast (row 104); the entry a build names under `DESC`, 18.6's collation or after an `UPDATE` (rows 92, 43, 194); a multi-row `INSERT`'s foreign-key order (row 166) | `page_fit.rs`, `large_value.rs`, `index_row_size.rs` (`crates/pglet/tests/`); `tests/fixtures/index_size/` | page writer was handed entries that did not fit |
 | 178 | an operand the tree holds more than once, nested — a parenthesized `BETWEEN` in another's left operand; in a catalog rendering, an `IN` with a column member in another's left operand | memory and time double a level: 20 nested `BETWEEN`s take 3.3 s and 397 MB, 24 abort under a 4 GiB cap; a 22-level `IN` renders 251 MB | not measured — `parse_expr.c` copies the left operand the same way, read only | **abort** — memory exhaustion ends the process | — none | copies its left operand |
 | 179 | a CTE chain each member of which reads the one before it twice — `c1 AS (SELECT a.x FROM c0 a, c0 b)`, `c2 AS (… c1 a, c1 b)`, … | memory and time quadruple every two CTEs: 18 CTEs peak at 1.65 GB and take 6.2 s | `1` in 0.7 ms at 18 CTEs | **abort** past the host's memory, slow before it | — none | reads the one before it twice |
+| 330 | a scalar subquery of a grouping query nested in another's select list — `SELECT (SELECT (SELECT … 1 … GROUP BY 1) GROUP BY 1)`, and the `FROM (SELECT 1) s GROUP BY 1` spelling | time and memory double a level: 18 levels take 0.6 s with no `FROM` and 5.9 s with one (release); 24 aborted a release server under a 4 GiB cap | `1` at once | **abort** past the host's memory, slow before it | — none | evaluates its nested subquery twice |
 | ~~310~~ | **closed** — a nest of scalar subqueries standing as a branch of a `COALESCE`/`CASE`/`ARRAY[…]`/variadic, the nest's column not certain — its innermost entry an enclosing query's column | planning time tripled a level, 16 levels past 40 s (debug build); now one derivation a level, 60 levels in 1.6 ms (release) | `1` in under a millisecond at 60 levels | closed | `planner::tests::a_fold_over_a_guessed_subquery_nest_asks_the_branch_reader_once_a_branch` counts the reads; `…::a_fold_over_an_enclosing_enum_nest_plans_in_one_descent_a_level` | derived a nested subquery three times a level |
 | 182 | a `jsonb` value nested thousands of levels deep, built a level a statement (`UPDATE j SET d = jsonb_build_object('a', d)`), in the embed | the release embed on an undeclared 2 MiB thread **aborts** (stack overflow) building a level between 7 651 and 7 700 — over `Database::in_memory()`, `with_btree()` and `open` alike | answers at 12 000 levels, the probe's stop | **abort** — the process ends | — none | no depth bound measures a value |
 | 191 | an index key part 18.6 compresses under its limit — a `text` key of one character repeated 3 000 or 100 000 times, a `jsonb` string of 3 000, a `jsonb` array of 300 numbers, a `text[]` of 669 empty strings | `54000`, the part measured at its full length — `index row size 3016 …`, `index row requires 100016 bytes …` | accepts, compressing the part before it measures | loud — an over-refusal | `crates/pglet/tests/index_row_size.rs`, `a_compressible_key_is_measured_uncompressed` and `a_compressible_container_key_is_measured_uncompressed` | measured at its full length |
@@ -431,7 +432,7 @@ inside a table.
 | 268 | a `42883` both engines raise over a bare string literal operand — `true LIKE 'a'`, `'a' IN ('a') LIKE 'a'` — or over `now()`; and an arithmetic operator both refuse over a `boolean` or string operand — `true + 'a'`, `true * 1`, `1 + 'a'` | names the literal `text` and `now()` `timestamp without time zone`; the arithmetic members are `42804 type error: operator + requires numeric operands` | names the literal `unknown` and `now()` `timestamp with time zone`; arithmetic is `42883 operator does not exist: boolean + unknown`, `22P02` beside a number (`1 + 'a'`), `42725` for two literals | loud — a message, and a code for arithmetic | — `@expect-error` compares the SQLSTATE, so the same-code members pass one and the arithmetic members are red | The types a `42883` message names |
 | 271 | a correlated `IN (SELECT …)` whose sub-plan raises in a row 18.6 does not read — after the one its scan matches, or in a join that hashes an empty outer side — `SELECT x IN (SELECT 2/a FROM rz WHERE x IS NOT NULL) FROM t1` | `22012`: the sub-plan runs to its end before any comparison | `t`: its scan stops at the first match; `0` from that join | loud — a refusal where 18.6 answers | — none; a faithful fixture is red | to its end before any comparison |
 | 273 | a strict operator or comparison with a constant `NULL` operand beside one that raises — `NULL::int = 1/y`, `NULL::int IN (1, 1/y)` over `y` = `0` | `22012`: both operands are evaluated | `NULL`: its planner folds the call without evaluating the other operand | loud — a refusal where 18.6 answers | — none; a faithful fixture is red | still evaluates its other operand |
-| 296 | a `SELECT` with no `FROM` followed by a `WHERE`, `GROUP BY` or `HAVING` clause — `SELECT 1 WHERE true`, `SELECT 1 GROUP BY 1`, `SELECT 1 HAVING true` | `42601 syntax error: expected ';' or end of input, found '<clause>'` | answers — one row (none for `WHERE false`) | loud — a refusal where 18.6 answers | — none; a faithful fixture is red | ends a select with no `FROM` before its `WHERE` |
+| ~~296~~ | **closed** — a `SELECT` with no `FROM` followed by a `WHERE`, `GROUP BY` or `HAVING` clause — `SELECT 1 WHERE true`, `INSERT … SELECT … WHERE EXISTS (…)` | was `42601` at the clause; now answers | answers — one row (none for `WHERE false`) | closed — **loud** residuals: a `nextval` or a select-list `unnest` beside the clause, `0A000`; `pg_advisory_xact_lock(k) WHERE false` takes the writer (row 250) | `select/no_from_where_*.sql`, `insert/select_no_from_where_*.sql` | lowered over one row of no columns |
 | 328 | a relation named `t*` — `relation_expr`'s "the table and its descendants" — in `SELECT … FROM`, `UPDATE`, `DELETE FROM` or `TRUNCATE` | `42601` | the table itself (no table inherits from it) | loud — a refusal where 18.6 answers | — none; a faithful fixture is red; the `ALTER TABLE` half is `ddl/alter_table_star_*` | names the table and its descendants |
 | 321 | a FROM-clause `generate_series` spelling 18.6 answers — the `numeric` and timestamp series, an argument naming a column or holding a subquery, one of no certain type, a call decoration — and a series past 1 000 000 rows | `0A000`, `42601` or `42P01`; `54000` past the bound | rows, or its own error | loud | `generate_series/*_refused.sql`, `crates/pglet/tests/generate_series.rs` | spelling 18.6 answers is declined |
 
@@ -1069,6 +1070,17 @@ inside a table.
   0.7 ms at 18 CTEs (and at 10 and 14). Where pglet spends it is not traced: the growth
   is what reading each CTE afresh at each of its references would cost, which is a
   reading of the numbers, not a measurement. No fixture: its answer is right, and what differs is whether the host's memory lasts.
+
+- **330 · A grouping level evaluates its nested subquery twice, so a nest of them doubles
+  the work a level.** Measured on a release native server, `SELECT (SELECT … (SELECT 1
+  GROUP BY 1) … GROUP BY 1)` took 0.02 s at 10 levels, 0.14 s at 16 and 0.61 s at 18; the
+  same nest with `FROM (SELECT 1) s` at every level took 0.10 s, 1.30 s and 5.85 s, and 24
+  levels of it aborted a release server held under a 4 GiB cap.
+  18.7 answers `1` at once at 18 levels. The no-`FROM` spelling is reachable since row 296
+  closed; the `FROM` one stood before it. The mechanism is inferred, not traced: the
+  grouping walk collects a level's aggregates and then evaluates its select list, and each
+  pass descends into the nested sub-plan. No fixture: the harness's answer at a telling
+  depth is a process that did not come back.
 
 - **~~310~~ · Closed — the reader that types a branch subquery derived a nested subquery
   three times a level.** A scalar subquery standing as a branch of a fold is typed for
@@ -6430,7 +6442,7 @@ inside a table.
     table the body itself creates adds the column. An operation pglet does not perform is
     a plan too, `Plan::AlterTableUnperformed`: a tolerated clause (`OWNER TO`, `SET
     STATISTICS`, …) reports `ALTER TABLE`, and a refused one (`RENAME`, `ALTER COLUMN …
-    TYPE`, `DROP NOT NULL`, …) answers its `0A000` only over a relation that exists — so
+    TYPE`, `DROP IDENTITY`, …) answers its `0A000` only over a relation that exists — so
     under `IF EXISTS` it is the skip, and without it a missing relation is `42P01`, as on
     18.6, where the parser used to answer `0A000` (and `42601` for `DROP CONSTRAINT`,
     whose `CONSTRAINT` it read as a column name). `pg_dump --clean --if-exists` writes
@@ -7725,7 +7737,8 @@ inside a table.
   error before anything else: `SELECT * FROM pg_advisory_xact_lock(1)` is `42601` here,
   pglet's grammar taking no function in `FROM` but `unnest` and the integer
   `generate_series` (row 321), and one row holding an empty `void` on 18.6 (measured). A
-  no-`FROM` `SELECT … WHERE` is `42601` here (row 296). A NULL-argument call nested
+  no-`FROM` `SELECT pg_advisory_xact_lock(1) WHERE true` is lowered as a FROM query is
+  (row 296, closed), where the call is not a top-level projection item. A NULL-argument call nested
   anywhere answers NULL on both, since neither takes a lock for it.
 
   **Argument checks run on the values**, as the rest of `Expr::StringFn`'s family's do, for
@@ -11930,7 +11943,7 @@ inside a table.
   | silencer | statement (silent here) | 18.6 |
   | --- | --- | --- |
   | the gate's own table is **empty** | `SELECT tx + 1 FROM t2`, `SELECT tx FROM t2 WHERE sum(tx) > 1`, `SELECT 1/0 FROM t2` | `42883`, `42883` at `Parse`; `22012` at `Bind` |
-  | `WHERE false` | `SELECT tx + 1 FROM t2 WHERE false`, `SELECT 1/0 FROM t2 WHERE false` | `42883` at `Parse`; `22012` at `Bind` |
+  | `WHERE false` | `SELECT tx + 1 FROM t2 WHERE false`, `SELECT 1/0 FROM t2 WHERE false`, and with no `FROM`, `SELECT 1/0 WHERE false` | `42883` at `Parse`; `22012` at `Bind` |
   | a **`HAVING`** that rejects the group | `SELECT 1/0 FROM t2 HAVING false` | `22012` at `Bind` |
   | a **NULL** operand, the row still projected | `SELECT tx + 1 FROM t2`, with the single row's `tx` **IS NULL** | `42883` at `Parse` |
   | a never-taken **`CASE`** arm, or a `COALESCE` that short-circuits | `SELECT CASE WHEN false THEN tx + 1 ELSE 0 END FROM t2`; `SELECT COALESCE(0, tx + 1) FROM t2`; the arm holding `(SELECT sum(tx) FROM t2)::int`, or `(SELECT 1 FROM nosuchtable)` | `42883`, `42883`, `42883`, `42P01` at `Parse` |
@@ -15813,9 +15826,9 @@ inside a table.
   count(*) > 0` `f` and `SELECT COALESCE(1, count(*))` `1`; and over an empty `de (n
   bigint)`, `SELECT n FROM de WHERE n = (SELECT count(*))` answers no row and `UPDATE de
   SET n = (SELECT count(*))` `UPDATE 0`. A `WHERE`, `GROUP BY` or `HAVING` after the
-  select list is refused first, `42601`, by row 296: `SELECT count(*) WHERE false` † (`0`
-  on 18.6), `SELECT count(*) HAVING true` and `SELECT 1 HAVING count(*) > 0` (`1`), and
-  `SELECT count(*) GROUP BY 1` (`42803` there). In an `UPDATE … SET` and an `INSERT …
+  select list moves the statement off this route (row 296, closed): `SELECT count(*) WHERE
+  false` † answers `0`, `SELECT count(*) HAVING true` and `SELECT 1 HAVING count(*) > 0`
+  `1`, and `SELECT count(*) GROUP BY 1` is `42803`, each as on 18.6. In an `UPDATE … SET` and an `INSERT …
   VALUES` the subquery itself is refused first, by this row's other half.
 
   Controls: the same statements over a one-row `FROM` answer as 18.6 does — `SELECT
@@ -21867,8 +21880,27 @@ inside a table.
   after it. Row 171's bullet names `SELECT <chain>, $1abc` among its deep-chain members. No
   fixture: a faithful one is red.
 
-- **296 · A `SELECT` with no `FROM` ends before its `WHERE`, `GROUP BY` and `HAVING`.**
-  `parse_select_leaf` (`parser/select.rs`) ends a select with no `FROM` before its `WHERE`,
+- **~~296~~ · Closed — A `SELECT` with no `FROM` reads its `WHERE`, `GROUP BY` and
+  `HAVING`.** With no `FROM`, a select followed by one of the three clauses is now
+  lowered over one row of no columns (18.6's `Result` node over no relation), so the
+  clauses run where a FROM query's do: `SELECT 1 WHERE false` is zero rows, `SELECT
+  count(*) WHERE false` is `0`, `SELECT 1 HAVING count(*) > 0` is `1`, and a seed
+  migration's `INSERT … SELECT <constants> WHERE EXISTS (…) ON CONFLICT … DO NOTHING` writes
+  its row or none (`insert/select_no_from_where_exists_seeds_a_row.sql`). A select-list
+  name is not a column of that row (`42703`), and a bare `*` with no `FROM` is 18.6's
+  `42601 SELECT * with no tables specified is not valid`, with a clause or without (it was
+  pglet's `0A000` without one). The residuals are the FROM query's, now reached without
+  one: `SELECT nextval('s') WHERE true` and `SELECT unnest(ARRAY[1,2]) WHERE true` are
+  `0A000` (the sequence and set-returning projections are no-FROM shapes), and
+  `SELECT 1/0 WHERE false` is zero rows against 18.6's folded `22012` (row 60's `WHERE
+  false` line). And `SELECT pg_advisory_xact_lock(k) WHERE false` (it was `42601`) now takes
+  the writer for the statement without evaluating the call, where 18.7 takes no lock: it
+  waits behind another block's writer and is `55P03` at `lock_timeout` (measured), and
+  holds other writers off while it runs — row 250's over-locking. A
+  select with no `FROM` and none of the three clauses keeps its own route.
+  The record before the repair:
+
+  `parse_select_leaf` (`parser/select.rs`) ended a select with no `FROM` before its `WHERE`,
   `GROUP BY` or `HAVING` and returns the leaf, so the clause keyword is what the statement's
   end-of-input check meets next. `ORDER BY` and `LIMIT` are read past the leaf and agree.
   Measured through the native server (simple query) and the wasm bindings' `query` (the

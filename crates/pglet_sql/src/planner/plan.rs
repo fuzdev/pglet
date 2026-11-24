@@ -1416,9 +1416,21 @@ pub enum Plan {
     /// `ALTER TABLE … ALTER [COLUMN] col SET NOT NULL` — enforce NOT NULL on an
     /// existing column. The executor validates every existing row has a non-NULL
     /// value (else `23502`) and flips the column's `nullable` flag, so later NULL
-    /// inserts are rejected. (`DROP NOT NULL` and `… TYPE …` are unimplemented and
-    /// fail loud rather than silently no-op — [`Plan::AlterTableUnperformed`].)
+    /// inserts are rejected. (`… TYPE …` is unimplemented and fails loud rather than
+    /// silently no-op — [`Plan::AlterTableUnperformed`].)
     AlterTableSetNotNull {
+        table: String,
+        column: String,
+        /// `ALTER TABLE IF EXISTS`; see [`Plan::AlterTableAddColumn`].
+        table_if_exists: bool,
+    },
+
+    /// `ALTER TABLE … ALTER [COLUMN] col DROP NOT NULL` — let an existing column hold
+    /// NULL. Reads no row: the executor refuses a column of the primary key (`42P16`),
+    /// an identity column (`42601`) and a system column (`0A000`), as 18.6's
+    /// `ATExecDropNotNull` does, and otherwise flips the column's `nullable` flag, which
+    /// is also its `NOT NULL` constraint (`pg_constraint`'s `contype = 'n'` row).
+    AlterTableDropNotNull {
         table: String,
         column: String,
         /// `ALTER TABLE IF EXISTS`; see [`Plan::AlterTableAddColumn`].
@@ -1452,7 +1464,7 @@ pub enum Plan {
     /// An `ALTER TABLE` operation pglet parses and does not perform: a clause it
     /// tolerates as a no-op (`OWNER TO`, `SET STATISTICS`, and the other `pg_dump`
     /// spellings with no data effect here), or one it refuses (`RENAME`,
-    /// `ALTER COLUMN … TYPE`, `DROP NOT NULL`, a `DROP CONSTRAINT` list with another
+    /// `ALTER COLUMN … TYPE`, `DROP IDENTITY`, a `DROP CONSTRAINT` list with another
     /// action in it, …).
     ///
     /// It is a plan rather than a parse-time answer so that the relation is looked up
@@ -3251,6 +3263,7 @@ impl Plan {
             | Self::AlterTableAddConstraint { .. }
             | Self::AlterTableSetDefault { .. }
             | Self::AlterTableSetNotNull { .. }
+            | Self::AlterTableDropNotNull { .. }
             | Self::AlterTableAddIdentity { .. }
             | Self::CreateSequence { .. }
             | Self::AlterSequence { .. }
@@ -3860,6 +3873,7 @@ impl Plan {
             | Self::AlterTableAddConstraint { .. }
             | Self::AlterTableSetDefault { .. }
             | Self::AlterTableSetNotNull { .. }
+            | Self::AlterTableDropNotNull { .. }
             | Self::AlterTableAddIdentity { .. }
             | Self::CreateSequence { .. }
             | Self::AlterSequence { .. }
@@ -3992,6 +4006,7 @@ impl Plan {
             | Self::AlterTableAddConstraint { .. }
             | Self::AlterTableSetDefault { .. }
             | Self::AlterTableSetNotNull { .. }
+            | Self::AlterTableDropNotNull { .. }
             | Self::AlterTableAddIdentity { .. }
             // A new sequence is catalog state that must persist on auto-commit.
             | Self::CreateSequence { .. }
@@ -4119,6 +4134,11 @@ impl Plan {
                 table_if_exists,
                 ..
             }
+            | Self::AlterTableDropNotNull {
+                table,
+                table_if_exists,
+                ..
+            }
             | Self::AlterTableAddIdentity {
                 table,
                 table_if_exists,
@@ -4184,6 +4204,7 @@ impl Plan {
                 | Self::AlterTableAddConstraint { .. }
                 | Self::AlterTableSetDefault { .. }
                 | Self::AlterTableSetNotNull { .. }
+                | Self::AlterTableDropNotNull { .. }
                 | Self::AlterTableAddIdentity { .. }
                 // A DO block can run DDL (the idempotent `CREATE TYPE`), so treat it
                 // as schema-mutating for plan-cache invalidation.

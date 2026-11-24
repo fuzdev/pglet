@@ -1183,8 +1183,9 @@ impl Parser<'_> {
     /// `SET DEFAULT expr` / `DROP DEFAULT` rewrite the column's catalog default (the
     /// pg_dump-restore path re-attaches a SERIAL column's `nextval` default after the
     /// data load); `SET NOT NULL` is **enforced** (the executor validates existing
-    /// rows + flips the flag). `DROP NOT NULL` and `… TYPE …` are semantically
-    /// meaningful but unimplemented, so they **fail loud** rather than silently no-op;
+    /// rows + flips the flag) and `DROP NOT NULL` lifts it. `… TYPE …`, `DROP IDENTITY`
+    /// and `DROP EXPRESSION` are semantically meaningful but unimplemented, so they
+    /// **fail loud** rather than silently no-op;
     /// the cosmetic `SET STATISTICS` / `SET (storage …)` hints stay tolerated no-ops.
     fn parse_alter_table_alter_column(
         &mut self,
@@ -1251,12 +1252,20 @@ impl Parser<'_> {
                     table_if_exists,
                 });
             }
-            // `DROP NOT NULL` / `DROP IDENTITY` / `DROP EXPRESSION` change column
-            // semantics and are unimplemented — fail loud, not a silent no-op.
+            if self.ts.eat_kw(Keyword::Not)? {
+                self.ts.expect_kw(Keyword::Null)?;
+                return Ok(Plan::AlterTableDropNotNull {
+                    table,
+                    column,
+                    table_if_exists,
+                });
+            }
+            // `DROP IDENTITY` / `DROP EXPRESSION` change column semantics and are
+            // unimplemented — fail loud, not a silent no-op.
             return self.alter_table_unperformed(
                 table,
                 table_if_exists,
-                Some("ALTER COLUMN … DROP NOT NULL/IDENTITY/EXPRESSION not supported"),
+                Some("ALTER COLUMN … DROP IDENTITY/EXPRESSION not supported"),
             );
         }
         // `ALTER COLUMN … TYPE …` (and any other column action) is a type/semantic
