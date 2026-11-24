@@ -142,7 +142,7 @@ directory.
 
 `.github/workflows/check.yml` runs the same three tiers on every push and pull
 request — the hermetic bar, the published wasm/npm package, and the six differential
-gates against a `postgres:18.6` service. It invokes the tasks by name rather than
+gates against a `postgres:18.7` service. It invokes the tasks by name rather than
 re-listing their steps, so what CI runs is what you run.
 
 A warm run (cargo cache populated, `pkg/` built) takes minutes, not seconds — `test:wasm`

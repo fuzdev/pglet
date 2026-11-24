@@ -13007,7 +13007,7 @@ inside a table.
   (2) **`SHOW server_version` and the startup `ParameterStatus` — closed.** Both claimed
   `16.0`, from two separately typed copies of the string, and `server_version_num` was
   `42704`. Both now render one table (`ShowVariable::report`, via
-  `catalog::startup_parameters` for the startup block) and report `18.6` / `180006` — the
+  `catalog::startup_parameters` for the startup block) and report `18.7` / `180007` — the
   release the differential corpus is asserted against, which names the **dialect target**
   and not feature completeness. `SHOW` also answers the other seven parameters the startup
   block asserts, which it used to answer `42704` while the same connection reported them.

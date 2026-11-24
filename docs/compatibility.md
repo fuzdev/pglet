@@ -3646,7 +3646,7 @@ bindings, and so the npm package, send every query string through
 other multi-statement Parse, since that route skips the parser's own single-statement
 check.
 
-`SHOW server_version`/`server_version_num` give `18.6`/`180006`. **That's the release the
+`SHOW server_version`/`server_version_num` give `18.7`/`180007`. **That's the release the
 differential corpus is checked against: the dialect target, not a claim of feature
 completeness.** It comes from the single table the startup `ParameterStatus` block renders,
 which the server re-reports on change (`GUC_REPORT`). That includes the isolation level:
