@@ -8,19 +8,35 @@ stands. Every number here is measured or labeled an estimate.
 
 | Artifact | Raw | Gzipped (wire) | Gated? |
 |---|---|---|---|
-| WASM (`pglet_wasm_bg.wasm`) | **~1613 KB** | ~647 KB | yes — raw bytes, under the lower of baseline +2% and the 1650 KB cap (`benches/size_baseline.json` is the recorded figure) |
-| Native (`pglet_server`) | ~2705 KB | ~1289 KB | no (secondary target) |
+| WASM (`pglet_wasm_bg.wasm`), the recorded baseline | **~1645 KB** | ~663 KB | yes — raw bytes, under the lower of baseline +2% and the 1680 KB cap (`benches/size_baseline.json` is the recorded figure) |
+| Native (`pglet_server`) | ~2725 KB | ~1303 KB | no (secondary target) |
 
 The size **gate** is on **raw WASM bytes** (`npm run size:check`) — the size you
 build, deterministic across a fixed toolchain, so a regression is real code growth
 rather than compressor noise. The gzipped figure is the over-the-wire /
 download cost that matters for the embedded/browser use; it's reported alongside but
-not gated. **The cap is 1650 KB**, moved only by an explicit decision; `size:check` runs
+not gated. **The cap is 1680 KB**, moved only by an explicit decision; `size:check` runs
 second in `cargo xtask gates`, so any full gate run enforces it — still worth running
 deliberately after size-growing work if you are not running the set. The native binary
 is the secondary target, reported only. The per-component breakdown below is estimated
 from dependency sizes — cargo-bloat doesn't support the wasm target, so a precise
 breakdown would have to be hand-rolled.
+
+### The cap moved from 1650 KB to 1680 KB
+
+Moved for the spine test-database features, the SQL the Rust spine's and its consumers'
+test suites send a `pglet_server` (`LATERAL (SELECT …)`, `NOWAIT`, `SKIP LOCKED`, `ALTER
+TABLE … RENAME TO` and `RENAME COLUMN`, `CHECK … NOT VALID` with `VALIDATE CONSTRAINT`,
+and the no-`FROM` aggregate), which the wasm build carries too, since one core serves
+both. Measured raw wasm bytes each added, in landing order, from 1 677 233 B:
+`LATERAL` +7 559, `NOWAIT` +1 913, `SKIP LOCKED` +379, `RENAME TO` +7 188, `RENAME
+COLUMN` +3 738, `NOT VALID` +4 302, the no-`FROM` aggregate and `::regclass` over a
+sequence +1 687 — +26 766 B in all, to 1 703 999 B (1664.1 KB), past the old cap. 1680 KB
+keeps a round figure about 16 KB above that build; the baseline +2% guard binds first
+while the baseline sits below 1647 KB, as the recorded 1645.3 KB does (a ceiling of
+1678.2 KB, about 14 KB above that build). Not taken: putting the renames and `NOT
+VALID` behind a feature left out of the wasm build (about 15 KB back, at the cost of a
+build profile the test suites' wasm leg would not match).
 
 ### Dependency footprint
 

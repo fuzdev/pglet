@@ -46,7 +46,7 @@ export const SIZE_BASELINE_NAME = 'size_baseline.json';
  * the cap was once breached and stayed breached while this gate sat in no automated
  * set. Raising it is a deliberate decision, never a tripwire to move quietly.
  */
-export const SIZE_HARD_CAP_BYTES = 1650 * 1024;
+export const SIZE_HARD_CAP_BYTES = 1680 * 1024;
 
 /** The growth over the baseline absorbed as toolchain noise before failing, in percent. */
 export const SIZE_TOLERANCE_PCT = 2;

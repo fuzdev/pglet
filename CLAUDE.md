@@ -568,7 +568,7 @@ cargo xtask gates --only test:fixtures,test:rust   # ...restricted to named task
 cargo xtask gates --skip test:pg-dump   # ...minus named tasks (--skip beats --only; an unselected
 #                                         gate's baseline counters are not asked for)
 npm run gates:check               # cargo xtask gates --check (gates:update likewise)
-npm run size:check                # wasm size gate: raw bytes under the lower of baseline +2% and the 1650 KB hard cap (needs wasm-pack, gzip)
+npm run size:check                # wasm size gate: raw bytes under the lower of baseline +2% and the 1680 KB hard cap (needs wasm-pack, gzip)
 npm run size:update               # ...and record this build as the new baseline
 npm run check                     # clippy -D warnings + stripped + wasm-features + fmt + docs + check:ts + check:benches + release audit
 npm run check:stripped | check:wasm-features | check:ts | check:benches | check:release   # check's own steps, runnable alone

@@ -244,8 +244,9 @@ of recorded divergences.
 
 ## Size and startup
 
-- **Size:** the WASM artifact is ~1613 KB raw / ~647 KB gzipped over the wire — about a tenth of pglite's raw
-  payload and an eighth of its gzipped one (`benches/pglite_size_comparison.json`).
+- **Size:** the WASM artifact measured ~1613 KB raw / ~647 KB gzipped over the wire at the last release
+  measurement (`benches/pglite_size_comparison.json`) — about a tenth of pglite's raw payload and an eighth of
+  its gzipped one.
   The gate is on raw bytes (deterministic; gzip is reported, not gated) against the
   recorded baseline +2% and a hard cap, re-validated on every full gate run. The recorded figures are `benches/size_baseline.json`; the budget and
   what has been cut to hold it are `TRADEOFFS.md`.

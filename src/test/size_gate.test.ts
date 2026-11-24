@@ -134,7 +134,7 @@ describe('run_size_command check', () => {
 		await run_size_command(to_deps(dir, printed), { mode: 'check', wasm: SIZE_WASM_DEFAULT });
 		assert.deepEqual(printed, [
 			'pglet_wasm_bg.wasm: 1000.0 KB raw (2.0 KB gzip wire)',
-			'  baseline 1000.0 KB · ceiling 1020.0 KB (min of baseline +2% and hard cap 1650.0 KB)',
+			'  baseline 1000.0 KB · ceiling 1020.0 KB (min of baseline +2% and hard cap 1680.0 KB)',
 			'pglet_server: 12.0 KB raw (4.0 KB gzip) — reported, not gated',
 			'  baseline 10.0 KB · delta +2.0 KB',
 			'OK'
@@ -150,7 +150,7 @@ describe('run_size_command check', () => {
 		assert.deepEqual(printed, [
 			'note: native binary target/release/pglet_server not built — skipping (reported, not gated)',
 			'pglet_wasm_bg.wasm: 1.0 KB raw (2.0 KB gzip wire)',
-			'  baseline 1.0 KB · ceiling 1.0 KB (min of baseline +2% and hard cap 1650.0 KB)',
+			'  baseline 1.0 KB · ceiling 1.0 KB (min of baseline +2% and hard cap 1680.0 KB)',
 			'OK'
 		]);
 	});
@@ -209,8 +209,8 @@ describe('run_size_command check', () => {
 			run_size_command(to_deps(dir, printed), { mode: 'check', wasm: SIZE_WASM_DEFAULT })
 		);
 		assert.deepEqual(printed.slice(-2), [
-			'  baseline 1650.0 KB · ceiling 1650.0 KB (min of baseline +2% and hard cap 1650.0 KB)',
-			'ERR FAIL: raw size 1650.0 KB exceeds ceiling 1650.0 KB'
+			'  baseline 1680.0 KB · ceiling 1680.0 KB (min of baseline +2% and hard cap 1680.0 KB)',
+			'ERR FAIL: raw size 1680.0 KB exceeds ceiling 1680.0 KB'
 		]);
 	});
 
