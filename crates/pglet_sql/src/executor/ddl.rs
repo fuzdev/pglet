@@ -5070,6 +5070,125 @@ pub fn execute_alter_table_rename<S: Storage>(
     Ok(QueryResult::ddl("ALTER TABLE"))
 }
 
+/// Execute `ALTER TABLE … RENAME [COLUMN] column TO new_name`.
+///
+/// 18.6's `renameatt_internal` order: the relation (`42P01`), the column (`42703`, or
+/// `0A000` for a system column), then the new name — `42701` for a column the table
+/// already has, the column's own name included, and for a system column's name.
+///
+/// Catalog only, and nothing after the checks can fail. The rows are positional and
+/// stay. Every stored reference to the column follows it: a `CHECK`, an index's key
+/// column list, key expressions and predicate, the table's foreign keys' columns and the
+/// referenced columns of the foreign keys pointing at it, and the `OWNED BY` of a
+/// sequence on it. A storage index keeps the column names it was built with beside the
+/// expressions over them, which still agree with each other and with the positions, so
+/// it is not rebuilt; a reopen re-derives it from the catalog. Constraint, index and
+/// sequence names stay, as on 18.6. A block's rollback restores the catalog.
+///
+/// # Errors
+///
+/// As above.
+pub fn execute_alter_table_rename_column(
+    schema: &mut Schema,
+    table_name: &str,
+    column: &str,
+    new_name: &str,
+) -> Result<QueryResult> {
+    let table = get_table_or_err(schema, table_name)?;
+    if !table.columns.iter().any(|c| c.name == column) {
+        if is_system_column_name(column) {
+            return Err(Error::SystemColumnRename {
+                column: column.to_string(),
+            });
+        }
+        return Err(crate::CatalogError::ColumnNotFoundInExpr {
+            column: column.to_string(),
+        }
+        .into());
+    }
+    if table.columns.iter().any(|c| c.name == new_name) {
+        return Err(crate::CatalogError::ColumnAlreadyExists {
+            table: table_name.to_string(),
+            column: new_name.to_string(),
+        }
+        .into());
+    }
+    if is_system_column_name(new_name) {
+        return Err(crate::CatalogError::SystemColumnName {
+            column: new_name.to_string(),
+        }
+        .into());
+    }
+
+    let rename = |expr: &mut Expr| rename_column_reference(expr, table_name, column, new_name);
+    if let Some(table) = schema.tables.get_mut(table_name) {
+        for col in &mut table.columns {
+            if col.name == column {
+                new_name.clone_into(&mut col.name);
+            }
+        }
+        for check in &mut table.checks {
+            rename(&mut check.expr);
+        }
+        for fk in &mut table.foreign_keys {
+            rename_in_list(&mut fk.columns, column, new_name);
+        }
+    }
+    for table in schema.tables.values_mut() {
+        for fk in &mut table.foreign_keys {
+            if fk.parent_table == table_name {
+                rename_in_list(&mut fk.parent_columns, column, new_name);
+            }
+        }
+    }
+    for index in schema.indexes.values_mut() {
+        if index.table_name == table_name {
+            match &mut index.key {
+                IndexKey::Columns(columns) => rename_in_list(columns, column, new_name),
+                IndexKey::Exprs(exprs) => exprs.iter_mut().for_each(rename),
+            }
+            if let Some(predicate) = &mut index.predicate {
+                rename(predicate);
+            }
+        }
+    }
+    for sequence in schema.sequences.values_mut() {
+        if let Some(owner) = &mut sequence.owner
+            && owner.table == table_name
+            && owner.column == column
+        {
+            new_name.clone_into(&mut owner.column);
+        }
+    }
+    Ok(QueryResult::ddl("ALTER TABLE"))
+}
+
+/// Every entry of `list` that is `old`, renamed `new`.
+fn rename_in_list(list: &mut [String], old: &str, new: &str) {
+    for name in list {
+        if name == old {
+            new.clone_into(name);
+        }
+    }
+}
+
+/// Rename `table`'s column `old` to `new` in a stored expression over `table` — a
+/// reference to it bare or qualified by the table's name; one qualified by another
+/// name names no column of it.
+fn rename_column_reference(expr: &mut Expr, table: &str, old: &str, new: &str) {
+    if let Expr::Column {
+        table: qualifier,
+        name,
+    } = expr
+    {
+        if name == old && qualifier.as_deref().is_none_or(|q| q == table) {
+            new.clone_into(name);
+        }
+        return;
+    }
+    expr.for_each_child_mut(&mut |child| rename_column_reference(child, table, old, new));
+}
+
 /// Rename the qualifier `old` to `new` on every column reference in a stored
 /// expression — a `CHECK`'s, an index key's or an index predicate's, none of which can
 /// hold a subquery.

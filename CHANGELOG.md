@@ -33,6 +33,8 @@ released version under a fresh `## Unreleased` declaring a patch.
   does (was `0A000`); the package has one connection, so nothing is ever skipped
 - feat: `ALTER TABLE … RENAME TO` (was `0A000`): the table's rows, indexes, constraints,
   referencing foreign keys and owned sequences follow it, keeping their own names
+- feat: `ALTER TABLE … RENAME [COLUMN] … TO …` (was `0A000`): the column's `CHECK`s, index
+  keys and predicates, and foreign keys on either side follow it
 
 ## 0.2.1
 

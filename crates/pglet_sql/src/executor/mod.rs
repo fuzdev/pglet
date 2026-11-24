@@ -292,6 +292,13 @@ pub fn execute_with_storage<S: Storage>(
             table, new_name, ..
         } => ddl::execute_alter_table_rename(schema, storage, table, new_name),
 
+        Plan::AlterTableRenameColumn {
+            table,
+            column,
+            new_name,
+            ..
+        } => ddl::execute_alter_table_rename_column(schema, table, column, new_name),
+
         Plan::AlterTableAddIdentity {
             table,
             column,

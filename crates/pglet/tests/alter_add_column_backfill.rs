@@ -212,16 +212,16 @@ fn add_column_unique_collides_on_constant_default() {
     assert_eq!(scalar_i64(&mut db1, "SELECT count(*) FROM t1"), 1);
 }
 
-/// `ALTER TABLE … RENAME` of a constraint or a column fails loud (`0A000`) instead of the old silent
+/// `ALTER TABLE … RENAME CONSTRAINT` fails loud (`0A000`) instead of the old silent
 /// no-op that reported success while renaming nothing.
 #[test]
-fn alter_table_rename_of_a_constraint_or_column_is_loud() {
+fn alter_table_rename_constraint_is_loud() {
     let mut db = Database::with_btree();
     db.execute("CREATE TABLE t (a INT, b INT)").unwrap();
 
     for sql in [
         "ALTER TABLE t RENAME CONSTRAINT x TO y",
-        "ALTER TABLE t RENAME COLUMN a TO c",
+        "ALTER TABLE ONLY t RENAME CONSTRAINT x TO y",
     ] {
         let err = db.execute(sql).unwrap_err();
         assert_eq!(err.sqlstate(), "0A000", "{sql}: {err}");

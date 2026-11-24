@@ -1779,6 +1779,11 @@ pub enum Error {
     #[error("cannot alter system column \"{column}\"")]
     SystemColumnAlter { column: String },
 
+    /// `ALTER TABLE … RENAME COLUMN` of a system column — `ctid`, `xmin`, … — which
+    /// 18.6's `renameatt_internal` refuses with SQLSTATE `0A000`.
+    #[error("cannot rename system column \"{column}\"")]
+    SystemColumnRename { column: String },
+
     /// A `WITH RECURSIVE` whose body isn't a well-formed recursive query: a
     /// combinator other than `UNION`/`UNION ALL` between the terms, an aggregate /
     /// window function in the recursive term, or the self-reference appearing more
@@ -2150,7 +2155,7 @@ impl Error {
             | Self::WrongObjectType { .. } => "42809", // wrong_object_type
             Self::IdentitySequenceOwnershipChange { .. } => "0A000", // feature_not_supported
             Self::IdentityColumnDefault { .. } => "42601", // syntax_error
-            Self::SystemColumnAlter { .. } => "0A000", // feature_not_supported
+            Self::SystemColumnAlter { .. } | Self::SystemColumnRename { .. } => "0A000", // feature_not_supported
             Self::CurrvalNotDefined(_) => "55000", // object_not_in_prerequisite_state
             Self::AmbiguousColumn { .. } | Self::AmbiguousClauseKey { .. } => "42702", // ambiguous_column
             Self::GeneratedAlwaysInsert { .. } | Self::GeneratedAlwaysUpdate { .. } => "428C9", // generated_always

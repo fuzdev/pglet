@@ -55,14 +55,15 @@ the arm order of 18.6's single lookup. So a legacy table that already holds a us
 named `ctid` answers *conflicts with a system column name* for a second `ctid`, not
 *already exists*.
 
-**These two are the only statements pglet has that add a column name. That's a fact
-about `Plan`, not a claim that the list is complete.** 18.6 runs these checks wherever a
-column name enters a relation's descriptor, and that includes statements pglet doesn't
-parse: `ALTER TABLE … RENAME COLUMN`, `CREATE TABLE … AS`, a view's column list, a
-composite type's. `Plan` has no variant that renames or adds a column for any of them.
-The rename is `0A000` (a `Plan::AlterTableUnperformed`, refused once the relation is
-found), `CREATE TYPE t AS (…)` is `0A000` at the parser, and there are no views and no
-CTAS at all. `is_system_column_name`'s call sites are the two named above. So what would
+**Three statements pglet has put a column name into a relation: these two, and `ALTER
+TABLE … RENAME COLUMN`, which runs both checks (`42701` for a column the table has, its
+own name included, and for a system column's name), after 18.6's lookup of the column it
+renames. That's a fact about `Plan`, not a claim that the list is complete.** 18.6 runs
+these checks wherever a column name enters a relation's descriptor, and that includes
+statements pglet doesn't parse: `CREATE TABLE … AS`, a view's column list, a composite
+type's. `Plan` has no variant that adds a column for any of them: `CREATE TYPE t AS (…)`
+is `0A000` at the parser, and there are no views and no CTAS at all.
+`is_system_column_name`'s call sites are the statements named above. So what would
 make this list stale is a new `Plan` variant that puts a column name into a relation.
 18.6 already says which kinds wouldn't want the system-column half:
 `CheckAttributeNamesTypes` skips it for `RELKIND_VIEW` and `RELKIND_COMPOSITE_TYPE`,

@@ -91,7 +91,8 @@ seem to disagree, the record wins.
 | [`information_schema`](#information_schema) | ⚠️ | `tables`, `columns`, `table_constraints`, `key_column_usage`, `referential_constraints`, `constraint_column_usage`; a `char(n)` column reads as `character varying`. |
 | [`ALTER TABLE … ADD CONSTRAINT`](#alter-table--add-constraint) | ⚠️ | `CHECK`, `PRIMARY KEY`, `UNIQUE` and `FOREIGN KEY`, each validated against the existing rows, then enforced. |
 | [`ALTER TABLE … DROP CONSTRAINT`](#alter-table--drop-constraint) | ⚠️ | A `FOREIGN KEY` or `CHECK`, by name, `IF EXISTS` and comma lists included; a `PRIMARY KEY`, `UNIQUE` or `NOT NULL` is `0A000`. |
-| [`ALTER TABLE … RENAME TO`](#alter-table--rename-to) | ⚠️ | Renames a table: its rows, indexes, constraints, foreign keys and owned sequences follow it, and their own names stay. `RENAME CONSTRAINT` is `0A000`, and `ALTER TABLE` over an index or a sequence is `42809` where PostgreSQL renames it. |
+| [`ALTER TABLE … RENAME TO`](#alter-table--rename-to) | ⚠️ | Renames a table: its rows, indexes, constraints, foreign keys and owned sequences follow it, and their own names stay. `RENAME CONSTRAINT` is `0A000`, and `ALTER TABLE` over an index or a sequence is `42809` where PostgreSQL renames it; a `NOT NULL`'s constraint name follows the new table name (`EDGES.md` row 333). |
+| [`ALTER TABLE … RENAME COLUMN`](#alter-table--rename-column) | ⚠️ | Renames a column: its `CHECK`s, index keys and predicates, and foreign keys follow it; a prepared `SELECT *` over it answers under the new name where PostgreSQL refuses (`EDGES.md` row 62), and its `NOT NULL`'s constraint name follows it too (row 333). |
 | [`ALTER TABLE … ALTER COLUMN … DROP NOT NULL`](#alter-table--alter-column--drop-not-null) | ✅ | Makes the column nullable and drops its `NOT NULL` constraint; a primary-key column is `42P16`, an identity column `42601`. |
 | [`CREATE SEQUENCE` / `ALTER SEQUENCE` / `GRANT` / `REVOKE` / `COMMENT ON` / `ALTER TABLE … OWNER TO`](#create-sequence--alter-sequence--grant--revoke--comment-on--alter-table--owner-to) | ⚠️ | Enough to get through a `pg_dump` preamble: a named sequence honors `START WITH`, `RESTART` and `OWNED BY`; `GRANT`, `REVOKE`, `COMMENT ON` and `OWNER TO` succeed as no-ops. |
 | [`SET` / `SHOW` / `DEALLOCATE` / `DISCARD` / `RESET`](#set--show--deallocate--discard--reset) | ⚠️ | `SET`, `SHOW`, `RESET`, `DEALLOCATE`, `DISCARD`; a setting pglet holds fixed (`TimeZone` `UTC`, `DateStyle`, …) takes only that value, and a `search_path` naming another schema is `0A000`. |
@@ -3657,7 +3658,8 @@ Gives a table a new name. Every catalog fact that names the table follows it: it
 indexes' table, the foreign keys referencing it (its own included), the `OWNED BY` of its
 sequences, and a column qualifier naming it in a stored `CHECK`, index expression or
 index predicate, which the dump writes as stored. Index, constraint and sequence names
-stay, as in PostgreSQL, so a `SERIAL` column keeps drawing from `<old>_id_seq`. The store
+stay, as in PostgreSQL, so a `SERIAL` column keeps drawing from `<old>_id_seq` — all
+but a `NOT NULL`'s, which pglet renders from the current names (`EDGES.md` row 333). The store
 re-keys the table on both backends, and its rows and index entries, keyed by the table's
 id, stay where they are; inside a block the B+tree writes the table's directory entry at
 `COMMIT`, so a `ROLLBACK` (or a `ROLLBACK TO` a savepoint before it) leaves the table under
@@ -3670,6 +3672,24 @@ it. A schema-qualified new name is `42601`. `ALTER TABLE` over an index or a seq
 PostgreSQL renames, is refused with the wrong kind's error, `42809`
 (`ddl/alter_table_rename_index_loud.sql`, `…_sequence_loud.sql`). Fixtures:
 `ddl/alter_table_rename_to_*.sql`.
+
+### `ALTER TABLE … RENAME COLUMN`
+
+`ALTER TABLE t RENAME [COLUMN] a TO b`. Every stored reference to the column follows it: a
+`CHECK`, an index's key column list, key expressions and partial predicate, the table's
+foreign keys' columns, the referenced columns of foreign keys pointing at it, and the
+`OWNED BY` of a sequence on it. The rows are positional and don't move. A storage index
+keeps the names it was built with beside the expressions over them, which still agree, so
+it isn't rebuilt; a reopen re-derives it from the catalog
+(`crates/pglet/tests/alter_table_rename.rs`). Constraint, index and sequence names stay, as
+in PostgreSQL, but a `NOT NULL`'s rendered name follows the new name (`EDGES.md` row 333).
+Inside a block it rolls back with the block.
+
+PostgreSQL's refusals, in its order: a missing table is `42P01`, a missing column `42703`,
+a system column `0A000`, and a new name the table already has (its own included) or a
+system column's name `42701`. A prepared `SELECT *` over the table answers under the new
+name where PostgreSQL answers `0A000 cached plan must not change result type` (row 62).
+`RENAME CONSTRAINT` is `0A000`. Fixtures: `ddl/alter_table_rename_column_*.sql`.
 
 ### `CREATE SEQUENCE` / `ALTER SEQUENCE` / `GRANT` / `REVOKE` / `COMMENT ON` / `ALTER TABLE … OWNER TO`
 

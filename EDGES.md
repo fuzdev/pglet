@@ -227,7 +227,7 @@ inside a table.
 | ~~24~~ | **closed** — `ROLLBACK` — or `ROLLBACK TO SAVEPOINT`, and the `COMMIT` of the block that refusal aborted — of a transaction whose statement *kind* claims a catalog write, while another connection committed DDL meanwhile | the rollback succeeds, and the other connection's DDL stands | the rollback succeeds, and the other connection's DDL stands | closed — no residual: the refusal is deleted, and another connection's DDL now lands before the block's first write or after the block ends | the storage unit test `a_rollback_restores_the_state_the_block_took_the_writer_on`; `test_concurrent`'s `concurrent DDL vs rollback (no clobber)` | A `ROLLBACK` of a transaction whose statement *kind* claims a catalog write |
 | ~~181~~ | **closed** — on **one** connection, the `ROLLBACK` of a block in which `ROLLBACK TO SAVEPOINT` or a caught `DO … EXCEPTION` undid a `CREATE TABLE` and other table DDL ran, before or after it — the bullet's measured members | `ROLLBACK`: the block's DDL undone, committed tables whole, live and after a reopen | `ROLLBACK`: the block's DDL undone, committed tables whole | closed — no residual in the bullet | `crates/pglet/tests/writer.rs`'s `a_rollback_restores_the_block_whole_after_an_undone_table` (three stores, a reopen) | as if another connection had committed DDL |
 | 29 | a missing column in `WHERE` / `ORDER BY`, in a projection, in a `USING` list, as an `UPDATE`'s `SET` target or as an `ON CONFLICT` **arbiter**, and a missing **relation** — and which phase each raises at | `42703` at `Parse` for every column spelling **but the `ON CONFLICT` arbiter** (`42P10` at `Execute`); a missing **relation** defers, goes silent or raises at `Parse`, by spelling | `42703` / `42P01` at `Parse`, for every spelling the bullet names | **silent** for a missing relation evaluation never reaches — an unreferenced CTE, an untaken `CASE` arm or `AND`/`OR` operand, an empty scan's subquery — plain SQL on either leg; else the relation half loud-but-late or at `Parse`; the arbiter loud, late, miscoded; the other column spellings closed | — the harness compares no phase and holds no recorded divergence | reports plan errors, as Postgres does |
-| 62 | a prepared statement `Describe`d or `Execute`d after DDL changed its result type — a column dropped or added under `SELECT *`, a `DROP TABLE` + re-`CREATE` of the same name | **two kinds** — a failed re-plan answers `NoData` and defers its `42703` to `Execute`; a re-plan that succeeds against a changed shape re-describes it and answers its rows | `42703` at the `Describe`; `0A000 cached plan must not change result type` at the `Describe` and at `Bind` | **both kinds** — loud-but-late for the failed re-plan, **silent** for the changed shape; in a block both commit work 18.6 discards | — no fixture: the harness has no directive for DDL between `Parse` and `Execute`, and pglet answers where 18.6 errors, so `@expect-error` cannot hold it either | result type is not revalidated against the DDL |
+| 62 | a prepared statement `Describe`d or `Execute`d after DDL changed its result type — a column dropped, added or renamed under `SELECT *`, a `DROP TABLE` + re-`CREATE` of the same name | **two kinds** — a failed re-plan answers `NoData` and defers its `42703` to `Execute`; a re-plan that succeeds against a changed shape re-describes it and answers its rows | `42703` at the `Describe`; `0A000 cached plan must not change result type` at the `Describe` and at `Bind` | **both kinds** — loud-but-late for the failed re-plan, **silent** for the changed shape; in a block both commit work 18.6 discards | — no fixture: the harness has no directive for DDL between `Parse` and `Execute`, and pglet answers where 18.6 errors, so `@expect-error` cannot hold it either | result type is not revalidated against the DDL |
 | 40 | a failed DML under autocommit on `MemoryStorage` | partial effects stand — every row written stays written, every row removed stays removed, and a single-row statement leaks when the failure lands **after** the heap write | nothing applies | silent (writes) | — the harness runs the B+tree server inside `BEGIN … ROLLBACK` | has no per-statement atomicity under autocommit |
 | 43 | what a driver or ORM sends first — text collation, `pg_type`'s missing columns and absent `pg_range`; **closed:** `json`'s `jsonb` alias, `SET search_path`, `SHOW server_version` / `server_version_num`, `pg_constraint`/`pg_index`, `ErrorResponse` fields | compares in byte order with no error; `42703` for a missing `pg_type` column, `42P01` for `pg_range` | the real answers | silent for the collation, **loud** for `pg_type` / `pg_range` | — nothing pins either open member; `tests/fixtures/commands/` and `types/json_column_name.sql` for the closed ones, and `crates/pglet/tests/json_type_refused.rs` for `json`'s SQLSTATE, which the documentary `types/json_*_loud.sql` cannot | Session-setup and introspection shapes a driver or ORM sends first |
 | 66 | `search_path`'s reported string after an accepted `SET`, `set_config` or startup `search_path`, read through `SHOW search_path`, `current_setting('search_path')`, `current_schema` and `current_schemas(bool)` | a fixed `"$user", public` with no `ParameterStatus`; `current_schema` is the constant `public`, `current_schemas` a constant array | the accepted list, echoed by `SHOW` and announced by `ParameterStatus`; `current_schema` moves with it | silent | `commands/set_config_search_path_empty.sql`, `session/current_schema_both_spellings.sql`, `session/current_schemas_both_polarities.sql`, `session/current_setting_search_path.sql`; agreeing polarity | pglet's `search_path` is a value it reports, not a cell it keeps |
@@ -299,6 +299,7 @@ inside a table.
 | 286 | `information_schema.columns.column_default` for a `nextval` default whose sequence name needs quoting — mixed case, a space, a non-ASCII letter | the bare name inside the literal: `nextval('Up_id_seq'::regclass)` | the quoted name: `nextval('"Up_id_seq"'::regclass)` | silent — a rendering, the schema differ's; the dump quotes the name | — a faithful fixture is red | bare inside the literal |
 | 289 | a foreign key's referential action written twice — `REFERENCES p ON DELETE CASCADE ON DELETE SET NULL`, the `ON UPDATE` pair — at a column, a table constraint, `ADD CONSTRAINT` or `ADD COLUMN` | accepted, the later action kept | `42601 syntax error at or near "DELETE"` | **silent** — a statement 18.6 refuses builds a constraint | — none; pglet accepts where 18.6 errors | the later action kept |
 | 290 | a declared constraint named as the engine names a column's `NOT NULL` — `CREATE TABLE s (a INT NOT NULL, CONSTRAINT s_a_not_null CHECK (a > 0))`, or one added by `ALTER TABLE` over an existing `NOT NULL` column | accepted; two `pg_constraint` rows share the name, and `DROP CONSTRAINT` of it is `0A000` | the `CHECK` at `CREATE TABLE` is accepted, the `NOT NULL` named `s_a_not_null1`; a `UNIQUE` or foreign key of that name, and the `ALTER TABLE`, are `42710` | **silent** — an accept where 18.6 refuses, and the `CHECK` table's dump loses the `CHECK` on 18.6, psql exiting `0` | — a faithful fixture is red | holds no record for a `NOT NULL` |
+| 333 | the `pg_constraint` name of a column's `NOT NULL` after `ALTER TABLE … RENAME TO` or `RENAME COLUMN` | `<new table>_<new column>_not_null` — rendered from the names, never stored | the name it was created under | **silent** — a catalog name, which `DROP CONSTRAINT` of a `NOT NULL` (`0A000` here) and the dump (which writes `NOT NULL` inline) do not read | — a faithful fixture is red | rendered from the current names |
 
 **Index & build profile**
 
@@ -7848,6 +7849,18 @@ inside a table.
   LOCKED skips while the writer is held` and `crates/pglet/tests/writer.rs`'
   `a_skip_locked_read_answers_no_row_…` pin pglet's answer.
 
+- **333 · A `NOT NULL`'s constraint name is rendered from the current names.** pglet holds
+  no record for a `NOT NULL` — it is `Column.nullable` — so `pg_constraint` renders its
+  `conname` as `<table>_<column>_not_null` from the names the catalog holds now
+  (`ConstraintEntry::name`). 18.7 stores the name it chose at creation and keeps it through
+  a rename. Measured against 18.7: after `ALTER TABLE rp RENAME TO rq`, `rp`'s `id`
+  `NOT NULL` is `rq_id_not_null` here and `rp_id_not_null` there; after `ALTER TABLE cp
+  RENAME COLUMN id TO ident`, `cp_ident_not_null` here and `cp_id_not_null` there. Silent,
+  a catalog name only: `ALTER TABLE … DROP CONSTRAINT` of a `NOT NULL` is `0A000` here
+  whatever its name, and the dump writes `NOT NULL` inline, so a restore names it afresh on
+  both engines. Closing it means storing the name, a store-format change. No fixture: a
+  faithful one is red.
+
 - **251 · The regex operators answer an anchored literal prefix.** `~` and `!~` resolve
   over the string types as 18.6's do (`text`, `varchar`, `name` on the left, a `text` on the
   right) and are `42883` elsewhere — `integer`, `bytea`, an enum on the left, an `integer`
@@ -12277,10 +12290,13 @@ inside a table.
   `DROP TABLE` followed by re-`CREATE` of the **same name** with a different shape
   re-describes the new columns under the **new** relation OID and answers the new table's
   rows, again against `0A000` — pglet's prepared statement follows the name, and the OID
-  in the `RowDescription` changes underneath a client that never re-read it. Two of
-  18.6's other routes into the same refusal are **unreachable** here: `ALTER TABLE …
-  RENAME COLUMN` and `ALTER COLUMN … TYPE` are both `0A000 not implemented` in pglet, so
-  no prepared statement can be aged by either. A DDL, arrangement or protocol phase none
+  in the `RowDescription` changes underneath a client that never re-read it. `ALTER TABLE
+  … RENAME COLUMN a TO b` under a prepared `SELECT * FROM kps` (measured with psql's
+  `\parse` and `\bind_named` against 18.7) answers the row under the new column name here,
+  against `0A000 cached plan must not change result type`; a prepared `SELECT a FROM kps`
+  is `42703` on both. `ALTER COLUMN … TYPE`, 18.6's other route into the refusal, is
+  **unreachable** here: it is `0A000 not implemented` in pglet, so no prepared statement
+  can be aged by it. A DDL, arrangement or protocol phase none
   of the paragraphs here names is **unprobed rather than converging** — these are the
   measured members, not the class's edge.
 
@@ -12381,10 +12397,11 @@ inside a table.
   above **reach** carries the member — `ADD COLUMN z TEXT` re-describes `T[a, cc, z]` and
   answers three-field rows in-block, and a `DROP TABLE` + re-`CREATE` inside the block
   re-describes and answers the **new** table's rows, each against `0A000` and an aborted
-  block — and the two the bounds call unreachable stay unreachable in a block too, pglet's
-  `0A000 not implemented` for `RENAME COLUMN` aborting its own block while 18.6 accepts
-  the rename and then aborts *its* block on the re-`Describe`, so that arrangement ends
-  `C[ROLLBACK]` with the same post-state on both. The cross-connection arrangement adds a
+  block — and the one the bounds call unreachable, `ALTER COLUMN … TYPE`, stays
+  unreachable in a block too, pglet's `0A000 not implemented` aborting its own block
+  where 18.6 aborts *its* block on the re-`Describe`, so that arrangement ends
+  `C[ROLLBACK]` with the same post-state on both; a `RENAME COLUMN` there is unprobed.
+  The cross-connection arrangement adds a
   disagreement of pglet's **with itself**:
   there the re-`Describe` reports the new one-column shape while `Bind` + `Execute` in the
   same block answers two-field rows off the block's pre-DDL read snapshot, so the

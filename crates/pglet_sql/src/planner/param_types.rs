@@ -1266,6 +1266,7 @@ impl Inference {
             | Plan::AlterTableSetNotNull { .. }
             | Plan::AlterTableDropNotNull { .. }
             | Plan::AlterTableRename { .. }
+            | Plan::AlterTableRenameColumn { .. }
             | Plan::AlterTableAddIdentity { .. }
             | Plan::CreateSequence { .. }
         | Plan::AlterSequence { .. }

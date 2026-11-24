@@ -1025,11 +1025,11 @@ impl Parser<'_> {
         } else if self.ts.eat_kw(Keyword::Alter)? {
             self.parse_alter_table_alter_column(table, if_exists)
         } else if self.eat_ident("rename")? {
-            // `ALTER TABLE … RENAME TO new_name` re-keys the table. A rename of a column
-            // or a constraint is refused loud (`0A000`) over a relation that exists,
-            // instead of the silent no-op the tolerated tail below would make of it (which
-            // would report success while a later reference to the new name fails "does
-            // not exist").
+            // `ALTER TABLE … RENAME TO new_name` re-keys the table, and `RENAME [COLUMN]`
+            // renames a column. A rename of a constraint is refused loud (`0A000`) over a
+            // relation that exists, instead of the silent no-op the tolerated tail below
+            // would make of it (which would report success while a later reference to the
+            // new name fails "does not exist").
             if self.ts.eat_kw(Keyword::To)? {
                 let new_name = self.expect_name("a table name")?;
                 return Ok(Plan::AlterTableRename {
@@ -1038,24 +1038,28 @@ impl Parser<'_> {
                     table_if_exists: if_exists,
                 });
             }
-            // `RENAME CONSTRAINT c TO d` / `RENAME [COLUMN] c TO d`: the grammar is read
-            // in full, so a malformed one is 18.6's `42601`.
-            let constraint = self.ts.eat_kw(Keyword::Constraint)?;
-            if !constraint {
-                self.ts.eat_kw(Keyword::Column)?;
+            // `RENAME CONSTRAINT c TO d` is refused; its grammar is read in full, so a
+            // malformed one is 18.6's `42601`. `RENAME [COLUMN] c TO d` renames a column.
+            if self.ts.eat_kw(Keyword::Constraint)? {
+                self.expect_name("a constraint name")?;
+                self.ts.expect_kw(Keyword::To)?;
+                self.expect_name("a new name")?;
+                return self.alter_table_unperformed(
+                    table,
+                    if_exists,
+                    Some("ALTER TABLE … RENAME CONSTRAINT is not supported"),
+                );
             }
-            self.expect_name(if constraint {
-                "a constraint name"
-            } else {
-                "a column name"
-            })?;
+            self.ts.eat_kw(Keyword::Column)?;
+            let column = self.expect_name("a column name")?;
             self.ts.expect_kw(Keyword::To)?;
-            self.expect_name("a new name")?;
-            self.alter_table_unperformed(
+            let new_name = self.expect_name("a new column name")?;
+            Ok(Plan::AlterTableRenameColumn {
                 table,
-                if_exists,
-                Some("ALTER TABLE … RENAME of a column or a constraint is not supported"),
-            )
+                column,
+                new_name,
+                table_if_exists: if_exists,
+            })
         } else {
             // `OWNER TO role` (pglet has no roles) and the other ALTER TABLE operations
             // are tolerated as no-ops — the tail is consumed so a pg_dump clause doesn't

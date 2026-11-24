@@ -1,0 +1,8 @@
+{
+  "rows": [
+    {
+      "pg_get_constraintdef": "FOREIGN KEY (pm, parent_n) REFERENCES cp(m, n)"
+    }
+  ],
+  "rowCount": 1
+}

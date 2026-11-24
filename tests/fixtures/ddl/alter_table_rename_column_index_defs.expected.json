@@ -1,0 +1,21 @@
+{
+  "rows": [
+    {
+      "indexdef": "CREATE INDEX cp_lower ON public.cp USING btree (lower(word)) WHERE (num > 1)",
+      "indexname": "cp_lower"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX cp_m_n_key ON public.cp USING btree (m, num)",
+      "indexname": "cp_m_n_key"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX cp_pkey ON public.cp USING btree (id)",
+      "indexname": "cp_pkey"
+    },
+    {
+      "indexdef": "CREATE UNIQUE INDEX cp_v_key ON public.cp USING btree (word)",
+      "indexname": "cp_v_key"
+    }
+  ],
+  "rowCount": 4
+}

@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "conname": "cc_pm_pn_fkey",
+      "pg_get_constraintdef": "FOREIGN KEY (pm, pn) REFERENCES cp(m, num)"
+    },
+    {
+      "conname": "cp_m_n_key",
+      "pg_get_constraintdef": "UNIQUE (m, num)"
+    },
+    {
+      "conname": "cp_n_check",
+      "pg_get_constraintdef": "CHECK ((num > 0))"
+    }
+  ],
+  "rowCount": 3
+}

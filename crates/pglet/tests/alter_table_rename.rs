@@ -103,6 +103,63 @@ fn a_renamed_table_keeps_its_rows_indexes_and_references_across_a_reopen() {
     );
 }
 
+/// `ALTER TABLE … RENAME COLUMN` follows every stored reference to the column — a unique
+/// expression index, a partial index's predicate, a `CHECK`, a composite foreign key's
+/// referenced columns — live, across a reopen (which re-derives the storage indexes from
+/// the catalog), and back again with a block's rollback, where the storage indexes kept
+/// the names they were built with.
+#[test]
+fn a_renamed_column_is_followed_by_its_indexes_checks_and_references_across_a_reopen() {
+    let dir = ScratchDir::new("rename_column_reopen");
+    {
+        let mut db = Database::open(&dir.path).unwrap();
+        db.execute(
+            "CREATE TABLE cp (id INT PRIMARY KEY, v TEXT, n INT CHECK (cp.n > 0), UNIQUE (id, n))",
+        )
+        .unwrap();
+        db.execute("CREATE UNIQUE INDEX cp_lower ON cp (lower(v)) WHERE n > 1")
+            .unwrap();
+        db.execute("CREATE TABLE cc (a INT, b INT, FOREIGN KEY (a, b) REFERENCES cp (id, n))")
+            .unwrap();
+        db.execute("INSERT INTO cp VALUES (1, 'A', 5), (2, 'b', 1)")
+            .unwrap();
+        db.execute("ALTER TABLE cp RENAME COLUMN n TO num").unwrap();
+        db.execute("ALTER TABLE cp RENAME v TO word").unwrap();
+        assert_eq!(
+            db.execute("INSERT INTO cp VALUES (3, 'a', 4)")
+                .unwrap_err()
+                .sqlstate(),
+            "23505",
+            "the expression index over the renamed column still holds"
+        );
+        db.execute("INSERT INTO cp VALUES (4, 'B', 1)").unwrap();
+        db.execute("BEGIN").unwrap();
+        db.execute("ALTER TABLE cp RENAME COLUMN num TO z").unwrap();
+        db.execute("INSERT INTO cp VALUES (5, 'c', 7)").unwrap();
+        db.execute("ROLLBACK").unwrap();
+    }
+    let mut db = Database::open(&dir.path).unwrap();
+    assert_eq!(
+        rows(&mut db, "SELECT id, word, num FROM cp ORDER BY id"),
+        [
+            "Int4(1)|Text(\"A\")|Int4(5)",
+            "Int4(2)|Text(\"b\")|Int4(1)",
+            "Int4(4)|Text(\"B\")|Int4(1)"
+        ]
+    );
+    for (sql, state) in [
+        ("SELECT z FROM cp", "42703"),
+        ("SELECT n FROM cp", "42703"),
+        ("INSERT INTO cp VALUES (6, 'a', 9)", "23505"),
+        ("INSERT INTO cp VALUES (6, 'q', 0)", "23514"),
+        ("INSERT INTO cc VALUES (1, 4)", "23503"),
+    ] {
+        assert_eq!(db.execute(sql).unwrap_err().sqlstate(), state, "{sql}");
+    }
+    db.execute("INSERT INTO cc VALUES (1, 5)").unwrap();
+    db.execute("INSERT INTO cp VALUES (6, 'b', 1)").unwrap();
+}
+
 /// A block's rename taken back — whole, or to a savepoint — leaves the storage index defs
 /// reading the table under its old name: an in-block range or GIN read scans that table,
 /// not one created later under the name the rename gave it. The defs' table name is what

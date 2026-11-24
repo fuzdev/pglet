@@ -577,8 +577,8 @@ statement over an empty table is refused too, except where an item says otherwis
 - **Views, materialized views, domains, functions, procedures, triggers, roles, temporary and unlogged tables** —
   each `CREATE` is `0A000`.
 - **`DO` blocks** run plain SQL statements only: PL/pgSQL's `IF` and `PERFORM` are `42601`, `DECLARE` is `0A000`.
-- **Renames** — `ALTER TABLE … RENAME` of a column or a constraint is `0A000`; `ALTER INDEX … RENAME` is `42601`.
-  `ALTER TABLE … RENAME TO` works.
+- **Renames** — `ALTER TABLE … RENAME CONSTRAINT` is `0A000`; `ALTER INDEX … RENAME` is `42601`.
+  `ALTER TABLE … RENAME TO` and `RENAME COLUMN` work.
 - **`ALTER COLUMN … TYPE`** — `0A000`. `SET NOT NULL`, `DROP NOT NULL`, `SET DEFAULT`, `ADD COLUMN` and
   `DROP COLUMN` work.
 - **Generated columns** (`GENERATED ALWAYS AS (…) STORED`) — `0A000`. Identity columns work.
