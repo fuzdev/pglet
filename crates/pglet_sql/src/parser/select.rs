@@ -1357,6 +1357,7 @@ impl Parser<'_> {
         let arrays = self.comma_list_until(&TokenKind::RParen, |p| p.parse_expr_bp(0))?;
         self.bound_func_set_quantifier(quantifier, arrays.is_empty())?;
         self.ts.expect(&TokenKind::RParen)?;
+        let ordinality = self.eat_with_ordinality()?;
         crate::planner::refuse_from_unnest_quantifier(quantifier, &arrays)?;
         // An empty list resolves no `unnest` signature on 18.6 — `unnest(anyarray)` is the
         // narrowest — so it is that `42883`, not a relation of no columns. A quantifier
@@ -1388,16 +1389,18 @@ impl Parser<'_> {
         // More aliases than the FROM item provides is `42P10` — the same rule and the
         // same `parse_relation.c` wording the `(VALUES …) AS k(…)` route above uses.
         // Written there only, this route silently **truncated** the list instead
-        // (`FROM unnest(ARRAY[1,2]) AS k(a,b)` answered one column named `a`).
-        if alias_columns.len() > arrays.len() {
+        // (`FROM unnest(ARRAY[1,2]) AS k(a,b)` answered one column named `a`). The
+        // ordinality column is one the item provides.
+        let available = arrays.len() + usize::from(ordinality);
+        if alias_columns.len() > available {
             return Err(Error::TableColumnCountMismatch {
                 table: alias_name.unwrap_or_else(|| "unnest".to_string()),
-                available: arrays.len(),
+                available,
                 specified: alias_columns.len(),
             });
         }
         let single_function = arrays.len() == 1;
-        let columns: Vec<String> = (0..arrays.len())
+        let mut columns: Vec<String> = (0..arrays.len())
             .map(|i| {
                 alias_columns.get(i).cloned().unwrap_or_else(|| {
                     alias_name
@@ -1407,20 +1410,42 @@ impl Parser<'_> {
                 })
             })
             .collect();
-        let table = alias_name.clone().unwrap_or_else(|| "unnest".to_string());
         // Read here, as written: the correlated pass resolves an array a sub-plan's
         // `FROM` holds, and the resolved form can read as typed where this one does not.
-        let certain = CertainTypes::new(arrays.iter().map(certain_unnest_element_type).collect());
+        let mut certain: Vec<_> = arrays.iter().map(certain_unnest_element_type).collect();
+        if ordinality {
+            columns.push(ordinality_column_name(&alias_columns, arrays.len()));
+            certain.push(Some(TypeOid::Int8));
+        }
+        let table = alias_name.clone().unwrap_or_else(|| "unnest".to_string());
         Ok((
             Plan::FunctionScan {
                 func: FromFunction::Unnest,
                 args: arrays,
                 columns,
+                ordinality,
                 alias: table.clone(),
-                certain,
+                certain: CertainTypes::new(certain),
             },
             (table, alias_name),
         ))
+    }
+
+    /// Read a FROM function's `WITH ORDINALITY` (`gram.y`'s `opt_ordinality`), which
+    /// stands after the call's closing paren and before its alias.
+    ///
+    /// `ORDINALITY` is a keyword there, so a quoted `"ordinality"` is not it; a `WITH` that
+    /// `ORDINALITY` does not follow is left unread, so the statement is refused `42601`
+    /// at the `WITH`, where 18.6's grammar refuses it.
+    fn eat_with_ordinality(&mut self) -> Result<bool> {
+        let at = self.ts.at_kw(Keyword::With)
+            && matches!(self.ts.peek2_kind(), TokenKind::Identifier)
+            && self.ts.peek2_text().eq_ignore_ascii_case("ordinality");
+        if at {
+            self.ts.bump()?;
+            self.ts.bump()?;
+        }
+        Ok(at)
     }
 
     /// Parse a FROM-clause `generate_series(start, stop[, step]) [AS] alias[(col)]` into
@@ -1449,6 +1474,7 @@ impl Parser<'_> {
         let args = self.comma_list_until(&TokenKind::RParen, |p| p.parse_expr_bp(0))?;
         self.bound_func_set_quantifier(quantifier, args.is_empty())?;
         self.ts.expect(&TokenKind::RParen)?;
+        let ordinality = self.eat_with_ordinality()?;
         let alias_name = self.parse_table_alias()?;
         let alias_columns = if alias_name.is_some() && self.ts.at(&TokenKind::LParen) {
             self.parse_paren_name_list()?
@@ -1468,24 +1494,33 @@ impl Parser<'_> {
         }
         let (series, args) = crate::planner::resolve_generate_series(quantifier, args)?;
         let table = alias_name.clone().unwrap_or_else(|| NAME.to_string());
-        if alias_columns.len() > 1 {
+        let available = 1 + usize::from(ordinality);
+        if alias_columns.len() > available {
             return Err(Error::TableColumnCountMismatch {
                 table,
-                available: 1,
+                available,
                 specified: alias_columns.len(),
             });
         }
-        let column = alias_columns
-            .into_iter()
-            .next()
-            .unwrap_or_else(|| table.clone());
+        let mut columns = vec![
+            alias_columns
+                .first()
+                .cloned()
+                .unwrap_or_else(|| table.clone()),
+        ];
+        let mut certain = vec![Some(series.type_oid())];
+        if ordinality {
+            columns.push(ordinality_column_name(&alias_columns, 1));
+            certain.push(Some(TypeOid::Int8));
+        }
         Ok((
             Plan::FunctionScan {
                 func: FromFunction::GenerateSeries(series),
                 args,
-                columns: vec![column],
+                columns,
+                ordinality,
                 alias: table.clone(),
-                certain: CertainTypes::new(vec![Some(series.type_oid())]),
+                certain: CertainTypes::new(certain),
             },
             (table, alias_name),
         ))
@@ -1984,6 +2019,16 @@ impl Parser<'_> {
             || self.ts.at_kw(Keyword::Cross)
             || self.ts.at_kw(Keyword::Natural)
     }
+}
+
+/// The name of a FROM function's `WITH ORDINALITY` column, which follows its `functions`
+/// output columns: the alias list's entry at that position, else `ordinality`
+/// (`addRangeTableEntryForFunction`).
+fn ordinality_column_name(alias_columns: &[String], functions: usize) -> String {
+    alias_columns
+        .get(functions)
+        .cloned()
+        .unwrap_or_else(|| "ordinality".to_string())
 }
 
 /// Plan a `SELECT` with no FROM clause: a single-row `Values`, or `ProjectUnnest`

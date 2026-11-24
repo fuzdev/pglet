@@ -523,7 +523,7 @@ statement over an empty table is refused too, except where an item says otherwis
 **Queries:**
 
 - **`generate_series` beyond its integer form in `FROM`** — in the select list (`SELECT generate_series(1, 3)`),
-  `0A000`; the `numeric` and timestamp series, `0A000`; `WITH ORDINALITY`, `LATERAL` and `ROWS FROM (…)`, `42601`.
+  `0A000`; the `numeric` and timestamp series, `0A000`; `LATERAL` and `ROWS FROM (…)`, `42601`.
   `FROM generate_series(1, 3) AS g` answers (*Known differences*, above), and a recursive `WITH` counts in other
   types: `WITH RECURSIVE d(t) AS (SELECT '2024-01-01'::timestamp UNION ALL SELECT t + interval '1 day' FROM d WHERE
   t < '2024-01-03') SELECT t FROM d`.

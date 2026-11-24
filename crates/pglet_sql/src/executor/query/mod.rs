@@ -839,17 +839,24 @@ fn execute_plan_node_rest<S: Storage>(
         }
 
         Plan::FunctionScan {
-            func: FromFunction::Unnest,
+            func,
             args,
             columns,
+            ordinality,
             ..
-        } => execute_unnest(args, columns, schema, env),
-        Plan::FunctionScan {
-            func: FromFunction::GenerateSeries(series),
-            args,
-            columns,
-            ..
-        } => execute_generate_series(*series, args, columns, env),
+        } => {
+            let (rows, output) = match func {
+                FromFunction::Unnest => execute_unnest(args, columns, schema, env)?,
+                FromFunction::GenerateSeries(series) => {
+                    execute_generate_series(*series, args, columns, env)?
+                }
+            };
+            Ok(if *ordinality {
+                number_rows(rows, output, columns)
+            } else {
+                (rows, output)
+            })
+        }
 
         Plan::ProjectUnnest { exprs } => execute_project_unnest(exprs, schema, storage, env),
 
@@ -864,6 +871,25 @@ fn execute_plan_node_rest<S: Storage>(
             "plan node not supported in query: {plan:?}"
         ))),
     }
+}
+
+/// A FROM function's `WITH ORDINALITY` column: each row's 1-based position in the
+/// function's output, appended as a last `bigint` column named by the item's last
+/// `columns` entry (`ExecFunctionScan`'s `ordinal`).
+fn number_rows(
+    mut rows: Vec<Vec<Value>>,
+    mut output: Vec<ColumnDesc>,
+    columns: &[String],
+) -> (Vec<Vec<Value>>, Vec<ColumnDesc>) {
+    for (row, n) in rows.iter_mut().zip(1_i64..) {
+        row.push(Value::Int8(n));
+    }
+    let name = columns
+        .last()
+        .cloned()
+        .unwrap_or_else(|| "ordinality".to_string());
+    output.push(ColumnDesc::new(name, TypeOid::Int8));
+    (rows, output)
 }
 
 /// Execute `unnest(arr1, arr2, ...)` as a table source.
@@ -898,15 +924,20 @@ fn execute_plan_node_rest<S: Storage>(
 // TODO: args are evaluated against an empty row and the enclosing frames, so `unnest`
 // reads an enclosing query's column (the correlated form) and cannot read an earlier
 // item of its own `FROM` — no lateral form, written `LATERAL` or not (`EDGES.md` row
-// 312). `WITH ORDINALITY` is also unsupported.
+// 312).
 fn execute_unnest(
     arrays: &[Expr],
     columns: &[String],
     schema: &Schema,
     env: EvalEnv<'_>,
 ) -> Result<(Vec<Vec<Value>>, Vec<ColumnDesc>)> {
-    let declared =
-        crate::planner::function_scan_column_types(FromFunction::Unnest, arrays, columns, schema);
+    let declared = crate::planner::function_scan_column_types(
+        FromFunction::Unnest,
+        arrays,
+        columns,
+        false,
+        schema,
+    );
     let mut element_lists: Vec<Vec<Value>> = Vec::with_capacity(arrays.len());
     let mut output_columns: Vec<ColumnDesc> = Vec::with_capacity(arrays.len());
     let mut max_len = 0;

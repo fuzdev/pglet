@@ -47,7 +47,7 @@ seem to disagree, the record wins.
 | [NOT NULL / CHECK constraints](#not-null--check-constraints) | ⚠️ | Enforced at write time (`23502` / `23514`); a `CHECK` is type-checked when it's created, and a quoted literal beside a non-text column in one is `42883` (`EDGES.md` row 196). |
 | [PK / UNIQUE / FK constraints](#pk--unique--fk-constraints) | ⚠️ | Enforced, single and composite, with every `ON DELETE` / `ON UPDATE` action; no `DEFERRABLE`, and `MATCH FULL` / `PARTIAL` is `0A000`. |
 | [INSERT column-list binding](#insert-column-list-binding) | ✅ | Binds by name, omitted columns take their `DEFAULT`, `DEFAULT VALUES` works, and a column named twice is `42701`. |
-| [Arrays (`text[]`/`uuid[]`/…), `@>`/`<@`, `ANY`/`ALL`, `unnest`](#arrays-textuuid--anyall-unnest) | ⚠️ | One-dimensional arrays of every column type, `@>` / `<@`, `= ANY` / `ALL` and `unnest`; a nested array is `0A000`, a `timestamptz` or `varchar` constructor compares at the wrong type (`EDGES.md` row 281), and a mixed-type `ARRAY[…]` under a FROM `unnest` declares its first element's type (row 308). |
+| [Arrays (`text[]`/`uuid[]`/…), `@>`/`<@`, `ANY`/`ALL`, `unnest`](#arrays-textuuid--anyall-unnest) | ⚠️ | One-dimensional arrays of every column type, `@>` / `<@`, `= ANY` / `ALL` and `unnest` (`WITH ORDINALITY` too); a nested array is `0A000`, a `timestamptz` or `varchar` constructor compares at the wrong type (`EDGES.md` row 281), and a mixed-type `ARRAY[…]` under a FROM `unnest` declares its first element's type (row 308). |
 | [GIN indexes for arrays / JSONB `@>`](#gin-indexes-for-arrays--jsonb-) | ✅ | `USING gin` over arrays and `jsonb`, used for a top-level `@>` and for an `OR` of them over one column. |
 | [ENUM types](#enum-types) | ⚠️ | `CREATE TYPE … AS ENUM`, ordered by member position, checked on write; sent as `text` on the wire, no enum array column, and `LIKE` and string functions read an enum as `text` (`EDGES.md` row 190). |
 | [Sequences / SERIAL auto-increment](#sequences--serial-auto-increment) | ⚠️ | `SERIAL`, identity columns and named sequences; every draw is `+1`, silently, whatever `INCREMENT BY` / `MINVALUE` / `MAXVALUE` / `CYCLE` say (`EDGES.md` row 215). |
@@ -1466,6 +1466,13 @@ for a top-level `@>` conjunct or an `OR`-union of same-column `@>`). Bound
 `int8[]`, `ARRAY[1::int4, 2::real]` is `real[]`), and every element is **cast** to it at
 plan time, so the declared array type and the constructed value agree. All-NULL or
 all-string gives `text[]`.
+
+A **FROM-clause `unnest(…)` takes `WITH ORDINALITY`**: a last `bigint` column numbering
+the rows from 1, named `ordinality` unless the alias list names it, so
+`unnest($2::text[]) WITH ORDINALITY AS h(hash, ord) … ORDER BY h.ord` reads the array back
+in input order. An alias list may name every column, the ordinality one included, and a
+longer one is `42P10`. Fixtures: `spine/cell/fact_holder_unheld.sql`,
+`select/unnest_with_ordinality_*.sql`.
 
 A **FROM-clause `unnest(…)`**'s column type comes from the array **expression**, through
 one `function_scan_column_types` that both declared-type walkers read. It never comes from
@@ -3219,7 +3226,8 @@ step, an empty series, a series that ends at the type's edge instead of wrapping
 NULL argument giving zero rows before a zero step's `22023`. The relation and column names
 follow `chooseScalarFunctionAlias` (`generate_series` unaliased, the alias under `AS g`, the
 listed name under `g(i)`), `g.*` and a non-sole `*` expand the one column, and the column's
-declared type is the overload's on both wire formats. An argument is evaluated once per
+declared type is the overload's on both wire formats. `WITH ORDINALITY` adds a `bigint`
+column numbering the rows, `ordinality` or the alias list's second name. An argument is evaluated once per
 execution, and a plan that `execute_bound` holds keeps it as an expression, so a bound
 value is read on each run.
 
@@ -3236,7 +3244,7 @@ disk.
   with no row;
 - an argument whose type the certainty reader doesn't give (`$1 + 1`, `nextval(…)`:
   `0A000`);
-- `LATERAL`, `WITH ORDINALITY` and `ROWS FROM` (`42601`);
+- `LATERAL` and `ROWS FROM` (`42601`);
 - `generate_series` in the select list or any other expression position (`0A000`).
 
 A zero step, and a series past the limit, are refused under a `WHERE false` or `LIMIT 0`

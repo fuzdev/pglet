@@ -11,6 +11,10 @@ released version under a fresh `## Unreleased` declaring a patch.
 ## Unreleased
 <!-- bump: patch -->
 
+- feat: `WITH ORDINALITY` on a `FROM`-clause `unnest(…)` or `generate_series(…)`: a last
+  `bigint` column numbering the rows from 1, named `ordinality` unless the alias list names
+  it — `unnest($1::text[]) WITH ORDINALITY AS h(hash, ord) … ORDER BY h.ord` (was `42601`)
+
 ## 0.2.1
 
 - feat: `pg_advisory_xact_lock_shared`, over a `bigint` or two `integer`s, answering where

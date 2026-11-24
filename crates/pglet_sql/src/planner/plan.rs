@@ -1928,12 +1928,17 @@ pub enum Plan {
     /// `unnest(arr1, arr2, …)` expands its arrays into rows, zipping element-wise and
     /// NULL-padding shorter arrays (Postgres semantics), one output column per array.
     /// `generate_series(start, stop[, step])` answers one column of its integer overload.
-    /// Each argument is evaluated once per run of the item, with no input row; there is no
-    /// ordinality.
+    /// Each argument is evaluated once per run of the item, with no input row. Under
+    /// `WITH ORDINALITY` a last `bigint` column numbers the rows from 1.
     FunctionScan {
         func: FromFunction,
         args: Vec<Expr>,
+        /// Every output column's name: the function's columns, then the ordinality
+        /// column's when `ordinality` is set.
         columns: Vec<String>,
+        /// `WITH ORDINALITY`: a last `bigint` column, the row's 1-based position in the
+        /// function's output.
+        ordinality: bool,
         /// The effective FROM name (explicit alias, else the function's name) — the name
         /// a qualified reference must spell, and the name under which
         /// `push_plan_relations` registers this relation. Carried on the node because
@@ -2765,7 +2770,8 @@ pub fn using_column_match(columns: &[ColumnDesc], c: &str) -> UsingMatch {
 /// the array **expression's** statically inferred element type, `None` where inference
 /// declines. For `generate_series`, one pair, named the same way (else
 /// `generate_series`) and typed by the overload the parser resolved, which is never
-/// `None`.
+/// `None`. Under `WITH ORDINALITY` a last pair follows, named by `columns` too and typed
+/// `bigint`.
 ///
 /// **One derivation for the two walkers that must agree about it.** They were separate,
 /// and they drifted in exactly the way a `timestamptz` can: that type has no distinct
@@ -2786,6 +2792,7 @@ pub fn function_scan_column_types(
     func: FromFunction,
     args: &[Expr],
     columns: &[String],
+    ordinality: bool,
     schema: &Schema,
 ) -> Vec<(String, Option<TypeOid>)> {
     let name = |i: usize| {
@@ -2794,7 +2801,7 @@ pub fn function_scan_column_types(
             .cloned()
             .unwrap_or_else(|| func.name().to_string())
     };
-    match func {
+    let mut pairs: Vec<(String, Option<TypeOid>)> = match func {
         FromFunction::Unnest => args
             .iter()
             .enumerate()
@@ -2807,7 +2814,18 @@ pub fn function_scan_column_types(
             })
             .collect(),
         FromFunction::GenerateSeries(series) => vec![(name(0), Some(series.type_oid()))],
+    };
+    if ordinality {
+        let at = pairs.len();
+        pairs.push((
+            columns
+                .get(at)
+                .cloned()
+                .unwrap_or_else(|| "ordinality".to_string()),
+            Some(TypeOid::Int8),
+        ));
     }
+    pairs
 }
 
 /// The output `ColumnDesc` list of base `table` from `schema`, or empty if the table
@@ -3423,10 +3441,12 @@ impl Plan {
                 func,
                 args,
                 columns,
+                ordinality,
                 alias,
                 certain,
             } => {
-                let cols: Vec<ColumnDesc> = function_scan_column_types(*func, args, columns, schema)
+                let cols: Vec<ColumnDesc> =
+                    function_scan_column_types(*func, args, columns, *ordinality, schema)
                     .into_iter()
                     .enumerate()
                     .map(|(i, (name, type_oid))| ColumnDesc {

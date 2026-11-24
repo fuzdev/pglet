@@ -5631,7 +5631,8 @@ inside a table.
   regressed, but the message now names as missing a column the user wrote as the alias.
   The control that identifies it as ordering rather than a parse change: a name that
   *does* resolve (`SELECT unnest FROM unnest(…) WITH ORDINALITY`) still gets the syntax
-  error on both sides of the flip.
+  error on both sides of the flip. `WITH ORDINALITY` is parsed now, and both statements
+  answer 18.6's rows (`select/unnest_with_ordinality_alias_list.sql`).
 
   **A pre-existing member the flip neither opened nor closed, found beside it — since
   CLOSED, and it was never an unnest defect at all: a FROM item whose name collides with a
@@ -22445,7 +22446,7 @@ inside a table.
   | `generate_series(-9223372036854775808, -9223372036854775807)` | `0A000` — the literal is a negated `numeric` here | the `bigint` series |
   | `"generate_series"(1, 2)`; `pg_catalog.generate_series(1, 2)` | `42601`; `42P01` | rows |
   | `"Generate_Series"(1, 2)`; `public.generate_series(1, 2)` | `42601` | `42883` |
-  | `… WITH ORDINALITY`, `ROWS FROM (generate_series(1, 2))` | `42601` | rows |
+  | `ROWS FROM (generate_series(1, 2))` | `42601` | rows |
   | `VARIADIC ARRAY[1,2]`, `(*)`, named arguments; `(1, 2 ORDER BY 1)` | `42601` | `42883`; `42809` |
   | `SELECT t FROM generate_series(1, 2) AS t(i)`, and `RETURNING g` over `UPDATE … FROM generate_series(1, 2) AS g(i)` | `42703` | rows — the whole-row reference |
   | `SELECT generate_series(1, 3)`, and the other select-list positions | `0A000` | rows |

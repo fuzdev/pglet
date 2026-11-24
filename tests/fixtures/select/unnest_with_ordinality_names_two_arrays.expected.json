@@ -1,0 +1,20 @@
+{
+  "rows": [
+    {
+      "ordinality": "1",
+      "unnest": "a",
+      "x": 1
+    },
+    {
+      "ordinality": "2",
+      "unnest": "b",
+      "x": 2
+    },
+    {
+      "ordinality": "3",
+      "unnest": "c",
+      "x": null
+    }
+  ],
+  "rowCount": 3
+}

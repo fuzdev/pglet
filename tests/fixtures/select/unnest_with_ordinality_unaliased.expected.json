@@ -1,0 +1,15 @@
+{
+  "rows": [
+    {
+      "ordinality": "2",
+      "twice": "4",
+      "unnest": "y"
+    },
+    {
+      "ordinality": "1",
+      "twice": "2",
+      "unnest": "x"
+    }
+  ],
+  "rowCount": 2
+}

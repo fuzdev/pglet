@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "h": 30,
+      "ordinality": "3"
+    },
+    {
+      "h": 20,
+      "ordinality": "2"
+    },
+    {
+      "h": 10,
+      "ordinality": "1"
+    }
+  ],
+  "rowCount": 3
+}
