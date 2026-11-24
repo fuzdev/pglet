@@ -29,6 +29,7 @@ seem to disagree, the record wins.
 | [`DROP TABLE` / `DROP INDEX` dependencies](#drop-table--drop-index-dependencies) | ⚠️ | Foreign-key and owned-sequence dependents block (`2BP01`) or cascade as in PostgreSQL; a declared `PRIMARY KEY` / `UNIQUE` can't be removed short of `DROP TABLE`. |
 | [Arithmetic (`+` `-` `*` `/` `%` `^`)](#arithmetic-------) | ⚠️ | Integer, float and `numeric` arithmetic at PostgreSQL's result types, `22003` on overflow, `22012` on division by zero; a `text` operand and unary `+` are under-checked. |
 | [Numeric narrowing casts (`int8::int4`, `float8::int4`, …)](#numeric-narrowing-casts-int8int4-float8int4-) | ✅ | Out of range is `22003`, never a wrap; float to integer rounds half to even. |
+| [`LATERAL (subquery)`](#lateral-subquery) | ⚠️ | A `LATERAL` derived table in a comma list or on the right of an inner, cross or left join, run once per row of the items before it; under a `RIGHT` or `FULL` join, before a function, and before a `VALUES` list it is `0A000`, and a `FROM` function is not lateral without the keyword (`EDGES.md` row 312). |
 | [INNER/LEFT/RIGHT/FULL / CROSS JOIN, comma-join, `JOIN … USING`](#innerleftrightfull--cross-join-comma-join-join--using) | ⚠️ | Every join kind, run as a nested loop, with `USING` merging its columns; `NATURAL JOIN` is `0A000`, an `ON` naming a table out of its scope errors only once a row is evaluated, and a `USING` merge of differently-typed columns named bare is declared at the left side's type (`EDGES.md` row 309). |
 | [Aggregates, GROUP BY, HAVING](#aggregates-group-by-having) | ⚠️ | `count`, `sum`, `avg`, `min`, `max` with `GROUP BY` and `HAVING`, under an expression (`round(avg(x), 2)`), at 18.6's result types — `avg` of an integer and `sum` of a `bigint` are exact `numeric` where the argument's integer type is certain (`EDGES.md` row 2). `array_agg`, `string_agg`, `bool_and` are `0A000`, `FILTER` `42601` (`EDGES.md` row 44). |
 | [`COALESCE` / `CASE` common types](#coalesce--case-common-types) | ✅ | Branches resolve to PostgreSQL's common type and are cast to it, `42804` / `42846` where there is none; a branch the check can't type can succeed where PostgreSQL refuses (`EDGES.md` row 65). |
@@ -85,7 +86,7 @@ seem to disagree, the record wins.
 | [`jsonb_build_object`, `IS [NOT] DISTINCT FROM`](#jsonb_build_object-is-not-distinct-from) | ⚠️ | `jsonb_build_object` and the null-safe `IS [NOT] DISTINCT FROM`. A timestamp or array value in `jsonb_build_object` is rendered as its text output, not as 18.6 renders it (`EDGES.md` row 306). |
 | [Scalar `EXISTS` / `NOT EXISTS`](#scalar-exists--not-exists) | ⚠️ | Plain and correlated `EXISTS` / `NOT EXISTS`; the sub-plan runs to the end, so a row past the first match that raises an error fails the query where PostgreSQL succeeds (`EDGES.md` row 320). |
 | [`INSERT … SELECT` + `unnest($N)` in a SELECT projection](#insert--select--unnestn-in-a-select-projection) | ⚠️ | `INSERT … SELECT`, and `unnest($1)` in a `SELECT` with no `FROM`; `unnest(…)` in the select list of a query with a `FROM` is `0A000`. |
-| [`generate_series` in `FROM`](#generate_series-in-from) | ⚠️ | The `integer` and `bigint` series over constant and parameter arguments, up to 1 000 000 rows (`54000` past it); the `numeric` and timestamp series, an argument naming a column (the lateral form) or holding a subquery, and the select-list form are refused (`EDGES.md` row 321). |
+| [`generate_series` in `FROM`](#generate_series-in-from) | ⚠️ | The `integer` and `bigint` series over constant and parameter arguments, up to 1 000 000 rows (`54000` past it); the `numeric` and timestamp series, an argument naming a column (the lateral form, written `LATERAL` or not) or holding a subquery, and the select-list form are refused (`EDGES.md` row 321). |
 | [pg_catalog introspection (drizzle-kit push etc.)](#pg_catalog-introspection-drizzle-kit-push-etc) | ⚠️ | The catalogs and functions ORM introspection reads (`pg_class`, `pg_attribute`, `pg_type`, `pg_constraint`, `pg_index`, `pg_enum`, `pg_tables`, `pg_indexes`, …), several with a subset of their columns; `::regclass` and `to_regclass` answer a name typed `text`. |
 | [`information_schema`](#information_schema) | ⚠️ | `tables`, `columns`, `table_constraints`, `key_column_usage`, `referential_constraints`, `constraint_column_usage`; a `char(n)` column reads as `character varying`. |
 | [`ALTER TABLE … ADD CONSTRAINT`](#alter-table--add-constraint) | ⚠️ | `CHECK`, `PRIMARY KEY`, `UNIQUE` and `FOREIGN KEY`, each validated against the existing rows, then enforced. |
@@ -521,6 +522,39 @@ little more permissive than Postgres's. That costs nothing, since coercion only 
 cast and an out-of-chain reference is still rejected (`42P01` qualified, `42703` bare,
 both matching Postgres). See `EDGES.md` row 3 and `docs/coercion.md` § Where the plan-time
 coercion pass reaches.
+
+### `LATERAL (subquery)`
+
+`FROM a CROSS JOIN LATERAL (SELECT … WHERE x = a.id …) s`, the comma form
+`FROM a, LATERAL (…) s`, `JOIN LATERAL (…) s ON …` and `LEFT JOIN LATERAL (…) s ON …`: the
+subquery may name every item written before it in the same `FROM`, an earlier comma item
+included, and the enclosing queries' relations, and it runs once per row of the items before
+it, so its own `ORDER BY … LIMIT 1` or aggregate is per row. A `LEFT` join keeps a row whose
+run returns nothing, null-extended. A column-alias list (`s(a, b)`) renames the item's
+columns, and one longer than them is `42P10`. A name the items before it don't carry is
+`42P01` / `42703`, as in PostgreSQL, and so is one naming an item written after it. An
+aggregate in the subquery whose arguments name only the items before it is PostgreSQL's
+`42803` (it belongs to the outer level, where `FROM` allows none).
+
+The join holding the item runs its right side once per left row with that row pushed as an
+outer frame, the frame the subquery's references resolve against as an expression
+subquery's correlated references resolve against its enclosing row
+(`executor::query`'s `lateral_join_materialized`). The correlated re-walk resolves the
+subquery against the same relations, one level per join it sits right of
+(`planner::correlation`'s `walk_lateral_side`), and the parser resolves it once as it
+builds the join, so a column the item computes from a left column is typed before the
+level's own clauses read it (`resolve_lateral_join`).
+
+**What's refused**, each `0A000`: a `LATERAL` item on the right of a `RIGHT` or `FULL` join
+(18.7 answers where the item names nothing to its left and refuses one that does, `42P10`);
+`LATERAL` before a function (`LATERAL unnest(…)`, `LATERAL generate_series(…)`), since a
+`FROM` function reads its arguments against the enclosing levels and never a sibling item
+(`EDGES.md` rows 312 and 321); and `LATERAL (VALUES …)`. `LATERAL ROWS FROM (…)` and a
+`LATERAL` before a table name are `42601`. A lateral item in an `UPDATE … FROM` is unreachable:
+that clause takes no join chain (`42601`).
+
+Fixtures: `select/lateral_*`, among them `lateral_first_viewable_child_bound.sql`, a batched
+first-child probe over a bound `uuid[]`.
 
 ### Aggregates, GROUP BY, HAVING
 
@@ -3251,7 +3285,7 @@ disk.
   with no row;
 - an argument whose type the certainty reader doesn't give (`$1 + 1`, `nextval(…)`:
   `0A000`);
-- `LATERAL` and `ROWS FROM` (`42601`);
+- `LATERAL generate_series(…)` (`0A000`) and `ROWS FROM` (`42601`);
 - `generate_series` in the select list or any other expression position (`0A000`).
 
 A zero step, and a series past the limit, are refused under a `WHERE false` or `LIMIT 0`

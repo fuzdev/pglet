@@ -590,6 +590,7 @@ impl Parser<'_> {
                 on: Expr::Literal(Literal::Bool(true)),
                 using: Vec::new(),
             };
+            crate::planner::resolve_lateral_join(&mut plan, self.schema)?;
             tables.extend(right_tables);
         }
         Ok((plan, tables))
@@ -620,6 +621,7 @@ impl Parser<'_> {
                 on,
                 using,
             };
+            crate::planner::resolve_lateral_join(&mut plan, self.schema)?;
             tables.push(right_table);
         }
         Ok((plan, tables))
@@ -1073,6 +1075,11 @@ impl Parser<'_> {
     /// function, a CTE reference, a virtual catalog table (`Plan::VirtualScan`), or a
     /// regular table (`Plan::Scan`), in that precedence order.
     pub(super) fn parse_table_factor(&mut self) -> Result<(Plan, FromTable)> {
+        // `LATERAL ( SELECT … ) [AS] alias` — a derived table that may name the FROM items
+        // written before it.
+        if self.ts.eat_kw(Keyword::Lateral)? {
+            return self.parse_lateral_table();
+        }
         // Derived table: `( SELECT … ) [AS] alias`.
         if self.ts.at(&TokenKind::LParen) {
             return self.parse_derived_table();
@@ -1153,6 +1160,7 @@ impl Parser<'_> {
                     alias: effective_alias.clone(),
                     column_aliases: cte.column_aliases.clone(),
                     cte_rank: Some(cte.rank),
+                    lateral: false,
                 }
             };
             // Borrow of `self.ctes` (via `cte_plan`) ends above; count the
@@ -1219,6 +1227,68 @@ impl Parser<'_> {
             Plan::SubqueryScan {
                 column_aliases: Vec::new(),
                 cte_rank: None,
+                lateral: false,
+                subquery: Box::new(subplan),
+                alias: alias_name.clone(),
+            },
+            (alias_name.clone(), Some(alias_name)),
+        ))
+    }
+
+    /// Parse the FROM item after `LATERAL`: `( SELECT … ) [AS] alias[(col, …)]`, into a
+    /// [`Plan::SubqueryScan`] marked `lateral`.
+    ///
+    /// The body is parsed as an **expression** subquery is — one level deeper, its scope
+    /// provisional — because, like one, it may name relations its own lowering cannot
+    /// see: the items before it in the `FROM`. The statement's correlated re-walk judges
+    /// those references against exactly those items (`planner::correlation`), and the
+    /// join holding the item runs it once per row of them ([`Plan::has_lateral_item`]).
+    ///
+    /// # Errors
+    ///
+    /// `42601` where no `(` follows (18.6's grammar has `LATERAL` before a subquery, a
+    /// function, `ROWS FROM` or `XMLTABLE`/`JSON_TABLE` only). `0A000` for a `LATERAL`
+    /// function or `VALUES` list: a FROM function here reads its arguments against the
+    /// enclosing levels and never a sibling item (`EDGES.md` row 312), so taking the
+    /// keyword there would answer the silent half of that row.
+    fn parse_lateral_table(&mut self) -> Result<(Plan, FromTable)> {
+        if !self.ts.at(&TokenKind::LParen) {
+            if matches!(self.ts.peek2_kind(), TokenKind::LParen) && !self.ts.at_eof() {
+                return Err(Error::NotImplemented(
+                    "LATERAL before a function in FROM not supported".into(),
+                ));
+            }
+            return Err(self.ts.syntax_error_at_or_near());
+        }
+        self.ts.expect(&TokenKind::LParen)?;
+        if self.ts.at_kw(Keyword::Values) {
+            return Err(Error::NotImplemented(
+                "LATERAL before a VALUES list not supported".into(),
+            ));
+        }
+        let subplan = self.in_expr_subquery(Self::parse_select)?;
+        self.ts.expect(&TokenKind::RParen)?;
+        let alias_name = self
+            .parse_table_alias()?
+            .unwrap_or_else(|| "subquery".to_string());
+        let column_aliases = if self.ts.at(&TokenKind::LParen) {
+            self.parse_paren_name_list()?
+        } else {
+            Vec::new()
+        };
+        let available = subplan.output_columns(self.schema).len();
+        if column_aliases.len() > available {
+            return Err(Error::TableColumnCountMismatch {
+                table: alias_name,
+                available,
+                specified: column_aliases.len(),
+            });
+        }
+        Ok((
+            Plan::SubqueryScan {
+                column_aliases,
+                cte_rank: None,
+                lateral: true,
                 subquery: Box::new(subplan),
                 alias: alias_name.clone(),
             },
@@ -1327,6 +1397,7 @@ impl Parser<'_> {
             Plan::SubqueryScan {
                 column_aliases: Vec::new(),
                 cte_rank: None,
+                lateral: false,
                 subquery: Box::new(Plan::Values {
                     rows,
                     certain,

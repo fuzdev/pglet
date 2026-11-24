@@ -4143,6 +4143,7 @@ fn collect_nonbase_into(
             alias,
             column_aliases,
             cte_rank: _,
+            lateral: _,
         } => {
             map.insert(
                 alias.clone(),

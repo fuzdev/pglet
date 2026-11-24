@@ -372,6 +372,11 @@ pub fn execute_plan_node<S: Storage>(
             using,
         } => {
             let l = execute_plan_node(left, schema, storage, env)?;
+            if right.has_lateral_item() {
+                return lateral_join_materialized(
+                    l, left, right, *join_type, on, using, schema, storage, env,
+                );
+            }
             let r = execute_plan_node(right, schema, storage, env)?;
             join::execute_join(l, r, left, right, *join_type, on, using, schema, env)
         }
@@ -401,6 +406,100 @@ pub fn execute_plan_node<S: Storage>(
         }
         _ => execute_plan_node_rest(plan, schema, storage, env),
     }
+}
+
+/// A join whose right side holds a `LATERAL` item ([`Plan::has_lateral_item`]),
+/// executed: the right side run once per left row, under an outer frame holding that
+/// row — the frame the lateral subquery's references to the items before it resolve
+/// against, as an expression subquery's correlated references resolve against its
+/// enclosing row — and each run joined to its row as an ordinary join joins the two
+/// sides, so `ON`, `USING` and a `LEFT` join's null-extended row are the plain join's.
+///
+/// One frame per such join, the left side's whole row: the correlated re-walk chains
+/// the left side's relations as one level in front of the enclosing ones at the same
+/// joins (`planner::correlation`'s `walk_lateral_side`), so a reference names the same
+/// level at plan time and here.
+///
+/// # Errors
+///
+/// `0A000` for a `RIGHT` or `FULL` join over a lateral item, which 18.6 refuses
+/// (`42P10`) where the item names the left side and runs as a plain join where it does
+/// not — pglet does not tell the two apart. Otherwise the right side's errors, per row,
+/// and the join's own.
+#[inline(never)]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the left input, the join's own fields, and the schema/storage/env context, threaded individually as across the executor"
+)]
+fn lateral_join_materialized<S: Storage>(
+    l: (Vec<Vec<Value>>, Vec<ColumnDesc>),
+    left: &Plan,
+    right: &Plan,
+    join_type: crate::planner::JoinType,
+    on: &Expr,
+    using: &[String],
+    schema: &Schema,
+    storage: &S,
+    env: EvalEnv<'_>,
+) -> Result<(Vec<Vec<Value>>, Vec<ColumnDesc>)> {
+    use crate::planner::JoinType;
+    if matches!(join_type, JoinType::Right | JoinType::Full) {
+        return Err(Error::NotImplemented(
+            "a LATERAL item on the right of a RIGHT or FULL JOIN not supported".into(),
+        ));
+    }
+    let (left_rows, left_columns) = l;
+    let col_names: Vec<&str> = left_columns.iter().map(|c| c.name.as_str()).collect();
+    let col_types: Vec<TypeOid> = left_columns.iter().map(|c| c.type_oid).collect();
+    let col_enums = column_enum_orders(&left_columns, &schema.enums);
+    let (table, refs) = scan::scope_refs(left, &left_columns, schema);
+    let identity = scope_identity(table.as_deref(), refs.as_deref());
+
+    let mut out_rows = Vec::new();
+    let mut out_columns = None;
+    for row in &left_rows {
+        let frame = super::expr::OuterFrame::over_scope(
+            &col_names,
+            &col_types,
+            &col_enums,
+            identity,
+            row,
+            env.outer_scope(),
+        );
+        let child = env.push(&frame);
+        let r = execute_plan_node(right, schema, storage, child)?;
+        let (rows, columns) = join::execute_join(
+            (vec![row.clone()], left_columns.clone()),
+            r,
+            left,
+            right,
+            join_type,
+            on,
+            using,
+            schema,
+            env,
+        )?;
+        out_rows.extend(rows);
+        out_columns.get_or_insert(columns);
+    }
+    // With no left row the right side never runs, and the join's columns are its two
+    // sides' as planned — what a run over a row would have named them.
+    out_columns.map_or_else(
+        || {
+            join::execute_join(
+                (Vec::new(), left_columns),
+                (Vec::new(), right.output_columns(schema)),
+                left,
+                right,
+                join_type,
+                on,
+                using,
+                schema,
+                env,
+            )
+        },
+        |columns| Ok((out_rows, columns)),
+    )
 }
 
 /// A `Filter` over its input's rows, executed: each row the predicate holds for.

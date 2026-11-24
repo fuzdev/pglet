@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42703",
+    "message": "column p.idd does not exist"
+  }
+}

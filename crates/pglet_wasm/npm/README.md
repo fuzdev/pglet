@@ -523,7 +523,7 @@ statement over an empty table is refused too, except where an item says otherwis
 **Queries:**
 
 - **`generate_series` beyond its integer form in `FROM`** — in the select list (`SELECT generate_series(1, 3)`),
-  `0A000`; the `numeric` and timestamp series, `0A000`; `LATERAL` and `ROWS FROM (…)`, `42601`.
+  `0A000`; the `numeric` and timestamp series, `0A000`; `LATERAL generate_series(…)`, `0A000`; `ROWS FROM (…)`, `42601`.
   `FROM generate_series(1, 3) AS g` answers (*Known differences*, above), and a recursive `WITH` counts in other
   types: `WITH RECURSIVE d(t) AS (SELECT '2024-01-01'::timestamp UNION ALL SELECT t + interval '1 day' FROM d WHERE
   t < '2024-01-03') SELECT t FROM d`.
@@ -544,7 +544,8 @@ statement over an empty table is refused too, except where an item says otherwis
 - **Row values** — `(a, b) = (1, 2)` and `(a, b) IN ((1, 2))` are `42601`, `ROW(1, 2)` is `0A000`. Compare column
   by column.
 - **`= ANY (SELECT …)` and `> ALL (SELECT …)`** — `42601`. `IN (SELECT …)` works.
-- **`LATERAL`** — `42601`.
+- **`LATERAL` before a function or a `VALUES` list, or under a `RIGHT` / `FULL` join** — `0A000`.
+  `CROSS JOIN LATERAL (SELECT …)`, `, LATERAL (SELECT …)` and `LEFT JOIN LATERAL (SELECT …) ON true` work.
 - **`DELETE … USING`** — `42601`. `DELETE … WHERE id IN (SELECT …)` works.
 - **An alias on a `DELETE`'s table**, and `DELETE FROM ONLY t` — `DELETE FROM t AS x WHERE x.id = 1`, `DELETE
   FROM t x` — `42601`. Name the table itself (`DELETE FROM t WHERE t.id = 1`); `UPDATE t AS x SET …` works.

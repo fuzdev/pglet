@@ -21,7 +21,7 @@ mod common_type;
 // Re-resolution of a nested query level's expressions against the enclosing
 // query's relations (`Expr::Subquery`/`Exists`/`InSubquery` sub-plans).
 mod correlation;
-pub use correlation::resolve_correlated_subplans;
+pub use correlation::{resolve_correlated_subplans, resolve_lateral_join};
 mod ddl;
 mod dml;
 mod expr;

@@ -114,6 +114,144 @@ pub fn resolve_correlated_subplans(
     )
 }
 
+/// Resolve the `LATERAL` items on the right of the join `plan` against the relations
+/// before them, as the parser builds the join — before the level holding it is lowered.
+///
+/// The statement's own re-walk resolves them again over the whole chain
+/// ([`walk_lateral_side`]), which is what closes their binding gate. This earlier pass
+/// is for the level's own lowering, which reads a lateral item's output columns: a
+/// column computed from a left relation's (`LATERAL (SELECT p.id + 1 AS s) z`) has no
+/// type until its reference is resolved, and the level's clauses over it — `z.s = 3`
+/// inside an expression subquery, which no later pass re-types — would be typed
+/// against the guess. The chain is never complete here, so nothing is refused that the
+/// enclosing levels might still answer; re-running is idempotent, as for every level.
+///
+/// # Errors
+///
+/// What [`resolve_level`] raises over an incomplete chain.
+pub fn resolve_lateral_join(plan: &mut Plan, schema: &Schema) -> Result<()> {
+    if let Plan::Join { left, right, .. } = plan
+        && right.has_lateral_item()
+    {
+        let lateral_outer = level_scope(left, schema);
+        resolve_lateral_items(right, &lateral_outer, schema)?;
+    }
+    Ok(())
+}
+
+/// [`resolve_lateral_join`]'s walk of the right side: each lateral item resolved against
+/// `lateral_outer`, one level added per join it sits right of, as
+/// [`walk_lateral_side`] chains them.
+fn resolve_lateral_items(
+    plan: &mut Plan,
+    lateral_outer: &ColumnScope,
+    schema: &Schema,
+) -> Result<()> {
+    crate::depth::check_stack()?;
+    match plan {
+        Plan::SubqueryScan {
+            subquery,
+            lateral: true,
+            ..
+        } => {
+            refuse_outer_level_aggregates(subquery, schema)?;
+            resolve_level(subquery, lateral_outer, schema, false)
+        }
+        Plan::Join { left, right, .. } => {
+            resolve_lateral_items(left, lateral_outer, schema)?;
+            if right.has_lateral_item() {
+                let inner = level_scope(left, schema).nested_in(lateral_outer);
+                resolve_lateral_items(right, &inner, schema)
+            } else {
+                Ok(())
+            }
+        }
+        _ => Ok(()),
+    }
+}
+
+/// Refuse an aggregate in a `LATERAL` subquery whose arguments hold column references
+/// and none of them is the subquery's own — 18.7's `42803 aggregate functions are not
+/// allowed in FROM clause of their own query level`.
+///
+/// 18.6 evaluates an aggregate at the level of the columns its arguments name
+/// (`check_agg_arguments`), so one over only the items before the lateral subquery belongs
+/// to the query whose `FROM` holds it, where an aggregate is not allowed. pglet has no
+/// outer-level aggregates (`EDGES.md` row 303) and would evaluate it inside the subquery,
+/// once per left row — an answer where 18.7 refuses. A reference the subquery's own level
+/// may own (an uncertain one included) keeps the aggregate there, as 18.6 does when its
+/// arguments mix levels.
+fn refuse_outer_level_aggregates(subquery: &Plan, schema: &Schema) -> Result<()> {
+    let own = level_scope(subquery, schema);
+    let mut aggregates = Vec::new();
+    level_aggregates(subquery, &mut aggregates);
+    for aggregate in aggregates {
+        let mut columns = Vec::new();
+        column_references(aggregate, &mut columns);
+        if !columns.is_empty() && !columns.iter().any(|(q, n)| own.may_own(*q, n)) {
+            return Err(crate::Error::AggregateNotAllowed {
+                context: "FROM clause of their own query level",
+            });
+        }
+    }
+    Ok(())
+}
+
+/// The aggregate calls a query level's own nodes hold — its projection, grouping,
+/// `HAVING`, sort and window expressions — down to its `FROM` items, and none inside a
+/// subquery, which is its own level.
+fn level_aggregates<'p>(plan: &'p Plan, out: &mut Vec<&'p Expr>) {
+    let exprs: Vec<&Expr> = match plan {
+        Plan::Project { exprs, .. } => exprs.iter().collect(),
+        Plan::Aggregate {
+            group_by,
+            exprs,
+            having,
+            ..
+        } => group_by.iter().chain(exprs).chain(having).collect(),
+        Plan::Sort { order_by, .. } => order_by.iter().map(|k| &k.expr).collect(),
+        Plan::DistinctOn { on_exprs, .. } => on_exprs.iter().collect(),
+        Plan::Window { window_exprs, .. } => window_exprs.iter().collect(),
+        _ => Vec::new(),
+    };
+    for e in exprs {
+        collect_aggregates(e, out);
+    }
+    match plan {
+        Plan::LockRows { input, .. }
+        | Plan::Filter { input, .. }
+        | Plan::Project { input, .. }
+        | Plan::Sort { input, .. }
+        | Plan::Distinct { input }
+        | Plan::DistinctOn { input, .. }
+        | Plan::Limit { input, .. }
+        | Plan::JunkFilter { input, .. }
+        | Plan::Aggregate { input, .. }
+        | Plan::Window { input, .. } => level_aggregates(input, out),
+        _ => {}
+    }
+}
+
+/// The `Expr::Aggregate` calls in `expr`, not looking inside a subquery.
+fn collect_aggregates<'e>(expr: &'e Expr, out: &mut Vec<&'e Expr>) {
+    if matches!(expr, Expr::Aggregate { .. }) {
+        out.push(expr);
+        return;
+    }
+    expr.for_each_child(|child| collect_aggregates(child, out));
+}
+
+/// The column references in `expr` as `(qualifier, name)`, not looking inside a subquery.
+fn column_references<'e>(expr: &'e Expr, out: &mut Vec<(Option<&'e str>, &'e str)>) {
+    if let Expr::Column { table, name } = expr {
+        if name != "*" {
+            out.push((table.as_deref(), name));
+        }
+        return;
+    }
+    expr.for_each_child(|child| column_references(child, out));
+}
+
 /// Judge the nested level `plan` against `enclosing`, the whole namespace around it, at
 /// the position a statement's own level reaches it — so its verdict is raised in that
 /// level's walk order rather than after every one of its clauses.
@@ -495,9 +633,87 @@ fn walk_level(
                 chain_is_complete,
             )?;
             walk_level(left, here, outer, schema, rewrite, chain_is_complete)?;
-            walk_level(right, here, outer, schema, rewrite, chain_is_complete)
+            if right.has_lateral_item() {
+                let lateral_outer = level_scope(left, schema).nested_in(outer);
+                walk_lateral_side(
+                    right,
+                    here,
+                    outer,
+                    &lateral_outer,
+                    schema,
+                    rewrite,
+                    chain_is_complete,
+                )
+            } else {
+                walk_level(right, here, outer, schema, rewrite, chain_is_complete)
+            }
         }
         _ => walk_level_rest(plan, here, outer, schema, rewrite, chain_is_complete),
+    }
+}
+
+/// The right side of a join that holds a `LATERAL` item ([`Plan::has_lateral_item`]),
+/// walked as [`walk_level`] walks it but for the lateral subqueries: each is resolved
+/// against `lateral_outer` — the relations written before it in the `FROM`, chained in
+/// front of the enclosing levels — where a plain derived table is resolved against
+/// `outer` alone, which must not see a sibling item.
+///
+/// `lateral_outer` grows by one level per join the item sits right of, the left side's
+/// relations stamped in front: the executor pushes one outer frame per such join, the
+/// left row, so a reference resolves at the same level on both sides of the pipeline
+/// (`executor::query`'s lateral join).
+fn walk_lateral_side(
+    plan: &mut Plan,
+    here: &ColumnScope,
+    outer: &ColumnScope,
+    lateral_outer: &ColumnScope,
+    schema: &Schema,
+    rewrite: bool,
+    chain_is_complete: bool,
+) -> Result<()> {
+    crate::depth::check_stack()?;
+    match plan {
+        Plan::SubqueryScan {
+            subquery,
+            lateral: true,
+            ..
+        } => resolve_level(subquery, lateral_outer, schema, chain_is_complete),
+        Plan::Join {
+            left, right, on, ..
+        } => {
+            visit_level_clause(
+                on,
+                BoolContext::JoinOn,
+                here,
+                schema,
+                rewrite,
+                chain_is_complete,
+            )?;
+            walk_lateral_side(
+                left,
+                here,
+                outer,
+                lateral_outer,
+                schema,
+                rewrite,
+                chain_is_complete,
+            )?;
+            if right.has_lateral_item() {
+                let inner = level_scope(left, schema).nested_in(lateral_outer);
+                walk_lateral_side(
+                    right,
+                    here,
+                    outer,
+                    &inner,
+                    schema,
+                    rewrite,
+                    chain_is_complete,
+                )
+            } else {
+                walk_level(right, here, outer, schema, rewrite, chain_is_complete)
+            }
+        }
+        _ => walk_level(plan, here, outer, schema, rewrite, chain_is_complete),
     }
 }
 
@@ -1113,7 +1329,11 @@ fn contains_subplan(plan: &Plan) -> bool {
             .any(|b| expr_contains_subplan(&b.value)),
         #[cfg(feature = "index_acceleration")]
         Plan::GinScan { probes, guards, .. } => any(probes) || any(guards),
-        Plan::SubqueryScan { subquery, .. } => contains_subplan(subquery),
+        // A lateral item's references to the items before it are resolved only by the
+        // re-walk, as an expression subquery's are, so it counts as a sub-plan.
+        Plan::SubqueryScan {
+            subquery, lateral, ..
+        } => *lateral || contains_subplan(subquery),
         Plan::SetOp { left, right, .. } => contains_subplan(left) || contains_subplan(right),
         Plan::With { ctes, body } => {
             ctes.iter().flat_map(CtePlan::plans).any(contains_subplan) || contains_subplan(body)
@@ -1300,6 +1520,7 @@ fn push_level_relations(scope: &mut ColumnScope, plan: &Plan, schema: &Schema) {
             alias,
             column_aliases,
             cte_rank: _,
+            lateral: _,
         } => {
             scope.push_derived_relation(
                 alias.clone(),

@@ -2813,6 +2813,17 @@ impl ColumnScope {
         }
     }
 
+    /// Whether this scope may own the column reference `qualifier.name` — whether its
+    /// verdict is anything but *no such relation* or *no such column*. An uncertain
+    /// verdict counts as owning: it is the conservative side for a caller asking whether
+    /// a reference is certainly another level's.
+    pub(super) fn may_own(&self, qualifier: Option<&str>, name: &str) -> bool {
+        !matches!(
+            self.binding(qualifier, name),
+            Binding::NoRelation | Binding::NoColumn
+        )
+    }
+
     /// This scope's verdict on one column reference — the one [`Self::check_binding`]
     /// raises from, and the one a literal compared with an aggregate asks of the
     /// aggregate's argument ([`certain_aggregate_comparison_type`]). A bare `*` binds.

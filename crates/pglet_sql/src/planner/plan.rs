@@ -517,6 +517,7 @@ pub(super) fn plan_relations(plan: &Plan, schema: &Schema) -> RelationColumns {
             alias,
             column_aliases,
             cte_rank: _,
+            lateral: _,
         } => RelationColumns::one(
             alias.clone(),
             alias_relation_columns(subquery.output_columns(schema), column_aliases),
@@ -1868,11 +1869,18 @@ pub enum Plan {
     /// every `WITH` query before the statement's own clauses, whatever clause the
     /// reference sits in, and the one reader of the rank is parameter inference, which
     /// orders a `$N`'s uses as that analysis reaches them (`planner::param_types`).
+    ///
+    /// `lateral` marks a `LATERAL (SELECT …)` item: its subquery may name the relations
+    /// written before it in the same `FROM`, and is run once per row of them. The join
+    /// whose right side holds it runs that side per left row with the row pushed as an
+    /// outer frame ([`Plan::has_lateral_item`]), and the correlated re-walk resolves the
+    /// subquery against the same relations (`planner::correlation`).
     SubqueryScan {
         subquery: Box<Self>,
         alias: String,
         column_aliases: Vec<String>,
         cte_rank: Option<u32>,
+        lateral: bool,
     },
 
     /// A statement whose `WITH` list holds CTEs that must be **materialized** before
@@ -2865,6 +2873,24 @@ fn table_columns_desc(schema: &Schema, table: &str) -> Vec<ColumnDesc> {
 }
 
 impl Plan {
+    /// Whether this FROM subtree holds a `LATERAL` item at its own level — a lateral
+    /// [`Plan::SubqueryScan`], reached through the joins of the subtree and nothing else.
+    ///
+    /// A join whose **right** side answers `true` is a lateral join: the right side is
+    /// run once per left row, the row pushed as an outer frame its subquery reads the
+    /// left relations through (`executor::query`), and the correlated re-walk chains the
+    /// left side's relations in front of the enclosing levels for it
+    /// (`planner::correlation`). The two must agree on which joins those are, so both
+    /// ask this.
+    #[must_use]
+    pub fn has_lateral_item(&self) -> bool {
+        match self {
+            Self::SubqueryScan { lateral, .. } => *lateral,
+            Self::Join { left, right, .. } => left.has_lateral_item() || right.has_lateral_item(),
+            _ => false,
+        }
+    }
+
     /// The expressions this node projects, or an empty slice for a node that projects
     /// none.
     ///
@@ -3028,6 +3054,7 @@ impl Plan {
                 alias,
                 column_aliases,
                 cte_rank: _,
+                lateral: _,
             } => Self::subquery_scan_output(
                 subquery.output_columns_scoped(schema).0.into_columns(),
                 alias,

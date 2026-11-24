@@ -22,6 +22,10 @@ released version under a fresh `## Unreleased` declaring a patch.
   a bare `SELECT *` with no `FROM` is `42601`, as in PostgreSQL (was `0A000`)
 - feat: `ALTER TABLE … ALTER COLUMN … DROP NOT NULL` (was `0A000`); a primary-key column is
   refused `42P16` and an identity column `42601`, as in PostgreSQL
+- feat: `LATERAL (SELECT …)` in `FROM` — `CROSS JOIN LATERAL`, the comma form, `JOIN LATERAL …
+  ON` and `LEFT JOIN LATERAL … ON`, the subquery naming the items before it and run once per
+  row of them (was `42601`); `LATERAL` before a function or a `VALUES` list, or under a
+  `RIGHT`/`FULL` join, is `0A000`
 
 ## 0.2.1
 

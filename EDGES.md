@@ -5914,6 +5914,28 @@ inside a table.
   text`: a string literal is read at an aggregate's type only where every column its
   argument names binds at the aggregate's own level (`docs/coercion.md` § Where the
   plan-time coercion pass reaches).
+
+  A `LATERAL` subquery is a route the class is refused on: an aggregate there whose
+  arguments name only the items before it belongs to the query whose `FROM` holds the
+  subquery, which 18.7 refuses — `SELECT p.id, s.* FROM lp p, LATERAL (SELECT count(p.id)
+  AS c FROM lc) s` and the same with `max(p.id)`, a `HAVING max(p.id) > 1` or an `ORDER
+  BY count(p.id)` are `42803 aggregate functions are not allowed in FROM clause of their
+  own query level` on both, where pglet answered once per left row before the refusal
+  (`refuse_outer_level_aggregates`, `planner/correlation.rs`). An argument mixing the
+  subquery's own column with a left one (`max(p.id + lc.pos)`) stays at the subquery's
+  level on both and answers alike (`select/lateral_outer_aggregate_*.sql`). One over only
+  an enclosing query's columns belongs to that query, which 18.7 answers (`SELECT (SELECT
+  s.c FROM lc, LATERAL (SELECT max(t.id) AS c FROM lc2) s LIMIT 1) FROM lp t`, one row,
+  `3`); it is `42803` here — loud. An argument naming a column nothing binds gets this
+  refusal's code here, where 18.7 answers `42703` / `42P01` — `LATERAL (SELECT
+  max(nosuch) FROM lc)` and `max(p.nosuch)` are `42703` there and `max(zz.pos)` is
+  `42P01`, each `42803` here — loud. Two routes the refusal does not reach stay
+  **silent**, over `lp (id, g)` holding `(1, 1)`, `(2, 1)`, `(3, 2)`, `lc` three rows and
+  `lc2` two: a set operation's arm, `SELECT p.id, s.* FROM lp p, LATERAL (SELECT max(p.id)
+  c FROM lc UNION ALL SELECT 0) s`, answers six rows here — `(1, 0)`, `(1, 1)`, `(2, 0)`,
+  `(2, 2)`, `(3, 0)`, `(3, 3)` — and a subquery nested in the lateral body, `SELECT p.id,
+  s.* FROM lp p, LATERAL (SELECT (SELECT max(p.id) FROM lc2) AS c FROM lc) s`, answers
+  nine — each `p.id` three times as `c` — where 18.7 refuses both `42803`.
 - **159 · A correlated column in a sub-plan's target list takes a local column's
   identity — closed for the sub-plan's own descriptor; open where a projection that is
   itself a scalar subquery stands between.** A target-list reference binds the column
@@ -5989,8 +6011,11 @@ inside a table.
   Not members: `EXISTS (SELECT o.m FROM tt b)`, a reference in the sub-plan's `WHERE`, a
   comparison inside the sub-plan, and a bare name the sub-plan's own level carries
   (`(SELECT b FROM q3)` is the inner `text`). Sub-plan spellings 18.6 reads a target list
-  from that are `42601` here — `op ANY (SELECT …)`, `ARRAY(SELECT …)` and a `LATERAL`
-  derived table — reach no member. `*/correlated_target_list_*.sql` pin the binding, the
+  from that are `42601` here — `op ANY (SELECT …)` and `ARRAY(SELECT …)` — reach no
+  member. A `LATERAL` derived table's target list is read like an expression subquery's,
+  its references to the items before it typed by the same re-walk
+  (`select/lateral_sees_earlier_comma_item.sql`). `*/correlated_target_list_*.sql` pin
+  the binding, the
   conversions, the precedence pair, the controls and the closed members
   (`*_enclosing_identity_*`), `*/correlated_set_op_arm_enclosing_enum*.sql` the set-op
   arms, and `crates/pglet/tests/enclosing_column_identity.rs` the
@@ -22232,6 +22257,13 @@ inside a table.
   gs_n, unnest(arr) u)` are `1`, `2` on both — and an `unnest` written **before** the item
   that carries the name (`FROM unnest(arr) u, gs_i`), which 18.6 too resolves outward.
 
+  Written `LATERAL` (`FROM gs_i, LATERAL unnest(arr) u`), the function is `0A000`, so
+  the keyword never reaches the silent members. A `LATERAL (SELECT …)` derived table is
+  lateral — the join holding it runs it per row of the items before it
+  (`docs/compatibility.md` § `LATERAL (subquery)`) — so `FROM gs_i, LATERAL (SELECT
+  unnest(arr) AS u) x` is the spelling that reads each row's own array; it is the FROM
+  function itself, unmarked, that this row records.
+
   Loud where no enclosing level carries the name — at a statement's own `FROM`, a
   refusal of the ordinary `FROM t, unnest(t.arr)`. **Silent, and it writes**, where one
   does. Reach: ordinary for the loud members; the silent ones need the same column name
@@ -22493,7 +22525,7 @@ inside a table.
   | `generate_series(1, 3.0)`, `(1::numeric, 3)`, `(1.5, 3)` | `0A000` | the `numeric` series |
   | `('2024-01-01'::timestamp, '2024-01-03', '1 day')`, the `date`, `timestamptz` and zone-name spellings | `0A000` | the timestamp series |
   | `FROM gs_t, generate_series(1, gs_t.n)`, bare `n`, `CROSS JOIN`, `JOIN … ON true`, `LEFT JOIN … ON true` | `0A000` | each row's series |
-  | the same written `LATERAL` | `42601` | each row's series |
+  | the same written `LATERAL` | `0A000` | each row's series |
   | `(SELECT count(*) FROM generate_series(1, gs_t.n)) FROM gs_t`, and under `EXISTS` | `0A000` | per-row answers |
   | `generate_series(1, (SELECT 2))` | `0A000` | rows |
   | `generate_series(1, nosuch)`; `(1, nosuch.n)`; `generate_series(1, gs_t.n) g, gs_t` | `0A000` | `42703`; `42P01`; `42P01` |
