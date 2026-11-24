@@ -886,21 +886,18 @@ impl Parser<'_> {
 
     /// Consume one or more trailing row-level locking clauses, each
     /// `FOR {UPDATE | NO KEY UPDATE | SHARE | KEY SHARE} [OF table[, …]]`, or the
-    /// single `FOR READ ONLY` — noting a `NOWAIT` wait policy ([`LockWait`]) and
-    /// **refusing** a `SKIP LOCKED` one.
+    /// single `FOR READ ONLY` — noting a `NOWAIT` or `SKIP LOCKED` wait policy
+    /// ([`LockWait`]).
     ///
     /// Honoring a **valid** clause as a no-op (rather than failing loud) lets the spine's
     /// `SELECT … FOR UPDATE` find-and-claim queries run unchanged (`FOR UPDATE` bare and
     /// `FOR UPDATE OF <alias>` are both issued). A locking read inside a block takes the
     /// writer ([`Plan::takes_writer`]), which keeps two blocks' claims apart only by
     /// ordering the whole blocks, and that is the whole reason the wait policy is the one
-    /// part of the clause that is not a no-op. `NOWAIT` is honoured on the writer: the
-    /// host tries for it and answers `55P03` at once while another block holds it. Honored
-    /// as a no-op, `SKIP LOCKED` would not hand two connections inside `BEGIN` each running
-    /// `… ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED` rows 1 and 2, as 18.6 hands them: on
-    /// the native server the second would queue behind the first block; the embedded
-    /// `Database` refuses the second `BEGIN` `55P03` while the first block is open. So it
-    /// fails loud (`0A000`) on every host.
+    /// part of the clause that is not a no-op. Both policies are honoured on the writer:
+    /// the host tries for it, and while another block holds it a `NOWAIT` read answers
+    /// `55P03` at once and a `SKIP LOCKED` one answers no row — every row that block
+    /// might have locked skipped, and the rows it never touched with them (`EDGES.md`).
     ///
     /// **What is parsed for real is the syntax, and only the syntax.** An unrecognized
     /// lock strength or trailing garbage (`FOR XYZ`, `FOR UPDATE foobar`) fails loud,
@@ -953,23 +950,19 @@ impl Parser<'_> {
             if self.eat_ident("of")? {
                 self.comma_list(|p| p.expect_name("a table name in FOR ... OF"))?;
             }
-            // Optional wait policy: `NOWAIT` or `SKIP LOCKED`. `NOWAIT` is the policy a
-            // host honours when it takes the writer (`LockWait::NoWait`). `SKIP LOCKED`
-            // is **refused** (`0A000`): it names a behaviour that needs a **row lock** to
-            // mean anything, and pglet takes none; the absence is invisible to one
-            // connection, so accepting it as a no-op made a worker queue silently hand
-            // every consumer the same row.
-            // A refusal is *recorded*, not raised: the rest of the clause is consumed
-            // first, so `FOR UPDATE SKIP` still reports `expected locked` and
-            // `… SKIP LOCKED OF lt` still reports its boundary error, and
+            // Optional wait policy: `NOWAIT` or `SKIP LOCKED`, each one a host honours when
+            // it takes the writer ([`LockWait`]). A policy it cannot honour — beside an
+            // item with another, or on a statement that writes — is refused, and the
+            // refusal is *recorded*, not raised: the rest of the clause is consumed first,
+            // so `FOR UPDATE SKIP` still reports `expected locked` and `… SKIP LOCKED OF
+            // lt` still reports its boundary error, and
             // `Parser::lock_wait_policy_refusal` then fires it at the statement's end.
             let wait = if self.eat_ident("nowait")? {
                 LockWait::NoWait
             } else if self.eat_ident("skip")? {
                 self.expect_ident("locked")?;
                 self.saw_skip_locked = true;
-                self.refuse_lock_wait_policy("SKIP LOCKED");
-                LockWait::Wait
+                LockWait::SkipLocked
             } else {
                 LockWait::Wait
             };
@@ -2754,10 +2747,8 @@ mod tests {
         }
     }
 
-    /// `SKIP LOCKED` is refused `0A000` — on every one of the four `parse_for_locking`
-    /// call sites (paren-leading, set-op chain, no-FROM leaf, `FromParts`) and from
-    /// inside a CTE body — and so is a `NOWAIT` on a statement that writes, and a
-    /// statement whose locking items mix wait policies.
+    /// A wait policy on a statement that writes is refused `0A000`, and so is a statement
+    /// whose locking items mix wait policies.
     ///
     /// The refusal is **deferred** to the statement's end, which is what the last three
     /// cases pin: 18.6 accepts both spellings, so every error it *does* raise on such a
@@ -2767,15 +2758,13 @@ mod tests {
     fn for_locking_wait_policy_is_refused_after_the_statement_parses() {
         let state = |sql: &str| parse(sql, &Schema::default()).err().map(|e| e.sqlstate());
         for sql in [
-            "SELECT * FROM t FOR UPDATE SKIP LOCKED",
-            "SELECT 1 UNION SELECT 2 FOR UPDATE SKIP LOCKED",
-            "WITH c AS (SELECT 1 FOR UPDATE SKIP LOCKED) SELECT * FROM c",
             "SELECT * FROM t FOR UPDATE NOWAIT FOR SHARE",
+            "SELECT * FROM t FOR UPDATE SKIP LOCKED FOR SHARE NOWAIT",
             "INSERT INTO t SELECT * FROM t FOR UPDATE NOWAIT",
+            "UPDATE t SET a = 1 WHERE a IN (SELECT a FROM t FOR UPDATE SKIP LOCKED)",
         ] {
             assert_eq!(state(sql), Some("0A000"), "should refuse: {sql}");
         }
-        // The first refusal in a statement is the one reported.
         let err = parse(
             "SELECT * FROM t FOR UPDATE SKIP LOCKED FOR SHARE NOWAIT",
             &Schema::default(),
@@ -2783,7 +2772,7 @@ mod tests {
         .unwrap_err();
         assert_eq!(
             err.to_string(),
-            "not implemented: SKIP LOCKED not supported"
+            "not implemented: a locking clause mixing wait policies not supported"
         );
         // A syntax error anywhere in the statement still wins.
         assert_eq!(state("SELECT * FROM t FOR UPDATE SKIP"), Some("42601"));
@@ -2802,11 +2791,32 @@ mod tests {
     /// **either** order. The `FOR UPDATE FOR READ ONLY` direction is the one an
     /// is-the-arm-present check cannot see: the arm was there, one loop iteration too
     /// late, and the statement answered rows.
-    /// `NOWAIT` on a read is the policy the read's `LockRows` carries, on every
-    /// `parse_for_locking` call site and from inside a CTE body.
+    /// `NOWAIT` and `SKIP LOCKED` on a read are the policy the read's `LockRows` carries,
+    /// on every `parse_for_locking` call site (paren-leading, set-op chain, no-FROM leaf,
+    /// `FromParts`) and from inside a CTE body.
     #[test]
-    fn for_locking_nowait_is_carried_on_the_locking_read() {
+    fn for_locking_wait_policy_is_carried_on_the_locking_read() {
         use crate::planner::{LockWait, Plan};
+        for sql in [
+            "SELECT * FROM t FOR UPDATE SKIP LOCKED",
+            "SELECT * FROM t FOR NO KEY UPDATE SKIP LOCKED",
+            "SELECT 1 UNION SELECT 2 FOR UPDATE SKIP LOCKED",
+            "(SELECT 1) FOR KEY SHARE SKIP LOCKED",
+            "SELECT 1 FOR SHARE SKIP LOCKED",
+            "WITH c AS (SELECT 1 FOR UPDATE SKIP LOCKED) SELECT * FROM c",
+        ] {
+            let plans = parse(sql, &Schema::default()).expect(sql);
+            assert!(
+                matches!(
+                    &plans[..],
+                    [Plan::LockRows {
+                        wait: LockWait::SkipLocked,
+                        ..
+                    }]
+                ),
+                "should carry SKIP LOCKED: {sql}"
+            );
+        }
         for sql in [
             "SELECT * FROM t FOR UPDATE NOWAIT",
             "SELECT * FROM t FOR NO KEY UPDATE NOWAIT",

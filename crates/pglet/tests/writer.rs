@@ -1469,3 +1469,36 @@ fn a_nowait_read_is_refused_with_the_row_lock_message_while_another_block_holds_
         "Int4(1),Int4(2)"
     );
 }
+
+/// A `SKIP LOCKED` locking read answers every row while no other connection's block holds
+/// the writer, and **no row** while one does — the rows that block never touched
+/// included (`EDGES.md`) — taking nothing and refusing nothing, so the reader's own block
+/// stays healthy.
+#[test]
+fn a_skip_locked_read_answers_no_row_while_another_block_holds_the_writer() {
+    let io = MemBlockIo::new();
+    let mut db = seeded(&io);
+    assert_eq!(
+        answer(&mut db, "SELECT i FROM t FOR UPDATE SKIP LOCKED", 3),
+        "Int4(1)"
+    );
+    assert_eq!(answer(&mut db, "BEGIN", 4), "");
+    assert_eq!(answer(&mut db, "INSERT INTO t VALUES (2)", 4), "");
+    let skipped = db
+        .execute_as("SELECT i FROM t FOR NO KEY UPDATE SKIP LOCKED", 3)
+        .unwrap();
+    let last = skipped.last().unwrap();
+    assert!(last.rows.is_empty(), "every row skipped: {:?}", last.rows);
+    assert_eq!(last.command_tag, "SELECT 0");
+    assert_eq!(last.columns().len(), 1, "the result set keeps its columns");
+    assert_eq!(answer(&mut db, "INSERT INTO t VALUES (4)", 4), "");
+    assert_eq!(answer(&mut db, "COMMIT", 4), "");
+    assert_eq!(
+        answer(
+            &mut db,
+            "SELECT i FROM t ORDER BY i FOR SHARE SKIP LOCKED",
+            3
+        ),
+        "Int4(1),Int4(2),Int4(4)"
+    );
+}

@@ -29,6 +29,8 @@ released version under a fresh `## Unreleased` declaring a patch.
 - feat: `FOR UPDATE NOWAIT` (and the other strengths') answers as a plain locking read does
   (was `0A000`); in a statement that writes, beside a locking item without it, or in a `DO`
   body it stays `0A000`
+- feat: `FOR UPDATE SKIP LOCKED` (and the other strengths') answers as a plain locking read
+  does (was `0A000`); the package has one connection, so nothing is ever skipped
 
 ## 0.2.1
 

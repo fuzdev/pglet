@@ -2043,6 +2043,12 @@ pub enum LockWait {
     /// the statement takes the writer as a plain locking read does, an auto-commit one
     /// for its own duration.
     NoWait,
+    /// `SKIP LOCKED`: take the writer at once, or, while another connection holds it (its
+    /// block, or a session-level advisory lock), take nothing and answer **no row** — any
+    /// row might be one the holder locked,
+    /// and the writer cannot say which ([`crate::executor::QueryResult::skip_every_row`]).
+    /// Exact with no contention, where no other block can hold a row lock.
+    SkipLocked,
 }
 
 impl LockWait {
@@ -2052,6 +2058,7 @@ impl LockWait {
         match self {
             Self::Wait => None,
             Self::NoWait => Some("NOWAIT"),
+            Self::SkipLocked => Some("SKIP LOCKED"),
         }
     }
 }

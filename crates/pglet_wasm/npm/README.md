@@ -554,8 +554,6 @@ statement over an empty table is refused too, except where an item says otherwis
 - **`VALUES (1), (2)` as a statement of its own** — `0A000`. `SELECT * FROM (VALUES (1), (2)) AS v(x)` works.
 - **`FETCH FIRST n ROWS ONLY`** — `42601`. `LIMIT` works.
 - **`COLLATE`** — `42601`. Text already compares byte by byte, as `COLLATE "C"` does (*Known differences*, above).
-- **`FOR UPDATE SKIP LOCKED`** — `0A000`. A plain `FOR UPDATE` and `FOR UPDATE NOWAIT` are accepted; on the
-  package's one connection nothing else holds the writer, so `NOWAIT` never refuses.
 - **Regular expressions** — `~` and `!~` take only a pattern of `^` followed by literal characters
   (`s ~ '^ab'`); any other pattern is `0A000`, raised when a row is compared. `~*` and `!~*` are `42883`,
   `SIMILAR TO` is `42601`, `regexp_replace` and `regexp_matches` are `0A000`. `LIKE` and `ILIKE` work.

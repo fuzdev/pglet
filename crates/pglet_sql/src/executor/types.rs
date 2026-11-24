@@ -173,6 +173,17 @@ impl Notice {
 }
 
 impl QueryResult {
+    /// This read's result with every row skipped — a `SKIP LOCKED` read whose host found
+    /// another connection's block holding the writer, which stands in for every row lock
+    /// that block might hold (`LockWait::SkipLocked`). The result set and its columns
+    /// stay; the tag counts no row.
+    #[must_use]
+    pub fn skip_every_row(mut self) -> Self {
+        self.rows.clear();
+        self.command_tag = "SELECT 0".to_string();
+        self
+    }
+
     /// The result set's columns, or an empty slice when the statement returned no
     /// result set. Shorthand for `self.shape.columns()`.
     ///

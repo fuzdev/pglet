@@ -383,8 +383,8 @@ The engine-wide rules are worth having here. Each one is written out in full
 - **Only one connection's block can stage writes at a time. It takes *the writer* at
   its first write and holds it until the block ends, re-basing every savepoint frame on
   what's committed at that moment.** A second writer waits (on the server, up to
-  `lock_timeout`, then `55P03`) or is refused with `55P03` (in the embed); a `NOWAIT` read
-  never waits for it.
+  `lock_timeout`, then `55P03`) or is refused with `55P03` (in the embed); a `NOWAIT` or
+  `SKIP LOCKED` read never waits for it.
   `docs/storage.md` § Why Single-Writer?, § Isolation Guarantees.
 - **Sequence counters aren't rolled back. The exception is about a replaced *cell*,
   not a kind of statement.** A statement that swaps the cell (`RESTART`, a `DROP` that

@@ -1434,16 +1434,24 @@ impl Database {
         // Before anything stages: the writer's refusal or its re-base — no re-base for a
         // statement whose only claim is a session-level advisory lock, the session's hold
         // and not the block's (`Plan::block_takes_writer`).
+        let mut skips_every_row = false;
         if planned.takes_writer() {
-            match self.claim_writer(conn_id, planned.block_takes_writer()) {
+            match (
+                self.claim_writer(conn_id, planned.block_takes_writer()),
+                planned.lock_wait(),
+            ) {
                 // This host never waits, so every locking read here refuses as `NOWAIT`
-                // does; a `NOWAIT` one answers with its own message (`Plan::lock_wait`).
-                Err(Error::WriterHeldElsewhere(_)) if planned.lock_wait() == LockWait::NoWait => {
+                // does; a `NOWAIT` one answers with its own message, and a `SKIP LOCKED`
+                // one takes nothing and skips every row (`Plan::lock_wait`).
+                (Err(Error::WriterHeldElsewhere(_)), LockWait::NoWait) => {
                     return Err(Error::RowLockNotAvailable(
                         planned.locked_relation().map(str::to_string),
                     ));
                 }
-                other => other?,
+                (Err(Error::WriterHeldElsewhere(_)), LockWait::SkipLocked) => {
+                    skips_every_row = true;
+                }
+                (claimed, _) => claimed?,
             }
         }
         // Auto-commit durability: a write applied outside an explicit transaction
@@ -1483,6 +1491,9 @@ impl Database {
                 )
             };
             self.tx.record_statement(conn_id, sequence_swaps, &result);
+            if skips_every_row {
+                return result.map(QueryResult::skip_every_row);
+            }
             return result;
         }
 

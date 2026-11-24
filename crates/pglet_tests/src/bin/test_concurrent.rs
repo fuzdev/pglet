@@ -2737,6 +2737,80 @@ async fn test_nowait_answers_at_once() -> Result<(), Box<dyn std::error::Error>>
     Ok(())
 }
 
+/// `SKIP LOCKED` never waits for the writer: while another connection's block holds it, a
+/// `SKIP LOCKED` locking read answers **no row** at once — the rows that block never
+/// touched included, the edge `EDGES.md` records — in auto-commit or in a block, which it
+/// leaves healthy and without the writer, with `lock_timeout` far longer than the answer
+/// took. With the writer free it answers every row and a block's takes the writer, so a
+/// second connection's sweep then skips in turn: the two workers of a queue never claim
+/// the same row.
+async fn test_skip_locked_skips_while_the_writer_is_held() -> Result<(), Box<dyn std::error::Error>>
+{
+    let a = connect().await;
+    let b = connect().await;
+    exec(&a, "DROP TABLE IF EXISTS w_sk").await;
+    exec(&a, "CREATE TABLE w_sk (id INT)").await;
+    exec(&a, "INSERT INTO w_sk VALUES (1), (2)").await;
+    exec(&b, "SET lock_timeout = '5s'").await;
+
+    exec(&a, "BEGIN").await;
+    exec(&a, "INSERT INTO w_sk VALUES (3)").await;
+    let started = std::time::Instant::now();
+    assert!(
+        text_rows(&b, "SELECT id::text FROM w_sk FOR UPDATE SKIP LOCKED")
+            .await
+            .is_empty(),
+        "auto-commit: every row skipped"
+    );
+    exec(&b, "BEGIN").await;
+    assert!(
+        text_rows(
+            &b,
+            "SELECT id::text FROM w_sk ORDER BY id LIMIT 1 FOR NO KEY UPDATE SKIP LOCKED"
+        )
+        .await
+        .is_empty(),
+        "in a block: every row skipped"
+    );
+    assert_eq!(
+        text_rows(&b, "SELECT count(*)::text FROM w_sk").await,
+        vec!["2"],
+        "b's block is healthy and reads what is committed"
+    );
+    exec(&b, "COMMIT").await;
+    let took = started.elapsed();
+    assert!(
+        took < Duration::from_millis(1500),
+        "never waited toward the 5s lock_timeout: {took:?}"
+    );
+    exec(&a, "COMMIT").await;
+
+    exec(&b, "BEGIN").await;
+    assert_eq!(
+        text_rows(
+            &b,
+            "SELECT id::text FROM w_sk ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED"
+        )
+        .await,
+        vec!["1"],
+        "with the writer free the claim is exact"
+    );
+    assert!(
+        text_rows(
+            &a,
+            "SELECT id::text FROM w_sk ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED"
+        )
+        .await
+        .is_empty(),
+        "b's claim took the writer: a's sweep skips"
+    );
+    exec(&b, "COMMIT").await;
+
+    exec(&a, "DROP TABLE w_sk").await;
+    println!("✓ SKIP LOCKED answers no row while another block holds the writer");
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() {
     eprintln!("[test] Building pglet_server...");
@@ -2856,6 +2930,10 @@ async fn main() {
     );
     run_test!("writer release points", test_writer_release_points());
     run_test!("NOWAIT answers at once", test_nowait_answers_at_once());
+    run_test!(
+        "SKIP LOCKED skips while the writer is held",
+        test_skip_locked_skips_while_the_writer_is_held()
+    );
     run_test!(
         "an aborted block holds the writer until it ends",
         test_aborted_block_holds_the_writer_until_it_ends()

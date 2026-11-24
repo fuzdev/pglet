@@ -236,21 +236,27 @@ where
 
 /// Take the writer for `planned`, as its locking clause's wait policy says
 /// ([`Plan::lock_wait`]): wait until `deadline` for a plain one, and only try for a
-/// `NOWAIT`, answering 18.6's `55P03` at once while another connection holds it —
-/// whatever `lock_timeout` is, as 18.6's `NOWAIT` is not bounded by it.
+/// `NOWAIT` or `SKIP LOCKED` one, whatever `lock_timeout` is, as 18.6's are not bounded
+/// by it. While another connection holds it, a `NOWAIT` read is 18.6's `55P03` at once,
+/// and a `SKIP LOCKED` one takes nothing and answers `Ok(false)`: the statement then runs
+/// without the writer and skips every row (`QueryResult::skip_every_row`). `Ok(true)` is
+/// the writer taken.
 fn acquire_writer_for(
     conn: &Connection,
     planned: &Plan,
     deadline: Option<Instant>,
-) -> pglet_sql::Result<()> {
-    match planned.lock_wait() {
-        LockWait::Wait => conn.acquire_writer(deadline),
-        LockWait::NoWait => match conn.acquire_writer(Some(Instant::now())) {
-            Err(pglet_sql::Error::LockTimeout) => Err(pglet_sql::Error::RowLockNotAvailable(
-                planned.locked_relation().map(str::to_string),
-            )),
-            other => other,
-        },
+) -> pglet_sql::Result<bool> {
+    let wait = planned.lock_wait();
+    let deadline = match wait {
+        LockWait::Wait => deadline,
+        LockWait::NoWait | LockWait::SkipLocked => Some(Instant::now()),
+    };
+    match (conn.acquire_writer(deadline), wait) {
+        (Err(pglet_sql::Error::LockTimeout), LockWait::NoWait) => Err(
+            pglet_sql::Error::RowLockNotAvailable(planned.locked_relation().map(str::to_string)),
+        ),
+        (Err(pglet_sql::Error::LockTimeout), LockWait::SkipLocked) => Ok(false),
+        (taken, _) => taken.map(|()| true),
     }
 }
 
@@ -370,9 +376,11 @@ where
             first_write_at.filter(|_| takes_writer),
         );
     }
-    if takes_writer && !conn.holds_writer() {
-        acquire_writer_for(conn, &planned, deadline)?;
-    }
+    // A `SKIP LOCKED` read that found the writer held runs without it, taking nothing.
+    let skips_every_row =
+        takes_writer && !conn.holds_writer() && !acquire_writer_for(conn, &planned, deadline)?;
+    let takes_writer = takes_writer && !skips_every_row;
+    let block_takes_writer = block_takes_writer && !skips_every_row;
 
     let (mut schema, mut storage) = conn.shared.lock_both();
     if block_takes_writer && in_block && !conn.tx.holds_writer() {
@@ -478,7 +486,11 @@ where
     // them into the open frame and ignores them when no block is open on this
     // connection.
     conn.tx.record_statement(conn_id, sequence_swaps, &result);
-    result
+    if skips_every_row {
+        result.map(QueryResult::skip_every_row)
+    } else {
+        result
+    }
 }
 
 /// What the aborted-block gate decided about one statement.

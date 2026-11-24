@@ -77,10 +77,12 @@ refuses with `55P03` instead: another logical connection's write while a block h
 writer, and its `BEGIN`/`COMMIT`/`ROLLBACK` while a block is open.
 
 A locking read's wait policy (`Plan::lock_wait`) decides whether it waits at all. A
-`NOWAIT` read tries for the writer and, while another connection's block holds it, fails
+`NOWAIT` read tries for the writer and, while another connection holds it (its block, or a
+session-level advisory lock, `EDGES.md` row 250), fails
 at once with `55P03 could not obtain lock on row in relation "…"`, whatever `lock_timeout`
-is, on either host. It tries for it in auto-commit too, holding it for its statement, so it
-never takes the lock-free read path (`EDGES.md` row 331).
+is, on either host; a `SKIP LOCKED` one takes nothing and answers no row. Each tries for it
+in auto-commit too, holding it for its statement, so it never takes the lock-free read path
+(`EDGES.md` rows 331 and 332).
 
 **A plan doesn't fail because of another connection's uncommitted catalog.** The catalog
 is one live structure and a block's DDL lands in it right away, so a statement planned
