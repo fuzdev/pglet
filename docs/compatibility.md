@@ -86,7 +86,7 @@ seem to disagree, the record wins.
 | [Scalar `EXISTS` / `NOT EXISTS`](#scalar-exists--not-exists) | ⚠️ | Plain and correlated `EXISTS` / `NOT EXISTS`; the sub-plan runs to the end, so a row past the first match that raises an error fails the query where PostgreSQL succeeds (`EDGES.md` row 320). |
 | [`INSERT … SELECT` + `unnest($N)` in a SELECT projection](#insert--select--unnestn-in-a-select-projection) | ⚠️ | `INSERT … SELECT`, and `unnest($1)` in a `SELECT` with no `FROM`; `unnest(…)` in the select list of a query with a `FROM` is `0A000`. |
 | [`generate_series` in `FROM`](#generate_series-in-from) | ⚠️ | The `integer` and `bigint` series over constant and parameter arguments, up to 1 000 000 rows (`54000` past it); the `numeric` and timestamp series, an argument naming a column (the lateral form) or holding a subquery, and the select-list form are refused (`EDGES.md` row 321). |
-| [pg_catalog introspection (drizzle-kit push etc.)](#pg_catalog-introspection-drizzle-kit-push-etc) | ⚠️ | The catalogs and functions ORM introspection reads (`pg_class`, `pg_attribute`, `pg_type`, `pg_constraint`, `pg_index`, `pg_enum`, `pg_tables`, `pg_indexes`, …), several with a subset of their columns. |
+| [pg_catalog introspection (drizzle-kit push etc.)](#pg_catalog-introspection-drizzle-kit-push-etc) | ⚠️ | The catalogs and functions ORM introspection reads (`pg_class`, `pg_attribute`, `pg_type`, `pg_constraint`, `pg_index`, `pg_enum`, `pg_tables`, `pg_indexes`, …), several with a subset of their columns; `::regclass` and `to_regclass` answer a name typed `text`. |
 | [`information_schema`](#information_schema) | ⚠️ | `tables`, `columns`, `table_constraints`, `key_column_usage`, `referential_constraints`, `constraint_column_usage`; a `char(n)` column reads as `character varying`. |
 | [`ALTER TABLE … ADD CONSTRAINT`](#alter-table--add-constraint) | ⚠️ | `CHECK`, `PRIMARY KEY`, `UNIQUE` and `FOREIGN KEY`, each validated against the existing rows, then enforced. |
 | [`ALTER TABLE … DROP CONSTRAINT`](#alter-table--drop-constraint) | ⚠️ | A `FOREIGN KEY` or `CHECK`, by name, `IF EXISTS` and comma lists included; a `PRIMARY KEY`, `UNIQUE` or `NOT NULL` is `0A000`. |
@@ -3257,7 +3257,9 @@ Fixtures: `generate_series/`; for the limit, the refusals' codes and the plan ca
 
 These are the calls kysely's introspector makes (`EDGES.md` row 252): `pg_constraint` (22
 of 28 columns, all five `contype` kinds including `n`), `pg_index` (15 of 21), `pg_enum`,
-`pg_get_constraintdef(oid)`, `::regclass`, `col_description(oid, int4)` (always NULL, since
+`pg_get_constraintdef(oid)`, `::regclass` and `to_regclass(text)` (a name, as `text`, where
+PostgreSQL answers a `regclass` OID; NULL where no relation answers; `EDGES.md` row 85),
+`col_description(oid, int4)` (always NULL, since
 `COMMENT ON` is a no-op; `EDGES.md` row 15), `pg_get_serial_sequence(text, text)`,
 `has_schema_privilege(text, text)` and `quote_ident(text)` (18.6's keyword table, not
 pglet's lexer).

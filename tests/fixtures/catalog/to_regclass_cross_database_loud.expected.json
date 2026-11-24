@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "0A000",
+    "message": "cross-database references are not implemented: \"trc_other_db.public.trc\""
+  }
+}

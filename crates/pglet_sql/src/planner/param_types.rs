@@ -2184,7 +2184,8 @@ const fn string_fn_text_arg(func: StringFunc, i: usize) -> bool {
         // (name), (table, column), (schema, privilege) — every argument text.
         StringFunc::QuoteIdent
         | StringFunc::PgGetSerialSequence
-        | StringFunc::HasSchemaPrivilege => true,
+        | StringFunc::HasSchemaPrivilege
+        | StringFunc::ToRegclass => true,
         // `$1::<enum>` — the operand; the name and labels are the node's own literals.
         // Typed at `PRIO_CAST` by the walk's own arm, as the `text` cast it replaced was.
         StringFunc::EnumIn => i == 0,

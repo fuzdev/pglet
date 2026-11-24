@@ -14,6 +14,9 @@ released version under a fresh `## Unreleased` declaring a patch.
 - feat: `WITH ORDINALITY` on a `FROM`-clause `unnest(…)` or `generate_series(…)`: a last
   `bigint` column numbering the rows from 1, named `ordinality` unless the alias list names
   it — `unnest($1::text[]) WITH ORDINALITY AS h(hash, ord) … ORDER BY h.ord` (was `42601`)
+- feat: `to_regclass(text)`, answering the relation's name as `::regclass` does (`text`, where
+  PostgreSQL answers a `regclass`), or NULL where no table, index or sequence answers;
+  `to_regclass('public.t') IS NOT NULL` is the existence probe (was `0A000`)
 
 ## 0.2.1
 

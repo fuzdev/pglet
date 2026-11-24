@@ -195,6 +195,10 @@ pub(super) fn eval_string_fn(
             eval_pg_get_serial_sequence(schema, args)
         }
         StringFunc::HasSchemaPrivilege => eval_has_schema_privilege(args),
+        StringFunc::ToRegclass => {
+            let schema = catalog_or_err(schema, "to_regclass")?;
+            eval_to_regclass(schema, args)
+        }
         // Reached only through an argument list the parser never builds — the node's
         // own arm in `eval_expr_full` answers every one it does — and answered by the
         // same rule over the evaluated labels.
@@ -582,6 +586,92 @@ fn eval_regclass(schema: &Schema, value: &Value) -> Result<Value> {
         other => Err(Error::NotImplemented(format!(
             "cannot cast {} to regclass",
             opt_type_oid_display_name(other.type_oid())
+        ))),
+    }
+}
+
+/// `to_regclass(name)` over a non-NULL argument: the relation the name resolves to,
+/// rendered as [`eval_regclass`] renders it, or NULL.
+///
+/// The name is read as 18.6's `regclassin` reads it (`stringToQualifiedNameList`, then
+/// `makeRangeVarFromNameList` and `RangeVarGetRelid`), with its **soft** errors answering
+/// NULL as `to_regclass` makes them: a malformed name (`''`, an unterminated `"`, two
+/// words), a schema that does not exist, and a relation the namespace does not hold. Its
+/// hard errors stay errors, as they do there: a fourth dotted part is `42601`, and a
+/// third that is not the current database is `0A000`. All measured on 18.7.
+///
+/// Tables, indexes and sequences are relations ([`Schema::relation_kind`]); a name pglet
+/// serves as a catalog relation (`pg_class`) answers too, bare or under `pg_catalog`,
+/// which is how 18.6 renders it with `pg_catalog` on the search path.
+///
+/// Refused `0A000` where the answer would be a guess: a bare name beginning `pg_` that
+/// neither the catalog pglet serves nor a user relation holds (18.6's search path reads
+/// `pg_catalog` first, and its relations are more than pglet's), a qualifier naming a
+/// schema of 18.6's pglet does not model (`pg_catalog` beyond pglet's relations,
+/// `pg_toast`, `information_schema`; a `pg_temp` qualifier answers NULL, since pglet
+/// creates no temporary relation), and an all-digit or `-` argument, which
+/// `regclassin` reads as an OID.
+///
+/// # Errors
+///
+/// As above, and `42883` for a non-text argument.
+fn eval_to_regclass(schema: &Schema, args: &[Value]) -> Result<Value> {
+    let Value::Text(literal) = &args[0] else {
+        return Err(no_such_overload("to_regclass", args));
+    };
+    let refused = |what: &str| {
+        Error::NotImplemented(format!(
+            "to_regclass over {what} {literal:?} is not supported"
+        ))
+    };
+    // `parseDashOrOid`'s test, on the argument as written: no whitespace is skipped.
+    if literal == "-" || (!literal.is_empty() && literal.bytes().all(|b| b.is_ascii_digit())) {
+        return Err(refused("an OID"));
+    }
+    let Ok(parts) = crate::parser::split_name_literal(literal) else {
+        return Ok(Value::Null);
+    };
+    let found = |name: &str| Value::Text(crate::lexer::quote_ident(name));
+    let qualified = |space: &str, name: &str| -> Result<Value> {
+        match space {
+            "public" => Ok(if schema.relation_kind(name).is_some() {
+                found(name)
+            } else {
+                Value::Null
+            }),
+            "pg_catalog" if crate::catalog::CatalogTable::from_name(name).is_some() => {
+                Ok(found(name))
+            }
+            "information_schema" => Err(refused("a relation in information_schema")),
+            // A session's temporary schema: pglet creates no temporary relation.
+            space if space.starts_with("pg_temp") => Ok(Value::Null),
+            space if space.starts_with("pg_") => Err(refused("a relation in a system schema")),
+            _ => Ok(Value::Null),
+        }
+    };
+    match parts.as_slice() {
+        [name] => {
+            if crate::catalog::CatalogTable::from_name(name).is_some()
+                || schema.relation_kind(name).is_some()
+            {
+                Ok(found(name))
+            } else if name.starts_with("pg_") {
+                Err(refused("a name pg_catalog may hold"))
+            } else {
+                Ok(Value::Null)
+            }
+        }
+        [space, name] => qualified(space, name),
+        [db, space, name] if db == crate::catalog::SessionSettings::ambient().database() => {
+            qualified(space, name)
+        }
+        [_, _, _] => Err(Error::NotImplemented(format!(
+            "cross-database references are not implemented: \"{}\"",
+            parts.join(".")
+        ))),
+        _ => Err(Error::syntax(format!(
+            "improper relation name (too many dotted names): {}",
+            parts.join(".")
         ))),
     }
 }

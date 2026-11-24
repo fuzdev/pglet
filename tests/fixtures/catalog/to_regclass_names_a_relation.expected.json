@@ -1,0 +1,15 @@
+{
+  "rows": [
+    {
+      "cat": "pg_class",
+      "cat_qualified": "pg_class",
+      "folded": "trc_plain",
+      "idx": "\"TrcOdd_pkey\"",
+      "plain": "trc_plain",
+      "qualified": "trc_plain",
+      "quoted": "\"TrcOdd\"",
+      "seq": "trc_seq"
+    }
+  ],
+  "rowCount": 1
+}

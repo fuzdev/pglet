@@ -1,0 +1,10 @@
+{
+  "rows": [
+    {
+      "holder": false,
+      "migrated": true,
+      "name": "schema_version"
+    }
+  ],
+  "rowCount": 1
+}

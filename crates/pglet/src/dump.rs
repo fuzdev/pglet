@@ -1986,16 +1986,17 @@ COPY g (id, \"order\", tags, note) FROM stdin;
     /// classified as unstorable: its `lock_timeout` form is stored as any call is, and the
     /// corpus reaches it through `set_config(…) IS NOT NULL`.
     ///
-    /// The other three read the **catalog**, which a stored expression's DDL-time probe has
-    /// none of to lend (`pg_get_serial_sequence` looks its table up), so `CHECK (pg_get_constraintdef(a) IS NOT NULL)` and
-    /// `CHECK ((a)::regclass IS NOT NULL)` are refused here (`0A000`) where 18.6 accepts
-    /// both — a recorded over-refusal, and a loud one. Refusing at DDL is the deliberate
+    /// The rest read the **catalog**, which a stored expression's DDL-time probe has none
+    /// of to lend (`pg_get_serial_sequence` and `to_regclass` look a relation up), so
+    /// `CHECK (pg_get_constraintdef(a) IS NOT NULL)`, `CHECK ((a)::regclass IS NOT NULL)`
+    /// and `CHECK (to_regclass(b) IS NOT NULL)` are refused here (`0A000`) where 18.6
+    /// accepts them — a recorded over-refusal, and a loud one. Refusing at DDL is the deliberate
     /// half: accepting would persist an expression that then fails `0A000` on **every
     /// insert**, since the write path's evaluation environment has no catalog either.
     ///
     /// Skipping them keeps this guard's shape intact rather than weakening it — a *new*
-    /// `StringFunc` still fails the check until someone classifies it — and their two
-    /// render arms are proven directly by `deparse`'s
+    /// `StringFunc` still fails the check until someone classifies it — and the
+    /// catalog readers' render arms are proven directly by `deparse`'s
     /// `catalog_reading_string_fns_render_to_their_written_form`.
     const NOT_STORABLE_STRING_FUNCS: &[StringFunc] = &[
         StringFunc::PgGetConstraintdef,
@@ -2006,6 +2007,7 @@ COPY g (id, \"order\", tags, note) FROM stdin;
         StringFunc::AdvisoryUnlock,
         StringFunc::AdvisoryUnlockAll,
         StringFunc::PgGetSerialSequence,
+        StringFunc::ToRegclass,
     ];
 
     /// The [`ROUND_TRIP_CORPUS`] entries no index can hold — a `random()` call is

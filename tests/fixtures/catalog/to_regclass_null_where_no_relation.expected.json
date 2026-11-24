@@ -1,0 +1,16 @@
+{
+  "rows": [
+    {
+      "empty": true,
+      "folded_away": true,
+      "missing": true,
+      "no_schema": true,
+      "not_in_public": true,
+      "null_arg": true,
+      "temp_schema": true,
+      "two_words": true,
+      "unterminated": true
+    }
+  ],
+  "rowCount": 1
+}

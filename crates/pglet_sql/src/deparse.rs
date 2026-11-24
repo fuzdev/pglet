@@ -654,12 +654,13 @@ pub const fn string_fn_name(func: StringFunc) -> &'static str {
         StringFunc::AdvisoryUnlockAll => "pg_advisory_unlock_all",
         StringFunc::SetConfigLockTimeout => "set_config",
         StringFunc::AdvisoryXactLockShared => "pg_advisory_xact_lock_shared",
+        StringFunc::ToRegclass => "to_regclass",
     }
 }
 
 /// Every [`StringFunc`], for the corpus completeness check. See
 /// `pglet::dump`'s `ROUND_TRIP_CORPUS`.
-pub const STRING_FUNCS: [StringFunc; 34] = [
+pub const STRING_FUNCS: [StringFunc; 35] = [
     StringFunc::PgGetConstraintdef,
     StringFunc::Regclass,
     StringFunc::Upper,
@@ -694,6 +695,7 @@ pub const STRING_FUNCS: [StringFunc; 34] = [
     StringFunc::AdvisoryUnlockAll,
     StringFunc::SetConfigLockTimeout,
     StringFunc::AdvisoryXactLockShared,
+    StringFunc::ToRegclass,
 ];
 
 /// Render a [`Expr::StringFn`] call, special-casing [`StringFunc::Position`].
@@ -808,6 +810,7 @@ const fn string_fn_arg_text(func: StringFunc, idx: usize) -> bool {
         | StringFunc::QuoteIdent
         | StringFunc::PgGetSerialSequence
         | StringFunc::HasSchemaPrivilege
+        | StringFunc::ToRegclass
         | StringFunc::Md5
         | StringFunc::OctetLength => true,
         StringFunc::Lpad | StringFunc::Rpad => idx == 0 || idx == 2,
@@ -2444,6 +2447,22 @@ mod catalog_fn_render_tests {
         assert_eq!(
             render_expr(&constraintdef).unwrap(),
             "pg_get_constraintdef(1)"
+        );
+        let to_regclass = Expr::StringFn {
+            func: StringFunc::ToRegclass,
+            args: vec![Expr::Literal(Literal::String("t".into()))],
+        };
+        assert_eq!(render_expr(&to_regclass).unwrap(), "to_regclass('t')");
+        let serial_sequence = Expr::StringFn {
+            func: StringFunc::PgGetSerialSequence,
+            args: vec![
+                Expr::Literal(Literal::String("t".into())),
+                Expr::Literal(Literal::String("id".into())),
+            ],
+        };
+        assert_eq!(
+            render_expr(&serial_sequence).unwrap(),
+            "pg_get_serial_sequence('t', 'id')"
         );
     }
 }

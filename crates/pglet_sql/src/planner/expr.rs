@@ -1728,6 +1728,17 @@ pub enum StringFunc {
     /// row 250). Answered where [`Self::AdvisoryXactLock`] is. Strict. Appended last for
     /// postcard-discriminant stability.
     AdvisoryXactLockShared,
+    /// `to_regclass(text) → regclass` — the relation a name resolves to, or NULL where
+    /// none does, rendered and typed as [`Self::Regclass`]'s answer is: the name for an
+    /// identifier position (`crate::lexer::quote_ident`), carried as `text` where 18.6
+    /// carries an OID typed `regclass` (`EDGES.md` row 85). The name is read as
+    /// `regclassin` reads it, with its errors **soft** (`DirectInputFunctionCallSafe`): a
+    /// malformed name and a schema that does not exist answer NULL, where the same
+    /// spelling under `::regclass` raises. Tables, indexes and sequences are relations
+    /// here. Reads the catalog; strict. `executor::expr`'s `eval_to_regclass` is the full
+    /// statement, including what it refuses. Appended last for postcard-discriminant
+    /// stability.
+    ToRegclass,
 }
 
 /// The advisory-lock members of [`StringFunc`] — the calls that answer only as a
@@ -2565,7 +2576,9 @@ pub const fn string_fn_result_type(func: StringFunc) -> TypeOid {
         | StringFunc::AdvisoryUnlockAll => TypeOid::Void,
         StringFunc::AdvisoryUnlock => TypeOid::Bool,
         StringFunc::SetConfigLockTimeout => TypeOid::Text,
-        StringFunc::QuoteIdent | StringFunc::PgGetSerialSequence => TypeOid::Text,
+        StringFunc::QuoteIdent | StringFunc::PgGetSerialSequence | StringFunc::ToRegclass => {
+            TypeOid::Text
+        }
         StringFunc::HasSchemaPrivilege => TypeOid::Bool,
         // The label, as `text` — an enum value's `TypeOid` here (`docs/enums.md`).
         StringFunc::EnumIn => TypeOid::Text,
@@ -3371,6 +3384,7 @@ fn dispatch_call(
         "pg_advisory_unlock" => string_call(StringFunc::AdvisoryUnlock, args, 1..=2),
         "pg_advisory_unlock_all" => string_call(StringFunc::AdvisoryUnlockAll, args, 0..=0),
         "quote_ident" => string_call(StringFunc::QuoteIdent, args, 1..=1),
+        "to_regclass" => string_call(StringFunc::ToRegclass, args, 1..=1),
         "md5" => string_call(StringFunc::Md5, args, 1..=1),
         "left" => string_call(StringFunc::Left, int4_positions(args), 2..=2),
         "right" => string_call(StringFunc::Right, int4_positions(args), 2..=2),
@@ -5766,6 +5780,7 @@ mod postcard_layout {
                 (31, StringFunc::AdvisoryUnlockAll),
                 (32, StringFunc::SetConfigLockTimeout),
                 (33, StringFunc::AdvisoryXactLockShared),
+                (34, StringFunc::ToRegclass),
             ],
         );
         pin_tags(
@@ -6008,7 +6023,8 @@ mod postcard_layout {
                 | StringFunc::AdvisoryUnlock
                 | StringFunc::AdvisoryUnlockAll
                 | StringFunc::SetConfigLockTimeout
-                | StringFunc::AdvisoryXactLockShared => (),
+                | StringFunc::AdvisoryXactLockShared
+                | StringFunc::ToRegclass => (),
             }
         }
         fn _variadic_func(v: VariadicFunc) {

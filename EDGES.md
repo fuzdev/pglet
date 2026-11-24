@@ -13105,6 +13105,13 @@ inside a table.
   `SET search_path TO ''` makes it **NULL**. An unqualified name under a list that names no
   schema is `42P01` there and still resolves to `public` here, which is this row's second
   observable and not a second cause.
+
+  `to_regclass` (row 85) resolves through the same constant path, so the second observable
+  reaches it as a value rather than an error, and a rendering beside it: under `SET
+  search_path = pg_catalog` or `''`, `to_regclass('rt')` over a `public.rt` answers `rt`
+  here where 18.7 answers NULL, and `to_regclass('public.rt')` renders `rt` where 18.7
+  renders `public.rt`, since `regclassout` qualifies a name its search path does not reach
+  (measured on 18.7). Silent, as `FROM rt` under the same path is.
 - **67 · The GUC-echo family accepts a name Postgres does not.** `SET nosuchguc = 1` and
   `RESET nosuchguc` report `SET` / `RESET` here against 18.6's
   `42704 unrecognized configuration parameter "nosuchguc"`. The accept is the family's
@@ -16145,6 +16152,21 @@ inside a table.
   `catalog/spine_snapshot_constraints_regclass.sql` pin the `::text` spelling and the
   name side's reject over a **table**; nothing pins (a), (e), or (c)'s divergent half.
 
+  **`to_regclass(text)` answers by the same model, so (a) and (f) are its too**: the name
+  typed `text` (25) where 18.6's is an OID typed `regclass` (2205), rendered by the same
+  `quote_ident`. Its own resolver (`eval_to_regclass`) is not `eval_regclass`'s, and
+  differs from it where 18.6's `to_regclass` differs from `::regclass` — a soft error is
+  NULL — and in two places the cast has not caught up with: a **sequence** is a relation
+  there ((e) does not hold for it), and a catalog relation pglet serves answers, bare or
+  under `pg_catalog` ((c)'s `pg_class` member does not). Where its answer would be a
+  guess it is `0A000` instead, each spelling measured to answer on 18.7: a bare `pg_…`
+  name neither pglet's catalog nor a user relation holds (18.7 searches its whole
+  `pg_catalog` first), a qualifier naming `information_schema` or a `pg_…` schema other
+  than `pg_catalog` and `pg_temp` (`information_schema.tables` answers there), and an
+  all-digit or `-` argument, an OID to `regclassin` (`to_regclass('1259')` is `pg_class`
+  there). `catalog/to_regclass_*.sql` pin the answers and the hard errors. It reads no
+  `search_path`, which pglet reports rather than keeps (row 66 has the answers that moves).
+
 - **~~118~~ · Closed — A non-bare `regclass` cast target is refused, where it used to answer.**
   `parser::expr`'s `parse_cast_target` decided on the **identifier** `regclass` and then
   discarded what `parse_type_name` returned; that reader consumes a trailing `[]` (one or
@@ -18613,7 +18635,8 @@ inside a table.
   **`generate_series`** beyond its integer `FROM` item (row 321), most aggregates
   (`array_agg`/`string_agg`/`bool_and`/`bool_or`/`jsonb_agg`/`FILTER`/ordered-set),
   window offset/frame functions (`lag`/`lead`/`ntile`/frames), part of the `func-info`
-  surface — `pg_typeof`, `format_type` and `to_regclass` are `0A000`, while `version()`,
+  surface — `pg_typeof` and `format_type` are `0A000` (`to_regclass` answers now, row 85),
+  while `version()`,
   `current_user` and `current_setting` **answer** (measured on the native server:
   `PostgreSQL 18.6 (pglet) on x86_64-linux, 64-bit` and `18.6`) — most jsonb/array
   helper functions (`array_append`, `array_prepend` and `array_length` among those measured
