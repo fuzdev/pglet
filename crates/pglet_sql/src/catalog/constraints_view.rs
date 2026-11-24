@@ -119,6 +119,18 @@ pub struct ConstraintEntry<'a> {
     pub kind: ConstraintEntryKind<'a>,
 }
 
+impl ConstraintEntryKind<'_> {
+    /// `pg_constraint.convalidated`: `false` for a `CHECK … NOT VALID` not validated
+    /// since, `true` for every other constraint pglet holds.
+    #[must_use]
+    pub const fn validated(&self) -> bool {
+        match self {
+            Self::Check(check) => check.validated,
+            Self::NotNull(_) | Self::ForeignKey(_) | Self::Index(..) => true,
+        }
+    }
+}
+
 impl ConstraintEntry<'_> {
     /// The `pg_constraint.conname` — the catalog's own name, or 18.6's
     /// `<table>_<column>_not_null` for the NOT NULL rows pglet stores no record for, cut
@@ -213,9 +225,13 @@ pub fn constraint_entries(schema: &Schema) -> Vec<ConstraintEntry<'_>> {
 pub fn constraint_def(kind: ConstraintEntryKind<'_>, mode: RenderMode<'_>) -> Result<String> {
     Ok(match kind {
         ConstraintEntryKind::NotNull(col) => format!("NOT NULL {}", quote_ident(&col.name)),
-        ConstraintEntryKind::Check(check) => {
-            format!("CHECK ({})", render_expr_mode(&check.expr, mode)?)
-        }
+        // An unvalidated check says so, as 18.6's `pg_get_constraintdef` does — which
+        // is also what makes the dump's `ADD CONSTRAINT` restore it unvalidated.
+        ConstraintEntryKind::Check(check) => format!(
+            "CHECK ({}){}",
+            render_expr_mode(&check.expr, mode)?,
+            if check.validated { "" } else { " NOT VALID" }
+        ),
         ConstraintEntryKind::Index(index, kind) => {
             let keyword = match kind {
                 ConstraintKind::PrimaryKey => "PRIMARY KEY",

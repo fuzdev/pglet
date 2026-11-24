@@ -432,6 +432,9 @@ impl Error {
                 // first time it compared a `D` field.
                 Some(format!("This operation is not supported for {kind}."))
             }
+            Self::ConstraintCannotBeValidated { .. } => {
+                Some("This operation is not supported for this type of constraint.".into())
+            }
             Self::DependentForeignKey {
                 target,
                 constraint,

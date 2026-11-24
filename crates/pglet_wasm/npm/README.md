@@ -582,8 +582,9 @@ statement over an empty table is refused too, except where an item says otherwis
 - **`ALTER COLUMN … TYPE`** — `0A000`. `SET NOT NULL`, `DROP NOT NULL`, `SET DEFAULT`, `ADD COLUMN` and
   `DROP COLUMN` work.
 - **Generated columns** (`GENERATED ALWAYS AS (…) STORED`) — `0A000`. Identity columns work.
-- **`PARTITION BY`, `(LIKE other)`, `EXCLUDE`, a constraint's `DEFERRABLE` or `NOT VALID`, an index's
-  `INCLUDE (…)`** — `42601`; an index `USING hash` is `0A000`.
+- **`PARTITION BY`, `(LIKE other)`, `EXCLUDE`, a constraint's `DEFERRABLE`, an index's `INCLUDE (…)`** —
+  `42601`; an index `USING hash` and a foreign key's `NOT VALID` are `0A000`. `CHECK … NOT VALID` and
+  `VALIDATE CONSTRAINT` work.
 - **Composite types** (`CREATE TYPE … AS (…)`) — `0A000`. Enum types work.
 - **The `json`, `citext`, `inet`, `money`, `xml`, range (`int4range`) and geometric (`point`) types** — `42704`.
   `jsonb` works. Full-text search (`to_tsvector`) is `0A000`.

@@ -609,7 +609,11 @@ pub fn catalog_depth(schema: &Schema) -> usize {
             }
         }
         for check in checks {
-            let CheckConstraint { name: _, expr } = check;
+            let CheckConstraint {
+                name: _,
+                expr,
+                validated: _,
+            } = check;
             measure(expr);
         }
     }
@@ -975,6 +979,7 @@ fn plan_children<'a>(plan: &'a Plan, push: &mut dyn FnMut(Node<'a>)) {
         | Plan::AlterTableDropNotNull { .. }
         | Plan::AlterTableRename { .. }
         | Plan::AlterTableRenameColumn { .. }
+        | Plan::AlterTableValidateConstraint { .. }
         | Plan::AlterTableAddIdentity { .. }
         | Plan::CreateSequence { .. }
         | Plan::AlterSequence { .. }

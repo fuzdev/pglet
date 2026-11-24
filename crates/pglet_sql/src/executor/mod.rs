@@ -292,6 +292,10 @@ pub fn execute_with_storage<S: Storage>(
             table, new_name, ..
         } => ddl::execute_alter_table_rename(schema, storage, table, new_name),
 
+        Plan::AlterTableValidateConstraint { table, name, .. } => {
+            ddl::execute_alter_table_validate_constraint(schema, storage, table, name)
+        }
+
         Plan::AlterTableRenameColumn {
             table,
             column,

@@ -1024,6 +1024,14 @@ impl Parser<'_> {
             })
         } else if self.ts.eat_kw(Keyword::Alter)? {
             self.parse_alter_table_alter_column(table, if_exists)
+        } else if self.eat_ident("validate")? {
+            self.ts.expect_kw(Keyword::Constraint)?;
+            let name = self.expect_name("a constraint name")?;
+            Ok(Plan::AlterTableValidateConstraint {
+                table,
+                name,
+                table_if_exists: if_exists,
+            })
         } else if self.eat_ident("rename")? {
             // `ALTER TABLE … RENAME TO new_name` re-keys the table, and `RENAME [COLUMN]`
             // renames a column. A rename of a constraint is refused loud (`0A000`) over a
@@ -1459,6 +1467,7 @@ impl Parser<'_> {
                 checks.push(CheckConstraintDef {
                     name: declared_name,
                     expr,
+                    not_valid: false,
                 });
             } else if self.ts.eat_kw(Keyword::References)? {
                 foreign_key = self.parse_inline_references(&name, declared_name)?;
@@ -1672,9 +1681,47 @@ impl Parser<'_> {
         }))
     }
 
+    /// Parse one table-level constraint ([`Self::parse_table_constraint_body`]) and its
+    /// trailing `NOT VALID`.
+    ///
+    /// A `CHECK … NOT VALID` is carried on its definition, which `ALTER TABLE … ADD`
+    /// records unvalidated and `CREATE TABLE` validates anyway, as 18.6 does. A `PRIMARY
+    /// KEY` or `UNIQUE` one is 18.6's `0A000`; a `FOREIGN KEY` one is refused `0A000` too —
+    /// 18.6 records it unvalidated, and pglet records no foreign key unvalidated.
+    fn parse_table_constraint(&mut self) -> Result<ParsedTableConstraint> {
+        let mut parsed = self.parse_table_constraint_body()?;
+        let not_valid = self.ts.at_kw(Keyword::Not)
+            && matches!(self.ts.peek2_kind(), TokenKind::Identifier)
+            && self.ts.peek2_text().eq_ignore_ascii_case("valid");
+        if !not_valid {
+            return Ok(parsed);
+        }
+        self.ts.bump()?;
+        self.ts.bump()?;
+        match &mut parsed {
+            ParsedTableConstraint::Check(check) => check.not_valid = true,
+            ParsedTableConstraint::PrimaryKey { .. } => {
+                return Err(Error::NotImplemented(
+                    "PRIMARY KEY constraints cannot be marked NOT VALID".into(),
+                ));
+            }
+            ParsedTableConstraint::Unique { .. } => {
+                return Err(Error::NotImplemented(
+                    "UNIQUE constraints cannot be marked NOT VALID".into(),
+                ));
+            }
+            ParsedTableConstraint::ForeignKey(_) => {
+                return Err(Error::NotImplemented(
+                    "FOREIGN KEY … NOT VALID not supported".into(),
+                ));
+            }
+        }
+        Ok(parsed)
+    }
+
     /// Parse one table-level constraint (an optional `CONSTRAINT name` prefix then
     /// `PRIMARY KEY` / `UNIQUE` / `CHECK` / `FOREIGN KEY`, single- or multi-column).
-    fn parse_table_constraint(&mut self) -> Result<ParsedTableConstraint> {
+    fn parse_table_constraint_body(&mut self) -> Result<ParsedTableConstraint> {
         let name = if self.ts.eat_kw(Keyword::Constraint)? {
             Some(self.expect_name("a constraint name")?)
         } else {
@@ -1700,6 +1747,7 @@ impl Parser<'_> {
             Ok(ParsedTableConstraint::Check(CheckConstraintDef {
                 name,
                 expr,
+                not_valid: false,
             }))
         } else if self.ts.eat_kw(Keyword::Foreign)? {
             self.ts.expect_kw(Keyword::Key)?;

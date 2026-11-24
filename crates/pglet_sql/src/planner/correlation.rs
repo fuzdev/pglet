@@ -1122,6 +1122,7 @@ fn walk_level_rest(
         | Plan::AlterTableDropNotNull { .. }
         | Plan::AlterTableRename { .. }
         | Plan::AlterTableRenameColumn { .. }
+        | Plan::AlterTableValidateConstraint { .. }
         | Plan::AlterTableAddIdentity { .. }
         | Plan::CreateSequence { .. }
         | Plan::AlterSequence { .. }
@@ -1402,6 +1403,7 @@ fn contains_subplan(plan: &Plan) -> bool {
         | Plan::AlterTableDropNotNull { .. }
         | Plan::AlterTableRename { .. }
         | Plan::AlterTableRenameColumn { .. }
+        | Plan::AlterTableValidateConstraint { .. }
         | Plan::AlterTableAddIdentity { .. }
         | Plan::CreateSequence { .. }
         | Plan::AlterSequence { .. }
@@ -1613,6 +1615,7 @@ fn push_level_relations(scope: &mut ColumnScope, plan: &Plan, schema: &Schema) {
         | Plan::AlterTableDropNotNull { .. }
         | Plan::AlterTableRename { .. }
         | Plan::AlterTableRenameColumn { .. }
+        | Plan::AlterTableValidateConstraint { .. }
         | Plan::AlterTableAddIdentity { .. }
         | Plan::CreateSequence { .. }
         | Plan::AlterSequence { .. }

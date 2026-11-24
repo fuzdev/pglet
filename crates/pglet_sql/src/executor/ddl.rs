@@ -1693,6 +1693,7 @@ pub fn execute_create_table<S: Storage>(
             Ok(CheckConstraint {
                 name,
                 expr: check.expr.clone(),
+                validated: true,
             })
         })
         .collect::<Result<Vec<_>>>()?;
@@ -3542,6 +3543,7 @@ pub fn execute_alter_table_add_column<S: Storage>(
                 Ok(CheckConstraint {
                     name,
                     expr: check.expr.clone(),
+                    validated: true,
                 })
             })
             .collect::<Result<Vec<_>>>()?;
@@ -4295,25 +4297,13 @@ pub fn execute_alter_table_add_check<S: Storage>(
     let named = CheckConstraint {
         name: ConstraintNames::new(schema, table_name).mint_check(check)?,
         expr: check.expr.clone(),
+        validated: !check.not_valid,
     };
 
-    // Validate existing rows against the new predicate before recording it.
-    let parsed = prepare_check(&named);
-    let col_refs: Vec<&str> = col_names.iter().map(String::as_str).collect();
-    let col_enums = {
-        let table = get_table_or_err(schema, table_name)?;
-        super::helpers::table_enum_orders(&table.columns, &schema.enums)
-    };
-    for (_id, row) in storage.scan(table_name)? {
-        enforce_checks(
-            table_name,
-            std::slice::from_ref(&parsed),
-            &col_refs,
-            &col_types,
-            &col_enums,
-            &row,
-        )
-        .map_err(as_validation_failure)?;
+    // Validate existing rows against the new predicate before recording it — unless it
+    // is `NOT VALID`, which 18.6 records unvalidated without reading a row.
+    if !check.not_valid {
+        validate_existing_rows(schema, storage, table_name, &named, &col_names, &col_types)?;
     }
 
     // pglet's own over-rejection, last: the predicate must **render**, or this one
@@ -4989,6 +4979,85 @@ pub fn execute_alter_table_drop_not_null(
         col.nullable = true;
     }
     Ok(QueryResult::ddl("ALTER TABLE"))
+}
+
+/// Check every row `table_name` holds against `check`, 18.6's `ATRewriteTable` /
+/// `validateCheckConstraint` answer for the first that fails: `23514 check constraint
+/// "…" of relation "…" is violated by some row`.
+fn validate_existing_rows<S: Storage>(
+    schema: &Schema,
+    storage: &S,
+    table_name: &str,
+    check: &CheckConstraint,
+    col_names: &[String],
+    col_types: &[TypeOid],
+) -> Result<()> {
+    let parsed = prepare_check(check);
+    let col_refs: Vec<&str> = col_names.iter().map(String::as_str).collect();
+    let col_enums = {
+        let table = get_table_or_err(schema, table_name)?;
+        super::helpers::table_enum_orders(&table.columns, &schema.enums)
+    };
+    for (_id, row) in storage.scan(table_name)? {
+        enforce_checks(
+            table_name,
+            std::slice::from_ref(&parsed),
+            &col_refs,
+            col_types,
+            &col_enums,
+            &row,
+        )
+        .map_err(as_validation_failure)?;
+    }
+    Ok(())
+}
+
+/// Execute `ALTER TABLE … VALIDATE CONSTRAINT name`.
+///
+/// 18.6's `ATExecValidateConstraint`: a name no constraint of the table holds is `42704`;
+/// a `CHECK` not yet validated has every row checked (`23514 … is violated by some row`)
+/// and is then marked validated; a validated one, a foreign key (always validated here)
+/// and a `NOT NULL` succeed and change nothing; a `PRIMARY KEY` or `UNIQUE` is `42809`.
+///
+/// # Errors
+///
+/// As above, and the relation's own lookup (`42P01`).
+pub fn execute_alter_table_validate_constraint<S: Storage>(
+    schema: &mut Schema,
+    storage: &S,
+    table_name: &str,
+    name: &str,
+) -> Result<QueryResult> {
+    let table = get_table_or_err(schema, table_name)?;
+    let entry = crate::catalog::constraint_entries(schema)
+        .into_iter()
+        .find(|e| e.table.name == table_name && e.name() == name)
+        .map(|e| e.kind);
+    match entry {
+        None => Err(crate::CatalogError::ConstraintNotFound {
+            constraint: name.to_string(),
+            table: table_name.to_string(),
+        }
+        .into()),
+        Some(ConstraintEntryKind::Index(..)) => Err(Error::ConstraintCannotBeValidated {
+            constraint: name.to_string(),
+            table: table_name.to_string(),
+        }),
+        Some(ConstraintEntryKind::Check(check)) if !check.validated => {
+            let check = check.clone();
+            let col_names: Vec<String> = table.columns.iter().map(|c| c.name.clone()).collect();
+            let col_types: Vec<TypeOid> = table.columns.iter().map(|c| c.type_oid).collect();
+            validate_existing_rows(schema, storage, table_name, &check, &col_names, &col_types)?;
+            if let Some(stored) = schema
+                .get_table_mut(table_name)
+                .and_then(|t| t.checks.iter_mut().find(|c| c.name == name))
+            {
+                stored.validated = true;
+            }
+            Ok(QueryResult::ddl("ALTER TABLE"))
+        }
+        Some(_) => Ok(QueryResult::ddl("ALTER TABLE")),
+    }
 }
 
 /// Execute `ALTER TABLE … RENAME TO new_name`.
@@ -6534,6 +6603,7 @@ mod mint_tests {
                 op: BinaryOp::Gt,
                 right: Box::new(Expr::Literal(Literal::Int(0))),
             },
+            validated: true,
         }
     }
 

@@ -90,6 +90,7 @@ seem to disagree, the record wins.
 | [pg_catalog introspection (drizzle-kit push etc.)](#pg_catalog-introspection-drizzle-kit-push-etc) | ⚠️ | The catalogs and functions ORM introspection reads (`pg_class`, `pg_attribute`, `pg_type`, `pg_constraint`, `pg_index`, `pg_enum`, `pg_tables`, `pg_indexes`, …), several with a subset of their columns; `::regclass` and `to_regclass` answer a name typed `text`. |
 | [`information_schema`](#information_schema) | ⚠️ | `tables`, `columns`, `table_constraints`, `key_column_usage`, `referential_constraints`, `constraint_column_usage`; a `char(n)` column reads as `character varying`. |
 | [`ALTER TABLE … ADD CONSTRAINT`](#alter-table--add-constraint) | ⚠️ | `CHECK`, `PRIMARY KEY`, `UNIQUE` and `FOREIGN KEY`, each validated against the existing rows, then enforced. |
+| [`CHECK … NOT VALID` / `VALIDATE CONSTRAINT`](#check--not-valid--validate-constraint) | ✅ | An unvalidated `CHECK`, holding every later write, reported `convalidated = false` and dumped `NOT VALID`, until `VALIDATE CONSTRAINT` checks the rows; a foreign key's `NOT VALID` is `0A000`. |
 | [`ALTER TABLE … DROP CONSTRAINT`](#alter-table--drop-constraint) | ⚠️ | A `FOREIGN KEY` or `CHECK`, by name, `IF EXISTS` and comma lists included; a `PRIMARY KEY`, `UNIQUE` or `NOT NULL` is `0A000`. |
 | [`ALTER TABLE … RENAME TO`](#alter-table--rename-to) | ⚠️ | Renames a table: its rows, indexes, constraints, foreign keys and owned sequences follow it, and their own names stay. `RENAME CONSTRAINT` is `0A000`, and `ALTER TABLE` over an index or a sequence is `42809` where PostgreSQL renames it; a `NOT NULL`'s constraint name follows the new table name (`EDGES.md` row 333). |
 | [`ALTER TABLE … RENAME COLUMN`](#alter-table--rename-column) | ⚠️ | Renames a column: its `CHECK`s, index keys and predicates, and foreign keys follow it; a prepared `SELECT *` over it answers under the new name where PostgreSQL refuses (`EDGES.md` row 62), and its `NOT NULL`'s constraint name follows it too (row 333). |
@@ -3603,6 +3604,26 @@ nothing: it's refused with `55000` over a column not already declared `NOT NULL`
 its rows hold, as on 18.6 (`ddl/add_identity_*`). `SET NOT NULL` first is the way in. A
 store where an earlier build accepted it over a NULL still holds that row, which the
 accelerated profile's `ORDER BY` drops (`EDGES.md` row 38).
+
+### `CHECK … NOT VALID` / `VALIDATE CONSTRAINT`
+
+`ALTER TABLE t ADD [CONSTRAINT c] CHECK (…) NOT VALID` records the check without reading a
+row, so rows it rejects stay. It holds every write after it, an `UPDATE` of an old row
+included. It is reported unvalidated: `pg_constraint.convalidated` is `false` and
+`pg_get_constraintdef` ends in `NOT VALID`. The dump writes it that way, so a restore into
+either engine keeps the rows it rejects. `ALTER TABLE t VALIDATE CONSTRAINT c` checks every
+row (`23514 check constraint "c" of relation "t" is violated by some row` for the first that
+fails) and marks it validated; a validated check, a `NOT NULL` and a foreign key succeed and
+change nothing, a `PRIMARY KEY` or `UNIQUE` is `42809`, and a name the table holds no
+constraint under is `42704`, all as in PostgreSQL. Both roll back with their block. The
+mark is a catalog fact, the store format's `PGMW` (`docs/storage.md` § Store versioning):
+a store written by an earlier build is refused at open, not migrated.
+
+`NOT VALID` on a table constraint in `CREATE TABLE` is accepted and validated, and on a
+column constraint is `42601`, as in PostgreSQL; on a `PRIMARY KEY` or `UNIQUE` it is
+PostgreSQL's `0A000`. On a foreign key it's `0A000` here, where PostgreSQL records the key
+unvalidated. Fixtures: `ddl/add_check_not_valid_*`, `ddl/validate_constraint_*`;
+reopen: `crates/pglet/tests/check_not_valid.rs`; the dump: `test_dump`'s `not_valid_probe`.
 
 ### `ALTER TABLE … DROP CONSTRAINT`
 

@@ -35,6 +35,8 @@ released version under a fresh `## Unreleased` declaring a patch.
   referencing foreign keys and owned sequences follow it, keeping their own names
 - feat: `ALTER TABLE … RENAME [COLUMN] … TO …` (was `0A000`): the column's `CHECK`s, index
   keys and predicates, and foreign keys on either side follow it
+- feat: `ALTER TABLE … ADD CHECK … NOT VALID` and `VALIDATE CONSTRAINT` (was `42601`); a
+  store written by an earlier version is refused at open (store format `PGMW`)
 
 ## 0.2.1
 

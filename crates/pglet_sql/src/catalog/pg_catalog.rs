@@ -526,7 +526,7 @@ impl<'a> PgCatalog<'a> {
                     Value::Bool(false),                       // condeferrable
                     Value::Bool(false),                       // condeferred
                     Value::Bool(true),                        // conenforced
-                    Value::Bool(true),                        // convalidated
+                    Value::Bool(entry.kind.validated()),      // convalidated
                     Value::Int4(entry.table.oid),             // conrelid
                     Value::Int4(0),                           // contypid
                     Value::Int4(conindid),                    // conindid

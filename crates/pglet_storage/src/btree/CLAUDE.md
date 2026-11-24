@@ -207,8 +207,8 @@ same store runs on both targets.
   so a page is deep-copied at most once per batch, not once per insert that lands
   in it. The page codec is hand-rolled, so the `Arc` is invisible on disk — no
   format change, no magic bump.
-- **On-disk format (v30)**: the meta magic is `PGMV`. A bump takes the next magic and a magic
-  is never reused (`META_MAGIC`'s doc states the rule; the next is `PGMW`); the ledger of the
+- **On-disk format (v31)**: the meta magic is `PGMW`. A bump takes the next magic and a magic
+  is never reused (`META_MAGIC`'s doc states the rule; the next is `PGMX`); the ledger of the
   bumps since `PGM7` is `docs/storage.md` § Store versioning. Reopen rejects every superseded
   magic loud (`double-meta: stale on-disk format …`) — re-bootstrap dev DBs.
 

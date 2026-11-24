@@ -289,6 +289,7 @@ fn a_predicate_an_older_build_persisted_fails_loud_at_the_write() {
                 table: None,
                 name: "a".to_string(),
             },
+            validated: true,
         });
     }
     // The refusal is the **predicate's** and not the insert path's, which is what the
@@ -319,6 +320,7 @@ fn a_predicate_an_older_build_persisted_fails_loud_at_the_write() {
                 table: None,
                 name: "a".to_string(),
             },
+            validated: true,
         });
     assert_eq!(
         db2.execute("UPDATE legacy_u SET a = 2")
@@ -351,6 +353,7 @@ fn a_boolean_predicate_planted_the_same_way_still_enforces() {
                 op: BinaryOp::Gt,
                 right: Box::new(Expr::Literal(Literal::Int(0))),
             },
+            validated: true,
         });
     }
     db.execute("INSERT INTO legacy3 VALUES (9)")

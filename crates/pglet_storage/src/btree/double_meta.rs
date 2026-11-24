@@ -149,7 +149,7 @@ const DATA_REGION_START: u64 = META_SLOT_SIZE * META_SLOT_COUNT;
 /// every later `save_state`, whose `next_page_id` has then passed the limit.
 const PAGE_ID_LIMIT: PageId = (i64::MAX as u64 - DATA_REGION_START) / PAGE_SIZE as u64;
 
-/// Magic prefixing a meta slot: "PGMV" (PGlet Meta, on-disk format v30).
+/// Magic prefixing a meta slot: "PGMW" (PGlet Meta, on-disk format v31).
 ///
 /// The magic is a fixed 4-byte tag. Versions ran `PGMT` (v1) then `PGM2`…`PGM9`
 /// (v2…v9, the version digit in the 4th byte); v10 needs two digits, which no longer
@@ -159,7 +159,7 @@ const PAGE_ID_LIMIT: PageId = (i64::MAX as u64 - DATA_REGION_START) / PAGE_SIZE 
 ///
 /// **A magic is never reused.** A bump takes the next 4th byte in the order `2`–`9`,
 /// `A`–`Z`, `a`–`z`, skipping any byte an earlier version's magic holds — `T`, v1's — so
-/// v29 is `PGMU`, not `PGMT`, which a store would refuse as v1, and v30 is `PGMV`. Past `z`
+/// v29 is `PGMU`, not `PGMT`, which a store would refuse as v1, v30 is `PGMV`, and v31 `PGMW`. Past `z`
 /// the 3rd byte
 /// moves on (`N`, then `O`, …) and the 4th runs `0`–`9`, `A`–`Z`, `a`–`z` again. A reused
 /// magic makes a store refuse itself as stale on its first reopen.
@@ -331,14 +331,17 @@ const PAGE_ID_LIMIT: PageId = (i64::MAX as u64 - DATA_REGION_START) / PAGE_SIZE 
 /// were built over: a unique expression index built under v29 over `round(f)` holding
 /// `2.5` admits `2.4` beside it under this build. A v29 store decodes cleanly, so the
 /// magic is what refuses it.
+/// v31 (`PGMW`) is a **shape** bump: the catalog's `CheckConstraint` gained `validated`
+/// (`CHECK … NOT VALID`), so a v30 catalog's checks decode one field short — postcard
+/// reads exactly the fields a struct declares — and the reopen fails or misreads.
 /// A stale-magic file would mis-read its index entries, catalog, or slot — or read a
 /// stored expression as another value — so reopen
-/// rejects every older magic (`PGMT` v1 … `PGMU` v29) with a clear stale-format error
+/// rejects every older magic (`PGMT` v1 … `PGMV` v30) with a clear stale-format error
 /// instead of decoding incidental garbage.
-const META_MAGIC: &[u8; 4] = b"PGMV";
+const META_MAGIC: &[u8; 4] = b"PGMW";
 
 /// The superseded meta magics. A file whose slots still carry any of these is a
-/// pre-`PGMV` store (`PGMT` = pre-variable-key v1, `PGM2` = pre-presence-tag v2,
+/// pre-`PGMW` store (`PGMT` = pre-variable-key v1, `PGM2` = pre-presence-tag v2,
 /// `PGM3` = pre-serialized-`Expr`-catalog v3, `PGM4` = pre-system-entry catalog v4,
 /// `PGM5` = pre-OID-encoded-`TypeOid` catalog v5, `PGM6` = pre-3-field-`Interval` v6,
 /// `PGM7` = pre-`varchar_length`-catalog v7, `PGM8` = pre-`identity`-catalog v8,
@@ -354,12 +357,13 @@ const META_MAGIC: &[u8; 4] = b"PGMV";
 /// `PGMO` = pre-rooted-long-`AND`/`OR`-list v24, `PGMP` = pre-overflow-page v25,
 /// `PGMQ` = pre-checksummed-free-list-chain v26, `PGMR` = pre-retired-page-log v27,
 /// `PGMS` = pre-`byteain`-formats-and-array-element-escape v28, `PGMU` =
-/// pre-`rint`-round-and-float-input-range v29);
+/// pre-`rint`-round-and-float-input-range v29, `PGMV` = pre-`CheckConstraint`-`validated`
+/// catalog v30);
 /// reopening it fails loud with a stale-format message.
-const STALE_MAGICS: [&[u8; 4]; 29] = [
+const STALE_MAGICS: [&[u8; 4]; 30] = [
     b"PGMT", b"PGM2", b"PGM3", b"PGM4", b"PGM5", b"PGM6", b"PGM7", b"PGM8", b"PGM9", b"PGMA",
     b"PGMB", b"PGMC", b"PGMD", b"PGME", b"PGMF", b"PGMG", b"PGMH", b"PGMI", b"PGMJ", b"PGMK",
-    b"PGML", b"PGMM", b"PGMN", b"PGMO", b"PGMP", b"PGMQ", b"PGMR", b"PGMS", b"PGMU",
+    b"PGML", b"PGMM", b"PGMN", b"PGMO", b"PGMP", b"PGMQ", b"PGMR", b"PGMS", b"PGMU", b"PGMV",
 ];
 
 /// Meta slot header: magic(4) + version(8) + payload_len(4) + crc32(4).
@@ -1102,10 +1106,10 @@ fn is_all_zero(io: &dyn BlockIo, len: u64) -> PageStoreResult<bool> {
     Ok(n == buf.len() && buf.iter().all(|&b| b == 0))
 }
 
-/// Whether either meta slot still carries a superseded (pre-`PGMV`) magic.
+/// Whether either meta slot still carries a superseded (pre-`PGMW`) magic.
 ///
-/// A genuinely fresh or current-format file returns `false`; any pre-`PGMV` file
-/// (`PGMT` v1 … `PGMU` v29 — [`STALE_MAGICS`] is the enumeration, and this sentence
+/// A genuinely fresh or current-format file returns `false`; any pre-`PGMW` file
+/// (`PGMT` v1 … `PGMV` v30 — [`STALE_MAGICS`] is the enumeration, and this sentence
 /// has to name its current end rather than the end it had when written) returns
 /// `true` so
 /// [`open_with_cache_size`](DoubleMetaStore::open_with_cache_size) can fail loud
@@ -2962,6 +2966,7 @@ mod tests {
         }
         assert_eq!(&magic_for_version(29), b"PGMU", "v29 skips v1's `T`");
         assert_eq!(&magic_for_version(30), b"PGMV");
+        assert_eq!(&magic_for_version(31), b"PGMW");
     }
 
     #[test]
@@ -3005,7 +3010,7 @@ mod tests {
     fn stale_format_fails_loud() {
         // A non-empty file whose slot still carries any superseded magic must
         // fail loud on reopen, not look like corruption or a fresh store. Every
-        // pre-`PGMV` magic qualifies (`PGMT`/…/`PGMS`/`PGMU`) — e.g. a `PGMF` file
+        // pre-`PGMW` magic qualifies (`PGMT`/…/`PGMU`/`PGMV`) — e.g. a `PGMF` file
         // encodes each catalog sequence as a bare `i64` where a three-field
         // `{last_value, start, owner}` record is now read, so the postcard decode
         // consumes the next field's bytes and desynchronizes the rest of the catalog,

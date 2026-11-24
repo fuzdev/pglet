@@ -923,7 +923,7 @@ the postcard bytes' shape *or meaning* changes. A store written under an older
 magic fails loud on reopen (pre-stable, no migration shims). **A magic is never
 reused.** A bump takes the next fourth byte in the order `2`–`9`, `A`–`Z`, `a`–`z`,
 skipping any byte an earlier magic holds (`T`, v1's `PGMT`). So `PGMS` was followed
-by `PGMU`, `PGMU` by `PGMV`, and the next is `PGMW`. Past `z` the third byte moves on
+by `PGMU`, `PGMU` by `PGMV`, `PGMV` by `PGMW`, and the next is `PGMX`. Past `z` the third byte moves on
 and the fourth runs `0`–`9`, `A`–`Z`, `a`–`z` again (`META_MAGIC`'s doc;
 `the_magic_scheme_never_reuses_a_magic` and `the_current_magic_is_no_superseded_one`
 guard it). The ledger:
@@ -1034,7 +1034,7 @@ guard it). The ledger:
   were built over. On a v28 store we measured, a unique partial index
   `WHERE b = 'cafe'::bytea` accepted a duplicate next to a stored row. The seventh bump
   of `PGMD`'s meaning-moved kind, and the shape is unchanged.
-- `PGMV` / v30 — **current**: two evaluations changed at once. `round(double precision)`
+- `PGMV` / v30 — two evaluations changed at once. `round(double precision)`
   rounds a tie to the even integer (C's `rint`, 18.6's `dround`), where a v29 build
   rounded it away from zero. And a `real` / `double precision` read from text, or
   converted from `numeric`, is refused with `22003` outside the type's range, where a v29
@@ -1046,13 +1046,18 @@ guard it). The ledger:
   over. On a v29 store we measured, `CREATE UNIQUE INDEX … ON ru (round(f))` holding
   `2.5` admitted `2.4` next to it under the new build, where a fresh store gives
   `23505`. The eighth bump of `PGMD`'s meaning-moved kind, and the shape is unchanged.
+- `PGMW` / v31 — **current**: the catalog `CheckConstraint` gained `validated`, which an
+  `ALTER TABLE … ADD CHECK … NOT VALID` leaves `false` until a `VALIDATE CONSTRAINT`
+  ([compatibility.md](compatibility.md) § `CHECK … NOT VALID`). A **shape** bump, like
+  `PGMN`'s: a v30 catalog's checks decode one field short. A v30 store is refused, not
+  migrated, as every superseded magic is.
 
 **Which bumps moved meaning.** The meaning-moved bumps, where the postcard *shape* is
 unchanged so an old row decodes cleanly and compares wrong, are `PGMD`, `PGMH`, `PGMK`,
 `PGML`, `PGMM`, `PGMP`, `PGMU` and `PGMV`. Each of those entries says so, and the rest
 name the field, type or page format they changed. The **refusal** doesn't depend on the
-classification. `STALE_MAGICS` lists every superseded magic (`PGMT` v1 through `PGMU`
-v29), and its guard derives that expectation from `META_MAGIC` instead of from the
+classification. `STALE_MAGICS` lists every superseded magic (`PGMT` v1 through `PGMV`
+v30), and its guard derives that expectation from `META_MAGIC` instead of from the
 array. So a superseded version fails loud by name, whether or not anything ever wrote
 it, instead of as "unrecoverable corruption".
 

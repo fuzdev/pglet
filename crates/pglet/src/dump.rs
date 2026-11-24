@@ -3161,6 +3161,7 @@ COPY g (id, \"order\", tags, note) FROM stdin;
                         micros: 0,
                     }))),
                 },
+                validated: true,
             });
         let err = dump_sql(db.schema(), db.storage())
             .expect_err("a legacy unrenderable CHECK must not dump silently");

@@ -296,6 +296,12 @@ pub struct CheckConstraint {
     pub name: String,
     /// The predicate, parsed into the planner IR (e.g. `level IN ('viewer', 'editor')`).
     pub expr: Expr,
+    /// Whether every row the table held when the constraint was added has been checked
+    /// against it — `pg_constraint.convalidated`. `false` only for an `ALTER TABLE … ADD
+    /// CHECK … NOT VALID` that no `VALIDATE CONSTRAINT` has validated since: such a check
+    /// holds every write after it, as a validated one does, and says nothing of the rows
+    /// before it, so the dump writes it `NOT VALID` too.
+    pub validated: bool,
 }
 
 /// A foreign key's referential action.
@@ -1778,6 +1784,7 @@ mod constraint_name_scopes {
                 op: BinaryOp::Gt,
                 right: Box::new(Expr::Literal(Literal::Int(0))),
             },
+            validated: true,
         }
     }
 

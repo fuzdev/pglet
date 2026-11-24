@@ -1466,6 +1466,16 @@ pub enum Plan {
         table_if_exists: bool,
     },
 
+    /// `ALTER TABLE … VALIDATE CONSTRAINT name` — check the rows a `CHECK … NOT VALID`
+    /// left unchecked, and mark it validated (`executor`'s
+    /// `execute_alter_table_validate_constraint`).
+    AlterTableValidateConstraint {
+        table: String,
+        name: String,
+        /// `ALTER TABLE IF EXISTS`; see [`Plan::AlterTableAddColumn`].
+        table_if_exists: bool,
+    },
+
     /// `ALTER TABLE … ALTER [COLUMN] col ADD GENERATED { ALWAYS | BY DEFAULT } AS
     /// IDENTITY [( options )]` — make an existing column an identity column.
     ///
@@ -2271,6 +2281,11 @@ pub struct CheckConstraintDef {
     pub name: Option<String>,
     /// The predicate, parsed into the planner IR.
     pub expr: Expr,
+    /// `NOT VALID`, written after an `ALTER TABLE … ADD CHECK`: the rows already held are
+    /// not checked, and the constraint is recorded unvalidated
+    /// ([`crate::catalog::CheckConstraint::validated`]). Always `false` from `CREATE
+    /// TABLE`, where 18.6 accepts the words on a table constraint and validates anyway.
+    pub not_valid: bool,
 }
 
 /// A `FOREIGN KEY` **as written**, before the executor mints its name.
@@ -3397,6 +3412,7 @@ impl Plan {
             | Self::AlterTableDropNotNull { .. }
             | Self::AlterTableRename { .. }
             | Self::AlterTableRenameColumn { .. }
+            | Self::AlterTableValidateConstraint { .. }
             | Self::AlterTableAddIdentity { .. }
             | Self::CreateSequence { .. }
             | Self::AlterSequence { .. }
@@ -4009,6 +4025,7 @@ impl Plan {
             | Self::AlterTableDropNotNull { .. }
             | Self::AlterTableRename { .. }
             | Self::AlterTableRenameColumn { .. }
+            | Self::AlterTableValidateConstraint { .. }
             | Self::AlterTableAddIdentity { .. }
             | Self::CreateSequence { .. }
             | Self::AlterSequence { .. }
@@ -4144,6 +4161,7 @@ impl Plan {
             | Self::AlterTableDropNotNull { .. }
             | Self::AlterTableRename { .. }
             | Self::AlterTableRenameColumn { .. }
+            | Self::AlterTableValidateConstraint { .. }
             | Self::AlterTableAddIdentity { .. }
             // A new sequence is catalog state that must persist on auto-commit.
             | Self::CreateSequence { .. }
@@ -4286,6 +4304,11 @@ impl Plan {
                 table_if_exists,
                 ..
             }
+            | Self::AlterTableValidateConstraint {
+                table,
+                table_if_exists,
+                ..
+            }
             | Self::AlterTableAddIdentity {
                 table,
                 table_if_exists,
@@ -4354,6 +4377,7 @@ impl Plan {
                 | Self::AlterTableDropNotNull { .. }
                 | Self::AlterTableRename { .. }
                 | Self::AlterTableRenameColumn { .. }
+                | Self::AlterTableValidateConstraint { .. }
                 | Self::AlterTableAddIdentity { .. }
                 // A DO block can run DDL (the idempotent `CREATE TYPE`), so treat it
                 // as schema-mutating for plan-cache invalidation.

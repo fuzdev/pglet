@@ -1,0 +1,10 @@
+{
+  "rows": [
+    {
+      "conname": "nv_pos",
+      "convalidated": true,
+      "def": "CHECK ((a > 0))"
+    }
+  ],
+  "rowCount": 1
+}

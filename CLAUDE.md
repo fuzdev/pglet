@@ -525,8 +525,8 @@ type explicitly.
   the typed constant reads directly), one resolver (`executor`'s `resolve_type_name`,
   entered as `resolve_column_type` or `resolve_constant_type`). Legacy lenient coercion is the
   opt-in `--coerce-unknown-types` flag / `Database::set_coerce_unknown_types`.
-- **Store versioning:** the persisted-shape magic is `PGMV`/v30, and a magic is never
-  reused (v29 skipped v1's `PGMT`; the next is `PGMW`). The bump ledger and the scheme:
+- **Store versioning:** the persisted-shape magic is `PGMW`/v31, and a magic is never
+  reused (v29 skipped v1's `PGMT`; the next is `PGMX`). The bump ledger and the scheme:
   `docs/storage.md` § Store versioning.
 
 ## Commands

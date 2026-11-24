@@ -1779,6 +1779,12 @@ pub enum Error {
     #[error("cannot alter system column \"{column}\"")]
     SystemColumnAlter { column: String },
 
+    /// `ALTER TABLE … VALIDATE CONSTRAINT` of a `PRIMARY KEY` or `UNIQUE` constraint, which
+    /// 18.6's `ATExecValidateConstraint` refuses with SQLSTATE `42809` and a DETAIL
+    /// ([`Error::detail`]).
+    #[error("cannot validate constraint \"{constraint}\" of relation \"{table}\"")]
+    ConstraintCannotBeValidated { constraint: String, table: String },
+
     /// `ALTER TABLE … RENAME COLUMN` of a system column — `ctid`, `xmin`, … — which
     /// 18.6's `renameatt_internal` refuses with SQLSTATE `0A000`.
     #[error("cannot rename system column \"{column}\"")]
@@ -2156,7 +2162,8 @@ impl Error {
             Self::IdentitySequenceOwnershipChange { .. } => "0A000", // feature_not_supported
             Self::IdentityColumnDefault { .. } => "42601", // syntax_error
             Self::SystemColumnAlter { .. } | Self::SystemColumnRename { .. } => "0A000", // feature_not_supported
-            Self::CurrvalNotDefined(_) => "55000", // object_not_in_prerequisite_state
+            Self::ConstraintCannotBeValidated { .. } => "42809", // wrong_object_type
+            Self::CurrvalNotDefined(_) => "55000",               // object_not_in_prerequisite_state
             Self::AmbiguousColumn { .. } | Self::AmbiguousClauseKey { .. } => "42702", // ambiguous_column
             Self::GeneratedAlwaysInsert { .. } | Self::GeneratedAlwaysUpdate { .. } => "428C9", // generated_always
             Self::IdentityColumnType => "22023", // invalid_parameter_value

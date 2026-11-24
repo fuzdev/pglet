@@ -140,6 +140,7 @@ fn a_catalog_handed_out_mutable_is_measured_again() {
             pglet_sql::catalog::CheckConstraint {
                 name: "planted".into(),
                 expr,
+                validated: true,
             },
         );
         assert_eq!(db.schema().generation, generation, "no door, no generation");

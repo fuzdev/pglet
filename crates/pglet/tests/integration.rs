@@ -27,6 +27,7 @@ mod autocommit_atomicity;
 mod bool_list_identity;
 mod boolean_context_verdicts;
 mod case_folding;
+mod check_not_valid;
 mod clock;
 mod column_default_verdicts;
 mod comment_carriage_return;

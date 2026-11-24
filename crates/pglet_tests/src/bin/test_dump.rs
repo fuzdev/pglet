@@ -204,6 +204,10 @@ const SELECT_INFINITY_ROWS: &str =
 /// A row of 100 000 characters (an overflow chain in the source) beside a short one,
 /// under a `CHECK` whose 6 000-character literal is a catalog entry longer than a page;
 /// the second `SELECT` is `1` only where that `CHECK` came back with its whole literal.
+/// The `NOT VALID` check's table and the check itself, still unvalidated: both restores
+/// must take the row it rejects and keep the constraint, unvalidated.
+const SELECT_NOT_VALID: &str = "SELECT n.id, n.a, c.convalidated FROM not_valid_probe n \
+     CROSS JOIN pg_constraint c WHERE c.conname = 'not_valid_probe_pos' ORDER BY n.id";
 const SELECT_LARGE_ROWS: &str = "SELECT id, body FROM large_probe ORDER BY id";
 const SELECT_LARGE_CHECK: &str = "SELECT count(*) FROM information_schema.check_constraints \
      WHERE constraint_name = 'large_probe_body_check' AND length(check_clause) > 6000";
@@ -279,7 +283,7 @@ const SELECT_BYTEA_DEFAULT: &str = "INSERT INTO bytea_probe (id) VALUES (90); \
      SELECT b, plain, escaped, hex FROM bytea_probe WHERE id = 90";
 
 /// Every compared `SELECT`, in one list so adding a table is a one-line change.
-const COMPARED_SELECTS: [&str; 43] = [
+const COMPARED_SELECTS: [&str; 44] = [
     SELECT_AUTHOR,
     SELECT_POST,
     SELECT_EXPR,
@@ -309,6 +313,7 @@ const COMPARED_SELECTS: [&str; 43] = [
     SELECT_INFINITY_ROWS,
     SELECT_LARGE_ROWS,
     SELECT_LARGE_CHECK,
+    SELECT_NOT_VALID,
     SELECT_SHARED_NAME_ROWS,
     SELECT_SHARED_NAME_RESUME,
     SELECT_UNNAMED_INDEXES,
@@ -443,6 +448,12 @@ fn build_source() -> Database {
              '2020-01-02 03:04:05.6789', '2020-01-02 03:04:05.6789'), \
             (2, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)",
         "INSERT INTO author (name) VALUES ('Ada'), ('Bob')",
+        // A `CHECK … NOT VALID` over a row it rejects: the dump must write it `NOT VALID`,
+        // or the restore's `ADD CONSTRAINT` validates the row and is refused while `psql`
+        // exits `0`.
+        "CREATE TABLE not_valid_probe (id INT PRIMARY KEY, a INT)",
+        "INSERT INTO not_valid_probe VALUES (1, -1), (2, 5)",
+        "ALTER TABLE not_valid_probe ADD CONSTRAINT not_valid_probe_pos CHECK (a > 0) NOT VALID",
         // Row 1: explicit values incl. a body needing COPY escaping (real tab +
         // newline + a literal backslash), a `timestamptz` (guards the UTC `+00`
         // round-trip), and a single-key `jsonb`. Row 2: DEFAULTs + NULLs.
@@ -1594,7 +1605,7 @@ async fn run_roundtrip(pg: &Client, pglet_config: &DbConfig) -> Result<(), Strin
     if row_counts
         != vec![
             2, 2, 3, 1, 1, 2, 2, 2, 2, 2, 1, 1, 1, 1, 2, 2, 1, 1, 1, 2, 1, 1, 2, 1, 9, 9, 3, 2, 1,
-            2, 1, 2, 13, 5, 4, 6, 1, 1, 1, 1, 1, 9, 1,
+            2, 2, 1, 2, 13, 5, 4, 6, 1, 1, 1, 1, 1, 9, 1,
         ]
     {
         return Err(format!(

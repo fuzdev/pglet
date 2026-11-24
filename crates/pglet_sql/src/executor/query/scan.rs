@@ -1526,6 +1526,7 @@ mod virtual_scan_tests {
                     op: BinaryOp::Gt,
                     right: Box::new(Expr::Literal(Literal::Int(0))),
                 },
+                validated: true,
             }],
             foreign_keys: vec![ForeignKey {
                 name: "child_pid_fkey".to_string(),

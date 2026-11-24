@@ -1,0 +1,17 @@
+{
+  "rows": [
+    {
+      "a": -1,
+      "convalidated": false,
+      "def": "CHECK ((a > 0)) NOT VALID",
+      "id": 1
+    },
+    {
+      "a": 5,
+      "convalidated": false,
+      "def": "CHECK ((a > 0)) NOT VALID",
+      "id": 2
+    }
+  ],
+  "rowCount": 2
+}

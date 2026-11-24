@@ -927,6 +927,7 @@ mod tests {
                 op: BinaryOp::Gt,
                 right: Box::new(Expr::Literal(Literal::Int(0))),
             },
+            validated: true,
         }
     }
 
