@@ -1121,7 +1121,7 @@ fn plan_children<'a>(plan: &'a Plan, push: &mut dyn FnMut(Node<'a>)) {
         Plan::Distinct { input }
         | Plan::JunkFilter { input, .. }
         | Plan::Limit { input, .. }
-        | Plan::LockRows { input } => {
+        | Plan::LockRows { input, .. } => {
             push(Node::Plan(input));
         }
         Plan::DistinctOn { on_exprs, input } => {

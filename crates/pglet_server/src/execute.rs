@@ -25,11 +25,12 @@
 
 use std::borrow::Cow;
 use std::sync::Arc;
+use std::time::Instant;
 
 use pglet::AbortedBlockAction;
 use pglet_sql::catalog::{Schema, execute_session_command, startup_parameters};
 use pglet_sql::executor::{EvalEnv, QueryResult, TransactionCommand, execute_with_storage};
-use pglet_sql::planner::Plan;
+use pglet_sql::planner::{LockWait, Plan};
 use pglet_sql::types::{TypeOid, Value};
 use pglet_wire::protocol::FormatCode;
 use pglet_wire::{BackendMessage, TransactionStatus};
@@ -233,6 +234,26 @@ where
     outcome.map_err(|e| format_error(conn, &e, protocol))
 }
 
+/// Take the writer for `planned`, as its locking clause's wait policy says
+/// ([`Plan::lock_wait`]): wait until `deadline` for a plain one, and only try for a
+/// `NOWAIT`, answering 18.6's `55P03` at once while another connection holds it —
+/// whatever `lock_timeout` is, as 18.6's `NOWAIT` is not bounded by it.
+fn acquire_writer_for(
+    conn: &Connection,
+    planned: &Plan,
+    deadline: Option<Instant>,
+) -> pglet_sql::Result<()> {
+    match planned.lock_wait() {
+        LockWait::Wait => conn.acquire_writer(deadline),
+        LockWait::NoWait => match conn.acquire_writer(Some(Instant::now())) {
+            Err(pglet_sql::Error::LockTimeout) => Err(pglet_sql::Error::RowLockNotAvailable(
+                planned.locked_relation().map(str::to_string),
+            )),
+            other => other,
+        },
+    }
+}
+
 /// [`run_one`]'s body, answering the statement's error unformatted.
 ///
 /// # A plan that fails on another connection's uncommitted catalog
@@ -288,8 +309,10 @@ where
                 // the generation check (inside `resolve`) and the schema the plan runs
                 // against are the same revision.
                 Ok(planned) => {
-                    let schema_clone =
-                        (snapshot.is_some() && planned.is_read_only()).then(|| schema.clone());
+                    // A locking read with a wait policy tries for the writer, so it takes
+                    // the locked path even in auto-commit (`Plan::lock_wait`).
+                    let lock_free = planned.is_read_only() && planned.lock_wait() == LockWait::Wait;
+                    let schema_clone = (snapshot.is_some() && lock_free).then(|| schema.clone());
                     Ok((planned, schema.generation, schema_clone))
                 }
                 Err(e) if conn.plan_failure_is_the_writers(&e, schema.generation, resolve) => {
@@ -348,7 +371,7 @@ where
         );
     }
     if takes_writer && !conn.holds_writer() {
-        conn.acquire_writer(deadline)?;
+        acquire_writer_for(conn, &planned, deadline)?;
     }
 
     let (mut schema, mut storage) = conn.shared.lock_both();

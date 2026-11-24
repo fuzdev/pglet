@@ -80,10 +80,11 @@ pub use plan::{
     AddConstraint, CertainTypes, CheckConstraintDef, ColumnDef, ConflictTarget, CopyDirection,
     CopyFormat, CopyOptions, CteBody, CtePlan, DoExceptionHandler, DropConstraintAction,
     EnclosingColumn, EnclosingColumns, ForeignKeyDef, IndexBound, InsertRows, JoinType, LeafScope,
-    LimitCount, NoopCommand, OnConflictAction, OnConflictClause, Overriding, Plan, PlannerScope,
-    SequenceOwnerSpec, SequenceRestart, SetOpKind, SetOpOuterTypes, SideReferenceTypes, TypeScope,
-    UniqueConstraint, UnperformedAlter, UsingMatch, alias_relation_columns, find_enclosing,
-    function_scan_column_types, match_names, scan_effective_name, using_column_match,
+    LimitCount, LockWait, NoopCommand, OnConflictAction, OnConflictClause, Overriding, Plan,
+    PlannerScope, SequenceOwnerSpec, SequenceRestart, SetOpKind, SetOpOuterTypes,
+    SideReferenceTypes, TypeScope, UniqueConstraint, UnperformedAlter, UsingMatch,
+    alias_relation_columns, find_enclosing, function_scan_column_types, match_names,
+    scan_effective_name, using_column_match,
 };
 // Reused by the native parser (`parser`): the shared function-call dispatch
 // (`build_call`), the INSERT/UPDATE/DELETE/SELECT lowering helpers, and the

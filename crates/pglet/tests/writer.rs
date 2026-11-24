@@ -1433,3 +1433,39 @@ fn an_advisory_xact_lock_is_the_writer() {
         );
     }
 }
+
+/// A `NOWAIT` locking read answers as a plain one while no other connection's block holds
+/// the writer, and is refused at once with 18.6's `55P03` row-lock message — naming the
+/// table it reads — while one does. Neither aborts the holder's block.
+#[test]
+fn a_nowait_read_is_refused_with_the_row_lock_message_while_another_block_holds_the_writer() {
+    let io = MemBlockIo::new();
+    let mut db = seeded(&io);
+    assert_eq!(
+        answer(&mut db, "SELECT i FROM t FOR UPDATE NOWAIT", 3),
+        "Int4(1)"
+    );
+    assert_eq!(answer(&mut db, "BEGIN", 4), "");
+    assert_eq!(
+        answer(&mut db, "SELECT i FROM t FOR UPDATE NOWAIT", 3),
+        "Int4(1)",
+        "a block that has only read holds no writer"
+    );
+    assert_eq!(answer(&mut db, "INSERT INTO t VALUES (2)", 4), "");
+    let refused = db.execute_as("SELECT i FROM t FOR NO KEY UPDATE NOWAIT", 3);
+    match refused {
+        Err(e @ Error::RowLockNotAvailable(_)) => {
+            assert_eq!(e.sqlstate(), "55P03");
+            assert_eq!(
+                e.to_string(),
+                "could not obtain lock on row in relation \"t\""
+            );
+        }
+        other => panic!("expected the row-lock refusal, got {other:?}"),
+    }
+    assert_eq!(answer(&mut db, "COMMIT", 4), "");
+    assert_eq!(
+        answer(&mut db, "SELECT i FROM t ORDER BY i FOR SHARE NOWAIT", 3),
+        "Int4(1),Int4(2)"
+    );
+}

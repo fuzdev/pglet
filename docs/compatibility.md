@@ -63,7 +63,7 @@ seem to disagree, the record wins.
 | [`UNION` / `INTERSECT` / `EXCEPT` (+ `ALL`)](#union--intersect--except--all) | ✅ | `UNION`, `INTERSECT`, `EXCEPT`, with and without `ALL`, at PostgreSQL's precedence and common column types; a recursive term is typed by a separate check. |
 | [`CASE WHEN … END`](#case-when--end) | ✅ | Searched and simple forms; a non-boolean `WHEN` condition is `42804`. |
 | [Boolean contexts (`WHERE`, `HAVING`, `JOIN … ON`, searched `CASE WHEN`, `AND`/`OR`/`NOT`, `CHECK`, a partial index's `WHERE`, `IS [NOT] TRUE\|FALSE\|UNKNOWN`)](#boolean-contexts-where-having-join--on-searched-case-when-andornot-check-a-partial-indexs-where-is-not-truefalseunknown) | ✅ | Each context resolves its operand to `boolean` as PostgreSQL does: any other type is `42804`, an unresolved literal is read as a boolean. |
-| [`FOR UPDATE` / `FOR SHARE`](#for-update--for-share) | ⚠️ | Every lock strength is parsed; inside a block a locking read takes the single writer, which is coarser than a row lock. `SKIP LOCKED` and `NOWAIT` are `0A000`. |
+| [`FOR UPDATE` / `FOR SHARE`](#for-update--for-share) | ⚠️ | Every lock strength is parsed; inside a block a locking read takes the single writer, which is coarser than a row lock. `NOWAIT` tries for the writer and is `55P03` at once while another block holds it (`EDGES.md` row 331); `SKIP LOCKED` is `0A000`. |
 | [`alias.*` qualified wildcard](#alias-qualified-wildcard) | ⚠️ | Expanded to that relation's columns, beside other items; over a `FROM`-clause `unnest(…)` item it is `0A000` or `42702`, or expands a same-named base table's column names (`42703` unless they match) (`EDGES.md` row 8). |
 | [Non-sole `*` + `RETURNING` projection](#non-sole---returning-projection) | ✅ | `SELECT *, …` and `RETURNING *, …`, a correlated subquery in `RETURNING` included; PostgreSQL 18's `OLD` / `NEW` in `RETURNING` is `42P01`. |
 | [`DO $$ … $$` anonymous block](#do----anonymous-block) | ⚠️ | `BEGIN … [EXCEPTION WHEN …] END` over plain SQL statements, an `EXCEPTION` block a real subtransaction; `DECLARE`, variables and control flow are refused. |
@@ -2444,23 +2444,32 @@ statement and waits for a block that has written, even where 18.6 wouldn't. The 
 `Database` takes the writer for it, and refuses it with `55P03` while another connection's
 block holds the writer (`docs/storage.md` § Isolation Guarantees).
 
-**The wait policy is the exception, and is refused** (`0A000`). `SKIP LOCKED` and `NOWAIT`
-each describe a behavior that needs a row lock to mean anything, and treating them as
-no-ops would match neither. A locking read inside a block takes the writer
-(`Plan::takes_writer`), so on the native server a `NOWAIT` inside a second block would wait
-for the first block (`55P03` only once `lock_timeout` passes) where 18.6 gives `55P03` at
-once. An autocommit one would take nothing on the B+tree and return the row. A second
+**`NOWAIT` is the wait policy pglet honours on the writer** (`LockWait::NoWait` on the
+read's `Plan::LockRows`). With no other connection's block holding the writer, the read
+answers as a plain locking read does and takes the writer the same way: a block's holds it
+to the block's end, and an autocommit one, which a plain locking read takes nothing for on
+the B+tree, holds it for its statement. While another connection's block holds it, the read
+is `55P03 could not obtain lock on row in relation "t"` at once on the native server,
+whatever `lock_timeout` is, as 18.7's `NOWAIT` ignores it; the embedded `Database`, which
+never waits, refuses it the same way. 18.7 refuses only over a row another transaction
+locked, so this is an over-refusal (`EDGES.md` row 331). A `NOWAIT` in a statement that
+writes (`UPDATE … WHERE id IN (SELECT … FOR UPDATE NOWAIT)`), a statement whose locking
+items mix wait policies (`FOR UPDATE NOWAIT FOR SHARE`) and one in a `DO` body are `0A000`:
+the write waits for the writer as every write does, the writer is one lock, and a `DO`
+body's statements are never wrapped.
+
+**`SKIP LOCKED` is refused** (`0A000`). It describes a behavior that needs a row lock to
+mean anything, and treating it as a no-op would match nothing: a second
 `… ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED` worker would queue behind the first block
 instead of taking the next row (on the embedded `Database`, another connection's `BEGIN` is
-refused with `55P03` while a block is open), where 18.6 gives `55P03` at once and hands the
-workers rows 1 and 2.
+refused with `55P03` while a block is open), where 18.6 hands the workers rows 1 and 2.
 
-The refusal is **deferred to the end of the statement's parse**, so an error 18.6 raises
+A refusal is **deferred to the end of the statement's parse**, so an error 18.6 raises
 *during* the parse or the plan wins over it: a projection `42703`, or a `42601` from
 trailing junk, from the clause's own boundary, or from a `FOR READ ONLY` in the wrong
 position. **The exception is an error pglet raises later than 18.6 does.** A missing
 relation is `42P01` at *execute* time here (`EDGES.md` rows 29/60), so
-`SELECT * FROM nosuchtbl FOR UPDATE NOWAIT` is this `0A000` here and `42P01` on 18.6. Both
+`SELECT * FROM nosuchtbl FOR UPDATE SKIP LOCKED` is this `0A000` here and `42P01` on 18.6. Both
 error, and the deferral can't reach past a phase. The refusal fires on every route,
 including the `DO $$ … $$` body's own sub-parser. An unrecognized lock strength or trailing
 garbage (`FOR XYZ`, `FOR UPDATE foobar`) fails loudly (`42601`) instead of being swallowed

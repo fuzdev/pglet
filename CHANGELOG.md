@@ -26,6 +26,9 @@ released version under a fresh `## Unreleased` declaring a patch.
   ON` and `LEFT JOIN LATERAL … ON`, the subquery naming the items before it and run once per
   row of them (was `42601`); `LATERAL` before a function or a `VALUES` list, or under a
   `RIGHT`/`FULL` join, is `0A000`
+- feat: `FOR UPDATE NOWAIT` (and the other strengths') answers as a plain locking read does
+  (was `0A000`); in a statement that writes, beside a locking item without it, or in a `DO`
+  body it stays `0A000`
 
 ## 0.2.1
 

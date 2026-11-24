@@ -92,10 +92,11 @@ Modern Postgres only, sized to the spine's SQL surface:
   `FOR {UPDATE|NO KEY UPDATE|SHARE|KEY SHARE} [OF …]` grammar, plus `FOR READ ONLY` as
   the clause's **first-and-only** production. `gram.y` makes these two alternatives, so
   neither order of `FOR UPDATE` + `FOR READ ONLY` is legal. The clause is honored as a
-  no-op. An invalid strength fails loud. A `NOWAIT`/`SKIP LOCKED` wait policy fails loud
-  too (`0A000`), deferred to the end of the statement's parse on every route, a `DO`
-  body's own sub-parser included. That's the one part of the clause a lock-free engine
-  can't emulate.
+  no-op. An invalid strength fails loud. A `NOWAIT` rides the statement's `LockRows` as
+  its wait policy (`LockWait`), which a host honours when it takes the writer; one in a
+  statement that writes, beside an item with another policy, or in a `DO` body fails loud
+  (`0A000`), and so does `SKIP LOCKED`, deferred to the end of the statement's parse on
+  every route, a `DO` body's own sub-parser included.
 - **Set operations**: `UNION`/`INTERSECT`/`EXCEPT` (each with optional `ALL`) parse into
   a chained `Plan::SetOp` at Postgres precedence (`INTERSECT` binds tighter than
   `UNION`/`EXCEPT`, left-associative). A trailing `ORDER BY`/`LIMIT` binds to the

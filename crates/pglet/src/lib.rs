@@ -66,7 +66,9 @@ use pglet_sql::executor::{
     CopyParams, EvalEnv, QueryResult, SequenceSession, TransactionCommand, copy_column_count,
     execute_copy_from, execute_copy_to, execute_with_storage,
 };
-use pglet_sql::planner::{CopyDirection, Plan, bound_param_enum_legality, infer_param_targets};
+use pglet_sql::planner::{
+    CopyDirection, LockWait, Plan, bound_param_enum_legality, infer_param_targets,
+};
 use pglet_sql::types::{TypeOid, Value};
 #[cfg(feature = "memory_storage")]
 use pglet_storage::MemoryStorage;
@@ -1433,7 +1435,16 @@ impl Database {
         // statement whose only claim is a session-level advisory lock, the session's hold
         // and not the block's (`Plan::block_takes_writer`).
         if planned.takes_writer() {
-            self.claim_writer(conn_id, planned.block_takes_writer())?;
+            match self.claim_writer(conn_id, planned.block_takes_writer()) {
+                // This host never waits, so every locking read here refuses as `NOWAIT`
+                // does; a `NOWAIT` one answers with its own message (`Plan::lock_wait`).
+                Err(Error::WriterHeldElsewhere(_)) if planned.lock_wait() == LockWait::NoWait => {
+                    return Err(Error::RowLockNotAvailable(
+                        planned.locked_relation().map(str::to_string),
+                    ));
+                }
+                other => other?,
+            }
         }
         // Auto-commit durability: a write applied outside an explicit transaction
         // must persist the meta root, or a restart loses it. The explicit-COMMIT

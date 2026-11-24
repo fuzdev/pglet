@@ -764,7 +764,7 @@ fn walk_level_rest(
         Ok(())
     };
     match plan {
-        Plan::LockRows { input } => {
+        Plan::LockRows { input, .. } => {
             walk_level(input, here, outer, schema, rewrite, chain_is_complete)
         }
         // Row-shaping nodes: their expressions belong to this level, and their input
@@ -1285,7 +1285,7 @@ fn descend_subplans(
 fn contains_subplan(plan: &Plan) -> bool {
     let any = |exprs: &[Expr]| exprs.iter().any(expr_contains_subplan);
     match plan {
-        Plan::LockRows { input } => contains_subplan(input),
+        Plan::LockRows { input, .. } => contains_subplan(input),
         Plan::Filter { input, predicate } => {
             expr_contains_subplan(predicate) || contains_subplan(input)
         }
@@ -1465,7 +1465,7 @@ fn level_scope(plan: &Plan, schema: &Schema) -> ColumnScope {
 /// [`level_scope`]'s recursive body.
 fn push_level_relations(scope: &mut ColumnScope, plan: &Plan, schema: &Schema) {
     match plan {
-        Plan::LockRows { input } => push_level_relations(scope, input, schema),
+        Plan::LockRows { input, .. } => push_level_relations(scope, input, schema),
         Plan::Scan { table, alias } => {
             if let Some(t) = schema.get_table(table) {
                 scope.push_stored_relation(scan_effective_name(table, alias), t);

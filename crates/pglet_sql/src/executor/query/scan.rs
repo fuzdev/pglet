@@ -442,7 +442,7 @@ fn collect_level_relation_names<'a>(plan: &'a Plan, names: &mut Vec<&'a str>) {
         | Plan::Window { input, .. }
         | Plan::Distinct { input }
         | Plan::DistinctOn { input, .. }
-        | Plan::LockRows { input } => collect_level_relation_names(input, names),
+        | Plan::LockRows { input, .. } => collect_level_relation_names(input, names),
         Plan::Join { left, right, .. } => {
             collect_level_relation_names(left, names);
             collect_level_relation_names(right, names);

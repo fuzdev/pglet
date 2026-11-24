@@ -847,10 +847,12 @@ impl Parser<'_> {
     /// to refuse the decoration.
     pub(super) fn parse_query_tail(&mut self, inner: QueryClauses) -> Result<Tail> {
         let wait_policy = self.lock_wait_policy_refusal.take();
+        let lock_wait = self.lock_wait;
         self.saw_skip_locked = false;
         let mut tail = Tail::default();
         let read = self.parse_query_tail_clauses(&mut tail);
         self.lock_wait_policy_refusal = wait_policy;
+        self.lock_wait = lock_wait;
         tail.clauses.skip_locked = self.saw_skip_locked;
         match read {
             Err(err @ Error::Syntax { .. }) => return Err(err),

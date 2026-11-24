@@ -2654,6 +2654,89 @@ async fn test_lock_timeout_bounds_the_wait() -> Result<(), Box<dyn std::error::E
     Ok(())
 }
 
+/// `NOWAIT` never waits for the writer: while another connection's block holds it, a
+/// `NOWAIT` locking read is `55P03` at once (`could not obtain lock on row in relation
+/// "…"`), auto-commit or in a block — where it aborts the block, as any error does — with
+/// `lock_timeout` far longer than the answer took. With the writer free it answers, and
+/// a block's `NOWAIT` read takes the writer as a plain `FOR UPDATE` does: another
+/// connection's `NOWAIT` is then refused in turn.
+async fn test_nowait_answers_at_once() -> Result<(), Box<dyn std::error::Error>> {
+    let a = connect().await;
+    let b = connect().await;
+    exec(&a, "DROP TABLE IF EXISTS w_nw").await;
+    exec(&a, "CREATE TABLE w_nw (id INT)").await;
+    exec(&a, "INSERT INTO w_nw VALUES (1)").await;
+    exec(&b, "SET lock_timeout = '5s'").await;
+
+    exec(&a, "BEGIN").await;
+    exec(&a, "INSERT INTO w_nw VALUES (2)").await;
+    let started = std::time::Instant::now();
+    let refused = b
+        .simple_query("SELECT id FROM w_nw FOR UPDATE NOWAIT")
+        .await
+        .err()
+        .and_then(|e| {
+            e.as_db_error()
+                .map(|d| (d.code().code().to_string(), d.message().to_string()))
+        });
+    assert_eq!(
+        refused,
+        Some((
+            "55P03".to_string(),
+            "could not obtain lock on row in relation \"w_nw\"".to_string()
+        ))
+    );
+    exec(&b, "BEGIN").await;
+    assert_eq!(
+        sqlstate(&b, "SELECT id FROM w_nw FOR KEY SHARE NOWAIT")
+            .await
+            .as_deref(),
+        Some("55P03")
+    );
+    assert_eq!(
+        sqlstate(&b, "SELECT 1").await.as_deref(),
+        Some("25P02"),
+        "the refusal aborted b's block"
+    );
+    exec(&b, "ROLLBACK").await;
+    let took = started.elapsed();
+    assert!(
+        took < Duration::from_millis(1500),
+        "never waited toward the 5s lock_timeout: {took:?}"
+    );
+    exec(&a, "COMMIT").await;
+
+    exec(&b, "BEGIN").await;
+    assert_eq!(
+        text_rows(
+            &b,
+            "SELECT id::text FROM w_nw ORDER BY id FOR NO KEY UPDATE NOWAIT"
+        )
+        .await,
+        vec!["1", "2"]
+    );
+    assert_eq!(
+        sqlstate(&a, "SELECT id FROM w_nw FOR SHARE NOWAIT")
+            .await
+            .as_deref(),
+        Some("55P03"),
+        "b's NOWAIT read took the writer"
+    );
+    exec(&b, "COMMIT").await;
+    assert_eq!(
+        text_rows(
+            &a,
+            "SELECT id::text FROM w_nw ORDER BY id FOR UPDATE NOWAIT"
+        )
+        .await,
+        vec!["1", "2"]
+    );
+
+    exec(&a, "DROP TABLE w_nw").await;
+    println!("✓ NOWAIT is 55P03 at once while another block holds the writer");
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() {
     eprintln!("[test] Building pglet_server...");
@@ -2772,6 +2855,7 @@ async fn main() {
         test_update_onto_a_staged_key_after_the_wait()
     );
     run_test!("writer release points", test_writer_release_points());
+    run_test!("NOWAIT answers at once", test_nowait_answers_at_once());
     run_test!(
         "an aborted block holds the writer until it ends",
         test_aborted_block_holds_the_writer_until_it_ends()

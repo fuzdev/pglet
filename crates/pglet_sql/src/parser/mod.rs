@@ -42,7 +42,7 @@ use std::collections::HashMap;
 use crate::catalog::Schema;
 use crate::lexer::{Keyword, Lexer, PgClass, TokenKind};
 use crate::planner::{
-    Expr, Plan, SetOpKind, SetOpOuterTypes, SetOpTyping, SideReferenceTypes, build_set_op,
+    Expr, LockWait, Plan, SetOpKind, SetOpOuterTypes, SetOpTyping, SideReferenceTypes, build_set_op,
 };
 use crate::types::TypeOid;
 use crate::{Error, Result};
@@ -517,15 +517,22 @@ struct Parser<'a> {
     /// `IS DISTINCT FROM` right operand — because `gram.y` spells each of those
     /// `b_expr <op> b_expr`. Measured: `DEFAULT 1 = 1 AND true` is `42601`.
     b_expr: bool,
-    /// The pending `SKIP LOCKED` / `NOWAIT` refusal, held until the whole statement has
-    /// parsed. `parse_for_locking` records the first one it sees rather than raising on
-    /// the spot, because 18.6 accepts both spellings and raises everything *else* first:
-    /// its `42703`/`42P01` over the projection and FROM, and its `42601` over trailing
-    /// junk, all beat a refusal pglet has and it does not. Deferring to [`parse`]'s
-    /// per-statement boundary is what puts pglet's refusal last, where 18.6's absent one
-    /// would be. The first refusal wins over a second (`… FOR UPDATE NOWAIT FOR SHARE
-    /// SKIP LOCKED` reports `NOWAIT`), matching a left-to-right parse.
+    /// The pending wait-policy refusal — a `SKIP LOCKED`, or locking items mixing
+    /// policies — held until the whole statement has parsed. `parse_for_locking` records
+    /// the first one it sees rather than raising on the spot, because 18.6 accepts both
+    /// and raises everything *else* first: its `42703`/`42P01` over the projection and
+    /// FROM, and its `42601` over trailing junk, all beat a refusal pglet has and it does
+    /// not. Deferring to [`parse`]'s per-statement boundary is what puts pglet's refusal
+    /// last, where 18.6's absent one would be. The first refusal wins over a second (`…
+    /// FOR UPDATE SKIP LOCKED FOR SHARE NOWAIT` reports `SKIP LOCKED`), matching a
+    /// left-to-right parse.
     lock_wait_policy_refusal: Option<Error>,
+    /// The wait policy of the statement's row-locking clauses ([`LockWait`]), set by the
+    /// first locking item and checked against each later one: a statement whose items
+    /// differ is refused (`Self::lock_wait_policy_refusal`), since one writer cannot
+    /// wait for one item and not another. [`parse`] reads it at the statement's end
+    /// into [`Plan::LockRows`], or refuses a policy on a statement that writes.
+    lock_wait: Option<LockWait>,
     /// The first error this parse reached that **18.6 raises in parse analysis** rather
     /// than in its raw parse, held until the whole statement has parsed
     /// ([`Self::owe_analysis_refusal`]). Two members today: the `42883` an operator
@@ -659,6 +666,7 @@ impl<'a> Parser<'a> {
             from_item_enclosing_depth: 0,
             b_expr: false,
             lock_wait_policy_refusal: None,
+            lock_wait: None,
             analysis_refusal: None,
             depth_refusal: None,
             depth_refusal_statement: 0,
@@ -721,6 +729,16 @@ impl<'a> Parser<'a> {
     fn adopt_deferred_refusals(&mut self, sub: &mut Parser<'_>) {
         if let Some(refusal) = sub.lock_wait_policy_refusal.take() {
             self.lock_wait_policy_refusal.get_or_insert(refusal);
+        }
+        // A sub-parser's statements are planned into its own plan and never wrapped in a
+        // `LockRows`, so no host sees their wait policy: refused, as a policy it cannot
+        // honour.
+        if let Some(wait) = sub.lock_wait.take()
+            && let Some(spelling) = wait.spelling()
+        {
+            self.lock_wait_policy_refusal.get_or_insert_with(|| {
+                Error::NotImplemented(format!("{spelling} inside a DO block not supported"))
+            });
         }
         if let Some(refusal) = sub.analysis_refusal.take() {
             self.analysis_refusal.get_or_insert(refusal);
@@ -920,6 +938,7 @@ fn parse_with(mut parser: Parser<'_>) -> Result<Vec<Plan>> {
         }
         parser.before_analysis_errors.clear();
         parser.saw_locking_clause = false;
+        parser.lock_wait = None;
         let plan = parser.parse_statement();
         let plan = parser.settle(plan)?;
         // The statement as a whole, once: every construct that deepens a tree is
@@ -957,11 +976,18 @@ fn parse_with(mut parser: Parser<'_>) -> Result<Vec<Plan>> {
             return Err(refusal);
         }
         // A locking clause over a read is the one fact of it a host acts on; a statement
-        // that writes takes the writer already.
+        // that writes takes the writer already, waiting for it as a write does — so a
+        // wait policy there is one no host honours, and is refused.
+        let wait = parser.lock_wait.take().unwrap_or(LockWait::Wait);
         let plan = if parser.saw_locking_clause && !plan.mutates_storage() {
             Plan::LockRows {
                 input: Box::new(plan),
+                wait,
             }
+        } else if let Some(spelling) = wait.spelling() {
+            return Err(Error::NotImplemented(format!(
+                "{spelling} in a statement that writes not supported"
+            )));
         } else {
             plan
         };
@@ -1374,6 +1400,7 @@ impl Parser<'_> {
         drop(plan);
         self.ts.restore(start);
         self.lock_wait_policy_refusal = None;
+        self.lock_wait = None;
         self.analysis_refusal = None;
         self.depth_refusal = None;
         self.set_ops_built = 0;

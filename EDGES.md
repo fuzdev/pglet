@@ -178,6 +178,7 @@ inside a table.
 | 230 | a block that wrote and then failed a statement — with no savepoint open, or inside a savepoint it then rolls back to — beside another connection's write | the other write waits until the block ends — `ROLLBACK`, a converted `COMMIT`, a disconnect; not a `ROLLBACK TO` — and answers `55P03` past the bound | a failed transaction releases its locks at the error, and a failed subtransaction the locks it took: the other write runs at once, a key written only inside the aborted savepoint included | loud past the bound; a delay within it | `test_concurrent`'s `an aborted block holds the writer until it ends`, which pins pglet's answer | An aborted block holds the writer until it ends |
 | 250 | the advisory locks, whose lock is the writer — `pg_advisory_xact_lock` and its `_shared` form, and `pg_advisory_lock`, which the session holds past its block | another key, a write, a `NULL`-argument call and a second shared holder wait; `ROLLBACK TO`, an error do not release; a multi-statement `Query` or a pipeline **releases at the statement**; off the statement's own projection `0A000`/`42601`; `try` forms `0A000` | only the same key waits, and shared holders not on each other; released at `ROLLBACK TO`, at the error, and at the message's or `Sync`'s end; answers anywhere; the `try` forms answer | loud past the bound; **silent** where it releases early | `test_concurrent`'s `pg_advisory_xact_lock is the writer`, `pg_advisory_xact_lock_shared is the writer` and `pg_advisory_lock is the writer, held by the session`; `crates/pglet`'s `an_advisory_session_lock_is_the_writer_and_the_sessions`; `functions/advisory_unlock_under_limit_loud.sql` | The advisory lock is the writer |
 | 329 | `set_config('lock_timeout', …)` in a statement that waits for the writer — kysely 0.28's migration lock, `with set_timeout as (select set_config('lock_timeout', '3600000', true) …) select pg_advisory_lock(…) from set_timeout`; on the native server | the wait is bounded by the `lock_timeout` in force when the statement starts (pglet's default `1s`), the assignment applying from the call on | the assignment bounds the lock call evaluated after it (an hour) | loud — `55P03` sooner than 18.6 would answer it | — none; a fixture cannot script the second connection | A statement's own `lock_timeout` does not bound its wait |
+| 331 | a `NOWAIT` locking read while another connection's block holds the writer, the rows it reads untouched by that block — or no row at all (`SELECT 1 FOR UPDATE NOWAIT`) | `55P03 could not obtain lock on row in relation "t"` at once | the rows, at once: only a row another transaction locked refuses | loud — an over-refusal | `test_concurrent`'s `NOWAIT answers at once` and `crates/pglet/tests/writer.rs` pin pglet's answer | A `NOWAIT` read refuses on the writer |
 | 251 | a POSIX-regex `~` / `!~` whose pattern is not `^` followed by literal characters; `~*` / `!~*`; a `char(n)` operand | `0A000` for the first — a malformed pattern included; `42883` for `~*` / `!~*`; the unpadded answer | a match, or `2201B` for a malformed pattern; `~*` / `!~*` answer; the padded answer | loud; **silent** over `char(n)` (row 95) | `functions/regex_*_loud.sql`, which pin pglet's refusals | The regex operators answer an anchored literal prefix |
 | 252 | `pg_get_serial_sequence` over a catalog relation, an index, or a column owning more than one sequence; `has_schema_privilege` over `pg_toast`, a role or an `oid`; a mistyped argument of the new catalog functions over no rows | `0A000`; `3F000`; `0A000`; no rows | an answer; `t`; `t`; `42883` | loud; the empty answer and a `col_description` rendering silent | `functions/has_schema_privilege_role_overload_loud.sql` | The catalog functions answer a narrower set |
 | 314 | a sequence an identity column owns beside its own — a `SERIAL`'s, left when the column was made an identity column, or one attached by `OWNED BY` | absent from `information_schema.sequences`; `nextval` over it answers | listed | **silent** — a catalog view short of a sequence that exists | — a faithful fixture is red | hides every sequence an identity column owns |
@@ -7800,6 +7801,26 @@ inside a table.
   wait, which a plan cannot do in general (a computed value, a call a row never reaches).
   No fixture can script the second connection.
 
+- **331 · A `NOWAIT` read refuses on the writer, not on a row.** The writer stands in for
+  every row lock pglet does not take (`Plan::LockRows`), so a `NOWAIT` locking read tries
+  for it — on the native server with a deadline of now, whatever `lock_timeout` is, and on
+  the embedded `Database`, which never waits, as any locking read does there — and answers
+  `55P03 could not obtain lock on row in relation "<the first table it reads>"` while
+  another connection holds it — its block, or a session-level advisory lock it holds
+  outside any block (row 250). 18.7 refuses only where another transaction holds a lock on
+  a row the read would lock; with A holding `SELECT pg_advisory_lock(42)` in auto-commit,
+  B's `… FOR UPDATE NOWAIT` is `55P03` here and answers the rows there. Measured on the
+  native server against 18.7, A holding `BEGIN; INSERT INTO w_nw VALUES (2)` and B's
+  `lock_timeout` at `5s`: B's auto-commit `SELECT id FROM w_nw FOR UPDATE NOWAIT` is
+  `55P03` at once where 18.7 answers both committed rows — A locked none of them — and B's
+  in-block `FOR KEY SHARE NOWAIT` is the same `55P03`, aborting B's block as 18.7's
+  refusal aborts its. A read that locks no row, `SELECT 1 FOR UPDATE NOWAIT`, answers
+  there and is `55P03 could not obtain lock on row` here. With no other block holding the
+  writer, every strength answers as on 18.7 and takes the writer as a plain locking read
+  does (`select/for_*_nowait*.sql`). Loud — an over-refusal, never rows. No fixture can
+  script the second connection; `test_concurrent`'s `NOWAIT answers at once` and
+  `crates/pglet/tests/writer.rs`' `a_nowait_read_is_refused_…` pin pglet's answer.
+
 - **251 · The regex operators answer an anchored literal prefix.** `~` and `!~` resolve
   over the string types as 18.6's do (`text`, `varchar`, `name` on the left, a `text` on the
   right) and are `42883` elsewhere — `integer`, `bytea`, an enum on the left, an `integer`
@@ -13112,7 +13133,7 @@ inside a table.
   `42703` is not, so it is never even tried (and is itself `42704 type "oid" is not
   supported` on its `NULL::OID`). Inside a transaction block the first refusal aborts it
   and every later statement is `25P02`. Measured on both engines; the chain in full is
-  row 57's bullet. (8) **retired** — `FOR UPDATE SKIP LOCKED` double-claims: both wait-policy spellings are refused `0A000` now (`docs/compatibility.md`'s `FOR UPDATE` row, `select/for_update_{skip_locked,nowait}_loud.sql`), so the double-claim is unreachable rather than silent. What stays accepted is the rest of the clause, whose semantic refusals are row 30's. The open members are (3) text collation and (7) `pg_type`/`pg_range`, and of the two only (7) is actionable — (3)'s ICU collation is a decided size cut (`TRADEOFFS.md`). A closed member's residual, where it has one, is stated at that member.
+  row 57's bullet. (8) **retired** — `FOR UPDATE SKIP LOCKED` double-claims: `SKIP LOCKED` is refused `0A000` (`docs/compatibility.md`'s `FOR UPDATE` row, `select/for_update_skip_locked_loud.sql`), so the double-claim is unreachable rather than silent, and `NOWAIT` tries for the writer and answers `55P03` at once (row 331). What stays accepted is the rest of the clause, whose semantic refusals are row 30's. The open members are (3) text collation and (7) `pg_type`/`pg_range`, and of the two only (7) is actionable — (3)'s ICU collation is a decided size cut (`TRADEOFFS.md`). A closed member's residual, where it has one, is stated at that member.
 
   Row 76 holds what is left of the `ErrorResponse` fields.
 - **66 · pglet's `search_path` is a value it reports, not a cell it keeps.** Every list

@@ -76,6 +76,12 @@ embedded `Database` runs one statement at a time on one thread and can't wait, s
 refuses with `55P03` instead: another logical connection's write while a block holds the
 writer, and its `BEGIN`/`COMMIT`/`ROLLBACK` while a block is open.
 
+A locking read's wait policy (`Plan::lock_wait`) decides whether it waits at all. A
+`NOWAIT` read tries for the writer and, while another connection's block holds it, fails
+at once with `55P03 could not obtain lock on row in relation "…"`, whatever `lock_timeout`
+is, on either host. It tries for it in auto-commit too, holding it for its statement, so it
+never takes the lock-free read path (`EDGES.md` row 331).
+
 **A plan doesn't fail because of another connection's uncommitted catalog.** The catalog
 is one live structure and a block's DDL lands in it right away, so a statement planned
 while another connection's block holds the writer plans against that block's changes.
@@ -83,7 +89,8 @@ while another connection's block holds the writer plans against that block's cha
 If the plan succeeds there and takes the writer, it waits for the writer and is planned
 again if the catalog moved (the embedded `Database` refuses it with `55P03`). Taking the
 writer here means a write, or a read that locks rows; an autocommit locking read takes it
-only where the host runs reads under the write lock (`--storage memory` on the native server).
+only where the host runs reads under the write lock (`--storage memory` on the native server),
+or where its wait policy makes it try for the writer.
 
 If the plan *fails* there, it's planned again against the catalog committed when the
 block took the writer. If it succeeds there, or fails differently (say, on a column the

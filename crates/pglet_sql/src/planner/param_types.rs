@@ -878,7 +878,7 @@ impl Inference {
     /// references resolve against (for column-context typing).
     fn walk_plan(&mut self, plan: &Plan, schema: &Schema, table: Option<&str>) {
         match plan {
-            Plan::LockRows { input } => self.walk_plan(input, schema, table),
+            Plan::LockRows { input, .. } => self.walk_plan(input, schema, table),
             // A bare `$N` entry is fixed as `text` once the whole list is analysed —
             // a `VALUES` list's columns, and a no-FROM select list, which lowers to one
             // row here — so its fix is timed after the last row rather than at the entry.
@@ -2313,7 +2313,7 @@ fn collect_from_aliases(plan: &Plan, out: &mut Vec<(String, String)>) {
 /// as `text` → `42883`).
 fn passthrough_input(plan: &Plan) -> Option<&Plan> {
     match plan {
-        Plan::LockRows { input }
+        Plan::LockRows { input, .. }
         | Plan::Filter { input, .. }
         | Plan::Project { input, .. }
         | Plan::Sort { input, .. }

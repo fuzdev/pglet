@@ -2025,7 +2025,35 @@ pub enum Plan {
     /// It wraps a whole statement and nothing else: the parser adds it once, at the
     /// statement's top, and only over a plan that does not already write, so no walker
     /// below a statement's root meets it.
-    LockRows { input: Box<Self> },
+    ///
+    /// `wait` is the clause's wait policy ([`LockWait`]), which says what a host does
+    /// when another connection holds the writer.
+    LockRows { input: Box<Self>, wait: LockWait },
+}
+
+/// A row-locking clause's **wait policy**: what a statement carrying it does when another
+/// connection's block holds the writer, which stands in for every row lock pglet does not
+/// take ([`Plan::LockRows`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub enum LockWait {
+    /// No policy written: wait for the writer, up to `lock_timeout`, as a write does.
+    Wait,
+    /// `NOWAIT`: take the writer at once or answer `55P03` at once — whatever
+    /// `lock_timeout` is, as 18.6's `NOWAIT` is not bounded by it. With no contention
+    /// the statement takes the writer as a plain locking read does, an auto-commit one
+    /// for its own duration.
+    NoWait,
+}
+
+impl LockWait {
+    /// The policy as written, or `None` for [`Self::Wait`], which has no spelling.
+    #[must_use]
+    pub const fn spelling(self) -> Option<&'static str> {
+        match self {
+            Self::Wait => None,
+            Self::NoWait => Some("NOWAIT"),
+        }
+    }
 }
 
 impl<'de> Deserialize<'de> for Plan {
@@ -2873,6 +2901,47 @@ fn table_columns_desc(schema: &Schema, table: &str) -> Vec<ColumnDesc> {
 }
 
 impl Plan {
+    /// The statement's row-locking wait policy — its [`Plan::LockRows`]'s, else
+    /// [`LockWait::Wait`]. A policy other than that is one a host honours when it takes
+    /// the writer: it **tries** for it, so even an auto-commit statement on a lock-free
+    /// read path takes the locked one.
+    #[must_use]
+    pub const fn lock_wait(&self) -> LockWait {
+        match self {
+            Self::LockRows { wait, .. } => *wait,
+            _ => LockWait::Wait,
+        }
+    }
+
+    /// The relation a row lock this statement's locking clause takes would be on, for
+    /// 18.6's `could not obtain lock on row in relation "…"`: the first base table its
+    /// `FROM` reads, through the row-shaping nodes and the left side of each join. `None`
+    /// where it reads none.
+    #[must_use]
+    pub fn locked_relation(&self) -> Option<&str> {
+        match self {
+            Self::Scan { table, .. } => Some(table),
+            #[cfg(feature = "index_acceleration")]
+            Self::IndexScan { table, .. }
+            | Self::IndexRangeScan { table, .. }
+            | Self::GinScan { table, .. } => Some(table),
+            Self::Join { left, right, .. } => {
+                left.locked_relation().or_else(|| right.locked_relation())
+            }
+            Self::LockRows { input, .. }
+            | Self::Filter { input, .. }
+            | Self::Project { input, .. }
+            | Self::Sort { input, .. }
+            | Self::Limit { input, .. }
+            | Self::Distinct { input }
+            | Self::DistinctOn { input, .. }
+            | Self::JunkFilter { input, .. } => input.locked_relation(),
+            Self::SubqueryScan { subquery, .. } => subquery.locked_relation(),
+            Self::With { body, .. } => body.locked_relation(),
+            _ => None,
+        }
+    }
+
     /// Whether this FROM subtree holds a `LATERAL` item at its own level — a lateral
     /// [`Plan::SubqueryScan`], reached through the joins of the subtree and nothing else.
     ///
@@ -2990,7 +3059,7 @@ impl Plan {
             | Self::Distinct { input, .. }
             | Self::DistinctOn { input, .. }
             | Self::Limit { input, .. }
-            | Self::LockRows { input } => input.output_columns_scoped(schema),
+            | Self::LockRows { input, .. } => input.output_columns_scoped(schema),
             Self::JunkFilter { input, keep } => {
                 Self::junk_filter_output(input.output_columns_scoped(schema), *keep)
             }
@@ -3739,7 +3808,7 @@ impl Plan {
             Self::Values { rows, .. } if rows.len() == 1 => Some(&rows[0]),
             Self::Project { exprs, .. } => Some(exprs),
             Self::With { body, .. } => body.advisory_projection_items(),
-            Self::LockRows { input } => input.advisory_projection_items(),
+            Self::LockRows { input, .. } => input.advisory_projection_items(),
             _ => None,
         }
     }
@@ -3858,7 +3927,7 @@ impl Plan {
             // A locking read is a read: an auto-commit `SELECT … FOR UPDATE` still runs
             // on the lock-free path, and it is inside a block that its clause takes the
             // writer (`Plan::takes_writer`).
-            Self::LockRows { input } => input.is_read_only(),
+            Self::LockRows { input, .. } => input.is_read_only(),
 
             // A FROM function writes nothing.
             Self::FunctionScan { .. } => true,
@@ -4098,7 +4167,7 @@ impl Plan {
             Self::Copy { direction, .. } => matches!(direction, CopyDirection::From),
 
             // A locking clause locks no row here and writes nothing.
-            Self::LockRows { input } => input.mutates_storage(),
+            Self::LockRows { input, .. } => input.mutates_storage(),
 
             // Transaction control touches only connection state, never storage.
             //

@@ -1904,6 +1904,13 @@ pub enum Error {
     #[error("canceling statement due to lock timeout")]
     LockTimeout,
 
+    /// A `NOWAIT` locking read that found the writer held by another connection's block
+    /// — the stand-in for a row lock it would wait for. SQLSTATE `55P03`
+    /// (`lock_not_available`), with `heap_lock_tuple`'s message, naming the first table
+    /// the statement reads (`Plan::locked_relation`); `None` where it reads none.
+    #[error("{}", row_lock_message(.0.as_deref()))]
+    RowLockNotAvailable(Option<String>),
+
     /// A runtime parameter assigned a value its type refuses — Postgres's
     /// `parse_and_validate_value`, SQLSTATE `22023` (`invalid_parameter_value`):
     /// `invalid value for parameter "…": "…"` for a value that does not parse (with the
@@ -2168,17 +2175,19 @@ impl Error {
                 fixed_later: true, ..
             } => "42P08", // ambiguous_parameter
             Self::AbortedTransaction => "25P02",            // in_failed_sql_transaction
-            Self::LockTimeout | Self::WriterHeldElsewhere(_) => "55P03", // lock_not_available
-            Self::SerializationFailure => "40001",          // serialization_failure
-            Self::TransactionIsolationFixed(_) => "25001",  // active_sql_transaction
-            Self::InvalidParameterValue { .. } => "22023",  // invalid_parameter_value
+            Self::LockTimeout | Self::WriterHeldElsewhere(_) | Self::RowLockNotAvailable(_) => {
+                "55P03" // lock_not_available
+            }
+            Self::SerializationFailure => "40001", // serialization_failure
+            Self::TransactionIsolationFixed(_) => "25001", // active_sql_transaction
+            Self::InvalidParameterValue { .. } => "22023", // invalid_parameter_value
             Self::UndefinedPreparedStatement { .. } => "26000", // undefined_pstatement
-            Self::UndefinedPortal { .. } => "34000",        // undefined_cursor
-            Self::ActiveSqlTransaction { .. } => "25001",   // active_sql_transaction
+            Self::UndefinedPortal { .. } => "34000", // undefined_cursor
+            Self::ActiveSqlTransaction { .. } => "25001", // active_sql_transaction
             Self::NoActiveSqlTransaction { .. } => "25P01", // no_active_sql_transaction
-            Self::SavepointNotFound(_) => "3B001",          // invalid_savepoint_specification
-            Self::UnsupportedSearchPath { .. } => "0A000",  // feature_not_supported
-            Self::SetRequiresParameterName => "22004",      // null_value_not_allowed
+            Self::SavepointNotFound(_) => "3B001", // invalid_savepoint_specification
+            Self::UnsupportedSearchPath { .. } => "0A000", // feature_not_supported
+            Self::SetRequiresParameterName => "22004", // null_value_not_allowed
             Self::NotImplemented(_) => "0A000",
         }
     }
@@ -2292,6 +2301,14 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// `pglet_sql::depth`'s limits are sized from the same frames, measured by
 /// `crates/pglet/tests/stack_depth.rs`.
 pub const MAX_ERROR_SIZE: usize = 80;
+
+/// [`Error::RowLockNotAvailable`]'s message: 18.6's, naming the relation where there is one.
+fn row_lock_message(relation: Option<&str>) -> String {
+    relation.map_or_else(
+        || "could not obtain lock on row".to_string(),
+        |r| format!("could not obtain lock on row in relation \"{r}\""),
+    )
+}
 
 #[cfg(test)]
 mod size_budget {

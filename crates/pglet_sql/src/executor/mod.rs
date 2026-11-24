@@ -155,7 +155,7 @@ pub fn execute_with_storage<S: Storage>(
     }
     match plan {
         // The clause locks no row: what it carries is for the host (`Plan::takes_writer`).
-        Plan::LockRows { input } => execute_with_storage(input, schema, storage, env, session),
+        Plan::LockRows { input, .. } => execute_with_storage(input, schema, storage, env, session),
         Plan::CreateTable {
             name,
             columns,
