@@ -8,14 +8,7 @@
 
 use std::path::PathBuf;
 
-/// The storage backend `--storage` names.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum StorageKind {
-    /// `MemoryStorage`: no MVCC and no persistence.
-    Memory,
-    /// The CoW B+tree, in memory unless `--data-dir` makes it persistent.
-    Btree,
-}
+use pglet_server::StorageKind;
 
 /// What the command line asks for.
 #[derive(Debug, Default, PartialEq, Eq)]

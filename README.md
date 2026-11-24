@@ -142,6 +142,11 @@ psql -h 127.0.0.1 -p 5433 -U postgres
 cargo run -p pglet_server -- --data-dir .pglet/data
 ```
 
+A Rust test suite can run the same server in its own process instead: the `pglet_server`
+crate is a library too, whose `Server::open(&ServerOptions::default())?.spawn_loopback()?`
+serves an in-memory B+tree on a loopback port the kernel picks, from a thread of its own,
+until the returned handle drops (the crate docs have the API).
+
 The server listens on `127.0.0.1` only and accepts any credentials — run it on a trusted
 machine. Each connection thread reserves 64 MiB of address space (512 MiB in a debug build);
 a connection no thread can be spawned for is refused, as Postgres refuses one it cannot fork.

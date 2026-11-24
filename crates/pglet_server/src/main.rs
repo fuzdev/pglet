@@ -3,24 +3,10 @@
 //! authentication; `--help` lists the flags, and `dump` exports a persisted database as SQL.
 
 mod cli;
-#[cfg(test)]
-mod clock_tests;
-mod connection;
-mod copy;
-mod encoding;
-mod execute;
-mod handlers;
-mod server;
-mod startup;
-#[cfg(test)]
-mod test_support;
-mod writer;
 
-use std::net::TcpListener;
+use std::net::{Ipv4Addr, TcpListener};
 
-use cli::StorageKind;
-use connection::SharedState;
-use server::{Server, on_connection_stack};
+use pglet_server::{Server, ServerOptions, StorageKind};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = match cli::parse_args(std::env::args().skip(1)) {
@@ -69,73 +55,54 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
 
-    // `dump` subcommand: open the persisted database and print its portable SQL dump
-    // to stdout, then exit — no listener. The operational "export a DB" path; the
-    // dump's target is loading into both stock Postgres and pglet, the dump invariant
-    // `docs/sequences.md` states (see `pglet::Database::dump_sql`).
+    // `dump` subcommand: print the persisted database's portable SQL dump to stdout, then
+    // exit — no listener. The operational "export a DB" path; the dump's target is loading
+    // into both stock Postgres and pglet, the dump invariant `docs/sequences.md` states.
     if args.dump {
         let Some(dir) = args.data_dir else {
             return Err("dump requires --data-dir <PATH>".into()); // parse_args refuses it first
         };
-        // `open_existing` (not `open`): a mistyped `--data-dir` must fail loud, not
-        // silently create an empty store and print a near-empty dump.
-        let dump = on_connection_stack(move || {
-            let db = pglet::Database::open_existing(&dir).map_err(|e| e.to_string())?;
-            db.dump_sql().map_err(|e| e.to_string())
-        })??;
-        print!("{dump}");
+        // The message alone, as a `String`, so `main`'s report prints it as it always
+        // has rather than the `io::Error`'s `Debug` form.
+        print!(
+            "{}",
+            pglet_server::dump_sql(&dir).map_err(|e| e.to_string())?
+        );
         return Ok(());
     }
 
-    let port = args.port.unwrap_or(5433);
-    let coerce_unknown_types = args.coerce_unknown_types;
-    let lock_timeout_ms = args
-        .lock_timeout_ms
-        .unwrap_or(pglet_sql::catalog::DEFAULT_LOCK_TIMEOUT_MS);
-
-    // The server: the state connections are served from (storage + schema), and — for a
-    // persistent store — how to reopen it once it fails a durable write (`server`).
     // `parse_args` has refused `--storage memory` with a `--data-dir`.
-    let server = match (args.storage, &args.data_dir) {
-        (Some(StorageKind::Memory), _) => {
-            println!("pglet using in-memory storage (no persistence)");
-            Server::new(
-                SharedState::in_memory()
-                    .with_coerce_unknown_types(coerce_unknown_types)
-                    .with_default_lock_timeout(lock_timeout_ms),
-                None,
-                None,
-            )
-        }
-        (_, Some(dir)) => {
-            println!(
-                "pglet using B+tree storage with persistence at {}",
-                dir.display()
-            );
-            Server::with_file_btree(dir, coerce_unknown_types, lock_timeout_ms)?
-        }
-        (Some(StorageKind::Btree) | None, None) => {
-            println!("pglet using B+tree storage (in-memory, no persistence)");
-            Server::new(
-                SharedState::with_btree()
-                    .with_coerce_unknown_types(coerce_unknown_types)
-                    .with_default_lock_timeout(lock_timeout_ms),
-                None,
-                None,
-            )
-        }
+    let options = ServerOptions {
+        storage: args.storage.unwrap_or_default(),
+        data_dir: args.data_dir,
+        coerce_unknown_types: args.coerce_unknown_types,
+        lock_timeout_ms: args
+            .lock_timeout_ms
+            .unwrap_or(pglet_sql::catalog::DEFAULT_LOCK_TIMEOUT_MS),
     };
-    if coerce_unknown_types {
+    match (options.storage, &options.data_dir) {
+        (StorageKind::Memory, _) => println!("pglet using in-memory storage (no persistence)"),
+        (StorageKind::Btree, Some(dir)) => println!(
+            "pglet using B+tree storage with persistence at {}",
+            dir.display()
+        ),
+        (StorageKind::Btree, None) => {
+            println!("pglet using B+tree storage (in-memory, no persistence)");
+        }
+    }
+    // The state connections are served from (storage + schema), and — for a persistent
+    // store — how to reopen it once it fails a durable write.
+    let server = Server::open(&options)?;
+    if options.coerce_unknown_types {
         println!("pglet coercing unsupported types to TEXT (--coerce-unknown-types)");
     }
 
-    let addr = format!("127.0.0.1:{port}");
-    let listener = TcpListener::bind(&addr)?;
+    let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, args.port.unwrap_or(5433)))?;
     // The bound address, not the requested one: under `--port 0` the kernel picks the
     // port, and this line is where a harness reads it.
     println!("pglet listening on {}", listener.local_addr()?);
 
-    server::serve(&listener, &server);
+    server.serve(&listener);
 
     Ok(())
 }

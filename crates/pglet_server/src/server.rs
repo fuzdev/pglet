@@ -21,13 +21,20 @@
 //! bound to the state it started on and never reaches the new one; and a
 //! restart would read the file through the same kernel page cache this reopen reads it
 //! through, since that cache outlives the process. The data-dir `flock` belongs to the
-//! server, not to a state, so it is held throughout.
+//! server and to every connection it serves, not to a state: each connection thread holds
+//! a share of it for as long as it runs, so the lock is held across every reopen and is
+//! released only once the server and the last connection that can still write the store
+//! are gone — a statement still running after a spawned server's handle drops keeps
+//! another opener out until it ends.
 
+use std::collections::HashMap;
+use std::fmt;
 use std::io::{self, Write as _};
-use std::net::{TcpListener, TcpStream};
+use std::net::{IpAddr, Ipv4Addr, Shutdown, SocketAddr, TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicI32, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 use std::sync::{Arc, mpsc};
+use std::thread::JoinHandle;
 
 use parking_lot::Mutex;
 use pglet::Database;
@@ -38,6 +45,65 @@ use crate::connection::{self, SharedState};
 /// Opens the store a state is built over — the file-backed server's
 /// `Database::open(data_dir)`, run on a connection thread's stack.
 pub type Reopen = Box<dyn Fn() -> io::Result<Database> + Send + Sync>;
+
+/// The storage backend a server runs on — `--storage`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum StorageKind {
+    /// The CoW B+tree with MVCC, in memory unless [`ServerOptions::data_dir`] makes it
+    /// persistent. The default, and what a test suite wants: `Memory` has no MVCC, and a
+    /// failed autocommit statement's partial effects stand there (`EDGES.md` row 40).
+    #[default]
+    Btree,
+    /// `MemoryStorage`: no MVCC and no persistence.
+    Memory,
+}
+
+/// What a server is opened with — the binary's flags, less the port and the `dump`
+/// subcommand.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ServerOptions {
+    /// The storage backend (`--storage`); the B+tree by default.
+    pub storage: StorageKind,
+    /// Persist the B+tree to this directory (`--data-dir`); `None` keeps it in memory.
+    /// [`StorageKind::Memory`] refuses one.
+    pub data_dir: Option<PathBuf>,
+    /// Coerce a type name pglet does not model to `TEXT` instead of refusing it
+    /// (`--coerce-unknown-types`).
+    pub coerce_unknown_types: bool,
+    /// How long a write waits for the writer before `55P03`, in milliseconds; `0` waits
+    /// without a bound (`--lock-timeout`).
+    pub lock_timeout_ms: u64,
+}
+
+impl Default for ServerOptions {
+    /// An in-memory B+tree, unknown types refused, the default `lock_timeout`.
+    fn default() -> Self {
+        Self {
+            storage: StorageKind::Btree,
+            data_dir: None,
+            coerce_unknown_types: false,
+            lock_timeout_ms: pglet_sql::catalog::DEFAULT_LOCK_TIMEOUT_MS,
+        }
+    }
+}
+
+/// The portable SQL dump of the database persisted under `data_dir` — the binary's `dump`
+/// subcommand (`pglet::Database::dump_sql`).
+///
+/// The store is opened with `open_existing`, so a mistyped directory is an error rather
+/// than an empty store's near-empty dump, and read on a connection thread's stack, so it
+/// exports a store an embedded opener refuses (`54001`).
+///
+/// # Errors
+///
+/// The store does not open, or the dump fails.
+pub fn dump_sql(data_dir: &Path) -> io::Result<String> {
+    let dir = data_dir.to_path_buf();
+    on_connection_stack(move || {
+        let db = Database::open_existing(&dir).map_err(|e| io::Error::other(e.to_string()))?;
+        db.dump_sql().map_err(|e| io::Error::other(e.to_string()))
+    })?
+}
 
 /// The server's state across a failed store: the state new connections are served
 /// from, and how to reopen the store when it fails.
@@ -52,20 +118,100 @@ pub struct Server {
     coerce_unknown_types: bool,
     /// The `lock_timeout` a connection starts with, carried to every reopened state.
     default_lock_timeout_ms: u64,
-    /// Exclusive `flock` on the data dir, held for the server's lifetime — across every
-    /// reopen — so a second process can't open the same `--data-dir` and corrupt its
-    /// pages. Only held for its `Drop`.
-    #[expect(
-        dead_code,
-        reason = "held only for its `Drop`, which releases the data-dir lock"
-    )]
-    data_dir_lock: Option<FileLock>,
+    /// Exclusive `flock` on the data dir, so a second opener — another process, or
+    /// another [`Server::open`] in this one — can't open the same directory and corrupt
+    /// its pages. Shared, not owned: [`serve`] moves a clone into every connection thread,
+    /// so the lock outlives the server for as long as a connection can still write the
+    /// store, and it is released when the last share drops.
+    data_dir_lock: Option<Arc<FileLock>>,
+}
+
+impl fmt::Debug for Server {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Server")
+            .field("persistent", &self.reopen.is_some())
+            .field("coerce_unknown_types", &self.coerce_unknown_types)
+            .field("default_lock_timeout_ms", &self.default_lock_timeout_ms)
+            .finish_non_exhaustive()
+    }
 }
 
 impl Server {
+    /// Open a server's state as `options` asks: an in-memory B+tree, `MemoryStorage`, or
+    /// the single-file B+tree under a data dir, whose lock it and every connection it serves then hold, until the last of them ends.
+    ///
+    /// # Errors
+    ///
+    /// [`StorageKind::Memory`] with a data dir (`InvalidInput`), the data-dir lock held
+    /// elsewhere, or the store's open error.
+    pub fn open(options: &ServerOptions) -> io::Result<Self> {
+        let ServerOptions {
+            storage,
+            data_dir,
+            coerce_unknown_types,
+            lock_timeout_ms,
+        } = options;
+        let in_memory = |state: SharedState| {
+            Self::new(
+                state
+                    .with_coerce_unknown_types(*coerce_unknown_types)
+                    .with_default_lock_timeout(*lock_timeout_ms),
+                None,
+                None,
+            )
+        };
+        match (storage, data_dir) {
+            (StorageKind::Memory, Some(_)) => Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "memory storage keeps nothing; it cannot take a data dir",
+            )),
+            (StorageKind::Memory, None) => Ok(in_memory(SharedState::in_memory())),
+            (StorageKind::Btree, None) => Ok(in_memory(SharedState::with_btree())),
+            (StorageKind::Btree, Some(dir)) => {
+                Self::with_file_btree(dir, *coerce_unknown_types, *lock_timeout_ms)
+            }
+        }
+    }
+
+    /// Accept connections on `listener` for as long as it yields them, on this thread —
+    /// the binary's foreground loop. Each connection is served on a thread of its own.
+    pub fn serve(&self, listener: &TcpListener) {
+        serve(listener, self, None);
+    }
+
+    /// Serve on `listener` from a thread of its own until the returned handle is dropped
+    /// or [`ServerHandle::shutdown`] — how a test suite runs the server in its process.
+    ///
+    /// # Errors
+    ///
+    /// The listener's address cannot be read, or the accept thread cannot be spawned.
+    pub fn spawn(self, listener: TcpListener) -> io::Result<ServerHandle> {
+        let local_addr = listener.local_addr()?;
+        let stop = Arc::new(Stop::default());
+        let accept_stop = Arc::clone(&stop);
+        let accept = std::thread::Builder::new()
+            .name("pglet_server accept".into())
+            .spawn(move || serve(&listener, &self, Some(&accept_stop)))?;
+        Ok(ServerHandle {
+            local_addr,
+            stop,
+            accept: Some(accept),
+        })
+    }
+
+    /// [`Server::spawn`] on a listener bound to `127.0.0.1` at a port the kernel picks,
+    /// which [`ServerHandle::local_addr`] reports.
+    ///
+    /// # Errors
+    ///
+    /// The bind fails, or [`Server::spawn`]'s errors.
+    pub fn spawn_loopback(self) -> io::Result<ServerHandle> {
+        self.spawn(TcpListener::bind((Ipv4Addr::LOCALHOST, 0))?)
+    }
+
     /// A server over `state`, reopened by `reopen` once its store fails.
     #[must_use]
-    pub fn new(
+    pub(crate) fn new(
         state: SharedState,
         reopen: Option<Reopen>,
         data_dir_lock: Option<FileLock>,
@@ -77,7 +223,7 @@ impl Server {
             reopen,
             coerce_unknown_types,
             default_lock_timeout_ms,
-            data_dir_lock,
+            data_dir_lock: data_dir_lock.map(Arc::new),
         }
     }
 
@@ -91,7 +237,7 @@ impl Server {
     /// # Errors
     ///
     /// The lock held elsewhere, or the store's open error.
-    pub fn with_file_btree(
+    pub(crate) fn with_file_btree(
         data_dir: &Path,
         coerce_unknown_types: bool,
         default_lock_timeout_ms: u64,
@@ -118,7 +264,7 @@ impl Server {
     /// (`crate::writer::WriterLock::fail_waiters`). A reopen that fails leaves the failed
     /// state current, which refuses the connection's startup (`FATAL 57P03`), and the
     /// next connection tries again.
-    pub fn connection_state(&self) -> Arc<SharedState> {
+    pub(crate) fn connection_state(&self) -> Arc<SharedState> {
         let mut current = self.current.lock();
         if let (Some(reason), Some(reopen)) = (current.write_failure_reason(), &self.reopen) {
             match reopen() {
@@ -142,13 +288,95 @@ impl Server {
     }
 }
 
+/// A server running on a thread of its own ([`Server::spawn`]), stopped when this drops.
+///
+/// Stopping ends the accept loop, then shuts down the socket of every connection it
+/// accepted, so each connection's thread reads the end of its stream and exits — it is not
+/// joined: one waiting for the writer wakes at its `lock_timeout`, not at the shutdown.
+/// The store is freed, and a persistent one's data-dir lock released, when the last
+/// connection's thread lets go of it; until then [`Server::open`] of the same directory
+/// is refused.
+#[derive(Debug)]
+pub struct ServerHandle {
+    local_addr: SocketAddr,
+    stop: Arc<Stop>,
+    accept: Option<JoinHandle<()>>,
+}
+
+impl ServerHandle {
+    /// The address the server listens on — under [`Server::spawn_loopback`], the port the
+    /// kernel picked.
+    #[must_use]
+    pub const fn local_addr(&self) -> SocketAddr {
+        self.local_addr
+    }
+
+    /// Stop the server now; dropping the handle does the same.
+    pub fn shutdown(mut self) {
+        self.stop();
+    }
+
+    fn stop(&mut self) {
+        let Some(accept) = self.accept.take() else {
+            return;
+        };
+        self.stop.requested.store(true, Ordering::SeqCst);
+        // The accept loop is blocked in `accept`: a connection of its own wakes it to read
+        // the flag. A listener on an unspecified address is reached on loopback.
+        let mut wake = self.local_addr;
+        if wake.ip().is_unspecified() {
+            wake.set_ip(IpAddr::V4(Ipv4Addr::LOCALHOST));
+        }
+        if TcpStream::connect(wake).is_ok() {
+            // Every stream the loop accepted is registered by the time it exits.
+            drop(accept.join());
+        } else {
+            eprintln!("pglet: cannot wake the accept loop at {wake}; it is left running");
+        }
+        for (_, stream) in self.stop.connections.lock().drain() {
+            drop(stream.shutdown(Shutdown::Both));
+        }
+    }
+}
+
+impl Drop for ServerHandle {
+    fn drop(&mut self) {
+        self.stop();
+    }
+}
+
+/// A spawned server's stop request, and a handle on each connection's socket to close
+/// when it stops, keyed by the connection's process id.
+#[derive(Debug, Default)]
+struct Stop {
+    requested: AtomicBool,
+    connections: Mutex<HashMap<i32, TcpStream>>,
+}
+
+/// A connection's entry in its spawned server's registry, removed when the connection's
+/// thread ends, however it ends.
+struct Registration {
+    stop: Arc<Stop>,
+    pid: i32,
+}
+
+impl Drop for Registration {
+    fn drop(&mut self) {
+        self.stop.connections.lock().remove(&self.pid);
+    }
+}
+
 /// Process ids handed to connections, one each.
 static NEXT_PID: AtomicI32 = AtomicI32::new(1);
 
-/// Accept connections on `listener` for as long as it yields them, each on its own
-/// thread and served from [`Server::connection_state`].
-pub fn serve(listener: &TcpListener, server: &Server) {
+/// Accept connections on `listener` for as long as it yields them — or, given a `stop`,
+/// until it is requested — each on its own thread and served from
+/// [`Server::connection_state`].
+fn serve(listener: &TcpListener, server: &Server, stop: Option<&Arc<Stop>>) {
     for stream in listener.incoming() {
+        if stop.is_some_and(|stop| stop.requested.load(Ordering::SeqCst)) {
+            return;
+        }
         match stream {
             Ok(stream) => {
                 // Disable Nagle, as Postgres does for every TCP backend socket
@@ -170,7 +398,31 @@ pub fn serve(listener: &TcpListener, server: &Server) {
                     continue;
                 }
                 let pid = NEXT_PID.fetch_add(1, Ordering::Relaxed);
+                // A spawned server closes this socket when it stops, so it keeps a handle
+                // on it — registered here, on the accept thread, so every stream accepted
+                // before the stop is in the registry once that thread has exited.
+                // The entry is removed when its `Registration` drops — at the thread's
+                // end, however it ends (a panic included, so the duplicate never keeps a
+                // dead connection's socket open), or with the closure if no thread could
+                // be spawned for it.
+                let registration = match stop.map(|stop| stream.try_clone().map(|s| (stop, s))) {
+                    None => None,
+                    Some(Ok((stop, handle))) => {
+                        stop.connections.lock().insert(pid, handle);
+                        Some(Registration {
+                            stop: Arc::clone(stop),
+                            pid,
+                        })
+                    }
+                    Some(Err(e)) => {
+                        eprintln!("connection error: cannot keep a handle on the socket: {e}");
+                        continue;
+                    }
+                };
                 let state = server.connection_state();
+                // The thread's share of the data-dir lock: the store this connection
+                // writes is the locked directory's until the thread ends.
+                let data_dir_lock = server.data_dir_lock.clone();
                 // The connection thread's stack and the statement-tree depth it admits
                 // are one budget (`pglet_sql::depth`): the thread is sized for
                 // `SERVER_MAX_DEPTH`, and a deeper statement is `54001` rather than an
@@ -187,9 +439,21 @@ pub fn serve(listener: &TcpListener, server: &Server) {
                         };
                         pglet_sql::depth::set_max_depth(pglet_sql::depth::SERVER_MAX_DEPTH);
                         pglet_sql::depth::set_thread_stack(pglet_sql::depth::SERVER_THREAD_STACK);
-                        if let Err(e) = connection::handle_connection(stream, pid, state) {
+                        let served = connection::handle_connection(stream, pid, state);
+                        // A stop's shutdown ends the connection with an error that is not
+                        // the connection's own.
+                        let stopping = registration
+                            .as_ref()
+                            .is_some_and(|r| r.stop.requested.load(Ordering::SeqCst));
+                        if let Err(e) = served
+                            && !stopping
+                        {
                             eprintln!("connection error: {e}");
                         }
+                        drop(registration);
+                        // Released last, after the connection's store is no longer
+                        // written by this thread.
+                        drop(data_dir_lock);
                     });
                 match spawned {
                     // The thread blocks in `recv` until this send, so it cannot fail.
@@ -247,7 +511,7 @@ mod tests {
     //! A server whose store fails a durable write returns to service by itself, over a
     //! real loopback socket through [`serve`]: every connection on the failed store is
     //! ended, and a reconnect is served from the durable state — with the data-dir lock
-    //! held throughout.
+    //! held across the reopen.
 
     use std::io::{Read, Write};
     use std::net::{SocketAddr, TcpListener, TcpStream};
@@ -259,7 +523,7 @@ mod tests {
     use pglet_testing::block_io::MemBlockIo;
     use pglet_testing::db::{ScratchDir, open_database};
 
-    use super::{Reopen, Server, serve};
+    use super::{Reopen, Server, ServerOptions, StorageKind, serve};
     use crate::connection::SharedState;
 
     /// A minimal protocol-3 client: a startup, then simple queries.
@@ -379,7 +643,7 @@ mod tests {
         let server = Server::new(state, Some(reopen), Some(lock));
         let listener = TcpListener::bind("127.0.0.1:0").expect("bind loopback");
         let addr = listener.local_addr().expect("local_addr");
-        std::thread::spawn(move || serve(&listener, &server));
+        std::thread::spawn(move || serve(&listener, &server, None));
         addr
     }
 
@@ -388,7 +652,7 @@ mod tests {
     /// an idle one in a block are each ended (`FATAL 57P02`) — the idle one after the
     /// reopen, so a connection is not served from a state it did not start on — and a
     /// reconnect reads exactly the durable rows and writes durably. The data-dir lock is
-    /// held throughout.
+    /// held across the reopen.
     #[test]
     fn a_failed_store_is_reopened_for_the_next_connection() {
         let scratch = ScratchDir::new("server_reopen");
@@ -489,5 +753,120 @@ mod tests {
             2,
             "one reopen per connection until one opens"
         );
+    }
+
+    /// A spawned server serves on the loopback port it reports, and dropping its handle
+    /// stops it: the listener is closed, and a connection still open reads the end of its
+    /// stream instead of being served from a server no one holds.
+    #[test]
+    fn a_spawned_server_stops_when_its_handle_drops() {
+        let handle = Server::open(&ServerOptions::default())
+            .expect("open")
+            .spawn_loopback()
+            .expect("spawn");
+        let addr = handle.local_addr();
+        assert!(addr.ip().is_loopback(), "{addr}");
+        assert_ne!(addr.port(), 0, "the port the kernel picked");
+
+        let mut a = Client::connect(addr).expect("startup");
+        a.query("CREATE TABLE t (id INT)").unwrap();
+        a.query("INSERT INTO t VALUES (1)").unwrap();
+        let mut b = Client::connect(addr).expect("a second connection");
+        assert_eq!(
+            ids(&mut b),
+            Ok(vec!["1".to_string()]),
+            "one store, two connections"
+        );
+
+        drop(handle);
+        assert!(a.is_closed(), "an open connection is closed by the stop");
+        assert!(b.is_closed(), "every open connection is");
+        assert!(
+            TcpStream::connect(addr).is_err(),
+            "the listener is closed once the handle drops"
+        );
+    }
+
+    /// The data-dir lock outlives the handle for as long as a connection can still write
+    /// the store: a statement running when a spawned server's handle drops keeps another
+    /// `Server::open` of the same directory out until it ends. Released with the handle,
+    /// a second server opened over the directory while the first's statement still ran,
+    /// and the old statement's commit then overwrote a write the second had acknowledged.
+    #[test]
+    fn the_data_dir_lock_outlives_the_handle_while_a_statement_runs() {
+        let scratch = ScratchDir::new("server_lock_outlives_handle");
+        let options = ServerOptions {
+            data_dir: Some(scratch.path.clone()),
+            ..ServerOptions::default()
+        };
+        let handle = Server::open(&options)
+            .expect("open")
+            .spawn_loopback()
+            .expect("spawn");
+        let mut a = Client::connect(handle.local_addr()).expect("startup");
+        a.query("CREATE TABLE t (a INT)").unwrap();
+        // Sized by profile to run for seconds, well past the drop below, in either build.
+        let copies = if cfg!(debug_assertions) { 2 } else { 20 };
+        let writer = std::thread::spawn(move || {
+            let _ = a.query(&format!(
+                "INSERT INTO t SELECT a FROM generate_series(1, 200) a, \
+                 generate_series(1, 200) b, generate_series(1, {copies}) c"
+            ));
+        });
+        std::thread::sleep(Duration::from_millis(300));
+        assert!(
+            !writer.is_finished(),
+            "the statement must still be running when the handle drops"
+        );
+        drop(handle);
+        assert!(
+            Server::open(&options).is_err(),
+            "the directory is still locked while the statement runs"
+        );
+        writer.join().expect("the client thread");
+        let deadline = std::time::Instant::now() + Duration::from_secs(120);
+        let reopened = loop {
+            if let Ok(server) = Server::open(&options) {
+                break server;
+            }
+            assert!(
+                std::time::Instant::now() < deadline,
+                "the lock is released once the statement ends"
+            );
+            std::thread::sleep(Duration::from_millis(20));
+        };
+        drop(reopened);
+    }
+
+    /// Two spawned servers are two stores: each one's process-wide state is its own.
+    #[test]
+    fn two_spawned_servers_share_nothing() {
+        let open = || {
+            Server::open(&ServerOptions::default())
+                .expect("open")
+                .spawn_loopback()
+                .expect("spawn")
+        };
+        let (one, two) = (open(), open());
+        let mut a = Client::connect(one.local_addr()).expect("startup");
+        a.query("CREATE TABLE t (id INT)").unwrap();
+        let mut b = Client::connect(two.local_addr()).expect("startup");
+        assert_eq!(ids(&mut b).map_err(|(code, _)| code), Err("42P01".into()));
+        one.shutdown();
+        b.query("CREATE TABLE t (id INT)").unwrap();
+        assert_eq!(ids(&mut b), Ok(vec![]), "the other server is still serving");
+    }
+
+    /// `MemoryStorage` keeps nothing, so it refuses a data dir, as `--storage memory
+    /// --data-dir` is refused.
+    #[test]
+    fn memory_storage_refuses_a_data_dir() {
+        let options = ServerOptions {
+            storage: StorageKind::Memory,
+            data_dir: Some("/nonexistent".into()),
+            ..ServerOptions::default()
+        };
+        let err = Server::open(&options).expect_err("refused");
+        assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
     }
 }

@@ -8,6 +8,12 @@ repository.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 
+# The server is a library (`src/lib.rs`: open a server's state, serve it on this thread or
+# spawn it on one of its own) and the binary a thin caller of it (`src/main.rs`: the flags,
+# the banner lines, the `dump` subcommand).
+[lib]
+path = "src/lib.rs"
+
 [[bin]]
 name = "pglet_server"
 path = "src/main.rs"
