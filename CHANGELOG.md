@@ -37,6 +37,9 @@ released version under a fresh `## Unreleased` declaring a patch.
   keys and predicates, and foreign keys on either side follow it
 - feat: `ALTER TABLE … ADD CHECK … NOT VALID` and `VALIDATE CONSTRAINT` (was `42601`); a
   store written by an earlier version is refused at open (store format `PGMW`)
+- feat: an aggregate or a window function in a `SELECT` with no `FROM` — `SELECT count(*)`,
+  `INSERT INTO t SELECT max(…)` — answers over one row (was `0A000`)
+- fix: `'s'::regclass` names a sequence, as `to_regclass` does (was `42P01`)
 
 ## 0.2.1
 

@@ -539,12 +539,11 @@ fn catalog_or_err<'a>(schema: Option<&'a Schema>, what: &str) -> Result<&'a Sche
 /// the catalog lookup, so `SELECT 0::regclass::text` is `-` there against `0` here
 /// (measured; `EDGES.md` row 85's (f)).
 ///
-/// **What counts as a relation here is this function's own list, and it is shorter than
-/// 18.6's.** Both arms read `schema.tables` and then `schema.indexes` — so
-/// `parent_pkey::regclass` names the index — and a **sequence** is in neither:
-/// `SELECT 's1'::regclass` is `42P01` here where 18.6 answers `s1`, on a connection
-/// where `nextval('s1')` answers on the next line. `EDGES.md` row 85's (e) records it,
-/// together with the `::regclass::text` spelling that does **not** bound it.
+/// **A name is a relation of any kind pglet holds** ([`Schema::relation_kind`]) — a
+/// table, an index (`parent_pkey::regclass` names the index) or a sequence (`'s1'::regclass`
+/// answers `s1`), as `to_regclass` finds it. **An OID is a table's or an index's only**:
+/// a sequence carries no OID here, so `<its oid>::regclass` has nothing to find
+/// (`EDGES.md` row 85's (e)).
 fn eval_regclass(schema: &Schema, value: &Value) -> Result<Value> {
     match value {
         Value::Int2(_) | Value::Int4(_) | Value::Int8(_) => {
@@ -577,7 +576,7 @@ fn eval_regclass(schema: &Schema, value: &Value) -> Result<Value> {
             // one identifier fold, with its three recorded divergences. A second copy
             // here would be a second fold.
             let bare = crate::parser::reduce_name_literal(name)?;
-            if schema.get_table(&bare).is_some() || schema.get_index(&bare).is_some() {
+            if schema.relation_kind(&bare).is_some() {
                 Ok(Value::Text(crate::lexer::quote_ident(&bare)))
             } else {
                 Err(CatalogError::TableNotFound { table: bare }.into())

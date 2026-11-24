@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42P01",
+    "message": "relation \"rgs_nosuch\" does not exist"
+  }
+}

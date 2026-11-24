@@ -549,8 +549,6 @@ statement over an empty table is refused too, except where an item says otherwis
 - **`DELETE … USING`** — `42601`. `DELETE … WHERE id IN (SELECT …)` works.
 - **An alias on a `DELETE`'s table**, and `DELETE FROM ONLY t` — `DELETE FROM t AS x WHERE x.id = 1`, `DELETE
   FROM t x` — `42601`. Name the table itself (`DELETE FROM t WHERE t.id = 1`); `UPDATE t AS x SET …` works.
-- **An aggregate in a `SELECT` with no `FROM`** — `SELECT count(*)`, `INSERT INTO t SELECT max(…)` — `0A000`,
-  raised when it is evaluated. Add `FROM (SELECT 1) AS one`.
 - **`VALUES (1), (2)` as a statement of its own** — `0A000`. `SELECT * FROM (VALUES (1), (2)) AS v(x)` works.
 - **`FETCH FIRST n ROWS ONLY`** — `42601`. `LIMIT` works.
 - **`COLLATE`** — `42601`. Text already compares byte by byte, as `COLLATE "C"` does (*Known differences*, above).

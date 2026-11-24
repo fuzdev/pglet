@@ -354,7 +354,7 @@ impl Parser<'_> {
         // sees them. `scope_is_complete` is what keeps that gate off a level an expression
         // subquery encloses, whose keys may still name the enclosing query's relations.
         let from_clause = self.ts.eat_kw(Keyword::From)?;
-        if !from_clause && !self.at_no_from_filter() {
+        if !from_clause && !self.at_no_from_filter() && !aggregates_one_row(&projection) {
             let scope_is_complete = self.scope_is_complete();
             let plan = plan_select_no_from(projection, self.schema)?;
             let plan = if !distinct_on.is_empty() {
@@ -386,6 +386,9 @@ impl Parser<'_> {
         } else {
             None
         };
+        if !from_clause {
+            refuse_enclosing_aggregates(&projection, having.as_ref())?;
+        }
 
         Ok(SelectLeaf::FromParts(Box::new(SelectParts {
             from,
@@ -403,7 +406,8 @@ impl Parser<'_> {
     }
 
     /// The leaf's FROM relation: its `FROM` clause, or with none — a `WHERE`, `GROUP BY` or
-    /// `HAVING` follows — 18.6's one empty row (its `Result` node over no relation), so the
+    /// `HAVING` follows, or the projection aggregates or windows ([`aggregates_one_row`]) —
+    /// 18.6's one empty row (its `Result` node over no relation), so the
     /// clauses run where a FROM query's do and `INSERT … SELECT <constants> WHERE EXISTS
     /// (…)` writes its row or none.
     ///
@@ -2131,6 +2135,52 @@ impl Parser<'_> {
             || self.ts.at_kw(Keyword::Cross)
             || self.ts.at_kw(Keyword::Natural)
     }
+}
+
+/// Whether a no-FROM select's projection aggregates or calls a window function —
+/// `SELECT count(*)`, `SELECT max(1) + 1`, `SELECT row_number() OVER ()` — so it is a
+/// grouping or windowed query over 18.6's one empty row, planned as one with a `FROM` is
+/// (`Plan::Aggregate` / `Plan::Window` over that row) rather than as a one-row `VALUES`,
+/// whose evaluation has nothing to read the call's value from. A call inside a subquery
+/// belongs to that subquery's level and does not count.
+fn aggregates_one_row(projection: &[Expr]) -> bool {
+    projection
+        .iter()
+        .any(|e| contains_aggregate(e) || contains_window(e))
+}
+
+/// Refuse a no-FROM select's aggregate whose argument holds a column reference (`0A000`).
+///
+/// With no `FROM`, every column such an argument names is an enclosing query's, so 18.6
+/// evaluates the aggregate at that outer level (`check_agg_arguments`) — over the outer
+/// query's rows, or refused `42803` where that level allows none — while pglet, which has
+/// no outer-level aggregates (`EDGES.md` row 303), would evaluate it over this level's one
+/// row and answer per outer row. A column inside a subquery of the argument belongs to
+/// that subquery and does not count.
+#[inline(never)]
+fn refuse_enclosing_aggregates(projection: &[Expr], having: Option<&Expr>) -> Result<()> {
+    fn holds_column(e: &Expr) -> bool {
+        if let Expr::Column { name, .. } = e {
+            return name != "*";
+        }
+        let mut found = false;
+        e.for_each_child(|c| found = found || holds_column(c));
+        found
+    }
+    fn enclosing_aggregate(e: &Expr) -> bool {
+        if let Expr::Aggregate { arg, .. } = e {
+            return holds_column(arg);
+        }
+        let mut found = false;
+        e.for_each_child(|c| found = found || enclosing_aggregate(c));
+        found
+    }
+    if projection.iter().chain(having).any(enclosing_aggregate) {
+        return Err(Error::NotImplemented(
+            "an aggregate over an enclosing query's column in a SELECT with no FROM".into(),
+        ));
+    }
+    Ok(())
 }
 
 /// A bare `*` in a select list with no FROM clause names no relation's columns: 18.6's

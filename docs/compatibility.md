@@ -116,9 +116,10 @@ a row 18.6 never reads is still raised. The same happens in a derived table unde
 
 #### SELECT / DML family — details
 
-A **no-FROM** `SELECT` with a `WHERE`, `GROUP BY` or `HAVING` reads one row of no columns,
-as 18.6's does, through the FROM query's own lowering: `SELECT 1 WHERE false` is no row,
-`SELECT count(*) WHERE false` is `0`, and `INSERT … SELECT <constants> WHERE EXISTS (…)`
+A **no-FROM** `SELECT` with a `WHERE`, `GROUP BY` or `HAVING`, or whose projection
+aggregates or calls a window function, reads one row of no columns, as 18.6's does,
+through the FROM query's own lowering: `SELECT 1 WHERE false` is no row, `SELECT count(*)`
+is `1`, `SELECT count(*) WHERE false` is `0`, `SELECT row_number() OVER ()` is `1`, and `INSERT … SELECT <constants> WHERE EXISTS (…)`
 writes its row or none (`EDGES.md` row 296, closed, with its residuals). A bare `*` with no
 `FROM` is `42601`.
 

@@ -276,7 +276,7 @@ inside a table.
 | 82 | a **sequence** in `pg_class`, and `public`'s own namespace OID | no `relkind = 'S'` row at all; `public` is always OID 2200 | one row per sequence; `public`'s OID is per-database | silent both ways — a client counting relations sees fewer; one joining on a hardcoded 2200 agrees by accident | — `catalog/pg_class_index_rows.sql` would redden on a wrongly shaped `S` row; nothing pins the absence | A sequence has no `pg_class` row |
 | 83 | a catalog column **18.6 declares and pglet does not model**, over a relation pglet models completely | `42703` — the relation binds exhaustively | the column, usually NULL or a vector | **loud, and deliberately over-refusing** | `catalog/unmodelled_column_is_loud_*.sql` + `unmodelled_column_over_populated_relation.sql` + `modelled_column_binds_on_every_complete_relation.sql` | An unmodelled catalog column is refused |
 | 84 | `pg_get_constraintdef` or `::regclass` inside a **stored expression** — a CHECK, an index predicate, an index key | `0A000 … is not available in this context`, refused at DDL time by the render/eval probe | accepted and stored | loud, and deliberate — the query and DML positions all answer | `deparse`'s `catalog_reading_string_fns_render_to_their_written_form`; `catalog/regclass_in_dml_positions.sql` + `catalog/regclass_in_returning.sql` for the DML half | A catalog-reading expression cannot be stored |
-| 85 | **`regclass` is a name here, not an OID** — and the consequences that follow from it | the relation's name **rendered for an identifier position** (`quote_ident`), typed `text`; a **sequence**'s name resolves to nothing at all | an OID that *prints* as the name; `42725 operator is not unique` for `"char" \|\| text` and `"char" \|\| unknown`; `s1` for a sequence | silent for (a) and (d), loud for (b), (c) and (e); (f) is a closed class over two silent residuals | `catalog/regclass_*.sql` + `catalog/spine_snapshot_constraints_regclass.sql` pin the `::text` spelling and the name side's reject; `regclass_quotes_the_relation_name.sql` pins (f)'s rule; nothing pins (a), (e), or (c)'s divergent half | `::regclass` answers a name, not an OID |
+| 85 | **`regclass` is a name here, not an OID** — and the consequences that follow from it | the relation's name **rendered for an identifier position** (`quote_ident`), typed `text`; a **sequence**'s OID resolves to nothing (it has none) | an OID that *prints* as the name; `42725 operator is not unique` for `"char" \|\| text` and `"char" \|\| unknown`; `s1` for a sequence | silent for (a) and (d), loud for (b), (c) and (e)'s OID half; (f) is a closed class over two silent residuals | `catalog/regclass_*.sql` + `catalog/spine_snapshot_constraints_regclass.sql` pin the `::text` spelling, a sequence's name and the name side's reject; `regclass_quotes_the_relation_name.sql` pins (f)'s rule; nothing pins (a), (e)'s OID half, or (c)'s divergent half | `::regclass` answers a name, not an OID |
 | ~~118~~ | **closed** — a `regclass` cast target that is not the bare word: the `[]` suffix (`[]`, `[][]`, `[3]`, `[3][4]`) and the `(…)` modifier (`(3)`, `(5,2)`, `(-2)`, `(3)[]`), at `::` and at `CAST(… AS …)` | was the relation **name**, and `DELETE FROM dw WHERE 't'::regclass[] = 't'` was `DELETE 2`; now `42704 type "regclass" is not supported`, the code the *column* form already answered | `22P02` for the array value, `42601` for the modifier, `42846` for `1::regclass[]` | closed class, **silent** residuals beside loud ones — silent: a user enum shadowing the name answers and **writes** at a column, and `--coerce-unknown-types` coerces and writes; loud: the headline spellings refuse under different codes, and neighbouring ones are refused here where 18.6 answers | `catalog/regclass_array_target_is_loud.sql` + `crates/pglet/tests/regclass_cast_target.rs` for the SQLSTATEs and the surviving rows, `the_coerce_flag_does_not_exempt_the_modifier_gate` for the flag route's two polarities; nothing pins the enum shadow or the neighbouring spellings | A non-bare `regclass` cast target |
 | 86 | a `"char"` value wider than one **byte**, and the `"char"` cast target | the first character; `42601` for the cast | the first byte; `a` | silent for the truncation, loud for the cast — both bounded to a value no catalog `"char"` column carries | `catalog/char_column_truncates_an_over_wide_literal.sql` pins the ASCII truncation both ways; the multibyte and cast shapes have none | A `"char"` is one byte wide |
 | 87 | `oid` and `"char"` in any context 18.6 resolves through a **`pg_cast` row** — a common-type fold, an assignment cast, an aggregate's result type | `42804` for the fold and the assignment; `"char"` (18) for `max(contype)` | the fold's own answer, typed `oid` / `oid[]`; `INSERT 0 1`; `text` (25) for `max(contype)` | **loud and pglet-stricter** for the first two, **silent** for the third — a declared type over values that agree | `catalog/oid_in_a_common_type_fold_is_pglet_stricter.sql` + `catalog/oid_assigned_into_an_integer_column_is_pglet_stricter.sql`; `catalog/oid_comparison_still_resolves.sql` is the control | `oid` and `"char"` have comparison rules and no cast rows |
@@ -406,7 +406,7 @@ inside a table.
 | 161 | a `WITH RECURSIVE` query pglet refuses where 18.6 answers, or refuses under another code — a set-operation non-recursive term; one 18.6 skips or stops early whose evaluation does not terminate or raises; a parenthesized body; an unread clause | `42P19 … does not have the form …`; the evaluation's own error (`54000 … exceeded the maximum of 100000 iterations`, `22012`); an error of the parenthesized query's parse (`42883`, `42804`); `42601` for the unread clause | answers, save the parenthesized body under `ORDER BY` / `OFFSET` / `LIMIT` / `FOR UPDATE`, which is `0A000`; `0A000 … in a recursive query is not implemented` for the unread clause | loud — an over-refusal, or a wrong code | — a faithful fixture is red | evaluated to its fixed point before the body runs |
 | 168 | a plain `UPDATE` or `DELETE` whose `RETURNING` raises and whose foreign-key action, or an `UPDATE`'s own key, refuses too — `… RETURNING 1/(id - 9)` over a `NO ACTION`, a `RESTRICT`, or a `NOT NULL` + `SET NULL` child | the action's error — `23503`, `23001` and `23502` measured | the `RETURNING` error, `22012` | loud — the wrong code | — a faithful fixture is red | raises ahead of its `RETURNING` |
 | 170 | an `INSERT`, `ON CONFLICT DO UPDATE` or `UPDATE` whose `RETURNING` raises on one row and whose own check fails on a later row — a `CHECK`, `NOT NULL` or unique key — or, for a foreign key the written row references, on any row | the check's error — `23514`, `23502`, `23505` and `23503` measured | the `RETURNING` error, `22012` | loud — the wrong code | — a faithful fixture is red | a foreign key's included, run before |
-| 89 | a subquery in any position whose evaluation is lent no callback of its kind — a grouping query's expressions among them — and an aggregate in a `SELECT` with no `FROM` (`SELECT count(*)`); the aggregate-under-an-expression half of this row is closed | the subquery arms' three own messages (`scalar` / `EXISTS` / `IN subquery requires execution context`), `0A000`, at eval; the `FROM`-less aggregate `0A000 aggregate function evaluated where no aggregation computes it` | answers — `1` for `SELECT count(*)` | **loud and pglet-stricter** — but a `NULL` `IN` operand answers, row 274 | — nothing pins the refusal; the closed half: `select/agg_expr_*` | subquery whose evaluation is lent no callback is `0A000` |
+| 89 | a subquery in any position whose evaluation is lent no callback of its kind — a grouping query's expressions among them; the aggregate-under-an-expression half and the `FROM`-less aggregate (`SELECT count(*)`) are closed | the subquery arms' three own messages (`scalar` / `EXISTS` / `IN subquery requires execution context`), `0A000`, at eval | answers | **loud and pglet-stricter** — but a `NULL` `IN` operand answers, row 274 | — nothing pins the refusal; the closed half: `select/agg_expr_*` | subquery whose evaluation is lent no callback is `0A000` |
 | 304 | a grouping query's aggregates and expressions evaluated in pglet's order: each aggregate over every row before the next, `HAVING`'s before the select list's, one group's expressions before the next group's aggregates, and every aggregate before a constant or a type refusal evaluated above it | the first failure in that order — `2201F`, `22012` or `22003` where 18.6 raises another of them, or `42883`; `(0 rows)` where a discarded group's select-list aggregate raises | every aggregate advanced per input row; a constant folded while planning; a type error at parse analysis | **silent** where `HAVING` discards the group; loud, wrong code, otherwise | — a faithful fixture is red | computes a group's aggregates in its own order |
 | 305 | a function, operator or comparison whose operand-type refusal is raised from the **values** it is handed, over a `NULL` of a type it does not take: a `NULL` column value, a `NULL` under a cast, or an aggregate over no row — `upper`, `abs`, `sqrt`, `a + 1`, `max(f) = max(t)` among them | `NULL`: a `NULL` value carries no type for the gate to refuse | `42883` (`22P02` for a literal it cannot read), whatever the rows | **silent** — an answer where 18.6 refuses | — a faithful fixture is red | `NULL` passes a type gate keyed on the value |
 | 316 | a non-recursive read-only `WITH` query — or a read-only `WITH RECURSIVE` item that does not reference itself — whose body calls `random()`, `gen_random_uuid()` or `clock_timestamp()`, referenced more than once, `MATERIALIZED` and `NOT MATERIALIZED` included | each reference evaluates the body again: `(SELECT r FROM c) = (SELECT r FROM c)` is `f`, and a self-join on the query's key matching its draws counts `0` | the body evaluated once and shared by every reference: `t`, every row | **silent** — an answer, and a row set a join or a write reads | — none; a faithful fixture is red | is evaluated at each reference |
@@ -5939,6 +5939,17 @@ inside a table.
   `(2, 2)`, `(3, 0)`, `(3, 3)` — and a subquery nested in the lateral body, `SELECT p.id,
   s.* FROM lp p, LATERAL (SELECT (SELECT max(p.id) FROM lc2) AS c FROM lc) s`, answers
   nine — each `p.id` three times as `c` — where 18.7 refuses both `42803`.
+
+  A subquery with no `FROM` is refused too: every column an aggregate's argument names
+  there is an enclosing query's. `SELECT (SELECT max(r11.a)) FROM r11` (one row, `3`, on
+  18.7), `SELECT a, (SELECT sum(a)) FROM r11` (`42803` there) and the `WHERE true`
+  spelling of the first are `0A000` here (`refuse_enclosing_aggregates`,
+  `parser/select.rs`), where they answered once per outer row — the last since no-FROM
+  `WHERE` was routed over one row (row 296). The second is loud under another code than
+  18.7's; the first and third are pinned (`select/no_from_enclosing_aggregate_*.sql`).
+  An argument naming a column nothing binds gets this refusal's code here, where 18.7
+  answers `42703` / `42P01` — `SELECT max(a)` with no `FROM` and `SELECT (SELECT
+  max(zz)) FROM r11` are `42703` there and `0A000` here — loud.
 - **159 · A correlated column in a sub-plan's target list takes a local column's
   identity — closed for the sub-plan's own descriptor; open where a projection that is
   itself a scalar subquery stands between.** A target-list reference binds the column
@@ -15883,37 +15894,31 @@ inside a table.
   reason. One member answers instead of refusing: a `NULL` left operand of `IN (SELECT …)`
   is evaluated ahead of the refusal and answers `NULL`, wrongly over an empty set — row 274.
 
-  **An aggregate in a `SELECT` with no `FROM` is refused.** `plan_select_no_from`
-  (`parser/select.rs`) lowers a `SELECT` with no `FROM` to a one-row `Plan::Values` of its
-  entries (a `ProjectUnnest` where an entry holds `unnest`) and builds no `Aggregate`
-  node, so the scalar walk meets the aggregate with no value lent for it and refuses it
-  — `0A000 aggregate function evaluated where no aggregation computes it`, the closed
-  half's message by another road. 18.6 reads such a statement as an aggregate query over
-  one row. The lowering is read from the code; the refusal and its controls are measured,
-  on the native server (its two backends and the stripped build agreeing) and, where
-  marked †, through the npm package as well, against 18.6:
-
-  | statement | pglet | 18.6 |
-  | --- | --- | --- |
-  | `SELECT count(*)` †, `SELECT count(1)`, `SELECT count(DISTINCT 1)`, `SELECT max(1)` † | `0A000` | `1` |
-  | `SELECT count(NULL)` | `0A000` | `0` |
-  | `SELECT min(1), sum(1), avg(1)` | `0A000` | `1`, `1`, `1.00000000000000000000` |
-  | `SELECT count(*) + 1` †, `SELECT COALESCE(max(1), 0)`, `SELECT CASE WHEN count(*) > 0 THEN 'y' ELSE 'n' END` | `0A000` | `2`; `1`; `y` |
-  | `SELECT count(*) + $1` bound `1` † | `0A000` | `2` |
-  | `SELECT count(*) ORDER BY 1`, `SELECT count(*) LIMIT 1` | `0A000` | `1` |
-  | `SELECT (SELECT count(*))` †, `SELECT (SELECT (SELECT count(*)))` | `0A000` | `1` |
-  | `SELECT x, (SELECT count(*)) FROM (VALUES (1), (2)) v(x)` | `0A000` | `1`, `1` and `2`, `1` |
-  | `SELECT x FROM (VALUES (1), (2)) v(x) WHERE x = (SELECT count(*))` | `0A000` | `1` |
-  | `SELECT EXISTS (SELECT count(*))`, `SELECT 1 IN (SELECT count(*))` | `0A000` | `t` |
-  | `SELECT * FROM (SELECT count(*) AS n) s`, `WITH w AS (SELECT count(*) AS n) SELECT n FROM w` | `0A000` | `1` |
-  | `SELECT count(*) UNION ALL SELECT 5` †, `SELECT 5 UNION ALL SELECT count(*)`, `SELECT count(*) INTERSECT SELECT 1` | `0A000` | `1`, `5`; `5`, `1`; `1` |
-  | `INSERT INTO dt SELECT count(*)` †, `INSERT INTO dt SELECT max(7)` | `0A000`, no row written | `INSERT 0 1` |
-  | over a `dt (n bigint)` holding rows: `SELECT n, (SELECT count(*)) FROM dt`, `SELECT n FROM dt WHERE EXISTS (SELECT count(*))`, `SELECT n FROM dt WHERE n = (SELECT max(1))`, `DELETE FROM dt WHERE n > (SELECT count(*))` | `0A000` | the rows; the `DELETE` removes its rows |
-  | `SELECT count(*), unnest(ARRAY[1, 2])` | `0A000` | `1`, `1` and `1`, `2` |
-
-  A window function over no `FROM` takes the same lowering and its own message: `SELECT
-  row_number() OVER ()` † and `SELECT rank() OVER (ORDER BY 1)` are `0A000 window
-  functions must be evaluated via Window plan executor` against `1`.
+  **An aggregate or a window function in a `SELECT` with no `FROM` — closed.** It was
+  refused: `plan_select_no_from` lowered such a statement to a one-row `Plan::Values` with
+  no `Aggregate` or `Window` node, and the scalar walk met the call with no value lent for
+  it — `0A000 aggregate function evaluated where no aggregation computes it` (`window
+  functions must be evaluated via Window plan executor` for a window). The parser now
+  sends a projection holding either (`aggregates_one_row`, `parser/select.rs`) down the
+  one-empty-row route a no-`FROM` `WHERE` takes (row 296), where the FROM query's own
+  lowering builds the node, as 18.6 reads it: an aggregate query over one row. Measured
+  against 18.7 on the native server, each now answering 18.7's rows: `SELECT count(*)`,
+  `count(1)`, `count(DISTINCT 1)`, `max(1)`, `count(NULL)` (`0`), `min(1), sum(1),
+  avg(1)`; `count(*) + 1`, `COALESCE(max(1), 0)`, a `CASE` over `count(*)`; under `ORDER
+  BY 1` and `LIMIT 1`; in a scalar subquery, nested, beside a `FROM` query's rows, in its
+  `WHERE`, under `EXISTS` and `IN`; as a derived table and a `WITH` query; on either side
+  of a `UNION ALL` and an `INTERSECT`; `INSERT INTO dt SELECT count(*)` and `… max(7)`;
+  a `DELETE` filtered by one; and `SELECT row_number() OVER (), rank() OVER (ORDER BY 1)`.
+  Fixtures: `select/no_from_count_star.sql`, `select/no_from_aggregate*.sql`,
+  `select/no_from_window.sql`, `insert/select_no_from_aggregate.sql`. **Loud**
+  residuals: `SELECT count(*), unnest(ARRAY[1, 2])` is still `0A000` (a set-returning
+  `unnest` is supported in a projection only); the route reads the projection alone, so
+  an aggregate or window only in a no-FROM select's `ORDER BY` — `SELECT 1 ORDER BY
+  count(*)`, `SELECT 1 ORDER BY row_number() OVER ()` — is still `0A000` where 18.7
+  answers `1`; an aggregate whose argument names an enclosing query's column is refused
+  `0A000` (row 303); and `SELECT count(*) + $1` with `$1` sent
+  untyped infers `text` for it and is `42804`, where 18.7 answers `2` — the parameter
+  inference's, not the route's (the same `1 + $1` in a derived table answers so too).
 
   The refusal is raised where the aggregate is evaluated, so a statement that does not
   evaluate it answers — 18.6's answer in each of these: `SELECT CASE WHEN false THEN
@@ -16205,15 +16210,14 @@ inside a table.
     | `SELECT contype \|\| 'x' FROM pg_constraint` | `nx` over a `'n'` row | `42725 operator is not unique` |
     | `contype::text \|\| 'x'` | the same `nx` | `nx` |
 
-  - **(e) A sequence is not one of the relations it searches.** After `CREATE SEQUENCE
-    s1`, `SELECT 's1'::regclass` is `42P01 relation "s1" does not exist` here against
-    `s1` there — while `nextval('s1')` on the same connection answers `1`, so the
-    sequence plainly exists — and a `SERIAL` column's implicit `ser1_id_seq` answers the
-    same way. `eval_regclass` reads `schema.tables` and then `schema.indexes`, in its OID
-    arm and its name arm alike, and a sequence is in neither. That is consistent with
-    pglet giving a sequence no `pg_class` row at all (no `relkind = 'S'`, `docs/compatibility.md`'s
-    pg_catalog row), but it is a **second** reader of the same gap: closing the
-    catalog side does not close this one unless this resolver moves with it.
+  - **(e) A sequence is found by name, not by OID.** `eval_regclass`'s name arm reads
+    every relation kind (`Schema::relation_kind`), as `to_regclass` does, so after
+    `CREATE SEQUENCE s1`, `SELECT 's1'::regclass::text` is `s1` on both, and a `SERIAL`
+    column's implicit `ser1_id_seq` too (`catalog/regclass_sequence.sql`); it was `42P01
+    relation "s1" does not exist` here. The OID arm reads tables and indexes only, since
+    a sequence carries no OID here and has no `pg_class` row (no `relkind = 'S'`,
+    `docs/compatibility.md`'s pg_catalog row): a sequence's OID from 18.6 resolves to
+    nothing, the numeric fallback.
 
   - **(f) The name is rendered for an identifier position, and the predicate is pglet's
     lexer's.** 18.6's `regclassout` (`utils/adt/regproc.c`) ends in
