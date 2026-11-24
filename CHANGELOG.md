@@ -9,7 +9,7 @@ requires `<level>` to repeat it and a non-empty section, then stamps the section
 released version under a fresh `## Unreleased` declaring a patch.
 
 ## Unreleased
-<!-- bump: patch -->
+<!-- bump: minor -->
 
 - feat: `WITH ORDINALITY` on a `FROM`-clause `unnest(…)` or `generate_series(…)`: a last
   `bigint` column numbering the rows from 1, named `ordinality` unless the alias list names
