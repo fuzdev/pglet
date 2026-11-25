@@ -1,0 +1,93 @@
+{
+  "rows": [
+    {
+      "arrow_fold": [
+        1,
+        2
+      ],
+      "case_fold": {
+        "k": [
+          1
+        ],
+        "z": 1
+      },
+      "cased": {
+        "k": [
+          1
+        ],
+        "y": 1
+      },
+      "coalesced": {
+        "k": [
+          1
+        ],
+        "y": 1
+      },
+      "concat_fold": {
+        "a": 1,
+        "b": 1,
+        "k": [
+          1
+        ]
+      },
+      "greatest_of": {
+        "k": [
+          1
+        ],
+        "y": 1
+      },
+      "id": 1,
+      "nested": {
+        "k": [
+          1
+        ],
+        "z": 1
+      },
+      "text_fold": "{\"k\": [1]}{\"q\": 1}",
+      "to_jsonb_fold": [
+        {
+          "a": 1
+        },
+        2
+      ]
+    },
+    {
+      "arrow_fold": [
+        2
+      ],
+      "case_fold": {
+        "z": 1
+      },
+      "cased": {
+        "x": 1,
+        "y": 1
+      },
+      "coalesced": {
+        "x": 1,
+        "y": 1
+      },
+      "concat_fold": {
+        "a": 1,
+        "b": 1,
+        "x": 1
+      },
+      "greatest_of": {
+        "x": 1,
+        "y": 1
+      },
+      "id": 2,
+      "nested": {
+        "x": 1,
+        "z": 1
+      },
+      "text_fold": "{\"x\": 1}{\"q\": 1}",
+      "to_jsonb_fold": [
+        {
+          "a": 1
+        },
+        2
+      ]
+    }
+  ],
+  "rowCount": 2
+}

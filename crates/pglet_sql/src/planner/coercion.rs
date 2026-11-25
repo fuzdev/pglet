@@ -118,6 +118,9 @@ fn resolve_chain_node(expr: Expr, scope: &ColumnScope) -> Expr {
     } else if matches!(op, BinaryOp::Containment | BinaryOp::ContainedBy) {
         let (l, r) = coerce_containment_operands(*left, *right, scope);
         (Box::new(l), Box::new(r))
+    } else if op == BinaryOp::Concat {
+        let (l, r) = coerce_jsonb_concat_operands(*left, *right, scope);
+        (Box::new(l), Box::new(r))
     } else {
         (left, right)
     };
@@ -932,6 +935,13 @@ fn type_scalar_subquery_branches(
         Expr::BinaryOp { left, right, .. } | Expr::AnyAll { left, right, .. } => {
             type_scalar_subquery_in_place(left, scope, schema, in_fold)?;
             type_scalar_subquery_in_place(right, scope, schema, in_fold)?;
+            if let Expr::BinaryOp {
+                op: BinaryOp::Concat,
+                ..
+            } = &expr
+            {
+                cast_jsonb_concat_subqueries(&mut expr, scope, schema);
+            }
         }
         // A subquery already under a cast is typed by it, and is left as it is.
         Expr::Cast { expr: child, .. } | Expr::CastTypmod { expr: child, .. }
@@ -956,6 +966,28 @@ fn type_scalar_subquery_branches(
         _ => return type_scalar_subquery_branches_rest(expr, scope, schema, in_fold),
     }
     Ok(expr)
+}
+
+/// Cast a `||`'s bare scalar-subquery operand whose column resolves to `jsonb` to it, so
+/// the operator's own coercion ([`coerce_jsonb_concat_operands`]) reads its side as the
+/// `jsonb` it is — `(SELECT j FROM t) || '{"b": 2}'` merges, as on 18.6. Out of line: the
+/// walk calling it recurses through every chain.
+#[inline(never)]
+fn cast_jsonb_concat_subqueries(expr: &mut Expr, scope: &ColumnScope, schema: &Schema) {
+    let Expr::BinaryOp { left, right, .. } = expr else {
+        return;
+    };
+    for side in [left, right] {
+        if let Expr::Subquery { plan } = side.as_ref()
+            && resolved_subquery_type(plan, scope, schema) == Some(TypeOid::Jsonb)
+        {
+            let taken = std::mem::replace(&mut **side, Expr::Default);
+            **side = Expr::Cast {
+                expr: Box::new(taken),
+                target_type: TypeOid::Jsonb,
+            };
+        }
+    }
 }
 
 /// [`type_scalar_subquery_branches`] over a boxed child in place, reusing its allocation.
@@ -4774,6 +4806,133 @@ fn coerce_containment_operands(left: Expr, right: Expr, scope: &ColumnScope) -> 
         return (cast_expr(left, target), right);
     }
     (left, right)
+}
+
+/// A `||` with a `jsonb` operand and a bare string literal or `NULL` resolves the literal
+/// to `jsonb`, as 18.6's operator resolution picks `jsonb || jsonb` for it (`'{"a": 1}'::jsonb
+/// || 'x'` is `22P02`); every other pair is left as written. A typed `text` operand stays
+/// one, and the pair concatenates as text, as on 18.6.
+fn coerce_jsonb_concat_operands(
+    mut left: Expr,
+    mut right: Expr,
+    scope: &ColumnScope,
+) -> (Expr, Expr) {
+    let unknown = |e: &Expr| matches!(e, Expr::Literal(Literal::String(_) | Literal::Null));
+    let left_jsonb = is_jsonb_operand(&left, scope);
+    let right_jsonb = is_jsonb_operand(&right, scope);
+    if left_jsonb {
+        cast_untyped_fold_branches(&mut left);
+    }
+    if right_jsonb {
+        cast_untyped_fold_branches(&mut right);
+    }
+    if unknown(&right) && left_jsonb {
+        return (left, cast_expr(right, TypeOid::Jsonb));
+    }
+    if unknown(&left) && right_jsonb {
+        return (cast_expr(left, TypeOid::Jsonb), right);
+    }
+    (left, right)
+}
+
+/// Cast the untyped branches — a bare string literal or `$N` — of a fold
+/// [`is_jsonb_operand`] calls `jsonb` to `jsonb`, nested folds' included, as 18.6's
+/// common-type resolution types them; a row taking such a branch then carries a `jsonb`
+/// value, not the literal's text. The fold's own unification leaves them where it could
+/// not type the `jsonb` sibling (`coalesce(j -> 'k', '[]')`).
+fn cast_untyped_fold_branches(expr: &mut Expr) {
+    let cast = |branch: &mut Expr| match branch {
+        Expr::Literal(Literal::String(_)) | Expr::Parameter { .. } => {
+            let taken = std::mem::replace(branch, Expr::Default);
+            *branch = cast_expr(taken, TypeOid::Jsonb);
+        }
+        other => cast_untyped_fold_branches(other),
+    };
+    match expr {
+        Expr::Coalesce(args)
+        | Expr::VariadicFn {
+            func: VariadicFunc::Greatest | VariadicFunc::Least,
+            args,
+        } => args.iter_mut().for_each(cast),
+        Expr::Case {
+            when_clauses,
+            else_result,
+            ..
+        } => {
+            for (_, result) in when_clauses.iter_mut() {
+                cast(result);
+            }
+            if let Some(result) = else_result.as_deref_mut() {
+                cast(result);
+            }
+        }
+        Expr::Alias { expr, .. } => cast_untyped_fold_branches(expr),
+        _ => {}
+    }
+}
+
+/// Whether `expr` is known to produce a `jsonb` — the side a `||` reads its untyped
+/// sibling against ([`coerce_jsonb_concat_operands`]): [`container_operand_type`]'s
+/// `jsonb` forms, `to_jsonb`, and a `||` of two `jsonb` operands, which by the time its
+/// parent is resolved has had its own untyped side cast. The right operand is asked
+/// first: in a left-deep chain it is the leaf, which settles a text chain at once.
+fn is_jsonb_operand(expr: &Expr, scope: &ColumnScope) -> bool {
+    match expr {
+        Expr::StringFn {
+            func: super::expr::StringFunc::ToJsonb,
+            ..
+        } => true,
+        Expr::BinaryOp {
+            left,
+            op: BinaryOp::Concat,
+            right,
+        } => is_jsonb_operand(right, scope) && is_jsonb_operand(left, scope),
+        Expr::Alias { expr, .. } => is_jsonb_operand(expr, scope),
+        // A fold is `jsonb` when its typed branches are, an untyped branch taking their
+        // type; one whose branches were all untyped stays `text`, as 18.6 resolves
+        // `coalesce(NULL, '{…}')`. `nullif` is its first argument's type.
+        Expr::Coalesce(args)
+        | Expr::VariadicFn {
+            func: VariadicFunc::Greatest | VariadicFunc::Least,
+            args,
+        } => jsonb_fold(args.iter(), scope),
+        Expr::VariadicFn {
+            func: VariadicFunc::NullIf,
+            args,
+        } => args.first().is_some_and(|a| is_jsonb_operand(a, scope)),
+        Expr::Case {
+            when_clauses,
+            else_result,
+            ..
+        } => jsonb_fold(
+            when_clauses
+                .iter()
+                .map(|(_, result)| result)
+                .chain(else_result.as_deref()),
+            scope,
+        ),
+        other => container_operand_type(other, scope) == Some(TypeOid::Jsonb),
+    }
+}
+
+/// Whether a unified fold's branches make it `jsonb`: every branch `jsonb` or untyped — a
+/// bare `NULL`, string literal or `$N`, which 18.6's common-type resolution gives the
+/// typed branches' type — and one at least `jsonb` ([`is_jsonb_operand`]).
+fn jsonb_fold<'e>(branches: impl Iterator<Item = &'e Expr>, scope: &ColumnScope) -> bool {
+    let mut typed = false;
+    for branch in branches {
+        if matches!(
+            branch,
+            Expr::Literal(Literal::Null | Literal::String(_)) | Expr::Parameter { .. }
+        ) {
+            continue;
+        }
+        if !is_jsonb_operand(branch, scope) {
+            return false;
+        }
+        typed = true;
+    }
+    typed
 }
 
 /// The **container** `TypeOid` an expression is known to produce, or `None`.

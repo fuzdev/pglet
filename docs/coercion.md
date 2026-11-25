@@ -17,9 +17,10 @@ go through the shared `resolve_column_type`) have no silent-coercion path.
 `LIKE`/`ILIKE`/`starts_with`, `||`, the jsonb operators (`->`/`->>`, `@>`/`<@`, …) and
 `SUM`/`AVG`/`MIN`/`MAX`. `planner/legality.rs` is the list. A wrong-typed operand raises
 `42883`, or `0A000` where Postgres has the operator and pglet doesn't (`bytea || bytea`,
-`jsonb || jsonb`, array concat, `bytea LIKE bytea`). An untyped side of `||` next to an
-operand whose type has its own `||` (a `bytea`, a `jsonb`, an array) reaches this rule as
-`text`, where 18.6 reads it as that operand's type (`EDGES.md` row 293). The exception is
+array concat, `bytea LIKE bytea`). An untyped side of `||` next to a `jsonb` is read as
+`jsonb` in a query, but not in a stored expression (a `DEFAULT`, `CHECK` or index), which
+is cooked without this pass; next to a `bytea` or an array it reaches this rule as `text`,
+where 18.6 reads it as that operand's type (`EDGES.md` row 293). The exception is
 the jsonb family's `text` leniency: a `text` operand is parsed as JSON or as an array
 literal, and the operator answers when it parses and fails with `22P02` or `42846` when it
 doesn't (`EDGES.md` row 187).

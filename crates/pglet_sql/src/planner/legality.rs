@@ -533,7 +533,7 @@ const fn is_temporal_family(oid: TypeOid) -> bool {
 /// `bytea || bytea`, `jsonb || jsonb`, and the three array forms (`array||array`,
 /// `array||element`, `element||array`).
 ///
-/// pglet implements only the **text** forms. The array / `bytea` / `jsonb`
+/// pglet implements the **text** forms and `jsonb || jsonb`. The array and `bytea`
 /// concatenations are Postgres-legal but unimplemented here, so they fail `0A000`
 /// rather than claiming no such operator; every other operand pair (`int || int`,
 /// `bool || bool`, `int[] || text`) truly resolves to no operator and fails
@@ -549,7 +549,7 @@ pub fn concat_legality(left: Option<TypeOid>, right: Option<TypeOid>) -> Result<
     };
     let unimplemented = || {
         Err(Error::NotImplemented(format!(
-            "operator {} || {} is not supported (only text concatenation)",
+            "operator {} || {} is not supported (only text and jsonb concatenation)",
             type_oid_display_name(l),
             type_oid_display_name(r)
         )))
@@ -565,12 +565,12 @@ pub fn concat_legality(left: Option<TypeOid>, right: Option<TypeOid>) -> Result<
         || r.is_array() && r.array_element() == Some(l)
     {
         return unimplemented();
-    } else if matches!(
-        (l, r),
-        (TypeOid::Bytea, TypeOid::Bytea) | (TypeOid::Jsonb, TypeOid::Jsonb)
-    ) {
-        // `bytea || bytea` (byte concat) and `jsonb || jsonb` (merge) likewise exist
-        // in Postgres and are unimplemented here.
+    } else if (l, r) == (TypeOid::Jsonb, TypeOid::Jsonb) {
+        // `jsonb || jsonb`: an object merge, otherwise an array concatenation.
+        return Ok(());
+    } else if (l, r) == (TypeOid::Bytea, TypeOid::Bytea) {
+        // `bytea || bytea` (byte concat) likewise exists in Postgres and is
+        // unimplemented here.
         return unimplemented();
     } else if (is_string(l) || is_string(r)) && !l.is_array() && !r.is_array() {
         // `text || text` and `text || anynonarray` / `anynonarray || text`.

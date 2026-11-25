@@ -4455,7 +4455,17 @@ pub fn binary_op_result_type(
             (Some(l), Some(r)) => pow_result_type(numeric_family_result(l, r)),
             _ => TypeOid::Float8,
         }),
-        // String concatenation always yields text.
+        // `jsonb || jsonb` is `jsonb`, and so is a `jsonb` beside an operand of no type
+        // yet (an undeclared `$N`), which 18.6 resolves to `jsonb || jsonb`; every
+        // other concatenation yields text.
+        BinaryOp::Concat
+            if matches!(
+                (lt, rt),
+                (Some(TypeOid::Jsonb), Some(TypeOid::Jsonb) | None) | (None, Some(TypeOid::Jsonb))
+            ) =>
+        {
+            Some(TypeOid::Jsonb)
+        }
         BinaryOp::Concat => Some(TypeOid::Text),
         // JSON operators
         BinaryOp::JsonGet => Some(TypeOid::Jsonb),

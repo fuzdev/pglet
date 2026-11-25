@@ -1532,9 +1532,15 @@ impl Inference {
                     // '%'` prefix search). Leaving it untyped reports OID 0, which a
                     // binary-protocol client (tokio-postgres) then tries to resolve —
                     // an unbounded type-introspection loop. Typing it text closes that.
-                    for side in [left.as_ref(), right.as_ref()] {
-                        if let Expr::Parameter { index } = side {
-                            self.record(*index, TypeOid::Text, PRIO_CONTEXT);
+                    // Beside a `jsonb` operand it is `jsonb`, as 18.6 resolves `jsonb ||
+                    // jsonb` for it (`data || $1`).
+                    for (side, sibling) in [(left, right), (right, left)] {
+                        if let Expr::Parameter { index } = side.as_ref() {
+                            let t = match self.infer_col_type(sibling, schema, table) {
+                                Some(TypeOid::Jsonb) => TypeOid::Jsonb,
+                                _ => TypeOid::Text,
+                            };
+                            self.record(*index, t, PRIO_CONTEXT);
                         }
                     }
                 } else if matches!(
@@ -2892,6 +2898,24 @@ mod tests {
             infer(&schema, "SELECT id FROM users WHERE name LIKE $1 || '%'")[0],
             Some(TypeOid::Text)
         );
+    }
+
+    #[test]
+    fn param_operand_of_jsonb_concat_is_jsonb() {
+        // `data || $1` over a `jsonb` column: 18.6 resolves `jsonb || jsonb`, so the
+        // parameter is `jsonb` — in a select list and in an `UPDATE … SET`.
+        let mut schema = Schema::new();
+        let plan = parse("CREATE TABLE jcp (id INT, data JSONB)", &schema)
+            .unwrap()
+            .remove(0);
+        crate::executor::execute(&plan, &mut schema).unwrap();
+        for sql in [
+            "SELECT data || $1 FROM jcp",
+            "UPDATE jcp SET data = data || $1",
+            "SELECT $1 || data FROM jcp",
+        ] {
+            assert_eq!(infer(&schema, sql)[0], Some(TypeOid::Jsonb), "{sql}");
+        }
     }
 
     #[test]

@@ -120,7 +120,7 @@ inside a table.
 | 281 | an `ARRAY[…]` constructor over `timestamptz`, `varchar` or `name` elements as an operand of `@>`, `<@` or `=` | the operator gate types it `timestamp[]` / `text[]`: `42883` beside a `timestamptz[]` or `varchar[]` column, an answer beside a `text[]` one | answers the first pair; `42883 … text[] @> character varying[]` (or `name[]`) for the second | loud where 18.6 answers; **silent, and it writes** where 18.6 refuses | — a faithful fixture is red for each half | typed by its elements' value |
 | 282 | `ARRAY[<string literal>, <element of another type>]::T[]` — a cast over a constructor that mixes a bare literal with a typed element | the constructor is resolved first, the literal read as its sibling's type: `22P02` for `ARRAY['NaN', 0]::float8[]`, `{1,0}` for `ARRAY['01', 0]::text[]` | the cast's element type reaches each element: `{NaN,0}`, `{01,0}` | loud where the literal does not read as the sibling's type; **silent** where it does and renders differently | — a faithful fixture is red | resolved before the cast is applied |
 | 283 | an array **literal** 18.6 reads as multidimensional or with explicit bounds — `'{{a,b}}'::text[]`, `'[1:2]={a,b}'::text[]`, whatever the element type | refused: `0A000 multidimensional arrays are not supported`; `22P02` for the bounds | a two-dimensional array, `{{a,b}}`; `{a,b}` | loud | `array/literal_nested_*_loud.sql`, `jsonb/path_nested_array_literal_loud.sql` — pglet-stricter fixtures | is refused where 18.6 builds |
-| 293 | an uncast string, a bare `NULL` or an untyped `$N` under `\|\|` beside an operand whose type has a `\|\|` of its own, either order — `b \|\| 'ef'` over `bytea`, `j \|\| $1` over `jsonb`, `a \|\| '{9}'` over an array | the untyped side taken as `text`: the `text` `\x61626364ef`, `{"k": 1}{"x": 1}`; `42883` beside an `int[]`, `0A000` beside a `text[]` | the untyped side read as the other's type: the `bytea` `\x616263646566`, the merged `jsonb`, the array `{1,2,9}` | **silent** in a select list, into a `text` column, and compared with a literal or `$N`; loud into a `bytea` or `jsonb` column (`42804`), compared with a typed operand or under `@>` (`42883`), and beside an array | — a faithful fixture is red | nothing reads the untyped side off its sibling |
+| 293 | an uncast string, a bare `NULL` or an untyped `$N` under `\|\|` beside a `bytea` or an array, either order — `b \|\| 'ef'`, `a \|\| '{9}'`; beside a `jsonb` it is left only in a stored expression (the bullet) | the untyped side taken as `text`: the `text` `\x61626364ef`; `42883` beside an `int[]`, `0A000` beside a `text[]` | the untyped side read as the other's type: the `bytea` `\x616263646566`, the array `{1,2,9}` | **silent** in a select list, into a `text` column, and compared with a literal or `$N`; loud into a `bytea` column (`42804`), compared with a typed operand (`42883`), and beside an array | `jsonb/concat_*.sql` for the query `jsonb` member; — a faithful fixture is red | nothing reads the untyped side off its sibling |
 | 294 | a Unicode space (U+00A0, U+0085, U+2003 measured) leading or trailing a number, `uuid`, `date`, `time` or `interval` string — `'1<U+00A0>'::int` — and so an array element of those types: `'{1<U+00A0>}'::int[]` | the value, the space trimmed: `1`, `{1}` | `22P02`; `22007` for `date`, `time` and `interval` | **silent, and it writes** | — a faithful fixture is red | trim a Unicode space |
 | 287 | `INSERT … OVERRIDING USER VALUE` with a value written for the identity column | the cell is replaced before it is read: an ill-typed constant, an unknown column or sequence in it is accepted; a `$N` in it leaves the statement's parameters (native server: `08P01` at `Bind`); over a `SELECT` source, `0A000` | reads the cell and discards its value: `22P02` / `42703` / `42P01`; the `$N` is counted; the `SELECT` source runs | **silent** for the unread cell; loud for the parameter (native server) and the `SELECT` source | — a faithful fixture is red | replaced before it is read |
 | ~~306~~ | **closed** — `jsonb_build_object` over a `timestamptz`, `timestamp` or array value | the value's text output as a JSON string — `"2021-01-02 03:04:05"`, `"{1}"`; now ISO 8601 and a JSON array | ISO 8601 — `"2021-01-02T03:04:05+00:00"` — and a JSON array, `[1]` | closed — **silent** residuals: a `float4` widened, a `char(n)` unpadded; two loud ones (the bullet) | `jsonb/build_object_timestamp_and_array_values.sql`, `jsonb/to_jsonb_scalars.sql` | renders a value it has no JSON kind for as its text output |
@@ -21963,6 +21963,38 @@ inside a table.
   only once a row is evaluated where the array is an `ARRAY[…]` constructor. Reach: ordinary
   — the `jsonb` merge idiom `data || '{…}'` in a seed, a query or a filter, and a test
   joining a `bytea` to a quoted string. No fixture: a faithful one is red.
+
+  **The `jsonb` member is narrowed to a stored expression.** `jsonb || jsonb` is evaluated
+  (an object merge, else an array concatenation — 18.6's `jsonb_concat`), and in a query the
+  untyped side beside a `jsonb` operand is read as `jsonb`: a string literal and a bare
+  `NULL` by the coercion pass (`planner::coercion`'s `coerce_jsonb_concat_operands`, which
+  reads a column, a cast, `->` / `#>`, `jsonb_build_object`, `to_jsonb`, a `||` of two
+  `jsonb` operands — so a chain — a `coalesce`, `CASE`, `greatest` or `least` whose typed
+  branches are `jsonb` (its untyped string, `$N` and `NULL` branches cast to `jsonb` with
+  it, so a row taking one merges too: `coalesce(j -> 'k', '[]') || '[2]'`), a `nullif`
+  whose first argument is, and a scalar subquery whose column is `jsonb` as such a side; a
+  fold whose branches were all untyped stays `text`, as 18.7 resolves it), an undeclared
+  `$N` by parameter inference, and the plan types the result `jsonb`.
+  Re-measured against 18.7 over the same `t`: `j || '{"x": 1}'`, `'{"x": 1}' || j`, `j ||
+  '[1]'`, `j || 'x'` (`22P02`), `j || $1`, `j || '{"a": 1}' || '{"b": 2}'`, `to_jsonb(t) ||
+  '{"extra": 1}'`, `(SELECT j FROM t) || '{"b": 2}'`, `UPDATE t SET s = j || '{"x": 1}'`,
+  `UPDATE t SET j = j || '{"x": 1}'` (and `|| $1`, `|| NULL`), `… WHERE j || '{"x": 1}' = j`,
+  `LIKE` and `length` over the merge each answer as 18.7 does. In a query the `jsonb`
+  members left are row 262's, a bare literal beside a computed `jsonb` outside `||`, each
+  `42883` where 18.7 answers: the merge compared with one, `… WHERE j || '{"x": 1}' = '{"k":
+  1, "x": 1}'`; under containment, `(j || '{"a": 1}') @> '{"a": 1}'`; in a `nullif`,
+  `nullif(j || '{"a": 1}', '{}')`, and `nullif(j, '{}')`, whose comparison the literal
+  meets before any `||` does.
+
+  A **stored** expression is cooked without the coercion pass, so there the untyped side
+  stays `text`, measured against 18.7: `CREATE TABLE … (t TEXT DEFAULT '{"a": 1}'::jsonb ||
+  '{"b": 1}')` stores the text `{"a": 1}{"b":1}` at each `INSERT` where 18.7 stores `{"a":
+  1, "b": 1}` (**silent**, a written value); a `jsonb` column's `DEFAULT` of that shape,
+  through `CREATE TABLE`, `ADD COLUMN` and `SET DEFAULT`, is `42804`; `CHECK (chk || '{"z":
+  1}' <> '{"z": 1}'::jsonb)` and a partial-index predicate of that shape are `42883`; and
+  `CHECK ((j || '{"z": 1}')::text = '{"z": 1}')` refuses a row 18.7 accepts (`23514`, loud).
+  Each is answered with the untyped side cast (`'{"b": 1}'::jsonb`). The `jsonb` rows of
+  the table above are the pre-closure measurement.
 
 - **294 · Narrowed — the array reader's grammar is 18.6's; the element readers still trim a Unicode space.**
   The array-literal reader split the body at its commas with no state for *where* an

@@ -54,7 +54,7 @@ seem to disagree, the record wins.
 | [Sequences / SERIAL auto-increment](#sequences--serial-auto-increment) | ⚠️ | `SERIAL`, identity columns and named sequences; every draw is `+1`, silently, whatever `INCREMENT BY` / `MINVALUE` / `MAXVALUE` / `CYCLE` say (`EDGES.md` row 215). |
 | [`DEFAULT` functions (`now()`, `gen_random_uuid()`)](#default-functions-now-gen_random_uuid) | ⚠️ | Literal, `now()`-family and `gen_random_uuid()` defaults, the `now`-family spellings kept distinct, each reading the instant its PostgreSQL namesake reads; outside a block a bound statement's `now()` is its `statement_timestamp()` (`EDGES.md` row 292). |
 | [`starts_with(a, b)`](#starts_witha-b) | ✅ | A case-sensitive literal prefix test over `text`; a non-text argument is `42883`, an enum excepted (`EDGES.md` row 190). |
-| [`\|\|` string concat](#-string-concat) | ⚠️ | The text forms only; `bytea \|\| bytea`, `jsonb \|\| jsonb` and the array forms are `0A000`, and an uncast string or `$N` beside a `jsonb` or `bytea` side is joined as text, silently, and beside an array is refused (`42883`, or `0A000` over a `text[]`) (`EDGES.md` row 293). |
+| [`\|\|` string concat](#-string-concat) | ⚠️ | The text forms and `jsonb \|\| jsonb`; `bytea \|\| bytea` and the array forms are `0A000`, and an uncast string or `$N` beside a `bytea` side is joined as text, silently, and beside an array is refused (`42883`, or `0A000` over a `text[]`) (`EDGES.md` row 293). |
 | [`LIKE … ESCAPE` + default `\` escape](#like--escape--default--escape) | ⚠️ | `\` is the default and the only accepted escape; a non-text operand is `42883`, a `bytea` beside an uncast pattern included, which PostgreSQL accepts (`EDGES.md` row 262), `bytea LIKE bytea` is `0A000`, and `LIKE ANY (…)` is `42601`. |
 | [`ILIKE`](#ilike) | ⚠️ | `LIKE` over Rust's full Unicode lowercasing, so a few characters fold differently from PostgreSQL (`EDGES.md` row 264), and `ILIKE ANY (…)` is `42601`. |
 | [Scalar string + misc functions](#scalar-string--misc-functions) | ⚠️ | The common string functions (`upper`, `lower`, `length`, `substring` and `substr` over `text` and `bytea`, `left`, `right`, `octet_length`, `md5`, `trim`, `position`, `replace`, `concat`, `lpad`, `split_part`, …), and `random()`; an unbuilt one is `0A000` (`format`, `repeat`). |
@@ -2098,19 +2098,23 @@ with `42883`. The exception is an enum, whose label is read as `text` and works
 
 ### `||` string concat
 
-pglet only implements the **text** forms: `text || text` and Postgres's
-`text || anynonarray` / `anynonarray || text`. The non-text side is turned into a string,
-matching PG when the text side is typed. An untyped side (a bare string literal or an
-untyped `$N`) next to an operand whose type has its own `||` stays `text` here, where 18.6
-reads it as that type. Next to a `bytea` or a `jsonb`, the two are silently joined as text,
-where 18.6 joins the bytes or merges the objects. Next to an array it's `42883` (`0A000`
-over a `text[]`) where 18.6 appends (`EDGES.md` row 293). NULL propagates (`a || NULL` is
+pglet implements the **text** forms — `text || text` and Postgres's
+`text || anynonarray` / `anynonarray || text` — and `jsonb || jsonb`. The non-text side of a
+text form is turned into a string, matching PG when the text side is typed. `jsonb ||
+jsonb` merges two objects (the right value winning a shared key) and otherwise appends, an
+object or a scalar counting as an array of itself, as 18.6's `jsonb_concat` does; an untyped
+side beside a `jsonb` (a bare string literal, `NULL`, an undeclared `$N`) is read as `jsonb`
+in a query, and a typed `text` side makes it a text concatenation, as on 18.6. In a stored
+`DEFAULT`, `CHECK` or index expression the untyped side stays `text`: cast it there
+(`'{"b": 1}'::jsonb`; `EDGES.md` row 293). Beside a `bytea` an
+untyped side stays `text` here and the two are silently joined as text, where 18.6 joins the
+bytes; next to an array it's `42883` (`0A000` over a `text[]`) where 18.6 appends
+(`EDGES.md` row 293). NULL propagates (`a || NULL` is
 NULL). A `timestamptz` operand keeps its `+00` offset through the concat, so the instant
 doesn't shift when it's turned into a string.
 
-**Gap (loud, not silent):** the three concatenations Postgres has and pglet doesn't
-evaluate, `bytea || bytea` (byte concat), `jsonb || jsonb` (merge), and the array forms
-(`array_cat`), fail with `0A000`. An operand pair with no `||` signature at all
+**Gap (loud, not silent):** the concatenations Postgres has and pglet doesn't evaluate,
+`bytea || bytea` (byte concat) and the array forms (`array_cat`), fail with `0A000`. An operand pair with no `||` signature at all
 (`int || int`, `int[] || text`) fails with `42883`. The exception is an enum, which the
 rule treats as `text`, so it works next to an enum, `integer`, `numeric`, `boolean` or
 `jsonb` side, which 18.6 refuses with `42883` (`m || m` is `aa`, `m || 1` is `a1`;

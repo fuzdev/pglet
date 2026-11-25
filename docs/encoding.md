@@ -129,12 +129,12 @@ reader reaches the NUL, which is why the input has to be jsonb text to hit this.
 adding one (`v -> 'k'` returns the jsonb string with the NUL in it).
 
 Every other spelling we tried is refused, so none of them is another way
-in: `to_jsonb`, `to_json`, `jsonb_build_array`, `jsonb_object`, `jsonb_agg`, `jsonb_set`,
+in: `to_json`, `jsonb_build_array`, `jsonb_object`, `jsonb_agg`, `jsonb_set`,
 `jsonb_insert`, `jsonb_strip_nulls`, `jsonb_pretty`, `array_to_json`, `row_to_json`,
 `json_build_object`, `json_object`, `jsonb_array_elements` and `jsonb_path_query` answer
-`0A000 not implemented: function not supported: <name>`. The `jsonb || jsonb` operator
-answers `0A000 not implemented: operator jsonb || jsonb is not supported (only text
-concatenation)`. `jsonb - text` answers `42804`, and `#-` answers
+`0A000 not implemented: function not supported: <name>`. `to_jsonb` and `jsonb || jsonb`
+build their values from values already in the server encoding, a text value as a JSON
+string. `jsonb - text` answers `42804`, and `#-` answers
 `42883 operator does not exist` (`EDGES.md` row 184). This list comes from probing, so
 re-run the probe when it matters instead of trusting it. A bound `Value::Jsonb` is already
 a jsonb string.

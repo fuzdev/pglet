@@ -948,6 +948,13 @@ fn expr_type_oid(expr: &Expr, scope: ProjectionScope<'_>) -> TypeOid {
                 crate::planner::pow_result_type(numeric_family_result(left_type, right_type))
             }
             BinaryOp::JsonGet | BinaryOp::JsonPathGet => TypeOid::Jsonb,
+            // `jsonb || jsonb` is `jsonb`; every other concatenation yields text.
+            BinaryOp::Concat
+                if expr_type_oid(left, scope) == TypeOid::Jsonb
+                    && expr_type_oid(right, scope) == TypeOid::Jsonb =>
+            {
+                TypeOid::Jsonb
+            }
             BinaryOp::JsonGetText
             | BinaryOp::JsonPathGetText
             | BinaryOp::ToChar

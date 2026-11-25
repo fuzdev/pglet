@@ -4,8 +4,8 @@ use super::compare::date_to_timestamp;
 use crate::executor::coerce::coerce_value;
 use crate::planner::{BinaryOp, concat_legality, concat_undefined};
 use crate::types::{
-    ArrayValue, Infinite, PgInterval, PgNumeric, TypeOid, Value, opt_type_oid_display_name,
-    value_to_text_with_oid,
+    ArrayValue, Infinite, JsonbValue, PgInterval, PgNumeric, TypeOid, Value,
+    opt_type_oid_display_name, value_to_text_with_oid,
 };
 use crate::{Error, Result};
 
@@ -486,6 +486,9 @@ pub fn eval_concat(
         return Ok(Value::Null);
     }
     concat_legality(left.type_oid(), right.type_oid())?;
+    if let (Value::Jsonb(l), Value::Jsonb(r)) = (left, right) {
+        return Ok(Value::Jsonb(jsonb_concat(l, r)));
+    }
     match (
         concat_operand_text(left, left_oid),
         concat_operand_text(right, right_oid),
@@ -495,6 +498,24 @@ pub fn eval_concat(
         // models, but stays loud rather than silently yielding NULL.
         _ => Err(concat_undefined(left.type_oid(), right.type_oid())),
     }
+}
+
+/// `jsonb || jsonb`, 18.6's `jsonb_concat`: two objects merge, the right one's value
+/// winning a shared key; anything else is an array of the left operand's elements then
+/// the right's, where an object or a scalar counts as an array of itself.
+fn jsonb_concat(left: &JsonbValue, right: &JsonbValue) -> JsonbValue {
+    if let (JsonbValue::Object(l), JsonbValue::Object(r)) = (left, right) {
+        let mut pairs = l.clone();
+        pairs.extend(r.iter().cloned());
+        return JsonbValue::Object(pairs).canonical();
+    }
+    let elements = |v: &JsonbValue| match v {
+        JsonbValue::Array(items) => items.clone(),
+        other => vec![other.clone()],
+    };
+    let mut items = elements(left);
+    items.extend(elements(right));
+    JsonbValue::Array(items)
 }
 
 /// Render one `||` operand as Postgres's `anynonarray → text` **cast** does.
