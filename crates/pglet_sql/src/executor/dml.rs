@@ -1716,8 +1716,9 @@ fn action_assigned_values(
     new_key: Option<&[Value]>,
 ) -> Result<Vec<Value>> {
     let mut assigned = vec![Value::Null; child_positions.len()];
-    let mut order: Vec<usize> = (0..child_positions.len()).collect();
-    order.sort_by_key(|&i| child_positions[i]);
+    let order = super::helpers::sorted_positions(child_positions.len(), &mut |a, b| {
+        child_positions[a].cmp(&child_positions[b])
+    });
     for i in order {
         let Some(col) = child_def.columns.get(child_positions[i]) else {
             continue;
@@ -1871,7 +1872,7 @@ fn key_tuples_equal(a: &[Value], b: &[Value]) -> bool {
 /// declared with its table — an `ALTER TABLE … ADD FOREIGN KEY` on a table created before
 /// another referencing table is ordered by the table (`EDGES.md` row 198).
 fn referencing_fks_on_update(schema: &Schema, parent_table: &str) -> Vec<ReferencingFk> {
-    let mut fks: Vec<(i32, usize, ReferencingFk)> = schema
+    let fks: Vec<(i32, usize, ReferencingFk)> = schema
         .referencing_foreign_keys(parent_table)
         .map(|(child, i, fk)| {
             (
@@ -1881,8 +1882,12 @@ fn referencing_fks_on_update(schema: &Schema, parent_table: &str) -> Vec<Referen
             )
         })
         .collect();
-    fks.sort_by_key(|(oid, i, _)| (*oid, *i));
-    fks.into_iter().map(|(_, _, fk)| fk).collect()
+    let order = super::helpers::sorted_positions(fks.len(), &mut |a, b| {
+        (fks[a].0, fks[a].1).cmp(&(fks[b].0, fks[b].1))
+    });
+    let mut slots: Vec<Option<ReferencingFk>> =
+        fks.into_iter().map(|(_, _, fk)| Some(fk)).collect();
+    order.into_iter().filter_map(|i| slots[i].take()).collect()
 }
 
 /// A foreign key that references a table, resolved to the column positions of both of its

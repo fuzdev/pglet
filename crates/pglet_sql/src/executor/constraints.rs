@@ -13,7 +13,7 @@ use pglet_core::{FailingRow, FkDirection, ForeignKeyViolationDetail, KeyDescript
 
 use super::coerce::{apply_typmod, coerce_value};
 use super::expr::{boolean_context_operand, eval_expr, predicate_holds};
-use super::helpers::table_enum_orders;
+use super::helpers::{sorted_positions, table_enum_orders};
 use super::index_row::{
     check_btree_item_size, check_entry_size_field, check_gin_entries, check_page_key_len,
     encoded_key_len, index_entry_size, key_part_enum, key_part_is_enum,
@@ -323,12 +323,8 @@ pub fn prepare_check(check: &CheckConstraint) -> (String, Expr) {
 pub fn single_referenced_column(expr: &Expr) -> Option<String> {
     let mut cols: Vec<String> = Vec::new();
     collect_check_columns(expr, &mut cols);
-    cols.sort();
-    cols.dedup();
-    match cols.as_slice() {
-        [only] => Some(only.clone()),
-        _ => None,
-    }
+    let first = cols.first()?;
+    cols.iter().all(|c| c == first).then(|| first.clone())
 }
 
 /// Walk `expr`, pushing every referenced base column name (skipping the `*` wildcard).
@@ -484,16 +480,18 @@ pub fn prepare_indexes(schema: &Schema, table: &str) -> Vec<PreparedIndex> {
     let Some(table_def) = schema.get_table(table) else {
         return Vec::new();
     };
-    let mut indexes: Vec<&Index> = schema
+    let indexes: Vec<&Index> = schema
         .indexes
         .values()
         .filter(|index| index.table_name == table)
         .collect();
-    indexes.sort_by_key(|index| index.oid);
-    indexes
-        .into_iter()
-        .filter_map(|index| prepare_one_index(index, table_def, &schema.enums))
-        .collect()
+    sorted_positions(indexes.len(), &mut |a, b| {
+        indexes[a].oid.cmp(&indexes[b].oid)
+    })
+    .into_iter()
+    .map(|i| indexes[i])
+    .filter_map(|index| prepare_one_index(index, table_def, &schema.enums))
+    .collect()
 }
 
 /// Prepare a single `index` into the per-row probe form, or `None` if a plain key

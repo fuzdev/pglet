@@ -1,20 +1,20 @@
 {
-	"timestamp": "2026-11-24T18:49:12.466Z",
-	"git_commit": "ac73a91-dirty",
+	"timestamp": "2026-11-25T02:20:45.246Z",
+	"git_commit": "c3fa6ae",
 	"hard_cap_bytes": 1720320,
 	"tolerance_pct": 2,
 	"artifacts": [
 		{
 			"label": "pglet_wasm_bg.wasm",
 			"kind": "wasm",
-			"bytes": 1684792,
-			"gzip_bytes": 678839
+			"bytes": 1684023,
+			"gzip_bytes": 680108
 		},
 		{
 			"label": "pglet_server",
 			"kind": "native",
-			"bytes": 2790528,
-			"gzip_bytes": 1334263
+			"bytes": 2804392,
+			"gzip_bytes": 1341049
 		}
 	]
 }

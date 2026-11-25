@@ -8,8 +8,8 @@ stands. Every number here is measured or labeled an estimate.
 
 | Artifact | Raw | Gzipped (wire) | Gated? |
 |---|---|---|---|
-| WASM (`pglet_wasm_bg.wasm`), the recorded baseline | **~1645 KB** | ~663 KB | yes — raw bytes, under the lower of baseline +2% and the 1680 KB cap (`benches/size_baseline.json` is the recorded figure) |
-| Native (`pglet_server`) | ~2725 KB | ~1303 KB | no (secondary target) |
+| WASM (`pglet_wasm_bg.wasm`), the recorded baseline | **~1645 KB** | ~664 KB | yes — raw bytes, under the lower of baseline +2% and the 1680 KB cap (`benches/size_baseline.json` is the recorded figure) |
+| Native (`pglet_server`) | ~2739 KB | ~1310 KB | no (secondary target) |
 
 The size **gate** is on **raw WASM bytes** (`npm run size:check`) — the size you
 build, deterministic across a fixed toolchain, so a regression is real code growth
@@ -21,6 +21,24 @@ deliberately after size-growing work if you are not running the set. The native 
 is the secondary target, reported only. The per-component breakdown below is estimated
 from dependency sizes — cargo-bloat doesn't support the wasm target, so a precise
 breakdown would have to be hand-rolled.
+
+### Growth paid for by cuts, under the same 1680 KB cap
+
+The SQL that followed the cap's move to 1680 KB took the wasm past it, and three cuts paid
+for it instead of a higher cap. Measured raw wasm bytes each feature added, in landing
+order, from a 1 703 999 B build, as each was first written: `to_jsonb` with whole-row
+references and the `jsonb_build_object` rendering +7 174, `make_interval` and named
+arguments +5 158, `jsonb || jsonb` +1 586, `decode` +1 428, the whole-row cast to `text`
++3 122, a write after a data-modifying `WITH` +2 680, the `LATERAL` set-operation refusal
++335 — 1 728 993 B (1688.5 KB) with their reviews' fixes. The cuts, measured from that
+build: no `{plan:?}` in the executor's unsupported-plan-node error, the one release use of
+`Plan`'s derived `Debug`, which kept `Debug` for every planner type alive (about −23 KB);
+`IndexDef.keying` behind an `Arc`, whose derived `Clone` had kept a second copy of the
+`Plan` and `Expr` clone code in `pglet_storage` and deep-cloned it on every
+in-transaction index lookup (about −13 KB); and one shared `[usize]` permutation sort for
+the cold catalog lists, each of which instantiated a sort of its own (about −11 KB). The
+recorded build is 1 684 023 B (1644.5 KB). The lesson the first carries: a `Debug` on a
+release path over a planner type costs about 22 KB.
 
 ### The cap moved from 1650 KB to 1680 KB
 

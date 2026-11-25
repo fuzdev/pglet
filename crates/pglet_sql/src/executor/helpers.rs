@@ -20,6 +20,17 @@ use super::expr::{
 use super::query::eval_expr_subquery_with;
 use super::types::{ColumnDesc, QueryResult};
 
+/// The positions `0..len` in the stable order `cmp` puts them in. The cold sorts share
+/// this one `[usize]` sort instead of each instantiating a sort of its own element type.
+pub fn sorted_positions(
+    len: usize,
+    cmp: &mut dyn FnMut(usize, usize) -> std::cmp::Ordering,
+) -> Vec<usize> {
+    let mut order: Vec<usize> = (0..len).collect();
+    order.sort_by(|&a, &b| cmp(a, b));
+    order
+}
+
 /// Borrow a table from the schema, or fail loud with `42P01` (table not found) — the
 /// single read-only table lookup the executor's scan / DDL paths share.
 ///
