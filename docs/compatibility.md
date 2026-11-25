@@ -539,7 +539,9 @@ run returns nothing, null-extended. A column-alias list (`s(a, b)`) renames the 
 columns, and one longer than them is `42P10`. A name the items before it don't carry is
 `42P01` / `42703`, as in PostgreSQL, and so is one naming an item written after it. An
 aggregate in the subquery whose arguments name only the items before it is PostgreSQL's
-`42803` (it belongs to the outer level, where `FROM` allows none).
+`42803` (it belongs to the outer level, where `FROM` allows none), in each arm of a set
+operation too; in a subquery nested inside the lateral body it is not caught (`EDGES.md`
+row 303).
 
 The join holding the item runs its right side once per left row with that row pushed as an
 outer frame, the frame the subquery's references resolve against as an expression

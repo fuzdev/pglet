@@ -5936,13 +5936,14 @@ inside a table.
   `3`); it is `42803` here — loud. An argument naming a column nothing binds gets this
   refusal's code here, where 18.7 answers `42703` / `42P01` — `LATERAL (SELECT
   max(nosuch) FROM lc)` and `max(p.nosuch)` are `42703` there and `max(zz.pos)` is
-  `42P01`, each `42803` here — loud. Two routes the refusal does not reach stay
-  **silent**, over `lp (id, g)` holding `(1, 1)`, `(2, 1)`, `(3, 2)`, `lc` three rows and
-  `lc2` two: a set operation's arm, `SELECT p.id, s.* FROM lp p, LATERAL (SELECT max(p.id)
-  c FROM lc UNION ALL SELECT 0) s`, answers six rows here — `(1, 0)`, `(1, 1)`, `(2, 0)`,
-  `(2, 2)`, `(3, 0)`, `(3, 3)` — and a subquery nested in the lateral body, `SELECT p.id,
-  s.* FROM lp p, LATERAL (SELECT (SELECT max(p.id) FROM lc2) AS c FROM lc) s`, answers
-  nine — each `p.id` three times as `c` — where 18.7 refuses both `42803`.
+  `42P01`, each `42803` here — loud. A set operation's arms are each judged as a level of
+  their own, under its trailing `ORDER BY` too (`SELECT p.id, s.* FROM lp p, LATERAL
+  (SELECT 1 UNION ALL SELECT count(p.id) FROM lc) s` is `42803` on both,
+  `select/lateral_outer_aggregate_set_op_arm_loud.sql`). One route the refusal does not
+  reach stays **silent**, over `lp (id, g)` holding `(1, 1)`, `(2, 1)`, `(3, 2)`, `lc` three
+  rows and `lc2` two: a subquery nested in the lateral body, `SELECT p.id, s.* FROM lp p,
+  LATERAL (SELECT (SELECT max(p.id) FROM lc2) AS c FROM lc) s`, answers nine — each `p.id`
+  three times as `c` — where 18.7 refuses `42803`.
 
   A subquery with no `FROM` is refused too: every column an aggregate's argument names
   there is an enclosing query's. `SELECT (SELECT max(r11.a)) FROM r11` (one row, `3`, on

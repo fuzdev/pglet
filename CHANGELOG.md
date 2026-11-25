@@ -57,6 +57,8 @@ released version under a fresh `## Unreleased` declaring a patch.
 - feat: a statement that writes after a data-modifying `WITH` it reads — `WITH c AS (INSERT …
   RETURNING id) INSERT INTO child SELECT id … FROM c` (was `0A000`); the shapes whose order
   could differ from PostgreSQL's stay `0A000`
+- fix: `FROM ONLY t`, `UPDATE ONLY t` and `DELETE FROM ONLY t` (and `ONLY (t)`) read `t`,
+  which no table inherits from (were `42P01` and `42601`); `ONLY` is no table name or alias
 
 ## 0.2.1
 

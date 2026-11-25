@@ -181,7 +181,24 @@ fn resolve_lateral_items(
 /// once per left row — an answer where 18.7 refuses. A reference the subquery's own level
 /// may own (an uncertain one included) keeps the aggregate there, as 18.6 does when its
 /// arguments mix levels.
+///
+/// A set operation's arms are each a query level of their own, each judged with its own
+/// scope; the set operation's trailing `ORDER BY` / `LIMIT` over them names only its
+/// output columns.
 fn refuse_outer_level_aggregates(subquery: &Plan, schema: &Schema) -> Result<()> {
+    crate::depth::check_stack()?;
+    match subquery {
+        Plan::SetOp { left, right, .. } => {
+            refuse_outer_level_aggregates(left, schema)?;
+            return refuse_outer_level_aggregates(right, schema);
+        }
+        Plan::Sort { input, .. } | Plan::Limit { input, .. }
+            if matches!(set_op_beneath(input), Some(Plan::SetOp { .. })) =>
+        {
+            return refuse_outer_level_aggregates(input, schema);
+        }
+        _ => {}
+    }
     let own = level_scope(subquery, schema);
     let mut aggregates = Vec::new();
     level_aggregates(subquery, &mut aggregates);
@@ -195,6 +212,16 @@ fn refuse_outer_level_aggregates(subquery: &Plan, schema: &Schema) -> Result<()>
         }
     }
     Ok(())
+}
+
+/// The set operation under a set-operation query's trailing `ORDER BY` / `LIMIT`
+/// wrappers, if `plan` is one.
+fn set_op_beneath(plan: &Plan) -> Option<&Plan> {
+    match plan {
+        Plan::SetOp { .. } => Some(plan),
+        Plan::Sort { input, .. } | Plan::Limit { input, .. } => set_op_beneath(input),
+        _ => None,
+    }
 }
 
 /// The aggregate calls a query level's own nodes hold — its projection, grouping,
