@@ -54,6 +54,9 @@ released version under a fresh `## Unreleased` declaring a patch.
 - feat: `decode(text, 'hex' | 'base64' | 'escape')` (was `0A000`)
 - feat: a whole-row cast to `text` in a select list, `SELECT t::text FROM t` — the row's text
   output, `(1,"x y",)` (was `42703`)
+- feat: a statement that writes after a data-modifying `WITH` it reads — `WITH c AS (INSERT …
+  RETURNING id) INSERT INTO child SELECT id … FROM c` (was `0A000`); the shapes whose order
+  could differ from PostgreSQL's stay `0A000`
 
 ## 0.2.1
 

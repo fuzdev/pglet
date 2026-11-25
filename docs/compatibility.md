@@ -914,11 +914,18 @@ it (`EDGES.md` row 80).
 
 **Divergences (loud):**
 
-- These are refused with `0A000` before anything runs: a body that writes next to a
-  data-modifying CTE, a recursive CTE resolved after one, and under `WITH RECURSIVE` a
+- A body that writes beside a data-modifying CTE runs where the two cannot be told from
+  18.6's order — the body an `INSERT`, `UPDATE` or `DELETE` reading the CTE, which is the
+  only data-modifying one, naming no table it writes, tied to its target by no foreign key
+  but a child `INSERT` referencing an `INSERT`'s rows, sharing no default's sequence with
+  it, and with no sequence function written in either (`WITH c AS (INSERT … RETURNING id) INSERT INTO child SELECT id … FROM c`). The
+  CTE runs whole before the body here, where 18.6 interleaves the two row by row
+  (`EDGES.md` row 336).
+- These are refused with `0A000` before anything runs: every other body that writes next
+  to a data-modifying CTE, a recursive CTE resolved after one, and under `WITH RECURSIVE` a
   second data-modifying CTE or a body naming a table one can write (directly, or through a
   foreign key's `CASCADE` / `SET NULL`). Each is raised before the data-modifying CTE's own
-  execution error (`EDGES.md` rows 160 and 162).
+  execution error (`EDGES.md` rows 160, 162 and 336).
 - A recursive CTE whose non-recursive term is itself a set operation is `42P19`.
 - A recursive CTE that 18.6 skips or stops early (unreferenced, or read under a `LIMIT`) is
   evaluated to its fixed point here. So a runaway one is `54000`, and an unreferenced one

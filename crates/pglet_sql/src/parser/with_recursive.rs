@@ -263,7 +263,7 @@ impl<'a> Parser<'a> {
     /// Parse one scanned item's body and register it.
     fn parse_with_item(&mut self, item: &ScannedItem<'a>) -> Result<()> {
         self.ts.restore(item.body.clone());
-        let mark = self.touched_tables.len();
+        let mark = (self.touched_tables.len(), self.scanned_ctes.len());
         if item.shape.reads(&item.name) && !item.shape.modifying {
             self.parse_recursive_cte_body(item.name.clone(), &item.col_aliases)?;
         } else {

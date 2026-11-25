@@ -1164,6 +1164,9 @@ impl Parser<'_> {
                 matches!(cte.plan, Plan::CteScan { .. }) || cte.plan.mutates_storage();
             let table_name = parts[0].clone();
             let effective_alias = alias.unwrap_or(table_name);
+            if use_cte_scan {
+                self.scanned_ctes.push(parts[0].clone());
+            }
             let plan = if use_cte_scan {
                 // The `CteScan`'s `columns` are the plan-side answer only — the
                 // executor reads the materialized relation's — so the alias list is
@@ -1184,6 +1187,9 @@ impl Parser<'_> {
                 // inlined body reads its tables here, where the reference runs.
                 if let Some(tables) = self.cte_tables.get(&parts[0]) {
                     self.touched_tables.extend(tables.iter().cloned());
+                }
+                if let Some(scans) = self.cte_scans.get(&parts[0]) {
+                    self.scanned_ctes.extend(scans.iter().cloned());
                 }
                 Plan::SubqueryScan {
                     subquery: Box::new(crate::depth::clone_plan(&cte.plan)?),
@@ -1747,7 +1753,7 @@ impl Parser<'_> {
                 p.eat_ident("materialized")?;
             }
             p.ts.expect(&TokenKind::LParen)?;
-            let mark = p.touched_tables.len();
+            let mark = (p.touched_tables.len(), p.scanned_ctes.len());
             if recursive {
                 p.parse_recursive_cte_body(name.clone(), &col_aliases)?;
             } else {
@@ -1774,10 +1780,13 @@ impl Parser<'_> {
             .or_else(|| self.with_clause_arity_verdict.take())
     }
 
-    /// Record the base tables CTE `name`'s body named — the part of
-    /// [`Parser::touched_tables`] from `mark` — for each inlined reference to it.
-    pub(super) fn record_cte_tables(&mut self, name: String, mark: usize) {
-        let tables = self.touched_tables[mark..].to_vec();
+    /// Record the base tables CTE `name`'s body named and the `WITH` queries it scanned —
+    /// the parts of [`Parser::touched_tables`] and [`Parser::scanned_ctes`] from `mark` —
+    /// for each inlined reference to it.
+    pub(super) fn record_cte_tables(&mut self, name: String, mark: (usize, usize)) {
+        let tables = self.touched_tables[mark.0..].to_vec();
+        let scans = self.scanned_ctes[mark.1..].to_vec();
+        self.cte_scans.insert(name.clone(), scans);
         self.cte_tables.insert(name, tables);
     }
 

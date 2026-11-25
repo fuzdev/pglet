@@ -147,6 +147,7 @@ inside a table.
 | 63 | the **two clauses 18.6 requires at least one column for**, over a **zero-column relation** (`ALTER TABLE … DROP COLUMN` down to nothing): a `RETURNING *` and a `SELECT DISTINCT *` | accepts three of the four spellings — the `RETURNING` pair reports success with **no result set at all**, the `DISTINCT` member a **zero-column result set** with one deduped row | `42601 RETURNING must have at least one column` / `42601 SELECT DISTINCT must have at least one column`, at parse analysis | **silent** for the three accepted spellings; the `UPDATE` spelling is **loud, wrong-coded** instead, `42703` against `42601` | — no fixture: pglet accepts where 18.6 refuses, so `@expect-error` needs pglet to raise | 18.6's at-least-one-column clauses are accepted empty |
 | 160 | a statement with a data-modifying CTE where another part reads that CTE's write other than through its `RETURNING` rows, a foreign-key action's write among them — or one of the shapes pglet refuses instead, which the bullet lists | reads the rows the write left, and writes from them; the refused shapes are `0A000` before anything runs, ahead of the data-modifying CTE's own execution error | every part reads the snapshot taken before the statement, and a write skips a row a writer run earlier in the statement already changed (row 162); a data-modifying CTE's execution error raised | **silent** for the plain-`WITH` readers the bullet lists, a write among them; loud where pglet refuses — an over-refusal where 18.6 answers, the wrong code where the CTE's execution raises | `with_recursive_list/data_modifying_then_recursive_loud.sql`, `writing_body_beside_a_data_modifying_cte_*_loud.sql` and `recursive_list_body_reads_*_loud.sql` pin the refusals; — for the silent members, a faithful fixture is red | reads the rows the write left |
 | 162 | the order a statement's data-modifying CTEs run in, under a plain `WITH`, where it decides what they write or return — which of two writers takes a row both reach, and which values a shared sequence gives their rows | runs them in declaration order, each to completion, then the body | pull-driven: runs one its reader reads when that reader first pulls from it, and the rest once the statement's query is done, in the reverse of declaration order; a writer skips a row one run before it already changed | **silent** — a write: another writer takes a row two of them reach, and rows take other serial values | — a faithful fixture is red; the `WITH RECURSIVE` spelling is refused `0A000` (`with_recursive_list/*data_modifying_ctes*_under_recursive_loud.sql`) | write in declaration order |
+| 336 | a statement that writes after a data-modifying CTE it reads — `WITH c AS (INSERT … RETURNING id) INSERT INTO d SELECT id … FROM c` — and the shapes of it refused | the CTE whole, then the body; `0A000` where the body reads a table the CTE writes or does not read the CTE, beside a second one, where a foreign key ties the targets (but a child `INSERT`), or where a sequence is drawn (the bullet) | the two writes interleaved row by row, each part reading the statement's snapshot; every refused shape answers | loud — the refusals, and which of two failing writes raises first | `cte/data_modifying_then_*.sql` | interleaves the two writes row by row |
 | 164 | a subquery in a data-modifying statement's `RETURNING` that reads a table the statement writes — its target, or a table a plain `UPDATE`'s or `DELETE`'s foreign-key action writes | reads the rows the statement left: `1` for that `DELETE`, over two rows | reads the snapshot taken before the statement: `2` | **silent** — a read, and under a plain `WITH` a write: a later data-modifying CTE that reads the `RETURNING` rows stores the value | — a faithful fixture is red | reads the statement's own write |
 | 167 | a parenthesized query followed by a clause it does not carry: an `OFFSET` after its `LIMIT`, or an `ORDER BY` after either, which 18.6 applies ahead of them; an `ORDER BY` key it does not project, with or without them | applies the parenthesized query's own clauses first — `(SELECT x FROM s ORDER BY x LIMIT 3) OFFSET 1` is `2, 3`; an `ORDER BY` key it does not project is `42703` where the query is read | merges the clauses into one query, which sorts, offsets and limits in that order — `2, 3, 4`; the key binds | **silent** — a read, and a write where a data-modifying statement reads it; loud for the unprojected key | — a faithful fixture is red | applied before the clauses written |
 | ~~243~~ | **closed** — an `UPDATE … SET` or `ON CONFLICT DO UPDATE SET` right-hand side reading a column an assignment to its left in the same list writes — `SET a = a + 1, b = a`, the swap `SET a = b, b = a` | read that assignment's result: `11`, `11` over `(10, 0)`; now the target row | the target row, not the assignment's result: `11`, `10` | closed | the `update/set_*` old-row and key-swap fixtures, `cte/writable_update_swap_reads_the_old_row.sql`, `insert/on_conflict_do_update_*` | reads the target row, never an earlier assignment's result |
@@ -17763,7 +17764,44 @@ inside a table.
   differ — measured for two unrelated inserts (18.6 serial 1 to the second), for two CTEs
   reading a third (`s`, `p`, `q` there, where declaring `s0` last reorders the sort), and for
   two tables whose defaults share a sequence. A body that writes beside a data-modifying CTE
-  is refused under either spelling (row 160), which covers its order against them too.
+  is refused under either spelling (row 160) but in the shapes row 336 lets run, which
+  cover its order against them too.
+
+- **336 · A body that writes after a data-modifying CTE runs the CTE whole first, where
+  18.6 interleaves the two writes row by row.** `parser::Parser::wrap_with_ctes` runs a
+  writing body after a data-modifying entry only where its `writing_body_refusal` finds the
+  two orders indistinguishable: the body an `INSERT`, `UPDATE` or `DELETE` that reads the
+  entry (a `Plan::CteScan` of it in the body, or in a read-only `WITH` query the body
+  inlines), the entry the only data-modifying one, the body naming no
+  table the entry writes (`written_tables`, foreign-key actions included, the body's own
+  target counted), no foreign key between the two targets but a body `INSERT` referencing
+  an entry `INSERT`'s rows, no sequence drawn by both targets' column defaults, and no
+  sequence function written in either. 18.6
+  runs the entry as the body pulls its rows (`ExecCTEScan` over the entry's
+  `ModifyTable`), so the body inserts its first row before the entry its second, and checks
+  foreign keys at the statement's end against a snapshot that can miss the other write.
+  Measured against 18.7: the seeding idiom (parents from `generate_series`, a child per
+  `RETURNING id`), an `UPDATE … FROM c` and a disjoint `INSERT … SELECT … FROM c` answer
+  and write alike.
+
+  Refused `0A000` where 18.7 answers, before anything runs: a body reading a table the entry
+  writes (`… (SELECT kind FROM t WHERE id = c.id) FROM c` over the entry's `t`, `NULL` there
+  from the snapshot), an entry the body does not read (18.7 runs it after the body), a
+  second data-modifying entry, a foreign key between the targets other than the child
+  `INSERT` (a `DELETE` of a parent whose last child the entry deleted is `23503` there, so
+  refusing it is the safe side of a pair that does differ), and targets whose defaults
+  draw one sequence (`dms2 (id INT DEFAULT nextval('dms_id_seq'))` beside `dms (id
+  SERIAL)`), and a sequence function written in either write — one side suffices: `WITH c
+  AS (INSERT INTO t VALUES (nextval('s'), 1), (nextval('s'), 2) RETURNING id) INSERT INTO d
+  (tid) SELECT id FROM c` over `d.id DEFAULT nextval('s')` writes `(2, 1)`, `(4, 3)` there
+  and would write `(3, 1)`, `(4, 2)` here. A read-only `WITH` query reading the entry, which
+  the body does not read, does not count as a read (18.7 runs the entry after the body).
+  Residuals in the shapes that run: where both writes fail, the entry's error is raised
+  here and the body's first row's can be there (loud, another code); a
+  `clock_timestamp()` default reads the clock in another order (silent, timing only).
+  Reach: ordinary for the seeding idiom, which is why it runs; contrived for the
+  residuals. Fixtures pin the shapes that run and each refusal; the residuals have none, a
+  faithful fixture being red.
 
 - **163 · A key an `ON DELETE SET NULL` action nulls does not enter the `ON UPDATE`
   worklist.** `plan_delete_cascade` records the `SET NULL` edit and checks the nulled row — its
@@ -17802,7 +17840,8 @@ inside a table.
   carries the same wrong value into the body (`WITH RECURSIVE w AS (DELETE … RETURNING
   (SELECT count(*) FROM p) AS n) SELECT * FROM w` is `1` against `2`), while a second
   data-modifying CTE and a body that writes are refused `0A000` (row 160) — measured, both
-  spellings above that write under a plain `WITH` are refused there.
+  spellings above that write under a plain `WITH` are refused there; a body that writes
+  runs only in row 336's shapes, none of which reads the CTE's table.
 
 - **~~165~~ · Closed — a row a statement rewrote was never repointed by another rewritten
   row's `ON UPDATE CASCADE`, nor nulled by its `ON UPDATE SET NULL`; the residual is a

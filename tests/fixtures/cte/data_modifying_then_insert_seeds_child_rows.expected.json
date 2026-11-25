@@ -1,0 +1,23 @@
+{
+  "rows": [
+    {
+      "cell_id": 1,
+      "granted_by": 7,
+      "level": "viewer",
+      "role": "teacher"
+    },
+    {
+      "cell_id": 2,
+      "granted_by": 7,
+      "level": "viewer",
+      "role": "teacher"
+    },
+    {
+      "cell_id": 3,
+      "granted_by": 7,
+      "level": "viewer",
+      "role": "teacher"
+    }
+  ],
+  "rowCount": 3
+}

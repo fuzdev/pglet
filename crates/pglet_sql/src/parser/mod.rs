@@ -397,6 +397,14 @@ struct Parser<'a> {
     /// ([`Self::cte_tables`]). The part named by the statement body after a `WITH` list
     /// is what [`Self::wrap_with_ctes`] compares with a data-modifying entry's writes.
     touched_tables: Vec<String>,
+    /// The `WITH` queries the statement reads as materialized relations (a
+    /// `Plan::CteScan`) — a data-modifying one among them is run before the statement's
+    /// own write on 18.6 too, as its reader pulls its rows ([`Self::wrap_with_ctes`]).
+    scanned_ctes: Vec<String>,
+    /// The `WITH` queries each CTE body scanned, by CTE name — what an inlined reference to
+    /// a read-only CTE adds to [`Self::scanned_ctes`], as [`Self::cte_tables`] does to the
+    /// tables.
+    cte_scans: HashMap<String, Vec<String>>,
     /// The base tables each CTE body named, by CTE name — what an inlined reference to
     /// a read-only CTE adds to [`Self::touched_tables`], since the reference reads them
     /// where it runs.
@@ -661,7 +669,9 @@ impl<'a> Parser<'a> {
             recursive_ref_count: 0,
             with_recursive: false,
             touched_tables: Vec::new(),
+            scanned_ctes: Vec::new(),
             cte_tables: HashMap::new(),
+            cte_scans: HashMap::new(),
             expr_subquery_depth: 0,
             from_item_enclosing_depth: 0,
             b_expr: false,
@@ -1481,16 +1491,19 @@ impl Parser<'_> {
     /// whole of it for the statements that build no pending set-op column.
     fn parse_statement_once(&mut self) -> Result<Plan> {
         self.touched_tables.clear();
+        self.scanned_ctes.clear();
         self.cte_tables.clear();
+        self.cte_scans.clear();
         if self.ts.at_kw(Keyword::With) {
             self.parse_with_clause()?;
-            let mark = self.touched_tables.len();
+            let mark = (self.touched_tables.len(), self.scanned_ctes.len());
             let result = self
                 .parse_with_statement_body()
                 .and_then(|body| self.wrap_with_ctes(body, mark));
             self.ctes.clear();
             self.next_cte_rank = 0;
             self.cte_tables.clear();
+            self.cte_scans.clear();
             self.touched_tables.clear();
             // Belt-and-braces only. The real discharge is inside `parse_with_clause`,
             // which fires whichever verdict wins and leaves both slots empty on the one
@@ -1514,8 +1527,8 @@ impl Parser<'_> {
     /// Wrap a parsed statement body in the [`Plan::With`] that materializes its `WITH`
     /// clause's data-modifying and recursive CTEs, in the order they were resolved — or
     /// return the bare body when there are none (read-only CTEs already inlined at their
-    /// reference sites). `mark` is where the body's part of
-    /// [`Self::touched_tables`] begins.
+    /// reference sites). `mark` is where the body's parts of [`Self::touched_tables`] and
+    /// [`Self::scanned_ctes`] begin.
     ///
     /// The executor runs the entries in that order and then the body, against one
     /// storage. 18.6 runs every part of the statement against the snapshot taken before
@@ -1529,10 +1542,10 @@ impl Parser<'_> {
     ///
     /// `0A000`, before anything runs:
     ///
-    /// - for a body that writes — a data-modifying statement, a sequence function —
-    ///   beside a data-modifying entry: the body's write runs after the entry's here and
-    ///   ahead of an unreferenced one there, and its reads see the entry's writes here
-    ///   and not there;
+    /// - for a body that writes beside a data-modifying entry, unless the two cannot be
+    ///   told apart ([`Self::writing_body_refusal`]): here the entry's write runs whole
+    ///   before the body's, where 18.6 runs it as the body pulls its rows — or after the
+    ///   body, unread — and the body's reads see the entry's writes here and not there;
     /// - for a recursive CTE resolved **after** a data-modifying one, which could read
     ///   the rows the earlier write left — measured, a recursive CTE scanning the table a
     ///   sibling `INSERT` wrote answers the inserted row here and not there;
@@ -1541,7 +1554,7 @@ impl Parser<'_> {
     ///   their rows take a shared sequence's values; and for a body naming a table a
     ///   data-modifying entry can write, itself or through a foreign key's referential
     ///   action ([`written_tables`]), which would read the rows that write left.
-    fn wrap_with_ctes(&mut self, body: Plan, mark: usize) -> Result<Plan> {
+    fn wrap_with_ctes(&mut self, body: Plan, mark: (usize, usize)) -> Result<Plan> {
         use crate::planner::CteBody;
         let ctes = std::mem::take(&mut self.materialized_ctes);
         let Some(write) = ctes
@@ -1558,14 +1571,9 @@ impl Parser<'_> {
             });
         };
         let writer = &ctes[write].name;
-        if !body.is_read_only() {
-            // An advisory call's projection is no write, but it moves the session's holds,
-            // which keeps it off the read path all the same (`Plan::is_read_only`).
-            let what = if body.is_advisory_projection() {
-                "an advisory-lock call"
-            } else {
-                "a statement that writes"
-            };
+        if !body.is_read_only()
+            && let Some(what) = self.writing_body_refusal(&body, &ctes, write, mark)
+        {
             return Err(Error::NotImplemented(format!(
                 "{what}, after data-modifying WITH query \"{writer}\""
             )));
@@ -1593,7 +1601,7 @@ impl Parser<'_> {
                     "more than one data-modifying query in a WITH RECURSIVE list".into(),
                 ));
             }
-            if let Some(table) = self.touched_tables[mark..]
+            if let Some(table) = self.touched_tables[mark.0..]
                 .iter()
                 .find(|t| written.contains(t))
             {
@@ -1607,6 +1615,129 @@ impl Parser<'_> {
             ctes,
             body: Box::new(body),
         })
+    }
+
+    /// Why a body that writes cannot run after the data-modifying entry `ctes[write]`
+    /// here — or `None` where the order cannot be told from 18.6's.
+    ///
+    /// 18.6 runs a data-modifying entry as its reader pulls its rows, so a body reading it
+    /// (`WITH c AS (INSERT … RETURNING id) INSERT INTO d SELECT … FROM c`) interleaves the
+    /// two writes row by row, and every part reads the snapshot taken before the
+    /// statement; here the entry runs whole first. The two answer alike when the body is
+    /// an `INSERT`, `UPDATE` or `DELETE` that reads the entry, the entry is the only
+    /// data-modifying one, the body names no table the entry writes (itself or through a
+    /// foreign key's action — the body's own target included, so neither sees the other's
+    /// rows), no foreign key ties the two targets but a body `INSERT`'s rows referencing
+    /// an entry `INSERT`'s, neither write calls a sequence function, and the two targets
+    /// draw no sequence in common through their defaults,
+    /// whose values the interleaving would hand out in another order. What is left —
+    /// which of two failing writes raises first — is `EDGES.md` row 336.
+    fn writing_body_refusal(
+        &self,
+        body: &Plan,
+        ctes: &[crate::planner::CtePlan],
+        write: usize,
+        mark: (usize, usize),
+    ) -> Option<String> {
+        use crate::planner::CteBody;
+        // An advisory call's projection is no write, but it moves the session's holds,
+        // which keeps it off the read path all the same (`Plan::is_read_only`).
+        if body.is_advisory_projection() {
+            return Some("an advisory-lock call".into());
+        }
+        let (Plan::Insert {
+            table: body_target, ..
+        }
+        | Plan::Update {
+            table: body_target, ..
+        }
+        | Plan::Delete {
+            table: body_target, ..
+        }) = body
+        else {
+            return Some("a statement that writes".into());
+        };
+        let writers = ctes
+            .iter()
+            .filter(|c| matches!(c.body, CteBody::Modifying { .. }))
+            .count();
+        if writers > 1 {
+            return Some("a statement that writes, beside more than one".into());
+        }
+        let entry = &ctes[write];
+        // The body's own scans, a read-only CTE's counted where the body inlines it: a
+        // scan by a read-only CTE the body never reads runs nothing on 18.6.
+        if !self.scanned_ctes[mark.1..].contains(&entry.name) {
+            return Some("a statement that writes and does not read it".into());
+        }
+        let CteBody::Modifying { plan, .. } = &entry.body else {
+            return Some("a statement that writes".into());
+        };
+        let written = written_tables(plan, self.schema);
+        if let Some(table) = self.touched_tables[mark.0..]
+            .iter()
+            .find(|t| written.contains(t))
+        {
+            return Some(format!(
+                "a statement that writes, naming table \"{table}\", which it can write"
+            ));
+        }
+        let (Plan::Insert {
+            table: entry_target,
+            ..
+        }
+        | Plan::Update {
+            table: entry_target,
+            ..
+        }
+        | Plan::Delete {
+            table: entry_target,
+            ..
+        }) = plan.as_ref()
+        else {
+            return Some("a statement that writes".into());
+        };
+        // A foreign key between the two targets is checked here as each write runs and
+        // there at the statement's end, against a snapshot that can miss the other
+        // write's rows: measured, a `DELETE` of a parent after an entry deleting its
+        // last child is `23503` there. The one link that answers alike is a body
+        // `INSERT` of rows referencing an entry `INSERT`'s, the seeding idiom.
+        let child_insert =
+            matches!(body, Plan::Insert { .. }) && matches!(plan.as_ref(), Plan::Insert { .. });
+        let links = |parent: &str, child: &str| {
+            self.schema
+                .referencing_foreign_keys(parent)
+                .any(|(table, _, _)| table.name == child)
+        };
+        if links(body_target, entry_target) || (links(entry_target, body_target) && !child_insert) {
+            return Some(
+                "a statement that writes a table a foreign key ties to the one it writes".into(),
+            );
+        }
+        // A sequence function written in either write draws in another order than 18.6's
+        // interleaving, which its defaults' comparison below cannot see.
+        if holds_sequence_call(body) || holds_sequence_call(plan) {
+            return Some("a statement that writes, beside a sequence function".into());
+        }
+        let drawn = |table: &str| -> Vec<String> {
+            self.schema.get_table(table).map_or_else(Vec::new, |t| {
+                t.columns
+                    .iter()
+                    .filter_map(|c| c.default.as_ref())
+                    .flat_map(crate::executor::default_sequence_refs)
+                    .collect()
+            })
+        };
+        let entry_draws = drawn(entry_target);
+        if let Some(seq) = drawn(body_target)
+            .into_iter()
+            .find(|s| entry_draws.contains(s))
+        {
+            return Some(format!(
+                "a statement that writes, drawing sequence \"{seq}\" as it does"
+            ));
+        }
+        None
     }
 
     /// The statement after a `WITH` list, which 18.6's grammar gives one of `SELECT`
@@ -1696,6 +1827,57 @@ impl Parser<'_> {
             // a statement kind. Postgres: `42601` syntax error at or near "<tok>".
             Err(self.ts.syntax_error_at_or_near())
         }
+    }
+}
+
+/// Whether the write `plan` calls a sequence function in an expression it evaluates —
+/// a `VALUES` row, an `INSERT … SELECT` projection, an assignment, a filter, `RETURNING`
+/// or an `ON CONFLICT` action.
+fn holds_sequence_call(plan: &Plan) -> bool {
+    use crate::planner::{InsertRows, OnConflictAction, OnConflictClause};
+    fn holds(expr: &Expr) -> bool {
+        if matches!(expr, Expr::SequenceFn { .. }) {
+            return true;
+        }
+        let mut found = false;
+        expr.for_each_child(|child| found = found || holds(child));
+        found
+    }
+    let assignments = |a: &[(String, Expr)]| a.iter().any(|(_, e)| holds(e));
+    match plan {
+        Plan::Insert {
+            rows,
+            returning,
+            on_conflict,
+            ..
+        } => {
+            let in_rows = match rows {
+                InsertRows::Values { rows, .. } => rows.iter().flatten().any(holds),
+                InsertRows::Select { source, .. } => {
+                    source.is_sequence_projection() || holds_sequence_call(source)
+                }
+            };
+            let in_action = matches!(
+                on_conflict,
+                Some(OnConflictClause {
+                    action: OnConflictAction::DoUpdate { assignments: a, where_predicate },
+                    ..
+                }) if assignments(a) || where_predicate.as_ref().is_some_and(holds)
+            );
+            in_rows || in_action || returning.iter().any(holds)
+        }
+        Plan::Update {
+            assignments: a,
+            filter,
+            returning,
+            ..
+        } => assignments(a) || filter.as_ref().is_some_and(holds) || returning.iter().any(holds),
+        Plan::Delete {
+            filter, returning, ..
+        } => filter.as_ref().is_some_and(holds) || returning.iter().any(holds),
+        Plan::Values { rows, .. } => rows.iter().flatten().any(holds),
+        Plan::Project { exprs, input, .. } => exprs.iter().any(holds) || holds_sequence_call(input),
+        _ => false,
     }
 }
 
