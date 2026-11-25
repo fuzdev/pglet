@@ -2255,6 +2255,8 @@ const fn string_fn_text_arg(func: StringFunc, i: usize) -> bool {
         StringFunc::ToJsonb => false,
         // Numbers only — `string_fn_typed_arg`'s.
         StringFunc::MakeInterval => false,
+        // (string, format) — both text.
+        StringFunc::Decode => i <= 1,
     }
 }
 

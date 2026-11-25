@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42883",
+    "message": "function decode(integer, unknown) does not exist"
+  }
+}

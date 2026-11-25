@@ -691,6 +691,104 @@ fn parse_bytea(s: &str) -> Result<Vec<u8>> {
     Ok(bytes)
 }
 
+/// `decode(string, format)`'s bytes, as 18.6's `binary_decode` reads them: `hex` is
+/// [`parse_bytea`]'s hex format without its `\x`, `escape` its escape format (where `\x`
+/// is an invalid escape), and `base64` [`decode_base64`]'s. The format name is matched
+/// case-blind (`pg_strcasecmp`); any other is `22023`.
+///
+/// # Errors
+///
+/// `22023` for an unknown format and for malformed `hex` or `base64` input; `22P02` for
+/// a malformed `escape`.
+pub fn decode_bytes(s: &str, format: &str) -> Result<Vec<u8>> {
+    if format.eq_ignore_ascii_case("hex") {
+        parse_bytea(&format!("\\x{s}"))
+    } else if format.eq_ignore_ascii_case("escape") {
+        if s.starts_with("\\x") {
+            return Err(Error::InvalidInputSyntax {
+                type_name: "bytea",
+                value: s.to_owned(),
+            });
+        }
+        parse_bytea(s)
+    } else if format.eq_ignore_ascii_case("base64") {
+        decode_base64(s)
+    } else {
+        Err(Error::InvalidParameterValue {
+            message: format!("unrecognized encoding: \"{format}\""),
+            hint: None,
+        })
+    }
+}
+
+/// `decode(…, 'base64')`, 18.6's `pg_base64_decode`: whitespace is skipped anywhere, a
+/// `=` is padding only as the third or fourth symbol of a group (and ends the data's
+/// length there), and a group left unfinished is the end-sequence refusal. Every
+/// refusal is `22023`.
+fn decode_base64(s: &str) -> Result<Vec<u8>> {
+    let refuse = |message: String, hint: Option<&str>| Error::InvalidParameterValue {
+        message,
+        hint: hint.map(str::to_owned),
+    };
+    let mut out = Vec::with_capacity(s.len() / 4 * 3);
+    let (mut buf, mut pos, mut end) = (0_u32, 0_u8, 0_u8);
+    for c in s.chars() {
+        if matches!(c, ' ' | '\t' | '\n' | '\r') {
+            continue;
+        }
+        let value = if c == '=' {
+            if end == 0 {
+                end = match pos {
+                    2 => 1,
+                    3 => 2,
+                    _ => {
+                        return Err(refuse(
+                            "unexpected \"=\" while decoding base64 sequence".into(),
+                            None,
+                        ));
+                    }
+                };
+            }
+            0
+        } else {
+            match c {
+                'A'..='Z' => u32::from(c) - u32::from('A'),
+                'a'..='z' => u32::from(c) - u32::from('a') + 26,
+                '0'..='9' => u32::from(c) - u32::from('0') + 52,
+                '+' => 62,
+                '/' => 63,
+                _ => {
+                    return Err(refuse(
+                        format!("invalid symbol \"{c}\" found while decoding base64 sequence"),
+                        None,
+                    ));
+                }
+            }
+        };
+        buf = (buf << 6) + value;
+        pos += 1;
+        if pos == 4 {
+            let [_, b0, b1, b2] = buf.to_be_bytes();
+            out.push(b0);
+            if end == 0 || end > 1 {
+                out.push(b1);
+            }
+            if end == 0 || end > 2 {
+                out.push(b2);
+            }
+            buf = 0;
+            pos = 0;
+        }
+    }
+    if pos != 0 {
+        return Err(refuse(
+            "invalid base64 end sequence".into(),
+            Some("Input data is missing padding, is truncated, or is otherwise corrupted."),
+        ));
+    }
+    Ok(out)
+}
+
 #[cfg(test)]
 mod narrowing_tests {
     use super::*;

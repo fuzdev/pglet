@@ -79,7 +79,7 @@ seem to disagree, the record wins.
 | [SQL typed constants (`DATE '2024-06-15'`, `NUMERIC(5,2) '1.5'`, `DOUBLE PRECISION '…'`)](#sql-typed-constants-date-2024-06-15-numeric52-15-double-precision-) | ✅ | `DATE '…'`, `NUMERIC(5,2) '…'` and the other typed-constant spellings, read as the matching cast. |
 | [`x IS [NOT] TRUE / FALSE / UNKNOWN`](#x-is-not-true--false--unknown) | ✅ | PostgreSQL's boolean test, never `NULL`; a non-boolean operand is `42804`. |
 | [TIME](#time) | ✅ | A full column type with `time(p)`; `timetz` is `42704`, a zone suffix on a time literal is `22007`, and `CURRENT_TIME` is `time`, not `timetz`. |
-| [bytea](#bytea) | ⚠️ | A full column type, hex and escape input read as PostgreSQL reads them; `bytea \|\| bytea` and `bytea LIKE bytea` are `0A000`, and an uncast string beside a `bytea` under `\|\|` is joined as text (`EDGES.md` row 293). |
+| [bytea](#bytea) | ⚠️ | A full column type, hex and escape input read as PostgreSQL reads them, and `decode(text, 'hex' \| 'base64' \| 'escape')`; `bytea \|\| bytea` and `bytea LIKE bytea` are `0A000`, and an uncast string beside a `bytea` under `\|\|` is joined as text (`EDGES.md` row 293). |
 | [Real prepared statements / param type inference](#real-prepared-statements--param-type-inference) | ⚠️ | `$N` parameters typed from their context or from the client's declared types, reported in `ParameterDescription`; a `$N` used twice is not unified, and one beside arithmetic (`SET n = n + $1`) is left untyped, so a text-format bind of it is `42804`. |
 | [`to_char` / `AT TIME ZONE`](#to_char--at-time-zone) | ⚠️ | The ISO-8601 `to_char` tokens over a timestamp, and `AT TIME ZONE 'UTC'`; another zone or an unknown token is refused. |
 | [`timestamptz` text wire output](#timestamptz-text-wire-output) | ✅ | Rendered with the `+00` offset, so a text-protocol driver reads the right instant. |
@@ -3029,7 +3029,11 @@ or unpaired hex digit and `22P02` for an invalid escape. `EDGES.md` row 279 (clo
 the entry points we checked and the residuals: a default string the hex format refuses is
 accepted by `CREATE TABLE` / `SET DEFAULT` and gives `22023` at each `INSERT` that uses it.
 Output is hex text, with full binary wire support, a byte-count `length()`, and B-tree
-indexing / UNIQUE. `bytea || bytea` and `bytea LIKE bytea` are legal in Postgres and not
+indexing / UNIQUE. `decode(string, format)` builds a `bytea` from text in 18.6's three
+formats — `hex` (the hex input format without its `\x`), `base64` (whitespace skipped,
+padding required) and `escape` (the escape input format) — the name matched case-blind, with
+18.6's `22023` for an unknown format or malformed `hex` / `base64` and `22P02` for a
+malformed `escape`. `encode` is not implemented (`0A000`). `bytea || bytea` and `bytea LIKE bytea` are legal in Postgres and not
 implemented here (`0A000`). Next to a bare string literal, `||` gives a `text` result (the
 `||` row; `EDGES.md` row 293) and `LIKE` gives `42883`, where 18.6 reads the literal as
 `bytea` and returns a result (`EDGES.md` row 262).

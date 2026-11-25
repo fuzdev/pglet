@@ -1,0 +1,23 @@
+{
+  "rows": [
+    {
+      "data": {
+        "data": [
+          222,
+          173,
+          190,
+          239
+        ],
+        "type": "Buffer"
+      },
+      "id": "a",
+      "octet_length": 4
+    },
+    {
+      "data": null,
+      "id": "b",
+      "octet_length": null
+    }
+  ],
+  "rowCount": 2
+}

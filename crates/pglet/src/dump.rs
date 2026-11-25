@@ -2132,6 +2132,7 @@ COPY g (id, \"order\", tags, note) FROM stdin;
         "octet_length(s) > 0",
         "to_jsonb(a) IS NOT NULL",
         "make_interval(hours => a) < make_interval(days => 1)",
+        "decode('ab', 'hex') IS NOT NULL",
         "mod(a, 3) = 1",
         "power(a, 2) < 100",
         "pow(n, 2) < 100",

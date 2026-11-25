@@ -1759,6 +1759,12 @@ pub enum StringFunc {
     /// as 18.6's `make_interval` answers. Strict. Appended last for postcard-discriminant
     /// stability.
     MakeInterval,
+    /// `decode(text, format text) → bytea` — `hex` (`\x`-less hex digits), `base64`, or
+    /// `escape` (`bytea`'s escape input format), the format name matched case-blind;
+    /// another name is `22023 unrecognized encoding`, as are 18.6's own malformed-input
+    /// refusals per format (`executor::coerce`'s `decode_bytes`). Strict. Appended last
+    /// for postcard-discriminant stability.
+    Decode,
 }
 
 /// The advisory-lock members of [`StringFunc`] — the calls that answer only as a
@@ -2608,6 +2614,7 @@ pub const fn string_fn_result_type(func: StringFunc) -> TypeOid {
         StringFunc::Substr => TypeOid::Text,
         StringFunc::ToJsonb => TypeOid::Jsonb,
         StringFunc::MakeInterval => TypeOid::Interval,
+        StringFunc::Decode => TypeOid::Bytea,
     }
 }
 
@@ -3418,6 +3425,7 @@ fn dispatch_call(
             string_call(StringFunc::ToJsonb, args, 1..=1)
         }
         "make_interval" => string_call(StringFunc::MakeInterval, make_interval_args(args), 0..=7),
+        "decode" => string_call(StringFunc::Decode, args, 2..=2),
         "md5" => string_call(StringFunc::Md5, args, 1..=1),
         "left" => string_call(StringFunc::Left, int4_positions(args), 2..=2),
         "right" => string_call(StringFunc::Right, int4_positions(args), 2..=2),
@@ -5846,6 +5854,7 @@ mod postcard_layout {
                 (34, StringFunc::ToRegclass),
                 (35, StringFunc::ToJsonb),
                 (36, StringFunc::MakeInterval),
+                (37, StringFunc::Decode),
             ],
         );
         pin_tags(
@@ -6091,7 +6100,8 @@ mod postcard_layout {
                 | StringFunc::AdvisoryXactLockShared
                 | StringFunc::ToRegclass
                 | StringFunc::ToJsonb
-                | StringFunc::MakeInterval => (),
+                | StringFunc::MakeInterval
+                | StringFunc::Decode => (),
             }
         }
         fn _variadic_func(v: VariadicFunc) {

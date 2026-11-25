@@ -51,6 +51,7 @@ released version under a fresh `## Unreleased` declaring a patch.
   a named argument to any other function is `42883`
 - feat: `jsonb || jsonb` — two objects merge, anything else appends (was `0A000`); an uncast
   string, `NULL` or `$N` beside a `jsonb` reads as `jsonb` (was joined as text)
+- feat: `decode(text, 'hex' | 'base64' | 'escape')` (was `0A000`)
 
 ## 0.2.1
 

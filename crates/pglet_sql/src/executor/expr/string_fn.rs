@@ -236,6 +236,10 @@ pub(super) fn eval_string_fn(
         // The node's own arm in `eval_expr_full` answers every call it builds, with the
         // argument's declared type; reached here, only the value's own type is known.
         StringFunc::MakeInterval => eval_make_interval(args),
+        StringFunc::Decode => Ok(Value::Bytea(crate::executor::coerce::decode_bytes(
+            str_arg(&args[0], "decode")?,
+            str_arg(&args[1], "decode")?,
+        )?)),
         StringFunc::ToJsonb => Ok(Value::Jsonb(
             super::eval::value_to_jsonb(&args[0], None).canonical(),
         )),

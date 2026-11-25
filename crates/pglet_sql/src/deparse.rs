@@ -657,12 +657,13 @@ pub const fn string_fn_name(func: StringFunc) -> &'static str {
         StringFunc::ToRegclass => "to_regclass",
         StringFunc::ToJsonb => "to_jsonb",
         StringFunc::MakeInterval => "make_interval",
+        StringFunc::Decode => "decode",
     }
 }
 
 /// Every [`StringFunc`], for the corpus completeness check. See
 /// `pglet::dump`'s `ROUND_TRIP_CORPUS`.
-pub const STRING_FUNCS: [StringFunc; 37] = [
+pub const STRING_FUNCS: [StringFunc; 38] = [
     StringFunc::PgGetConstraintdef,
     StringFunc::Regclass,
     StringFunc::Upper,
@@ -700,6 +701,7 @@ pub const STRING_FUNCS: [StringFunc; 37] = [
     StringFunc::ToRegclass,
     StringFunc::ToJsonb,
     StringFunc::MakeInterval,
+    StringFunc::Decode,
 ];
 
 /// Render a [`Expr::StringFn`] call, special-casing [`StringFunc::Position`].
@@ -815,6 +817,7 @@ const fn string_fn_arg_text(func: StringFunc, idx: usize) -> bool {
         | StringFunc::PgGetSerialSequence
         | StringFunc::HasSchemaPrivilege
         | StringFunc::ToRegclass
+        | StringFunc::Decode
         | StringFunc::Md5
         | StringFunc::OctetLength => true,
         StringFunc::Lpad | StringFunc::Rpad => idx == 0 || idx == 2,

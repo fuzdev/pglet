@@ -1,0 +1,74 @@
+{
+  "rows": [
+    {
+      "b": {
+        "data": [
+          104,
+          101,
+          108,
+          108,
+          111
+        ],
+        "type": "Buffer"
+      },
+      "b_after_pad": {
+        "data": [
+          104,
+          105,
+          65,
+          0
+        ],
+        "type": "Buffer"
+      },
+      "b_space": {
+        "data": [
+          104,
+          105
+        ],
+        "type": "Buffer"
+      },
+      "e": {
+        "data": [
+          97,
+          1,
+          120,
+          92,
+          121
+        ],
+        "type": "Buffer"
+      },
+      "e2": {
+        "data": [
+          97,
+          98,
+          99
+        ],
+        "type": "Buffer"
+      },
+      "empty": {
+        "data": [],
+        "type": "Buffer"
+      },
+      "h": {
+        "data": [
+          222,
+          173,
+          190,
+          239
+        ],
+        "type": "Buffer"
+      },
+      "h2": {
+        "data": [
+          222,
+          173,
+          190,
+          239
+        ],
+        "type": "Buffer"
+      },
+      "nul": null
+    }
+  ],
+  "rowCount": 1
+}
