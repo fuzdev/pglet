@@ -966,9 +966,9 @@ fn execute_plan_node_rest<S: Storage>(
             ..
         } => window::execute_window(input, (window_exprs, enclosing), schema, storage, env),
 
-        _ => Err(Error::NotImplemented(format!(
-            "plan node not supported in query: {plan:?}"
-        ))),
+        _ => Err(Error::NotImplemented(
+            "plan node not supported in query".to_string(),
+        )),
     }
 }
 
