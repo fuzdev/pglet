@@ -124,7 +124,7 @@ inside a table.
 | 294 | a Unicode space (U+00A0, U+0085, U+2003 measured) leading or trailing a number, `uuid`, `date`, `time` or `interval` string — `'1<U+00A0>'::int` — and so an array element of those types: `'{1<U+00A0>}'::int[]` | the value, the space trimmed: `1`, `{1}` | `22P02`; `22007` for `date`, `time` and `interval` | **silent, and it writes** | — a faithful fixture is red | trim a Unicode space |
 | 287 | `INSERT … OVERRIDING USER VALUE` with a value written for the identity column | the cell is replaced before it is read: an ill-typed constant, an unknown column or sequence in it is accepted; a `$N` in it leaves the statement's parameters (native server: `08P01` at `Bind`); over a `SELECT` source, `0A000` | reads the cell and discards its value: `22P02` / `42703` / `42P01`; the `$N` is counted; the `SELECT` source runs | **silent** for the unread cell; loud for the parameter (native server) and the `SELECT` source | — a faithful fixture is red | replaced before it is read |
 | ~~306~~ | **closed** — `jsonb_build_object` over a `timestamptz`, `timestamp` or array value | the value's text output as a JSON string — `"2021-01-02 03:04:05"`, `"{1}"`; now ISO 8601 and a JSON array | ISO 8601 — `"2021-01-02T03:04:05+00:00"` — and a JSON array, `[1]` | closed — **silent** residuals: a `float4` widened, a `char(n)` unpadded; two loud ones (the bullet) | `jsonb/build_object_timestamp_and_array_values.sql`, `jsonb/to_jsonb_scalars.sql` | renders a value it has no JSON kind for as its text output |
-| 334 | a whole-row reference — `to_jsonb(t)`, `t.*` — anywhere but a select list's own level, or to an item pglet cannot hold as a row there | `42703` outside the select list or from a nested level; `0A000` on an outer join's nullable side, over a derived table repeating a column name; `42803` grouped | the row — `NULL` on the null-extended side, the last of a repeated name, the row where `GROUP BY` names the primary key | loud; **silent** where a bare name is also an enclosing level's column (the row here, that column there) | `jsonb/to_jsonb_whole_row_*.sql` | rewritten into an expression over the item's columns |
+| 334 | a whole-row reference — `to_jsonb(t)`, `t::text` — anywhere but a select list's own level, under a cast to another type, or to an item pglet cannot hold as a row there | `42703` (`42P01` for `t.*`) outside the select list, from a nested level, or cast to another type; `0A000` on an outer join's nullable side, over a derived table repeating a column name; `42803` grouped, outside an aggregate | the row — `NULL` on the null-extended side, the last of a repeated name, the row where `GROUP BY` names the primary key | loud; **silent** where a bare name is also an enclosing level's column (the row here, that column there) | `jsonb/to_jsonb_whole_row_*.sql` | rewritten into an expression over the item's columns |
 | 335 | a named function argument — `f(name => x)` — to a function other than `make_interval`, and a stored `make_interval` written with names | `42883` for every other function; `make_interval(0, 0, 0, 0, a)` in `pg_get_constraintdef`, `check_clause`, `column_default` and `indexdef` | the call, where the function has that argument name (`random(min => 1, max => 2)`, `string_agg(value => …, delimiter => …)`); `make_interval(hours => a)` | loud for the calls and their order against `42P01`/`42703`; **silent** in the rendered definition and over no row | — a faithful fixture is red | the one function whose argument names pglet knows |
 
 **Name resolution & scope**
@@ -16093,20 +16093,37 @@ inside a table.
   pglet models no row type, so `planner::query`'s `rewrite_whole_row_refs` turns
   `to_jsonb(t)` and `to_jsonb(t.*)` in a select list into `to_jsonb` over a
   `jsonb_build_object` of `t`'s columns, which answers what 18.6's `composite_to_jsonb`
-  does for a row of a table, a derived table or a `WITH` query. A bare name is a whole row
+  does for a row of a table, a derived table or a `WITH` query, and `t::text` (and
+  `CAST(t AS text)`) into `StringFunc::RecordOut` over them, 18.6's `record_out`. A bare name is a whole row
   only where it names no column of the level and does name a FROM item there, 18.6's
   order (`transformColumnRef`).
 
   What the rewrite does not reach, measured against 18.7: a whole-row reference in
-  `WHERE`, `ORDER BY` or any clause but the select list, and one in a nested query naming
+  `WHERE`, `ORDER BY` or any clause but the select list, a whole row cast to a type other
+  than `text` (`t::varchar`) or compared as a row (`t = t`), and one in a nested query naming
   an enclosing query's item — `SELECT (SELECT to_jsonb(x)) FROM t x` — stays a column
-  reference that binds nothing, `42703` where 18.7 answers. Refused `0A000` where 18.7
+  reference that binds nothing, `42703` where 18.7 answers; the `u.*` spelling of the last,
+  `SELECT (SELECT to_jsonb(u.*) FROM v) FROM u`, is `42P01 missing FROM-clause entry`
+  there. Refused `0A000` where 18.7
   answers: an item on the nullable side of an outer join, whose whole row 18.7 answers
   `NULL` and the columns' object would not; a derived table repeating a column name
   (`(SELECT 1 AS a, 2 AS a) s`, `{"a": 2}` there); a FROM function's whole row, which is
-  its value there. In a grouping query the reference is `42803`, 18.7's answer unless
-  `GROUP BY` names the table's primary key, where 18.7 answers the row
-  (`check_functional_grouping`). Silent: a bare name that is no column of its own level
+  its value there. In a grouping query a reference outside an aggregate's argument is
+  `42803`, 18.7's answer unless `GROUP BY` names the table's primary key, where 18.7
+  answers the row (`check_functional_grouping`); inside one it is rewritten and answers
+  (`count(to_jsonb(t)) … GROUP BY g`). A table the catalog lacks is its `42P01`.
+
+  Each refusal is raised as the select list is rewritten, ahead of 18.7's order, which
+  resolves the `FROM` list and every column first: beside a column nothing binds, `to_jsonb(v)`
+  over an outer join's nullable side, `v::text` with a `WHERE nosuch = 1`, and `to_jsonb(s)`
+  over a derived table repeating a name are `0A000` here and `42703` there; in a grouping
+  query `to_jsonb(u), nosuchcol` and a `GROUP BY nosuchcol` are `42803` against `42703`;
+  and `to_jsonb('x') FROM nosuch` is `42804` against `42P01`, row 51's later-error class
+  (the call is built by the parser). Loud, another code; moving them means deferring each
+  refusal past name resolution. An aggregate's `FILTER (WHERE …)` is not parsed at all
+  (`compatibility.md`), so a whole-row reference there is that clause's refusal.
+
+  Silent: a bare name that is no column of its own level
   but is one of an **enclosing** level's — 18.7 binds the enclosing column
   (`colNameToVar` searches every level before any relation), and pglet the row of its own
   level's item. Reach: ordinary for the loud members, contrived for the silent one.

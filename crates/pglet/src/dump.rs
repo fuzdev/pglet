@@ -2008,6 +2008,8 @@ COPY g (id, \"order\", tags, note) FROM stdin;
         StringFunc::AdvisoryUnlockAll,
         StringFunc::PgGetSerialSequence,
         StringFunc::ToRegclass,
+        // Never written in SQL: only a select list's whole-row cast is rewritten into it.
+        StringFunc::RecordOut,
     ];
 
     /// The [`ROUND_TRIP_CORPUS`] entries no index can hold — a `random()` call is

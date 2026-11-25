@@ -84,7 +84,7 @@ seem to disagree, the record wins.
 | [`to_char` / `AT TIME ZONE`](#to_char--at-time-zone) | ⚠️ | The ISO-8601 `to_char` tokens over a timestamp, and `AT TIME ZONE 'UTC'`; another zone or an unknown token is refused. |
 | [`timestamptz` text wire output](#timestamptz-text-wire-output) | ✅ | Rendered with the `+00` offset, so a text-protocol driver reads the right instant. |
 | [`ErrorResponse` structured fields](#errorresponse-structured-fields) | ⚠️ | SQLSTATE, message, detail, hint, position and the table / column / constraint fields where PostgreSQL sends them; a field pglet can't fill truthfully is omitted, and some are not sent yet. |
-| [`jsonb_build_object`, `to_jsonb`, `IS [NOT] DISTINCT FROM`](#jsonb_build_object-to_jsonb-is-not-distinct-from) | ⚠️ | `jsonb_build_object`, `to_jsonb` over a value or a select list's whole-row reference (`to_jsonb(t)`), and the null-safe `IS [NOT] DISTINCT FROM`. A `float4` value is widened and a `char(n)` unpadded (`EDGES.md` row 306); a whole-row reference elsewhere is `42703` (row 334). |
+| [`jsonb_build_object`, `to_jsonb`, `IS [NOT] DISTINCT FROM`](#jsonb_build_object-to_jsonb-is-not-distinct-from) | ⚠️ | `jsonb_build_object`, `to_jsonb` over a value or a select list's whole-row reference (`to_jsonb(t)`, and `t::text` its text output), and the null-safe `IS [NOT] DISTINCT FROM`. A `float4` value is widened and a `char(n)` unpadded (`EDGES.md` row 306); a whole-row reference elsewhere is `42703` (row 334). |
 | [Scalar `EXISTS` / `NOT EXISTS`](#scalar-exists--not-exists) | ⚠️ | Plain and correlated `EXISTS` / `NOT EXISTS`; the sub-plan runs to the end, so a row past the first match that raises an error fails the query where PostgreSQL succeeds (`EDGES.md` row 320). |
 | [`INSERT … SELECT` + `unnest($N)` in a SELECT projection](#insert--select--unnestn-in-a-select-projection) | ⚠️ | `INSERT … SELECT`, and `unnest($1)` in a `SELECT` with no `FROM`; `unnest(…)` in the select list of a query with a `FROM` is `0A000`. |
 | [`generate_series` in `FROM`](#generate_series-in-from) | ⚠️ | The `integer` and `bigint` series over constant and parameter arguments, up to 1 000 000 rows (`54000` past it); the `numeric` and timestamp series, an argument naming a column (the lateral form, written `LATERAL` or not) or holding a subquery, and the select-list form are refused (`EDGES.md` row 321). |
@@ -3278,12 +3278,14 @@ as on 18.6. Residuals: a `float4` is widened before it is rendered and a `char(n
 padding (`EDGES.md` row 306).
 
 **A whole-row reference** — `to_jsonb(t)` or `to_jsonb(t.*)` over a table, a derived table
-or a `WITH` query in the select list — is the row as an object keyed by column name:
-pglet models no row type, so the reference is rewritten into `to_jsonb` over a
-`jsonb_build_object` of the item's columns. A name that is a column of the level is the
-column, as on 18.6. Elsewhere — another clause, a nested query naming an enclosing item —
-the reference is `42703`; an outer join's nullable side and a derived table repeating a
-column name are `0A000`; a grouping query is `42803` (`EDGES.md` row 334).
+or a `WITH` query in the select list — is the row as an object keyed by column name, and
+`t::text` (or `CAST(t AS text)`) is the row's text output, `(1,"x y",)`, as 18.6's
+`record_out` writes it: pglet models no row type, so the reference is rewritten into an
+expression over the item's columns. A name that is a column of the level is the column, as
+on 18.6. Elsewhere — another clause, a nested query naming an enclosing item, a cast to a
+type other than `text` — the reference is `42703`; an outer join's nullable side and a
+derived table repeating a column name are `0A000`; a grouping query is `42803` outside an
+aggregate's argument (`EDGES.md` row 334).
 
 ### Scalar `EXISTS` / `NOT EXISTS`
 

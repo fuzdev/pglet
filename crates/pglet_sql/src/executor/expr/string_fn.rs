@@ -35,6 +35,13 @@ pub(super) fn eval_string_fn(
     if func == StringFunc::SetConfigLockTimeout {
         return eval_set_config_lock_timeout(args);
     }
+    // Not strict either: a NULL column is part of the row. The node's own arm in
+    // `eval_expr_full` answers every call it builds, with the columns' declared types;
+    // reached here, only the values' own types are known.
+    if func == StringFunc::RecordOut {
+        let fields: Vec<Option<String>> = args.iter().map(crate::types::value_to_text).collect();
+        return Ok(Value::Text(record_text(&fields)));
+    }
     if args.iter().any(Value::is_null) {
         return Ok(Value::Null);
     }
@@ -236,6 +243,7 @@ pub(super) fn eval_string_fn(
         // The node's own arm in `eval_expr_full` answers every call it builds, with the
         // argument's declared type; reached here, only the value's own type is known.
         StringFunc::MakeInterval => eval_make_interval(args),
+        StringFunc::RecordOut => unreachable!("answered ahead of the NULL rule"),
         StringFunc::Decode => Ok(Value::Bytea(crate::executor::coerce::decode_bytes(
             str_arg(&args[0], "decode")?,
             str_arg(&args[1], "decode")?,
@@ -244,6 +252,43 @@ pub(super) fn eval_string_fn(
             super::eval::value_to_jsonb(&args[0], None).canonical(),
         )),
     }
+}
+
+/// A row's text output from its columns' text outputs (`None` for NULL), as 18.6's
+/// `record_out` writes it: a NULL column empty, and a value quoted where it is empty or
+/// holds a `"`, a `\`, a parenthesis, a comma or C `isspace` whitespace, with its `"` and
+/// `\` doubled.
+pub(super) fn record_text(fields: &[Option<String>]) -> String {
+    let mut out = String::from("(");
+    for (i, field) in fields.iter().enumerate() {
+        if i > 0 {
+            out.push(',');
+        }
+        let Some(text) = field else {
+            continue;
+        };
+        let quote = text.is_empty()
+            || text.chars().any(|c| {
+                matches!(
+                    c,
+                    '"' | '\\' | '(' | ')' | ',' | ' ' | '\t' | '\n' | '\r' | '\u{b}' | '\u{c}'
+                )
+            });
+        if !quote {
+            out.push_str(text);
+            continue;
+        }
+        out.push('"');
+        for c in text.chars() {
+            if matches!(c, '"' | '\\') {
+                out.push(c);
+            }
+            out.push(c);
+        }
+        out.push('"');
+    }
+    out.push(')');
+    out
 }
 
 /// `make_interval(years, months, weeks, days, hours, mins, secs)` over its non-NULL

@@ -871,18 +871,9 @@ fn eval_expr_rest<R: ColumnResolver>(
                     crate::planner::enum_in_holds(labels, label)
                 });
             }
-            // `to_jsonb` converts by its argument's declared type, which a timestamp's
-            // value alone does not carry.
-            if let (StringFunc::ToJsonb, [arg]) = (func, args.as_slice()) {
-                let value = eval_expr_full(arg, resolver, row, sub, env)?;
-                if value.is_null() {
-                    return Ok(Value::Null);
-                }
-                let scope = EvalLeafScope { resolver, env };
-                let declared = jsonb_value_needs_type(&value)
-                    .then(|| declared_type_oid(arg, &scope))
-                    .flatten();
-                return Ok(Value::Jsonb(value_to_jsonb(&value, declared).canonical()));
+            // `to_jsonb` and a row's text output read their arguments' declared types.
+            if matches!(func, StringFunc::ToJsonb | StringFunc::RecordOut) {
+                return eval_typed_string_fn(*func, args, resolver, row, sub, env);
             }
             let vals = args
                 .iter()
@@ -951,6 +942,50 @@ fn eval_expr_rest<R: ColumnResolver>(
             func.name()
         ))),
     }
+}
+
+/// `to_jsonb` and a row's text output (`StringFunc::RecordOut`), which convert each
+/// argument by its declared type — the one thing a timestamp's value does not carry.
+/// Out of line, so `eval_expr_rest`'s frame does not carry their locals.
+#[inline(never)]
+fn eval_typed_string_fn<R: ColumnResolver>(
+    func: StringFunc,
+    args: &[Expr],
+    resolver: &R,
+    row: &[Value],
+    sub: SubqueryExec<'_>,
+    env: EvalEnv<'_>,
+) -> Result<Value> {
+    let scope = EvalLeafScope { resolver, env };
+    if func == StringFunc::RecordOut {
+        let mut fields = Vec::with_capacity(args.len());
+        for arg in args {
+            let value = eval_expr_full(arg, resolver, row, sub, env)?;
+            let text = match &value {
+                Value::Timestamp(_) | Value::Array(_) => declared_type_oid(arg, &scope)
+                    .map_or_else(
+                        || crate::types::value_to_text(&value),
+                        |oid| crate::types::value_to_text_with_oid(&value, oid),
+                    ),
+                _ => crate::types::value_to_text(&value),
+            };
+            fields.push(text);
+        }
+        return Ok(Value::Text(super::string_fn::record_text(&fields)));
+    }
+    let [arg] = args else {
+        return Err(Error::UndefinedFunction(
+            "to_jsonb expects 1 argument".into(),
+        ));
+    };
+    let value = eval_expr_full(arg, resolver, row, sub, env)?;
+    if value.is_null() {
+        return Ok(Value::Null);
+    }
+    let declared = jsonb_value_needs_type(&value)
+        .then(|| declared_type_oid(arg, &scope))
+        .flatten();
+    Ok(Value::Jsonb(value_to_jsonb(&value, declared).canonical()))
 }
 
 /// Resolve an `Expr::Column` against the inner scope first, then the correlated

@@ -3509,6 +3509,7 @@ pub(super) fn collect_referenced_columns(expr: &Expr, out: &mut Vec<(Option<Stri
 /// What [`rewrite_whole_row_refs`] reads of a query level: its FROM tree, the catalog
 /// and the non-base items' columns that name each item's columns, the scope that says
 /// whether a name is a column, and whether the level groups.
+#[derive(Clone, Copy)]
 struct WholeRowScope<'a> {
     from: &'a Plan,
     schema: &'a Schema,
@@ -3520,7 +3521,8 @@ struct WholeRowScope<'a> {
 /// Rewrite each **whole-row reference** in a select list into an expression over the
 /// referenced FROM item's columns: `to_jsonb(t)` (and `to_jsonb(t.*)`) into
 /// `to_jsonb(jsonb_build_object('a', t.a, …))`, which answers what 18.6's
-/// `composite_to_jsonb` does for a row of `t`.
+/// `composite_to_jsonb` does for a row of `t`, and `t::text` into
+/// [`super::expr::StringFunc::RecordOut`] over its columns, 18.6's `record_out`.
 ///
 /// A bare name is a whole-row reference only where it names no column of this level and
 /// does name a FROM item here (18.6's `transformColumnRef` asks for a column first, then
@@ -3528,23 +3530,89 @@ struct WholeRowScope<'a> {
 /// side of an outer join, whose whole row 18.6 answers `NULL` where the columns' object
 /// would not be; an item that is not a table, a derived table or a `WITH` query (a FROM
 /// function's whole row is its value); and a derived table whose columns repeat a name. In
-/// a grouping query the reference is `42803`, 18.6's answer unless `GROUP BY` names the
-/// table's primary key. Only the select list
+/// a grouping query a reference outside an aggregate's argument is `42803`, 18.6's answer
+/// unless `GROUP BY` names the table's primary key. Only the select list
 /// is rewritten: elsewhere a whole-row reference stays a column reference that binds
 /// nothing (`EDGES.md`).
 fn rewrite_whole_row_refs(projection: Vec<Expr>, level: &WholeRowScope<'_>) -> Result<Vec<Expr>> {
     projection
         .into_iter()
         .map(|mut item| {
+            if !holds_whole_row_candidate(&item) {
+                return Ok(item);
+            }
+            // A select-list item that is itself the cast is named for the item, as 18.6's
+            // `FigureColname` names a whole-row reference.
+            let name = match &item {
+                Expr::Cast {
+                    expr,
+                    target_type: TypeOid::Text,
+                } => whole_row_item(expr, level),
+                _ => None,
+            };
             rewrite_whole_row_ref(&mut item, level)?;
-            Ok(item)
+            Ok(match name {
+                Some(alias) => Expr::Alias {
+                    expr: Box::new(item),
+                    alias,
+                },
+                None => item,
+            })
         })
         .collect()
 }
 
-/// [`rewrite_whole_row_refs`]'s walk over one expression.
+/// Whether `expr` holds a node [`rewrite_whole_row_node`] may rewrite — a `to_jsonb`
+/// call or a cast to `text` — so an item holding neither is not walked mutably at all.
+/// A read-only walk, whose frame is as small as a walk's can be: a statement's depth
+/// limit is sized by its walkers' frames, and every select list pays for this one.
+fn holds_whole_row_candidate(expr: &Expr) -> bool {
+    if matches!(
+        expr,
+        Expr::StringFn {
+            func: super::expr::StringFunc::ToJsonb,
+            ..
+        } | Expr::Cast {
+            target_type: TypeOid::Text,
+            ..
+        }
+    ) {
+        return true;
+    }
+    let mut found = false;
+    expr.for_each_child(|child| found = found || holds_whole_row_candidate(child));
+    found
+}
+
+/// [`rewrite_whole_row_refs`]'s walk over one expression that holds a candidate. The
+/// node's own test and rewrite are called through an opaque function pointer, so no
+/// optimizer folds them into this frame, which each level of a deep expression pays.
 fn rewrite_whole_row_ref(expr: &mut Expr, level: &WholeRowScope<'_>) -> Result<()> {
     crate::depth::check_stack()?;
+    let node: fn(&mut Expr, &WholeRowScope<'_>) -> Result<bool> =
+        std::hint::black_box(rewrite_whole_row_node);
+    if node(expr, level)? {
+        return Ok(());
+    }
+    // An aggregate's argument is read row by row, below the grouping: a whole row there
+    // is no grouped column.
+    let inner = WholeRowScope {
+        grouped: level.grouped && !matches!(expr, Expr::Aggregate { .. }),
+        ..*level
+    };
+    let mut result = Ok(());
+    expr.for_each_child_mut(&mut |child: &mut Expr| {
+        if result.is_ok() {
+            result = rewrite_whole_row_ref(child, &inner);
+        }
+    });
+    result
+}
+
+/// Rewrite `expr` itself if it is a whole-row reference's `to_jsonb` or `::text`,
+/// answering whether it was.
+#[inline(never)]
+fn rewrite_whole_row_node(expr: &mut Expr, level: &WholeRowScope<'_>) -> Result<bool> {
     if let Expr::StringFn {
         func: super::expr::StringFunc::ToJsonb,
         args,
@@ -3567,15 +3635,28 @@ fn rewrite_whole_row_ref(expr: &mut Expr, level: &WholeRowScope<'_>) -> Result<(
                 })
                 .collect(),
         );
-        return Ok(());
+        return Ok(true);
     }
-    let mut result = Ok(());
-    expr.for_each_child_mut(&mut |child: &mut Expr| {
-        if result.is_ok() {
-            result = rewrite_whole_row_ref(child, level);
-        }
-    });
-    result
+    if let Expr::Cast {
+        expr: inner,
+        target_type: TypeOid::Text,
+    } = expr
+        && let Some(item) = whole_row_item(inner, level)
+    {
+        let columns = whole_row_columns(&item, level)?;
+        *expr = Expr::StringFn {
+            func: super::expr::StringFunc::RecordOut,
+            args: columns
+                .into_iter()
+                .map(|name| Expr::Column {
+                    table: Some(item.clone()),
+                    name,
+                })
+                .collect(),
+        };
+        return Ok(true);
+    }
+    Ok(false)
 }
 
 /// The FROM item `expr` references as a whole row, if it is one: `t.*`, or a bare `t`

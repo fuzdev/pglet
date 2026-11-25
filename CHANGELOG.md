@@ -52,6 +52,8 @@ released version under a fresh `## Unreleased` declaring a patch.
 - feat: `jsonb || jsonb` — two objects merge, anything else appends (was `0A000`); an uncast
   string, `NULL` or `$N` beside a `jsonb` reads as `jsonb` (was joined as text)
 - feat: `decode(text, 'hex' | 'base64' | 'escape')` (was `0A000`)
+- feat: a whole-row cast to `text` in a select list, `SELECT t::text FROM t` — the row's text
+  output, `(1,"x y",)` (was `42703`)
 
 ## 0.2.1
 

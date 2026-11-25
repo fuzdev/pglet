@@ -1534,15 +1534,7 @@ impl Inference {
                     // an unbounded type-introspection loop. Typing it text closes that.
                     // Beside a `jsonb` operand it is `jsonb`, as 18.6 resolves `jsonb ||
                     // jsonb` for it (`data || $1`).
-                    for (side, sibling) in [(left, right), (right, left)] {
-                        if let Expr::Parameter { index } = side.as_ref() {
-                            let t = match self.infer_col_type(sibling, schema, table) {
-                                Some(TypeOid::Jsonb) => TypeOid::Jsonb,
-                                _ => TypeOid::Text,
-                            };
-                            self.record(*index, t, PRIO_CONTEXT);
-                        }
-                    }
+                    self.record_concat_params(left, right, schema, table);
                 } else if matches!(
                     op,
                     BinaryOp::JsonExists | BinaryOp::JsonGet | BinaryOp::JsonGetText
@@ -1863,6 +1855,28 @@ impl Inference {
     }
 
     /// Record a parameter on either side of a comparison from its typed sibling.
+    /// Type each bare `$N` operand of a `||`: `jsonb` beside a `jsonb` sibling, `text`
+    /// otherwise. Out of line, so the recursive walk's frame does not carry the sibling
+    /// lookup (a statement's depth limit is sized by that frame).
+    #[inline(never)]
+    fn record_concat_params(
+        &mut self,
+        left: &Expr,
+        right: &Expr,
+        schema: &Schema,
+        table: Option<&str>,
+    ) {
+        for (side, sibling) in [(left, right), (right, left)] {
+            if let Expr::Parameter { index } = side {
+                let t = match self.infer_col_type(sibling, schema, table) {
+                    Some(TypeOid::Jsonb) => TypeOid::Jsonb,
+                    _ => TypeOid::Text,
+                };
+                self.record(*index, t, PRIO_CONTEXT);
+            }
+        }
+    }
+
     fn infer_from_sibling(
         &mut self,
         left: &Expr,
@@ -2257,6 +2271,8 @@ const fn string_fn_text_arg(func: StringFunc, i: usize) -> bool {
         StringFunc::MakeInterval => false,
         // (string, format) — both text.
         StringFunc::Decode => i <= 1,
+        // A row's columns, never a parameter.
+        StringFunc::RecordOut => false,
     }
 }
 

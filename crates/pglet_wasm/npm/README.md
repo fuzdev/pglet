@@ -374,14 +374,10 @@ The [ledger](https://github.com/fuzdev/pglet/blob/main/EDGES.md) records the res
   sequence counts up by 1 from its `START WITH` (1 by default, whatever `MINVALUE` says), past any declared maximum.
 - **Enum values work as text in string functions and `LIKE`**: `upper(status)`, `length(status)` and
   `status LIKE 'a%'` answer on an enum column, where PostgreSQL requires `status::text`.
-- **`jsonb || '…'` and `jsonb || $1` join as text.** With the other side an uncast string literal or a parameter,
-  `j || '{"x": 1}'` answers the text `{"k": 1}{"x": 1}`, where PostgreSQL reads that side as `jsonb` and merges the
-  objects (`{"k": 1, "x": 1}`); either order. Compared with a literal or a parameter in a `WHERE`, it is the joined
-  text that is compared, so `WHERE j || '{"x": 1}' = '{"k": 1, "x": 1}'` matches no row, and an `UPDATE` or `DELETE`
-  filtered that way writes accordingly. Writing the result to a `jsonb` column is refused (`42804`), and with the
-  other side cast (`'{"x": 1}'::jsonb`) the whole `||` is refused (`0A000`, *Not supported yet*, below). A `bytea`
-  beside an uncast literal or a parameter is joined as text the same way: `'abcd'::bytea || 'ef'` is the text
-  `\x61626364ef`, where PostgreSQL answers the `bytea` `\x616263646566`.
+- **`bytea || '…'` and `bytea || $1` join as text.** With the other side an uncast string literal or a
+  parameter, `'abcd'::bytea || 'ef'` is the text `\x61626364ef`, where PostgreSQL reads that side as `bytea` and
+  answers `\x616263646566`; with both sides `bytea` the `||` is refused (`0A000`). Beside a `jsonb`, an uncast
+  string, `NULL` or parameter is read as `jsonb`, as in PostgreSQL.
 - **`avg()` of an integer and `sum()` of a `bigint` keep `double precision` and `bigint` where pglet cannot be sure
   of the argument's integer type.** Over a column a derived table defines by a window function, `unnest` of an
   `ARRAY[…]` constructor (of a cast array in the `FROM` clause it is sure: `FROM unnest($1::int[])`), `unnest` in a
@@ -563,9 +559,9 @@ statement over an empty table is refused too, except where an item says otherwis
   non-integer `numeric` power — `2.0 ^ 0.5`, `power(2.0, 0.5)` — is `0A000`, raised when it is evaluated.
 - **Time:** `to_timestamp`, `age`; `AT TIME ZONE` with a zone other than `'UTC'`, raised when a row is evaluated.
 - **JSON:** `jsonb_set`, `jsonb_array_elements`, `jsonb_typeof`, `jsonb_array_length`, `jsonb_build_array`,
-  `to_jsonb`, `row_to_json`, `json_build_object`; `jsonb || jsonb`; `jsonb - 'key'` (`42804`, raised when a row is
-  evaluated). `->`, `->>`, `#>`, `#>>`, `?`, `@>` and `jsonb_build_object` work. Beside an uncast string or a
-  parameter, `jsonb ||` is not refused but joins as text (*Known differences*, above).
+  `row_to_json`, `json_build_object`; `jsonb - 'key'` (`42804`, raised when a row is evaluated). `->`, `->>`, `#>`,
+  `#>>`, `?`, `@>`, `jsonb || jsonb`, `jsonb_build_object` and `to_jsonb` work — `to_jsonb(t)` over a `FROM` item
+  in the select list too, as does the row's text, `t::text`.
 - **Server:** `pg_sleep`, `pg_notify`, the `try` advisory forms (`pg_try_advisory_lock`, `pg_try_advisory_xact_lock` and their `_shared` forms) and the session-level shared forms (`pg_advisory_lock_shared`, `pg_advisory_unlock_shared`) (`pg_advisory_lock`, `pg_advisory_unlock`, `pg_advisory_xact_lock` and `pg_advisory_xact_lock_shared` work), `txid_current`.
 
 **Schema:**

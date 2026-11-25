@@ -1765,6 +1765,15 @@ pub enum StringFunc {
     /// refusals per format (`executor::coerce`'s `decode_bytes`). Strict. Appended last
     /// for postcard-discriminant stability.
     Decode,
+    /// A row's text output, 18.6's `record_out` over the row's columns: `(` the columns'
+    /// text outputs, comma-separated, `)`, a NULL column empty, and a value quoted where
+    /// it is empty or holds a `"`, a `\`, a parenthesis, a comma or whitespace, its `"` and
+    /// `\` doubled. Never written in SQL: a whole-row cast in a select list, `t::text`
+    /// over a FROM item `t`, is rewritten into it at plan time over the item's columns
+    /// (`planner::query`'s `rewrite_whole_row_refs`), so no stored expression holds one.
+    /// **Not strict**: a NULL column is part of the row. Appended last for
+    /// postcard-discriminant stability.
+    RecordOut,
 }
 
 /// The advisory-lock members of [`StringFunc`] — the calls that answer only as a
@@ -2615,6 +2624,7 @@ pub const fn string_fn_result_type(func: StringFunc) -> TypeOid {
         StringFunc::ToJsonb => TypeOid::Jsonb,
         StringFunc::MakeInterval => TypeOid::Interval,
         StringFunc::Decode => TypeOid::Bytea,
+        StringFunc::RecordOut => TypeOid::Text,
     }
 }
 
@@ -5855,6 +5865,7 @@ mod postcard_layout {
                 (35, StringFunc::ToJsonb),
                 (36, StringFunc::MakeInterval),
                 (37, StringFunc::Decode),
+                (38, StringFunc::RecordOut),
             ],
         );
         pin_tags(
@@ -6101,7 +6112,8 @@ mod postcard_layout {
                 | StringFunc::ToRegclass
                 | StringFunc::ToJsonb
                 | StringFunc::MakeInterval
-                | StringFunc::Decode => (),
+                | StringFunc::Decode
+                | StringFunc::RecordOut => (),
             }
         }
         fn _variadic_func(v: VariadicFunc) {
