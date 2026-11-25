@@ -46,6 +46,9 @@ released version under a fresh `## Unreleased` declaring a patch.
 - fix: `jsonb_build_object` renders a timestamp in ISO 8601 (`"…T…+00:00"` for a
   `timestamptz`) and an array as a JSON array, as PostgreSQL does (was the text output, as a
   string)
+- feat: `make_interval(years, months, weeks, days, hours, mins, secs)`, by position or by
+  name — `make_interval(hours => $1)`, `make_interval(years := 3)` (was `0A000` and `42601`);
+  a named argument to any other function is `42883`
 
 ## 0.2.1
 

@@ -656,12 +656,13 @@ pub const fn string_fn_name(func: StringFunc) -> &'static str {
         StringFunc::AdvisoryXactLockShared => "pg_advisory_xact_lock_shared",
         StringFunc::ToRegclass => "to_regclass",
         StringFunc::ToJsonb => "to_jsonb",
+        StringFunc::MakeInterval => "make_interval",
     }
 }
 
 /// Every [`StringFunc`], for the corpus completeness check. See
 /// `pglet::dump`'s `ROUND_TRIP_CORPUS`.
-pub const STRING_FUNCS: [StringFunc; 36] = [
+pub const STRING_FUNCS: [StringFunc; 37] = [
     StringFunc::PgGetConstraintdef,
     StringFunc::Regclass,
     StringFunc::Upper,
@@ -698,6 +699,7 @@ pub const STRING_FUNCS: [StringFunc; 36] = [
     StringFunc::AdvisoryXactLockShared,
     StringFunc::ToRegclass,
     StringFunc::ToJsonb,
+    StringFunc::MakeInterval,
 ];
 
 /// Render a [`Expr::StringFn`] call, special-casing [`StringFunc::Position`].
@@ -835,7 +837,8 @@ const fn string_fn_arg_text(func: StringFunc, idx: usize) -> bool {
         | StringFunc::AdvisoryUnlock
         | StringFunc::AdvisoryUnlockAll
         | StringFunc::EnumIn
-        | StringFunc::ToJsonb => false,
+        | StringFunc::ToJsonb
+        | StringFunc::MakeInterval => false,
     }
 }
 

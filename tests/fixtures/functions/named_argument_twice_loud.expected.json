@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42601",
+    "message": "argument name \"hours\" used more than once"
+  }
+}

@@ -1750,6 +1750,15 @@ pub enum StringFunc {
     /// columns (`planner::query`'s `rewrite_whole_row_refs`). Strict. Appended last for
     /// postcard-discriminant stability.
     ToJsonb,
+    /// `make_interval(years, months, weeks, days, hours, mins int4, secs float8) →
+    /// interval`, every argument defaulting to zero and nameable (`make_interval(hours =>
+    /// 2)`, resolved to positions by the parser's `resolve_named_args`). Years and months
+    /// fold into months, weeks and days into days, and hours, minutes and the seconds
+    /// (rounded half to even at the microsecond, as `rint` rounds) into microseconds; an
+    /// overflow of any field, an infinite or `NaN` `secs`, or an infinite result is `22008`,
+    /// as 18.6's `make_interval` answers. Strict. Appended last for postcard-discriminant
+    /// stability.
+    MakeInterval,
 }
 
 /// The advisory-lock members of [`StringFunc`] — the calls that answer only as a
@@ -2598,6 +2607,7 @@ pub const fn string_fn_result_type(func: StringFunc) -> TypeOid {
         // which the type walkers read through `shared_leaf_cell_type`.
         StringFunc::Substr => TypeOid::Text,
         StringFunc::ToJsonb => TypeOid::Jsonb,
+        StringFunc::MakeInterval => TypeOid::Interval,
     }
 }
 
@@ -3407,6 +3417,7 @@ fn dispatch_call(
             }
             string_call(StringFunc::ToJsonb, args, 1..=1)
         }
+        "make_interval" => string_call(StringFunc::MakeInterval, make_interval_args(args), 0..=7),
         "md5" => string_call(StringFunc::Md5, args, 1..=1),
         "left" => string_call(StringFunc::Left, int4_positions(args), 2..=2),
         "right" => string_call(StringFunc::Right, int4_positions(args), 2..=2),
@@ -3878,6 +3889,26 @@ fn int4_positions(args: Vec<Expr>) -> Vec<Expr> {
             Expr::Literal(Literal::String(_)) if i > 0 => Expr::Cast {
                 expr: Box::new(arg),
                 target_type: TypeOid::Int4,
+            },
+            other => other,
+        })
+        .collect()
+}
+
+/// `make_interval`'s arguments with a bare string literal resolved to its position's
+/// type — `integer` for the first six, `double precision` for `secs` — as 18.6 resolves an
+/// unknown literal against the one overload (`make_interval(hours => '1.5')` is `22P02`).
+fn make_interval_args(args: Vec<Expr>) -> Vec<Expr> {
+    args.into_iter()
+        .enumerate()
+        .map(|(i, arg)| match arg {
+            Expr::Literal(Literal::String(_)) => Expr::Cast {
+                expr: Box::new(arg),
+                target_type: if i < 6 {
+                    TypeOid::Int4
+                } else {
+                    TypeOid::Float8
+                },
             },
             other => other,
         })
@@ -5804,6 +5835,7 @@ mod postcard_layout {
                 (33, StringFunc::AdvisoryXactLockShared),
                 (34, StringFunc::ToRegclass),
                 (35, StringFunc::ToJsonb),
+                (36, StringFunc::MakeInterval),
             ],
         );
         pin_tags(
@@ -6048,7 +6080,8 @@ mod postcard_layout {
                 | StringFunc::SetConfigLockTimeout
                 | StringFunc::AdvisoryXactLockShared
                 | StringFunc::ToRegclass
-                | StringFunc::ToJsonb => (),
+                | StringFunc::ToJsonb
+                | StringFunc::MakeInterval => (),
             }
         }
         fn _variadic_func(v: VariadicFunc) {

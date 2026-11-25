@@ -2247,6 +2247,8 @@ const fn string_fn_text_arg(func: StringFunc, i: usize) -> bool {
         StringFunc::Left | StringFunc::Right | StringFunc::Substr => i == 0,
         // (anyelement) — polymorphic: an undeclared `$N` has nothing to resolve it to.
         StringFunc::ToJsonb => false,
+        // Numbers only — `string_fn_typed_arg`'s.
+        StringFunc::MakeInterval => false,
     }
 }
 
@@ -2279,6 +2281,9 @@ const fn string_fn_typed_arg(func: StringFunc, i: usize, n: usize) -> Option<Typ
         (StringFunc::Left | StringFunc::Right | StringFunc::Substr, _) if i > 0 => {
             Some(TypeOid::Int4)
         }
+        // (years, months, weeks, days, hours, mins) `integer`, `secs` `double precision`.
+        (StringFunc::MakeInterval, _) if i < 6 => Some(TypeOid::Int4),
+        (StringFunc::MakeInterval, _) => Some(TypeOid::Float8),
         _ => None,
     }
 }

@@ -125,6 +125,7 @@ inside a table.
 | 287 | `INSERT … OVERRIDING USER VALUE` with a value written for the identity column | the cell is replaced before it is read: an ill-typed constant, an unknown column or sequence in it is accepted; a `$N` in it leaves the statement's parameters (native server: `08P01` at `Bind`); over a `SELECT` source, `0A000` | reads the cell and discards its value: `22P02` / `42703` / `42P01`; the `$N` is counted; the `SELECT` source runs | **silent** for the unread cell; loud for the parameter (native server) and the `SELECT` source | — a faithful fixture is red | replaced before it is read |
 | ~~306~~ | **closed** — `jsonb_build_object` over a `timestamptz`, `timestamp` or array value | the value's text output as a JSON string — `"2021-01-02 03:04:05"`, `"{1}"`; now ISO 8601 and a JSON array | ISO 8601 — `"2021-01-02T03:04:05+00:00"` — and a JSON array, `[1]` | closed — **silent** residuals: a `float4` widened, a `char(n)` unpadded; two loud ones (the bullet) | `jsonb/build_object_timestamp_and_array_values.sql`, `jsonb/to_jsonb_scalars.sql` | renders a value it has no JSON kind for as its text output |
 | 334 | a whole-row reference — `to_jsonb(t)`, `t.*` — anywhere but a select list's own level, or to an item pglet cannot hold as a row there | `42703` outside the select list or from a nested level; `0A000` on an outer join's nullable side, over a derived table repeating a column name; `42803` grouped | the row — `NULL` on the null-extended side, the last of a repeated name, the row where `GROUP BY` names the primary key | loud; **silent** where a bare name is also an enclosing level's column (the row here, that column there) | `jsonb/to_jsonb_whole_row_*.sql` | rewritten into an expression over the item's columns |
+| 335 | a named function argument — `f(name => x)` — to a function other than `make_interval`, and a stored `make_interval` written with names | `42883` for every other function; `make_interval(0, 0, 0, 0, a)` in `pg_get_constraintdef`, `check_clause`, `column_default` and `indexdef` | the call, where the function has that argument name (`random(min => 1, max => 2)`, `string_agg(value => …, delimiter => …)`); `make_interval(hours => a)` | loud for the calls and their order against `42P01`/`42703`; **silent** in the rendered definition and over no row | — a faithful fixture is red | the one function whose argument names pglet knows |
 
 **Name resolution & scope**
 
@@ -16111,6 +16112,39 @@ inside a table.
   level's item. Reach: ordinary for the loud members, contrived for the silent one.
   Fixtures pin the refusals; the `42703` members and the silent one have none, a faithful
   fixture being red.
+
+- **335 · `make_interval` is the one function whose argument names pglet knows.** The
+  parser reads a named argument (`name => expr`, `name := expr`) in any call and runs
+  18.6's checks over the names (`ParseFuncOrColumn`: a positional argument after a named one
+  and a name written twice are `42601`), then resolves names to positions for
+  `make_interval` alone (the parser's `resolve_named_args`). Every other function called
+  with a named argument is `42883`, which is 18.6's answer only where the function has no
+  argument of that name. Measured against 18.7 among the functions pglet models:
+  `random(min => 1, max => 2)` and `string_agg(value => a, delimiter => ',')` answer there
+  (`proargnames` names them) and are `42883` here — `random`'s two-argument form is `42883`
+  positionally too, and `string_agg` is answered only by position. The message names no
+  argument types (`function upper(x => …) does not exist`, `x => unknown` there).
+
+  The resolution leaves no trace of the names: a `CHECK (make_interval(hours => a) <
+  make_interval(days => 1))` is stored as `make_interval(0, 0, 0, 0, a) <
+  make_interval(0, 0, 0, 1)` and rendered so by `pg_get_constraintdef`,
+  `information_schema.check_constraints` and, for a default or an index key, `column_default`
+  and `indexdef`, where 18.7 prints the names as written. Silent in the rendering; the
+  stored expression answers the same, and the dump reloads on both engines.
+
+  The names are resolved as the parser builds the call, ahead of 18.7's order, which
+  resolves the `FROM` list and the arguments first and the call's names after: over a
+  missing table `abs(x => 1)` is `42883` here and `42P01` there, `make_interval(hours => 1,
+  2)` and `make_interval(hours => 1, hours => 2)` are `42601` against `42P01`, and over an
+  existing `u` `make_interval(bogus => nosuchcol)` is `42883` against `42703` and
+  `make_interval(hours => nosuchcol, hours => 1)` `42601` against `42703` — loud, another
+  code; row 51's later-error class, and moving the check needs the names carried past the
+  parser. A named argument to `substring` is `42601` here (its own parser reads no name)
+  where 18.7 resolves it, `42883`. The call's argument types are checked on the values it is handed, so over no row
+  — `SELECT make_interval(hours => a) FROM (SELECT 1::bigint AS a) s WHERE false` — it
+  answers no row where 18.7 is `42883` (silent; the string functions do the same, `md5(1)
+  … WHERE false`). Reach: ordinary for the calls, uncommon for the rest. No fixture: a
+  faithful one is red.
 
 - **~~88~~ · Closed — an `IN` list is `= ANY (ARRAY[…])` there, in five shapes.** In a
   rendered stored expression — `pg_get_constraintdef`,

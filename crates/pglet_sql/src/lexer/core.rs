@@ -490,6 +490,7 @@ impl<'a> Lexer<'a> {
             // `::` is `scan.l`'s `typecast` rule and `:` its `self` character; neither
             // `:` nor `.` is an `op_chars` byte, so no operator holds one.
             b':' if self.peek_at(1) == Some(b':') => self.double(TokenKind::Cast),
+            b':' if self.peek_at(1) == Some(b'=') => self.double(TokenKind::ColonEquals),
             b':' => self.single(TokenKind::Colon),
             _ if is_reference_op_char(b) => return self.scan_op_chars(start),
             _ => {
@@ -617,8 +618,8 @@ fn operator_kind(text: &str) -> TokenKind {
         ">=" => TokenKind::Ge,
         "<>" | "!=" => TokenKind::NotEq,
         // `scan.l`'s `equals_greater`: a token of its own, which `gram.y` takes only in a
-        // named function argument — a spelling pglet does not parse, so it is the
-        // `42601` 18.6 answers for `SELECT 1 => 2` rather than an operator.
+        // named function argument, so it is the `42601` 18.6 answers for `SELECT 1 => 2`
+        // rather than an operator.
         "=>" => TokenKind::FatArrow,
         "||" => TokenKind::Concat,
         "@>" => TokenKind::Containment,

@@ -750,8 +750,8 @@ fn a_zero_length_delimited_identifier_is_a_scanner_error() {
 #[test]
 fn the_operator_rules_are_the_reference_scanners() {
     use TokenKind::{
-        Arrow, Cast, Colon, Comma, Concat, Containment, Dot, Eq, FatArrow, Ge, Gt, LParen, Le, Lt,
-        Minus, NotEq, Number, Op, Percent, Plus, RParen, Semicolon, Slash, Star,
+        Arrow, Cast, Colon, ColonEquals, Comma, Concat, Containment, Dot, Eq, FatArrow, Ge, Gt,
+        LParen, Le, Lt, Minus, NotEq, Number, Op, Percent, Plus, RParen, Semicolon, Slash, Star,
     };
     let cases: &[(&str, &[TokenKind])] = &[
         // `self`, and the punctuation that is not an `op_chars` byte.
@@ -777,6 +777,7 @@ fn the_operator_rules_are_the_reference_scanners() {
         ("<>", &[NotEq]),
         ("!=", &[NotEq]),
         ("=>", &[FatArrow]),
+        (":=", &[ColonEquals]),
         // Maximal munch: one operator of the whole `op_chars` run.
         ("<=>", &[Op]),
         ("!!=", &[Op]),

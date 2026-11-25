@@ -9,7 +9,9 @@ use crate::planner::{
     ResolvedType, StringFunc, VariadicFunc, comparison_legality, comparison_operand_type,
     nullif_result_type,
 };
-use crate::types::{ArrayValue, TypeOid, Value, opt_type_oid_display_name, value_to_text_with_oid};
+use crate::types::{
+    ArrayValue, PgInterval, TypeOid, Value, opt_type_oid_display_name, value_to_text_with_oid,
+};
 use crate::{CatalogError, Error, Result};
 
 // ============================================================================
@@ -233,10 +235,88 @@ pub(super) fn eval_string_fn(
         StringFunc::SetConfigLockTimeout => eval_set_config_lock_timeout(args),
         // The node's own arm in `eval_expr_full` answers every call it builds, with the
         // argument's declared type; reached here, only the value's own type is known.
+        StringFunc::MakeInterval => eval_make_interval(args),
         StringFunc::ToJsonb => Ok(Value::Jsonb(
             super::eval::value_to_jsonb(&args[0], None).canonical(),
         )),
     }
+}
+
+/// `make_interval(years, months, weeks, days, hours, mins, secs)` over its non-NULL
+/// arguments, each absent one zero — 18.6's `make_interval` (`timestamp.c`), field by
+/// field: an `integer` (or a `smallint`, which widens to it) in the first six places and
+/// any number in `secs`, which the cast converts to `double precision`; anything else is `42883`,
+/// as no overload matches. A field overflow, an infinite or `NaN` `secs` and an infinite
+/// result are `22008`; `secs` overflowing on its way to microseconds is `float8_mul`'s
+/// `22003`.
+fn eval_make_interval(args: &[Value]) -> Result<Value> {
+    let out_of_range = || Error::TemporalOutOfRange("interval");
+    let mut fields = [0_i32; 6];
+    for (i, field) in fields.iter_mut().enumerate() {
+        *field = match args.get(i) {
+            None => 0,
+            Some(Value::Int4(n)) => *n,
+            Some(Value::Int2(n)) => i32::from(*n),
+            Some(_) => return Err(no_such_overload("make_interval", args)),
+        };
+    }
+    // Any number converts to `double precision` through the cast itself, which a
+    // `numeric` too small or too large for one is `22003` at (`numeric_float8`).
+    let secs = match args.get(6) {
+        None => 0.0,
+        Some(
+            v @ (Value::Float8(_)
+            | Value::Float4(_)
+            | Value::Int2(_)
+            | Value::Int4(_)
+            | Value::Int8(_)
+            | Value::Numeric(_)),
+        ) => match coerce_value(v.clone(), TypeOid::Float8)? {
+            Value::Float8(f) => f,
+            _ => return Err(no_such_overload("make_interval", args)),
+        },
+        Some(_) => return Err(no_such_overload("make_interval", args)),
+    };
+    let [years, months, weeks, days, hours, mins] = fields;
+    if secs.is_nan() || secs.is_infinite() {
+        return Err(out_of_range());
+    }
+    let months = years
+        .checked_mul(12)
+        .and_then(|m| m.checked_add(months))
+        .ok_or_else(out_of_range)?;
+    let days = weeks
+        .checked_mul(7)
+        .and_then(|d| d.checked_add(days))
+        .ok_or_else(out_of_range)?;
+    // An `int4` times either factor stays well inside an `i64`.
+    let time = i64::from(hours) * 3_600_000_000 + i64::from(mins) * 60_000_000;
+    let micros = secs * 1_000_000.0;
+    if micros.is_infinite() {
+        return Err(Error::NumericOutOfRange("double precision"));
+    }
+    let micros = micros.round_ties_even();
+    // `FLOAT8_FITS_IN_INT64`: at least `i64::MIN` and below `2^63`.
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "the bounds are exact powers of two, as `FLOAT8_FITS_IN_INT64`'s are"
+    )]
+    let fits = micros >= i64::MIN as f64 && micros < -(i64::MIN as f64);
+    if !fits {
+        return Err(out_of_range());
+    }
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "`fits` bounds the value to `i64` and it is already integral"
+    )]
+    let time = time.checked_add(micros as i64).ok_or_else(out_of_range)?;
+    let interval = PgInterval::new(months, days, time);
+    let infinite = (months == i32::MAX && days == i32::MAX && time == i64::MAX)
+        || (months == i32::MIN && days == i32::MIN && time == i64::MIN);
+    if infinite {
+        return Err(out_of_range());
+    }
+    Ok(Value::Interval(interval))
 }
 
 /// `set_config('lock_timeout', value, is_local)` over its evaluated arguments: the

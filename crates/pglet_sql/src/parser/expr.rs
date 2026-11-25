@@ -1355,12 +1355,12 @@ impl Parser<'_> {
                         .ts
                         .error(&format!("{} takes no argument list", svf.sql_name())));
                 }
-                return self.parse_function_call(&name);
+                return self.parse_function_call(&name, !quoted);
             }
             return Ok(Expr::Builtin(svf.builtin()));
         }
         if self.ts.at(&TokenKind::LParen) {
-            return self.parse_function_call(&name);
+            return self.parse_function_call(&name, !quoted);
         }
         let mut parts = vec![name];
         while self.ts.at(&TokenKind::Dot) {
@@ -1396,7 +1396,7 @@ impl Parser<'_> {
             // Recorded in `EDGES.md`; resolving the qualifier
             // is a gate with its own error-precedence consequences.
             if self.ts.at(&TokenKind::LParen) {
-                return self.parse_function_call(&part_text);
+                return self.parse_function_call(&part_text, false);
             }
             parts.push(part_text);
         }
@@ -1500,13 +1500,181 @@ impl Parser<'_> {
         Ok(())
     }
 
+    /// 18.6's `col_name_keyword`s, less `substring`, `overlay` and `json_object`, whose
+    /// productions also take a `func_arg_list` (see [`Self::resolve_named_args`]) — the
+    /// keywords a call can be spelled with.
+    const COL_NAME_KEYWORD_CALLS: [&'static str; 60] = [
+        "between",
+        "bigint",
+        "bit",
+        "boolean",
+        "char",
+        "character",
+        "coalesce",
+        "dec",
+        "decimal",
+        "exists",
+        "extract",
+        "float",
+        "greatest",
+        "grouping",
+        "inout",
+        "int",
+        "integer",
+        "interval",
+        "json",
+        "json_array",
+        "json_arrayagg",
+        "json_exists",
+        "json_objectagg",
+        "json_query",
+        "json_scalar",
+        "json_serialize",
+        "json_table",
+        "json_value",
+        "least",
+        "merge_action",
+        "national",
+        "nchar",
+        "none",
+        "normalize",
+        "nullif",
+        "numeric",
+        "out",
+        "position",
+        "precision",
+        "real",
+        "row",
+        "setof",
+        "smallint",
+        "time",
+        "timestamp",
+        "treat",
+        "trim",
+        "values",
+        "varchar",
+        "xmlattributes",
+        "xmlconcat",
+        "xmlelement",
+        "xmlexists",
+        "xmlforest",
+        "xmlnamespaces",
+        "xmlparse",
+        "xmlpi",
+        "xmlroot",
+        "xmlserialize",
+        "xmltable",
+    ];
+
+    /// `make_interval`'s argument names, in position order.
+    const MAKE_INTERVAL_PARAMS: [&'static str; 7] =
+        ["years", "months", "weeks", "days", "hours", "mins", "secs"];
+
+    /// One function argument: an expression, written bare or after a name and `=>` (or
+    /// `:=`), `gram.y`'s `func_arg_expr`.
+    fn parse_func_arg(&mut self) -> Result<(Option<String>, Expr)> {
+        let named = super::is_colid_name(self.ts.peek_kind())
+            && matches!(
+                self.ts.peek2_kind(),
+                TokenKind::FatArrow | TokenKind::ColonEquals
+            );
+        let name = if named {
+            let name = self.expect_name("an argument name")?;
+            self.ts.bump()?; // `=>` / `:=`
+            Some(name)
+        } else {
+            None
+        };
+        Ok((name, self.parse_expr_bp(0)?))
+    }
+
+    /// The positional argument list a call's written arguments resolve to — 18.6's
+    /// `ParseFuncOrColumn` checks over the names, then the one function pglet matches
+    /// names against.
+    ///
+    /// A positional argument after a named one and a name written twice are `42601`, in
+    /// argument order, before anything resolves the function. Of the functions pglet
+    /// models, only `make_interval` has argument names (`years`, `months`, `weeks`,
+    /// `days`, `hours`, `mins`, `secs`, each defaulting to zero): a named argument maps
+    /// to its position, and a position before it that nothing names takes the default.
+    /// A name it does not have, or one naming a position already written positionally,
+    /// is `42883`, as is any named argument to any other function — 18.6 answers
+    /// `random(min => …, max => …)` and `string_agg(value => …, delimiter => …)`, whose
+    /// overloads pglet does not have names for (`EDGES.md` row 335).
+    fn resolve_named_args(
+        name: &str,
+        bare: bool,
+        args: Vec<(Option<String>, Expr)>,
+    ) -> Result<Vec<Expr>> {
+        let mut seen_named = false;
+        let mut names: Vec<&str> = Vec::new();
+        for (arg_name, _) in &args {
+            match arg_name {
+                None if seen_named => {
+                    return Err(Error::syntax_sentence(
+                        "positional argument cannot follow named argument",
+                    ));
+                }
+                None => {}
+                Some(n) => {
+                    if names.contains(&n.as_str()) {
+                        return Err(Error::syntax_sentence(format!(
+                            "argument name \"{n}\" used more than once"
+                        )));
+                    }
+                    names.push(n);
+                    seen_named = true;
+                }
+            }
+        }
+        if !seen_named {
+            return Ok(args.into_iter().map(|(_, e)| e).collect());
+        }
+        // A bare `col_name_keyword` call is 18.6's grammar, not a `func_name`: its own
+        // production takes an expression list (or a type's modifiers), where a named
+        // argument is the syntax error at its `=>`. `substring`, `overlay` and `json_object`
+        // also take a `func_arg_list`, so a named argument there is resolved, and is
+        // `42883`. A quoted
+        // or qualified spelling is an ordinary function name.
+        if bare && Self::COL_NAME_KEYWORD_CALLS.contains(&name) {
+            return Err(Error::syntax_sentence("syntax error at or near \"=>\""));
+        }
+        let undefined = |arg_name: &str| {
+            Error::UndefinedFunction(format!("function {name}({arg_name} => …) does not exist"))
+        };
+        if name != "make_interval" {
+            return Err(undefined(names[0]));
+        }
+        let mut slots: Vec<Option<Expr>> = Vec::new();
+        for (arg_name, expr) in args {
+            let position = match arg_name {
+                None => slots.len(),
+                Some(n) => match Self::MAKE_INTERVAL_PARAMS.iter().position(|p| *p == n) {
+                    Some(i) if slots.get(i).is_none_or(Option::is_none) => i,
+                    _ => return Err(undefined(&n)),
+                },
+            };
+            if slots.len() <= position {
+                slots.resize_with(position + 1, || None);
+            }
+            slots[position] = Some(expr);
+        }
+        Ok(slots
+            .into_iter()
+            .map(|slot| slot.unwrap_or(Expr::Literal(Literal::Int(0))))
+            .collect())
+    }
+
     /// Parse a function call `name(args)`, dispatching by name to the typed
     /// [`Expr`] variant.
     ///
     /// The optional leading set quantifier is read by [`Parser::parse_func_set_quantifier`]
     /// and bounded by [`Parser::bound_func_set_quantifier`]; the verdict on the quantifier
     /// itself is `planner::build_call`'s.
-    fn parse_function_call(&mut self, name: &str) -> Result<Expr> {
+    ///
+    /// `bare` says the name was written unquoted and unqualified — the only spelling
+    /// 18.6's grammar can read as one of its own keywords.
+    fn parse_function_call(&mut self, name: &str, bare: bool) -> Result<Expr> {
         self.ts.expect(&TokenKind::LParen)?;
         let quantifier = self.parse_func_set_quantifier()?;
         let mut wildcard = false;
@@ -1515,8 +1683,9 @@ impl Parser<'_> {
             wildcard = true;
             Vec::new()
         } else {
-            self.comma_list_until(&TokenKind::RParen, |p| p.parse_expr_bp(0))?
+            self.comma_list_until(&TokenKind::RParen, Self::parse_func_arg)?
         };
+        let args = Self::resolve_named_args(name, bare, args)?;
         // `wildcard` implies an empty `args` today, so the first disjunct changes no
         // answer and a mutation deleting it alone is a no-op (measured). It is spelled
         // because the two are **different grammar facts** — `func_name '(' '*' ')'`

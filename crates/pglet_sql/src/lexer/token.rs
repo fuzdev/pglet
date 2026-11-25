@@ -138,9 +138,12 @@ pub enum TokenKind {
     /// operator for is `42883` at the statement's analysis, as it is on 18.6.
     Op,
     /// `=>` — `scan.l`'s `equals_greater`, which `gram.y` takes only in a named function
-    /// argument. pglet parses no such argument, so the token exists to be the syntax
-    /// error 18.6 answers rather than to be read as `=` then `>`.
+    /// argument (`make_interval(hours => 2)`); anywhere else it is the syntax error 18.6
+    /// answers rather than `=` then `>`.
     FatArrow,
+    /// `:=` — `scan.l`'s `colon_equals`, the older spelling of a named function argument's
+    /// `=>`, and a syntax error anywhere else.
+    ColonEquals,
     Eq,      // =
     NotEq,   // <> or !=
     Lt,      // <
@@ -190,6 +193,7 @@ impl fmt::Display for TokenKind {
             Self::Concat => f.write_str("'||'"),
             Self::Op => f.write_str("operator"),
             Self::FatArrow => f.write_str("'=>'"),
+            Self::ColonEquals => f.write_str("':='"),
             Self::Eq => f.write_str("'='"),
             Self::NotEq => f.write_str("'<>'"),
             Self::Lt => f.write_str("'<'"),

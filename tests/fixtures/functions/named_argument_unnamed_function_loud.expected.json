@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "42883",
+    "message": "function upper(x => unknown) does not exist"
+  }
+}

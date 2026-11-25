@@ -59,6 +59,7 @@ seem to disagree, the record wins.
 | [`ILIKE`](#ilike) | ⚠️ | `LIKE` over Rust's full Unicode lowercasing, so a few characters fold differently from PostgreSQL (`EDGES.md` row 264), and `ILIKE ANY (…)` is `42601`. |
 | [Scalar string + misc functions](#scalar-string--misc-functions) | ⚠️ | The common string functions (`upper`, `lower`, `length`, `substring` and `substr` over `text` and `bytea`, `left`, `right`, `octet_length`, `md5`, `trim`, `position`, `replace`, `concat`, `lpad`, `split_part`, …), and `random()`; an unbuilt one is `0A000` (`format`, `repeat`). |
 | [`date_trunc` / `extract` / `date_part`](#date_trunc--extract--date_part) | ✅ | `date_trunc`, `EXTRACT` and `date_part` over the temporal types at PostgreSQL's result types; an untyped `date_trunc` source succeeds where PostgreSQL refuses. |
+| [`make_interval` and named arguments](#make_interval-and-named-arguments) | ⚠️ | `make_interval` by position or by name (`make_interval(hours => $1)`, `:=` too); no other function takes a named argument, and a stored call renders positionally. |
 | [`SELECT DISTINCT` / `DISTINCT ON`](#select-distinct--distinct-on) | ✅ | `DISTINCT` and `DISTINCT ON`, with PostgreSQL's `ORDER BY` match rule (`42P10`) and its `NULL` and `NaN` equality. |
 | [`UNION` / `INTERSECT` / `EXCEPT` (+ `ALL`)](#union--intersect--except--all) | ✅ | `UNION`, `INTERSECT`, `EXCEPT`, with and without `ALL`, at PostgreSQL's precedence and common column types; a recursive term is typed by a separate check. |
 | [`CASE WHEN … END`](#case-when--end) | ✅ | Searched and simple forms; a non-boolean `WHEN` condition is `42804`. |
@@ -2224,6 +2225,23 @@ including a name that doesn't exist anywhere (`nosuchfn(1)` is `0A000` here agai
 both**: the ordinary call `overlay('abc', 'x', 2)` is `0A000` like any other unknown name,
 while only the SQL-standard `overlay('abc' PLACING 'x' FROM 2)` form gives the parser's
 `42601`. None of them is silent, and none is used by a spine consumer.
+
+### `make_interval` and named arguments
+
+`make_interval(years, months, weeks, days, hours, mins, secs)` builds an `interval` as
+18.6's does: years and months fold into months, weeks and days into days, and the rest into
+microseconds, `secs` rounded half to even. A field overflow, an infinite or `NaN` `secs`,
+and an infinite result are `22008`; a `numeric` or `bigint` field is `42883`, there being
+no overload for it. Every argument defaults to zero and can be named — `make_interval(hours
+=> 2)`, `make_interval(1, days => 3)`, `make_interval(years := 3)` — and a bare `$N` takes
+its position's type (`integer`, `double precision` for `secs`).
+
+The call grammar takes `name => expr` and `name := expr` for any function, with 18.6's
+checks over the names (`42601` for a positional argument after a named one and for a name
+written twice). `make_interval` is the one function whose argument names pglet knows, so a
+named argument to any other is `42883` — 18.6 answers `random(min => …, max => …)` and
+`string_agg(value => …, delimiter => …)` — and a stored `make_interval` renders its
+arguments positionally, defaults filled in (`EDGES.md` row 335).
 
 ### `date_trunc` / `extract` / `date_part`
 
