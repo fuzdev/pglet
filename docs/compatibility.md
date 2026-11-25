@@ -83,7 +83,7 @@ seem to disagree, the record wins.
 | [`to_char` / `AT TIME ZONE`](#to_char--at-time-zone) | ⚠️ | The ISO-8601 `to_char` tokens over a timestamp, and `AT TIME ZONE 'UTC'`; another zone or an unknown token is refused. |
 | [`timestamptz` text wire output](#timestamptz-text-wire-output) | ✅ | Rendered with the `+00` offset, so a text-protocol driver reads the right instant. |
 | [`ErrorResponse` structured fields](#errorresponse-structured-fields) | ⚠️ | SQLSTATE, message, detail, hint, position and the table / column / constraint fields where PostgreSQL sends them; a field pglet can't fill truthfully is omitted, and some are not sent yet. |
-| [`jsonb_build_object`, `IS [NOT] DISTINCT FROM`](#jsonb_build_object-is-not-distinct-from) | ⚠️ | `jsonb_build_object` and the null-safe `IS [NOT] DISTINCT FROM`. A timestamp or array value in `jsonb_build_object` is rendered as its text output, not as 18.6 renders it (`EDGES.md` row 306). |
+| [`jsonb_build_object`, `to_jsonb`, `IS [NOT] DISTINCT FROM`](#jsonb_build_object-to_jsonb-is-not-distinct-from) | ⚠️ | `jsonb_build_object`, `to_jsonb` over a value or a select list's whole-row reference (`to_jsonb(t)`), and the null-safe `IS [NOT] DISTINCT FROM`. A `float4` value is widened and a `char(n)` unpadded (`EDGES.md` row 306); a whole-row reference elsewhere is `42703` (row 334). |
 | [Scalar `EXISTS` / `NOT EXISTS`](#scalar-exists--not-exists) | ⚠️ | Plain and correlated `EXISTS` / `NOT EXISTS`; the sub-plan runs to the end, so a row past the first match that raises an error fails the query where PostgreSQL succeeds (`EDGES.md` row 320). |
 | [`INSERT … SELECT` + `unnest($N)` in a SELECT projection](#insert--select--unnestn-in-a-select-projection) | ⚠️ | `INSERT … SELECT`, and `unnest($1)` in a `SELECT` with no `FROM`; `unnest(…)` in the select list of a query with a `FROM` is `0A000`. |
 | [`generate_series` in `FROM`](#generate_series-in-from) | ⚠️ | The `integer` and `bigint` series over constant and parameter arguments, up to 1 000 000 rows (`54000` past it); the `numeric` and timestamp series, an argument naming a column (the lateral form, written `LATERAL` or not) or holding a subquery, and the select-list form are refused (`EDGES.md` row 321). |
@@ -3240,14 +3240,24 @@ repeated label, and the `WARNING`/`25P01` notice for `COMMIT`/`ROLLBACK` outside
 (`EDGES.md` row 76; the notice channel carries a message string with no severity or
 SQLSTATE of its own). See `docs/errors.md`.
 
-### `jsonb_build_object`, `IS [NOT] DISTINCT FROM`
+### `jsonb_build_object`, `to_jsonb`, `IS [NOT] DISTINCT FROM`
 
-Used by the spine's `cell_list`/audit. `IS [NOT] DISTINCT FROM` is null-safe (always
-boolean). `jsonb_build_object` renders a boolean, number, text, `NULL` and `jsonb` value as
-its JSON kind, and every other value as a JSON string of its text output. That matches
-18.6's rendering for a `date`, `time`, `interval` and `uuid`, but not for a `timestamptz` /
-`timestamp` (no `T`, no offset) or an array (a string, where 18.6 emits a JSON array):
-`EDGES.md` row 306.
+Used by the spine's `cell_list`/audit and its table browser. `IS [NOT] DISTINCT FROM` is
+null-safe (always boolean). `jsonb_build_object`'s values and `to_jsonb`'s argument convert
+as 18.6's `datum_to_jsonb` converts them: a boolean, a number, a text, `NULL` and a `jsonb`
+value as its JSON kind, an array as a JSON array of its converted elements, a timestamp in
+ISO 8601 with a `T` (a `timestamptz` with `+00:00`), and every other value as a JSON string
+of its text output. A bare string literal or an undeclared `$N` is `42804` in `to_jsonb`,
+as on 18.6. Residuals: a `float4` is widened before it is rendered and a `char(n)` loses its
+padding (`EDGES.md` row 306).
+
+**A whole-row reference** — `to_jsonb(t)` or `to_jsonb(t.*)` over a table, a derived table
+or a `WITH` query in the select list — is the row as an object keyed by column name:
+pglet models no row type, so the reference is rewritten into `to_jsonb` over a
+`jsonb_build_object` of the item's columns. A name that is a column of the level is the
+column, as on 18.6. Elsewhere — another clause, a nested query naming an enclosing item —
+the reference is `42703`; an outer join's nullable side and a derived table repeating a
+column name are `0A000`; a grouping query is `42803` (`EDGES.md` row 334).
 
 ### Scalar `EXISTS` / `NOT EXISTS`
 
@@ -3594,7 +3604,10 @@ rebuild them on drop).
 - `ALTER TABLE IF EXISTS <t> …` performs the action over a relation that exists, and skips
   with 18.6's `NOTICE` over a name nothing holds (`EDGES.md` row 15 keeps its residuals).
 - `ALTER TABLE t* …` acts on `t` (no table inherits from it), and `ONLY t*` is `42601`, as
-  on 18.6. Elsewhere a relation named `t*` is `42601` (`EDGES.md` row 328).
+  on 18.6. Elsewhere a relation named `t*` is `42601` (`EDGES.md` row 328). `ONLY t` and `ONLY (t)`
+  — in `FROM`, `UPDATE` and `DELETE FROM` — are `t`, and `ONLY` is no table name and no
+  alias there; `TRUNCATE ONLY t` is `42601`, and elsewhere an unquoted `only` is an
+  ordinary name (`EDGES.md` row 337).
 
 `ADD COLUMN … NOT NULL DEFAULT NULL` is `23502` like PG. The check reads the resolved
 backfill values, not whether a DEFAULT is present, and `DEFAULT NULL` is normalized to *no*

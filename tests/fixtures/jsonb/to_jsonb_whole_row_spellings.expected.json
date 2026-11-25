@@ -1,0 +1,16 @@
+{
+  "rows": [
+    {
+      "column_wins": 3,
+      "cte": {
+        "n": 7,
+        "s": "v"
+      },
+      "star": {
+        "a": 1,
+        "b": "q"
+      }
+    }
+  ],
+  "rowCount": 1
+}

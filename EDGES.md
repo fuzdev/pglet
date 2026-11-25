@@ -123,7 +123,8 @@ inside a table.
 | 293 | an uncast string, a bare `NULL` or an untyped `$N` under `\|\|` beside an operand whose type has a `\|\|` of its own, either order — `b \|\| 'ef'` over `bytea`, `j \|\| $1` over `jsonb`, `a \|\| '{9}'` over an array | the untyped side taken as `text`: the `text` `\x61626364ef`, `{"k": 1}{"x": 1}`; `42883` beside an `int[]`, `0A000` beside a `text[]` | the untyped side read as the other's type: the `bytea` `\x616263646566`, the merged `jsonb`, the array `{1,2,9}` | **silent** in a select list, into a `text` column, and compared with a literal or `$N`; loud into a `bytea` or `jsonb` column (`42804`), compared with a typed operand or under `@>` (`42883`), and beside an array | — a faithful fixture is red | nothing reads the untyped side off its sibling |
 | 294 | a Unicode space (U+00A0, U+0085, U+2003 measured) leading or trailing a number, `uuid`, `date`, `time` or `interval` string — `'1<U+00A0>'::int` — and so an array element of those types: `'{1<U+00A0>}'::int[]` | the value, the space trimmed: `1`, `{1}` | `22P02`; `22007` for `date`, `time` and `interval` | **silent, and it writes** | — a faithful fixture is red | trim a Unicode space |
 | 287 | `INSERT … OVERRIDING USER VALUE` with a value written for the identity column | the cell is replaced before it is read: an ill-typed constant, an unknown column or sequence in it is accepted; a `$N` in it leaves the statement's parameters (native server: `08P01` at `Bind`); over a `SELECT` source, `0A000` | reads the cell and discards its value: `22P02` / `42703` / `42P01`; the `$N` is counted; the `SELECT` source runs | **silent** for the unread cell; loud for the parameter (native server) and the `SELECT` source | — a faithful fixture is red | replaced before it is read |
-| 306 | `jsonb_build_object` over a `timestamptz`, `timestamp` or array value | the value's text output as a JSON string — `"2021-01-02 03:04:05"` with no `T` and no offset; `"{1}"` for an array | ISO 8601 — `"2021-01-02T03:04:05+00:00"`, `"2021-01-02T03:04:05"` — and a JSON array, `[1]` | **silent** — another jsonb value, returned or stored; two loud members in the bullet | — a faithful fixture is red | renders a value it has no JSON kind for as its text output |
+| ~~306~~ | **closed** — `jsonb_build_object` over a `timestamptz`, `timestamp` or array value | the value's text output as a JSON string — `"2021-01-02 03:04:05"`, `"{1}"`; now ISO 8601 and a JSON array | ISO 8601 — `"2021-01-02T03:04:05+00:00"` — and a JSON array, `[1]` | closed — **silent** residuals: a `float4` widened, a `char(n)` unpadded; two loud ones (the bullet) | `jsonb/build_object_timestamp_and_array_values.sql`, `jsonb/to_jsonb_scalars.sql` | renders a value it has no JSON kind for as its text output |
+| 334 | a whole-row reference — `to_jsonb(t)`, `t.*` — anywhere but a select list's own level, or to an item pglet cannot hold as a row there | `42703` outside the select list or from a nested level; `0A000` on an outer join's nullable side, over a derived table repeating a column name; `42803` grouped | the row — `NULL` on the null-extended side, the last of a repeated name, the row where `GROUP BY` names the primary key | loud; **silent** where a bare name is also an enclosing level's column (the row here, that column there) | `jsonb/to_jsonb_whole_row_*.sql` | rewritten into an expression over the item's columns |
 
 **Name resolution & scope**
 
@@ -437,6 +438,7 @@ inside a table.
 | 273 | a strict operator or comparison with a constant `NULL` operand beside one that raises — `NULL::int = 1/y`, `NULL::int IN (1, 1/y)` over `y` = `0` | `22012`: both operands are evaluated | `NULL`: its planner folds the call without evaluating the other operand | loud — a refusal where 18.6 answers | — none; a faithful fixture is red | still evaluates its other operand |
 | ~~296~~ | **closed** — a `SELECT` with no `FROM` followed by a `WHERE`, `GROUP BY` or `HAVING` clause — `SELECT 1 WHERE true`, `INSERT … SELECT … WHERE EXISTS (…)` | was `42601` at the clause; now answers | answers — one row (none for `WHERE false`) | closed — **loud** residuals: a `nextval` or a select-list `unnest` beside the clause, `0A000`; `pg_advisory_xact_lock(k) WHERE false` takes the writer (row 250) | `select/no_from_where_*.sql`, `insert/select_no_from_where_*.sql` | lowered over one row of no columns |
 | 328 | a relation named `t*` — `relation_expr`'s "the table and its descendants" — in `SELECT … FROM`, `UPDATE`, `DELETE FROM` or `TRUNCATE` | `42601` | the table itself (no table inherits from it) | loud — a refusal where 18.6 answers | — none; a faithful fixture is red; the `ALTER TABLE` half is `ddl/alter_table_star_*` | names the table and its descendants |
+| 337 | `ONLY` outside the spellings pglet reads — `TRUNCATE ONLY t`, and `only` unquoted as a name (`CREATE TABLE c (only INT)`, `SELECT only FROM c`) | `42601` for the `TRUNCATE`; the name accepted, a column called `only` | the table truncated; `42601`, `ONLY` being reserved | loud for the `TRUNCATE`; **silent** for the name — DDL and a query 18.7 refuses, answered | — a faithful fixture is red | as a word in the places that take one |
 | 321 | a FROM-clause `generate_series` spelling 18.6 answers — the `numeric` and timestamp series, an argument naming a column or holding a subquery, one of no certain type, a call decoration — and a series past 1 000 000 rows | `0A000`, `42601` or `42P01`; `54000` past the bound | rows, or its own error | loud | `generate_series/*_refused.sql`, `crates/pglet/tests/generate_series.rs` | spelling 18.6 answers is declined |
 
 - **~~171~~ · Closed — a long operator chain aborted the native server's process — a
@@ -16061,34 +16063,54 @@ inside a table.
   cast (row 144). Loud — a refusal where 18.6 answers. Reach: ordinary. No fixture: a
   faithful one is red.
 
-- **306 · `jsonb_build_object` renders a value it has no JSON kind for as its text
-  output.** `executor::expr`'s `value_to_jsonb` maps a boolean, a number, a text and a
-  `jsonb` value to their JSON kinds and every other value to a JSON **string** holding
-  `value_to_text`'s rendering. 18.6's `datum_to_jsonb` renders a timestamp in ISO 8601
-  (`JsonEncodeDateTime`) and an array as a JSON array of its elements, and the value
-  here carries no declared type, so a `timestamptz` is rendered without its offset.
-  Measured over `o (id INT, a INT, ts TIMESTAMPTZ, tm TIMESTAMP, d DATE)` holding `(2, 1,
-  '2021-01-02 03:04:05+00', '2021-01-02 03:04:05', '2021-06-01')`, `TimeZone` `UTC`:
-  `jsonb_build_object('ts', ts)` is `{"ts": "2021-01-02 03:04:05"}` here and `{"ts":
-  "2021-01-02T03:04:05+00:00"}` there, and the `'…'::timestamptz` constant the same;
-  `jsonb_build_object('tm', tm)` is `"2021-01-02 03:04:05"` against
-  `"2021-01-02T03:04:05"`; `jsonb_build_object('a', ARRAY[a])` is `{"a": "{1}"}` against
-  `{"a": [1]}`, and `ARRAY['x', 'y']` `"{x,y}"` against `["x", "y"]`. Under an aggregate
-  — `jsonb_build_object('ts', max(ts))`, `jsonb_build_object('a', ARRAY[max(ts)])`, the
-  second `{"a": "{\"2021-01-02 03:04:05\"}"}` against `{"a":
-  ["2021-01-02T03:04:05+00:00"]}` — the same values are reached where the statement was
-  `0A000` (row 89). The `date`, `time`, `interval`, `uuid`, number, boolean, text, `NULL`
-  and `jsonb` values tried each rendered as 18.6 renders them; `to_jsonb` and
-  `jsonb_build_array` are `0A000`.
+- **~~306~~ · Closed — `jsonb_build_object` renders a value it has no JSON kind for as its
+  text output.** `executor::expr`'s `value_to_jsonb` used to map every value but a boolean,
+  a number, a text and a `jsonb` to a JSON **string** of `value_to_text`'s rendering, where
+  18.6's `datum_to_jsonb` renders a timestamp in ISO 8601 (`JsonEncodeDateTime`) and an
+  array as a JSON array of its elements. It now does both, and `to_jsonb` shares it: a
+  timestamp is its text output with the date and time joined by `T`, and a `timestamptz`'s
+  offset written `+00:00` — read off the argument's declared type, the value being the same
+  for both types, for a scalar and for an array's elements alike (`declared_type_oid` at the
+  call); an array is a JSON array of its elements, each converted by the element type.
+  Measured against 18.7 at `TimeZone` `UTC` over a column of every type pglet models,
+  scalar and array, through `to_jsonb` and `jsonb_build_object`.
 
-  Other members of the same function, measured: a `float4` value is widened before it is
-  rendered — `jsonb_build_object('x', f4)` over `1.1` is `{"x": 1.100000023841858}`
-  against `{"x": 1.1}`, and `0.1::real + 0.2::real` `0.30000001192092896` against `0.3`
-  (a `float8` `1.5` agrees); a `char(4)` value loses its padding, `"ab"` against `"ab  "`;
-  and two are loud — `jsonb_build_object('x', 'Infinity'::numeric)` is `22P02` against
-  `{"x": "Infinity"}`, and a key that is not text, `jsonb_build_object(1, 2)`, `42804`
-  against `{"1": 2}`. Silent — another jsonb value, returned or stored — but for those
-  two. Reach: ordinary. No fixture: a faithful one is red.
+  Residuals, measured: a `float4` value is widened before it is rendered —
+  `jsonb_build_object('x', f4)` and `to_jsonb(1.1::float4)` over `1.1` are
+  `1.100000023841858` against `1.1`, and `0.1::real + 0.2::real` `0.30000001192092896`
+  against `0.3` (a `float8` `1.5` agrees); a `char(4)` value loses its padding, `"ab"`
+  against `"ab  "`; and two are loud — `to_jsonb('Infinity'::numeric)` and
+  `jsonb_build_object('x', 'Infinity'::numeric)` are `22P02` against `"Infinity"` (pglet
+  reads no infinite `numeric`), and a key that is not text, `jsonb_build_object(1, 2)`,
+  `42804` against `{"1": 2}`. A value whose declared type pglet gets wrong is converted
+  by that wrong type: `ts AT TIME ZONE 'UTC'` over a `timestamp` is typed `timestamp`
+  here (`timestamptz` there), so `to_jsonb(ts AT TIME ZONE 'UTC')` has no `+00:00`. Silent —
+  another jsonb value, returned or stored — but for those two. Reach: ordinary. No fixture
+  for the residuals: a faithful one is red.
+
+- **334 · A whole-row reference is rewritten into an expression over the item's columns.**
+  pglet models no row type, so `planner::query`'s `rewrite_whole_row_refs` turns
+  `to_jsonb(t)` and `to_jsonb(t.*)` in a select list into `to_jsonb` over a
+  `jsonb_build_object` of `t`'s columns, which answers what 18.6's `composite_to_jsonb`
+  does for a row of a table, a derived table or a `WITH` query. A bare name is a whole row
+  only where it names no column of the level and does name a FROM item there, 18.6's
+  order (`transformColumnRef`).
+
+  What the rewrite does not reach, measured against 18.7: a whole-row reference in
+  `WHERE`, `ORDER BY` or any clause but the select list, and one in a nested query naming
+  an enclosing query's item — `SELECT (SELECT to_jsonb(x)) FROM t x` — stays a column
+  reference that binds nothing, `42703` where 18.7 answers. Refused `0A000` where 18.7
+  answers: an item on the nullable side of an outer join, whose whole row 18.7 answers
+  `NULL` and the columns' object would not; a derived table repeating a column name
+  (`(SELECT 1 AS a, 2 AS a) s`, `{"a": 2}` there); a FROM function's whole row, which is
+  its value there. In a grouping query the reference is `42803`, 18.7's answer unless
+  `GROUP BY` names the table's primary key, where 18.7 answers the row
+  (`check_functional_grouping`). Silent: a bare name that is no column of its own level
+  but is one of an **enclosing** level's — 18.7 binds the enclosing column
+  (`colNameToVar` searches every level before any relation), and pglet the row of its own
+  level's item. Reach: ordinary for the loud members, contrived for the silent one.
+  Fixtures pin the refusals; the `42703` members and the silent one have none, a faithful
+  fixture being red.
 
 - **~~88~~ · Closed — an `IN` list is `= ANY (ARRAY[…])` there, in five shapes.** In a
   rendered stored expression — `pg_get_constraintdef`,
@@ -22857,3 +22879,15 @@ inside a table.
   `ddl/alter_table_only_star_loud`). **Loud** for the rest — a refusal, never a wrong
   answer. Reach: rare; the spelling is an inheritance idiom. No fixture holds it: a
   faithful one is red.
+
+- **337 · The parser has no `ONLY` keyword.** `ONLY` is reserved on 18.7. pglet reads it
+  as a word in the places that take one — `FROM ONLY t` and `ONLY (t)`, `UPDATE ONLY t`,
+  `DELETE FROM ONLY t`, `ALTER TABLE ONLY t`, and a `FROM` item's alias, where it is the
+  syntax error 18.7 gives — and nowhere else, so it stays an ordinary identifier
+  elsewhere. Measured against 18.7: `TRUNCATE ONLY t` is `42601` here, where the
+  `TRUNCATE` reads no `ONLY`, and truncates `t` there (no table inherits from it); `CREATE
+  TABLE c (only INT)` creates a column named `only` here and is `42601` there, and `SELECT
+  only FROM c` reads that column here. `FROM t*` is row 328's. Loud for the `TRUNCATE`;
+  an accept where 18.7 refuses for the name. Reach: rare. Closing the name member means
+  reserving the word in the lexer, which every place that reads it as a word then has to
+  take as the keyword. No fixture: a faithful one is red.

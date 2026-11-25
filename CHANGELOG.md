@@ -40,6 +40,12 @@ released version under a fresh `## Unreleased` declaring a patch.
 - feat: an aggregate or a window function in a `SELECT` with no `FROM` — `SELECT count(*)`,
   `INSERT INTO t SELECT max(…)` — answers over one row (was `0A000`)
 - fix: `'s'::regclass` names a sequence, as `to_regclass` does (was `42P01`)
+- feat: `to_jsonb(value)`, and `to_jsonb(t)` over a FROM item `t` in a select list — the row
+  as a JSON object keyed by column name, `SELECT to_jsonb(t)::text FROM (…) t` (was `0A000`
+  and `42703`); a whole-row reference elsewhere stays `42703`
+- fix: `jsonb_build_object` renders a timestamp in ISO 8601 (`"…T…+00:00"` for a
+  `timestamptz`) and an array as a JSON array, as PostgreSQL does (was the text output, as a
+  string)
 
 ## 0.2.1
 

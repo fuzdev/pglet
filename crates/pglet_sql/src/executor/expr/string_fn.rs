@@ -231,6 +231,11 @@ pub(super) fn eval_string_fn(
             Err(crate::executor::advisory::off_projection(func))
         }
         StringFunc::SetConfigLockTimeout => eval_set_config_lock_timeout(args),
+        // The node's own arm in `eval_expr_full` answers every call it builds, with the
+        // argument's declared type; reached here, only the value's own type is known.
+        StringFunc::ToJsonb => Ok(Value::Jsonb(
+            super::eval::value_to_jsonb(&args[0], None).canonical(),
+        )),
     }
 }
 

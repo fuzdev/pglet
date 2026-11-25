@@ -191,6 +191,18 @@ fn lower_select_level(parts: SelectParts, schema: &Schema) -> Result<Plan> {
     // qualified star exprs, so the emitted shape is Postgres's (bare names, USING
     // columns coalesced once) rather than the join's internal dotted columns.
     let projection = expand_wildcards(projection, &from, &tables, schema, &nonbase)?;
+    // A whole-row reference — `to_jsonb(t)` over a FROM item `t` — becomes an expression
+    // over the item's columns, before anything resolves the projection's names.
+    let projection = rewrite_whole_row_refs(
+        projection,
+        &WholeRowScope {
+            from: &from,
+            schema,
+            nonbase: &nonbase,
+            scope: &scope,
+            grouped: !group_by.is_empty(),
+        },
+    )?;
 
     // The target list a `GROUP BY` **ordinal** counts against, when the projection is
     // the sole bare `*` that `expand_wildcards` deliberately leaves unexpanded for the
@@ -3492,6 +3504,165 @@ pub(super) fn collect_referenced_columns(expr: &Expr, out: &mut Vec<(Option<Stri
         out.push((table.clone(), name.clone()));
     }
     expr.for_each_child(|child| collect_referenced_columns(child, out));
+}
+
+/// What [`rewrite_whole_row_refs`] reads of a query level: its FROM tree, the catalog
+/// and the non-base items' columns that name each item's columns, the scope that says
+/// whether a name is a column, and whether the level groups.
+struct WholeRowScope<'a> {
+    from: &'a Plan,
+    schema: &'a Schema,
+    nonbase: &'a HashMap<String, Vec<ColumnDesc>>,
+    scope: &'a ColumnScope,
+    grouped: bool,
+}
+
+/// Rewrite each **whole-row reference** in a select list into an expression over the
+/// referenced FROM item's columns: `to_jsonb(t)` (and `to_jsonb(t.*)`) into
+/// `to_jsonb(jsonb_build_object('a', t.a, …))`, which answers what 18.6's
+/// `composite_to_jsonb` does for a row of `t`.
+///
+/// A bare name is a whole-row reference only where it names no column of this level and
+/// does name a FROM item here (18.6's `transformColumnRef` asks for a column first, then
+/// a relation). What is refused (`0A000`) rather than rewritten: an item on the nullable
+/// side of an outer join, whose whole row 18.6 answers `NULL` where the columns' object
+/// would not be; an item that is not a table, a derived table or a `WITH` query (a FROM
+/// function's whole row is its value); and a derived table whose columns repeat a name. In
+/// a grouping query the reference is `42803`, 18.6's answer unless `GROUP BY` names the
+/// table's primary key. Only the select list
+/// is rewritten: elsewhere a whole-row reference stays a column reference that binds
+/// nothing (`EDGES.md`).
+fn rewrite_whole_row_refs(projection: Vec<Expr>, level: &WholeRowScope<'_>) -> Result<Vec<Expr>> {
+    projection
+        .into_iter()
+        .map(|mut item| {
+            rewrite_whole_row_ref(&mut item, level)?;
+            Ok(item)
+        })
+        .collect()
+}
+
+/// [`rewrite_whole_row_refs`]'s walk over one expression.
+fn rewrite_whole_row_ref(expr: &mut Expr, level: &WholeRowScope<'_>) -> Result<()> {
+    crate::depth::check_stack()?;
+    if let Expr::StringFn {
+        func: super::expr::StringFunc::ToJsonb,
+        args,
+    } = expr
+        && let [arg] = args.as_mut_slice()
+        && let Some(item) = whole_row_item(arg, level)
+    {
+        let columns = whole_row_columns(&item, level)?;
+        *arg = Expr::JsonbBuildObject(
+            columns
+                .into_iter()
+                .flat_map(|name| {
+                    [
+                        Expr::Literal(Literal::String(name.clone())),
+                        Expr::Column {
+                            table: Some(item.clone()),
+                            name,
+                        },
+                    ]
+                })
+                .collect(),
+        );
+        return Ok(());
+    }
+    let mut result = Ok(());
+    expr.for_each_child_mut(&mut |child: &mut Expr| {
+        if result.is_ok() {
+            result = rewrite_whole_row_ref(child, level);
+        }
+    });
+    result
+}
+
+/// The FROM item `expr` references as a whole row, if it is one: `t.*`, or a bare `t`
+/// that names no column of this level and does name a FROM item here.
+fn whole_row_item(expr: &Expr, level: &WholeRowScope<'_>) -> Option<String> {
+    match expr {
+        Expr::Column {
+            table: Some(item),
+            name,
+        } if name == "*" => Some(item.clone()),
+        Expr::Column { table: None, name }
+            if !level.scope.contains_column(name)
+                && whole_row_leaf(level.from, name, false).is_some() =>
+        {
+            Some(name.clone())
+        }
+        _ => None,
+    }
+}
+
+/// The columns of the FROM item `item` names, in order, for a whole-row reference to it —
+/// or the refusal [`rewrite_whole_row_refs`] documents.
+fn whole_row_columns(item: &str, level: &WholeRowScope<'_>) -> Result<Vec<String>> {
+    let refuse = |what: &str| {
+        Err(Error::NotImplemented(format!(
+            "a whole-row reference to \"{item}\", {what}"
+        )))
+    };
+    // 18.6 accepts the whole row only where `GROUP BY` names the table's primary key
+    // (`check_functional_grouping`), and refuses it `42803` otherwise; the functional
+    // dependency is not modelled here, so the refusal is raised for both.
+    if level.grouped {
+        return Err(Error::GroupingError {
+            column: format!("{item}.*"),
+        });
+    }
+    let Some((leaf, nullable)) = whole_row_leaf(level.from, item, false) else {
+        return Err(CatalogError::MissingFromClauseEntry {
+            table: item.to_string(),
+        }
+        .into());
+    };
+    if nullable {
+        return refuse("on the nullable side of an outer join");
+    }
+    let columns: Vec<String> = match leaf {
+        // A table the catalog lacks is the scan's own `42P01`, raised here first.
+        Plan::Scan { table, .. } => match level.schema.get_table(table) {
+            Some(t) => t.columns.iter().map(|c| c.name.clone()).collect(),
+            None => {
+                return Err(CatalogError::TableNotFound {
+                    table: table.clone(),
+                }
+                .into());
+            }
+        },
+        Plan::SubqueryScan { .. } | Plan::CteScan { .. } => match level.nonbase.get(item) {
+            Some(cols) => cols.iter().map(|c| c.name.clone()).collect(),
+            None => return refuse("a relation whose columns are not known here"),
+        },
+        _ => return refuse("which is not a table, a derived table or a WITH query"),
+    };
+    let mut seen = HashSet::new();
+    if columns.iter().any(|c| !seen.insert(c.as_str())) {
+        return refuse("whose columns repeat a name");
+    }
+    Ok(columns)
+}
+
+/// The FROM leaf whose effective name is `name` under `plan`, and whether it sits on the
+/// nullable side of an outer join — one level's join tree, as [`collect_leaf_names`]
+/// walks it.
+fn whole_row_leaf<'a>(plan: &'a Plan, name: &str, nullable: bool) -> Option<(&'a Plan, bool)> {
+    if let Plan::Join {
+        left,
+        right,
+        join_type,
+        ..
+    } = plan
+    {
+        use super::plan::JoinType;
+        let left_nullable = nullable || matches!(join_type, JoinType::Right | JoinType::Full);
+        let right_nullable = nullable || matches!(join_type, JoinType::Left | JoinType::Full);
+        return whole_row_leaf(left, name, left_nullable)
+            .or_else(|| whole_row_leaf(right, name, right_nullable));
+    }
+    (leaf_name(plan).as_deref() == Some(name)).then_some((plan, nullable))
 }
 
 /// Expand `*` / `alias.*` wildcards in a projection into explicit per-column

@@ -1112,6 +1112,19 @@ impl Parser<'_> {
         // through `expect_name` — routed through the same `is_colid_name` predicate
         // so it can't drift stricter (the regression the FROM-table-name fix closed:
         // pglet could `CREATE TABLE update` but not `SELECT … FROM update`).
+        // `ONLY t` and `ONLY (t)` are `t` without its descendants, and pglet models no
+        // inheritance, so they are `t`. `ONLY` is reserved on 18.6: anything else after it,
+        // the end of the statement included, is a syntax error.
+        let mut only_paren = false;
+        if self.at_ident("only") {
+            self.ts.bump()?;
+            if self.ts.at(&TokenKind::LParen) {
+                self.ts.bump()?;
+                only_paren = true;
+            } else if !super::is_colid_name(self.ts.peek_kind()) {
+                return Err(self.ts.syntax_error_at_or_near());
+            }
+        }
         let first = self.ts.advance()?;
         let mut parts = if super::is_colid_name(&first.kind) {
             vec![self.ts.name(&first)]
@@ -1126,6 +1139,9 @@ impl Parser<'_> {
             } else {
                 return Err(self.ts.expected("a table name after '.'"));
             }
+        }
+        if only_paren {
+            self.ts.expect(&TokenKind::RParen)?;
         }
         let qualified = parts.join(".");
         let alias = self.parse_table_alias()?;
@@ -2118,6 +2134,11 @@ impl Parser<'_> {
                 self.ts.peek_kind(),
                 TokenKind::Identifier | TokenKind::QuotedIdentifier
             );
+        // `ONLY` is reserved on 18.6, so it is no alias: `FROM t only` and `FROM t AS only`
+        // are syntax errors.
+        if aliased && self.at_ident("only") {
+            return Err(self.ts.syntax_error_at_or_near());
+        }
         if aliased {
             Ok(Some(self.expect_alias_name()?))
         } else {

@@ -547,8 +547,8 @@ statement over an empty table is refused too, except where an item says otherwis
 - **`LATERAL` before a function or a `VALUES` list, or under a `RIGHT` / `FULL` join** — `0A000`.
   `CROSS JOIN LATERAL (SELECT …)`, `, LATERAL (SELECT …)` and `LEFT JOIN LATERAL (SELECT …) ON true` work.
 - **`DELETE … USING`** — `42601`. `DELETE … WHERE id IN (SELECT …)` works.
-- **An alias on a `DELETE`'s table**, and `DELETE FROM ONLY t` — `DELETE FROM t AS x WHERE x.id = 1`, `DELETE
-  FROM t x` — `42601`. Name the table itself (`DELETE FROM t WHERE t.id = 1`); `UPDATE t AS x SET …` works.
+- **An alias on a `DELETE`'s table** — `DELETE FROM t AS x WHERE x.id = 1`, `DELETE FROM t x` — `42601`. Name
+  the table itself (`DELETE FROM t WHERE t.id = 1`); `UPDATE t AS x SET …` and `DELETE FROM ONLY t` work.
 - **`VALUES (1), (2)` as a statement of its own** — `0A000`. `SELECT * FROM (VALUES (1), (2)) AS v(x)` works.
 - **`FETCH FIRST n ROWS ONLY`** — `42601`. `LIMIT` works.
 - **`COLLATE`** — `42601`. Text already compares byte by byte, as `COLLATE "C"` does (*Known differences*, above).

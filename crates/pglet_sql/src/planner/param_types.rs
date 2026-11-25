@@ -156,6 +156,7 @@ pub fn infer_param_targets(
         expr_subqueries: 0,
         pending: Vec::new(),
         pending_marks: Vec::new(),
+        polymorphic: Vec::new(),
     };
     // Seed client-supplied OIDs (highest priority).
     for (i, h) in hint.iter().enumerate() {
@@ -171,6 +172,27 @@ pub fn infer_param_targets(
     // refusal would pre-empt — so it stands down where that `42P01` is certain.
     if !inf.missing_relation {
         inf.refuse_unresolved()?;
+        // A bare `$N` that is a polymorphic function's whole argument leaves 18.6's
+        // resolution nothing to bind (`42804`) unless the client declared its type or an
+        // occurrence analysed earlier fixed it — `SELECT $1::int, to_jsonb($1)` answers,
+        // `SELECT to_jsonb($1) WHERE $1 = 1` does not.
+        let typed_before = |index: usize, key: &AnalysisPosition| {
+            inf.prio.get(index - 1) == Some(&PRIO_HINT)
+                || inf
+                    .first_fix
+                    .get(index - 1)
+                    .and_then(Option::as_ref)
+                    .is_some_and(|(fix, _)| fix < key)
+        };
+        if inf
+            .polymorphic
+            .iter()
+            .any(|(index, key)| !typed_before(*index, key))
+        {
+            return Err(Error::Type(
+                "could not determine polymorphic type because input has type unknown".into(),
+            ));
+        }
     }
     // A `$N::<enum>` is the parameter's enum target only where it is the occurrence
     // that fixes the parameter's type — see [`Inference::first_fix`].
@@ -189,6 +211,10 @@ pub fn infer_param_targets(
 /// slot and growing to the largest `$N` seen.
 struct Inference {
     types: Vec<Option<TypeOid>>,
+    /// The bare `$N`s written as a polymorphic function's argument (`to_jsonb($1)`), each
+    /// with its place in parse-analysis order: `infer_param_targets` refuses one whose
+    /// type no earlier occurrence fixed and the client did not declare.
+    polymorphic: Vec<(usize, AnalysisPosition)>,
     /// Each `$N`'s enum target by catalog key — see [`ParamTargets::enums`]. Parallel
     /// to `types` and grown by the same [`Inference::ensure`], because a parameter can
     /// have an enum target at a position that pins no OID of its own.
@@ -320,6 +346,10 @@ enum Timing {
     /// `"any"` — `count`'s, `concat`'s, `concat_ws`'s past the separator,
     /// `jsonb_build_object`'s.
     Unresolved,
+    /// Never, as [`Self::Unresolved`] — and the node itself needs the type there: a
+    /// polymorphic function's whole argument (`to_jsonb($1)`), whose resolution is
+    /// `42804` unless the parameter's type was fixed by an earlier occurrence.
+    Polymorphic,
 }
 
 /// A place in 18.6's parse-analysis order — see [`Inference::position`].
@@ -519,6 +549,16 @@ impl Inference {
     fn queue_operands(&mut self, expr: &Expr) {
         // The nodes whose every operand is left `unknown`, and `concat_ws`, whose
         // separator is the one `text` argument ahead of its `"any"` list.
+        if let Expr::StringFn {
+            func: StringFunc::ToJsonb,
+            args,
+        } = expr
+        {
+            if let [Expr::Parameter { index }] = args.as_slice() {
+                self.pending.push((*index, Timing::Polymorphic));
+            }
+            return;
+        }
         let unresolved_from = match expr {
             Expr::Alias { .. } => return,
             Expr::StringFn {
@@ -614,14 +654,20 @@ impl Inference {
         let mark = self.pending_marks.last().copied().unwrap_or(0);
         let mut fixes = false;
         let mut unresolved = false;
+        let mut polymorphic = false;
         for (queued, timing) in &self.pending[mark..] {
             if *queued == index {
                 fixes |= *timing == Timing::Operand;
                 unresolved |= *timing == Timing::Unresolved;
+                polymorphic |= *timing == Timing::Polymorphic;
             }
         }
         if unresolved {
             self.unresolved_event(index);
+        }
+        if polymorphic {
+            let key = self.next_position(false);
+            self.polymorphic.push((index, key));
         }
         if fixes {
             self.fix_event(index, None);
@@ -1391,7 +1437,7 @@ impl Inference {
                 // Already timed where the walk reached it, unless an alias stood
                 // between; the earliest event is the one kept.
                 Timing::Operand => self.fix_event(index, None),
-                Timing::Unresolved => {}
+                Timing::Unresolved | Timing::Polymorphic => {}
             }
         }
     }
@@ -2199,6 +2245,8 @@ const fn string_fn_text_arg(func: StringFunc, i: usize) -> bool {
         // (str, n) and (str, start [, length]) — the integer positions are
         // `string_fn_typed_arg`'s; an untyped `$1` resolves to `text` there too.
         StringFunc::Left | StringFunc::Right | StringFunc::Substr => i == 0,
+        // (anyelement) — polymorphic: an undeclared `$N` has nothing to resolve it to.
+        StringFunc::ToJsonb => false,
     }
 }
 

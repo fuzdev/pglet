@@ -134,7 +134,7 @@ impl Parser<'_> {
 
     fn parse_update_inner(&mut self) -> Result<Plan> {
         self.ts.expect_kw(Keyword::Update)?;
-        let table = self.parse_relation_name()?;
+        let table = self.parse_only_relation_name()?;
         self.touched_tables.push(table.clone());
         // An optional target alias (`UPDATE t AS o` / `UPDATE t o`). `SET` is a
         // keyword token, so an unaliased `UPDATE t SET …` parses no alias here.
@@ -201,7 +201,7 @@ impl Parser<'_> {
     fn parse_delete_inner(&mut self) -> Result<Plan> {
         self.ts.expect_kw(Keyword::Delete)?;
         self.ts.expect_kw(Keyword::From)?;
-        let table = self.parse_relation_name()?;
+        let table = self.parse_only_relation_name()?;
         self.touched_tables.push(table.clone());
 
         let filter = if self.ts.eat_kw(Keyword::Where)? {
@@ -242,6 +242,22 @@ impl Parser<'_> {
     /// single `ColId` (a `CREATE SCHEMA` / `DROP SCHEMA` / `CREATE INDEX` name), where
     /// any dotted name is the grammar's own `42601` — so the four-part refusal is one
     /// 18.6 raises too, at the raw parse, though 18.6 raises it at two parts as well.
+    /// A DML target's name, after an optional `ONLY` — `ONLY t` or `ONLY (t)`, the table
+    /// without its descendants, which with no inheritance modelled is the table. `ONLY` is
+    /// reserved on 18.6, so it is never itself the name.
+    fn parse_only_relation_name(&mut self) -> Result<String> {
+        if !self.eat_ident("only")? {
+            return self.parse_relation_name();
+        }
+        if self.ts.at(&TokenKind::LParen) {
+            self.ts.bump()?;
+            let table = self.parse_relation_name()?;
+            self.ts.expect(&TokenKind::RParen)?;
+            return Ok(table);
+        }
+        self.parse_relation_name()
+    }
+
     pub(super) fn parse_relation_name(&mut self) -> Result<String> {
         let parts = self.parse_dotted_name()?;
         self.reduce_grammar_name(&parts)

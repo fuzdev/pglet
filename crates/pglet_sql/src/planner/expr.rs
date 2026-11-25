@@ -1739,6 +1739,17 @@ pub enum StringFunc {
     /// statement, including what it refuses. Appended last for postcard-discriminant
     /// stability.
     ToRegclass,
+    /// `to_jsonb(anyelement) → jsonb` — a value as 18.6's `datum_to_jsonb` converts it:
+    /// a number, a boolean and a `jsonb` as themselves, an array as a JSON array of its
+    /// converted elements, a timestamp in ISO 8601 with a `T` (and `+00:00` for a
+    /// `timestamptz`, which only the argument's declared type says it is), anything else
+    /// as a JSON string of its text output. A bare string literal or an undeclared
+    /// parameter has no type to convert from and is `42804`, as on 18.6. A whole-row
+    /// reference in a select list — `to_jsonb(t)` over a FROM item `t` — is rewritten
+    /// at plan time into this call over a [`Expr::JsonbBuildObject`] of the item's
+    /// columns (`planner::query`'s `rewrite_whole_row_refs`). Strict. Appended last for
+    /// postcard-discriminant stability.
+    ToJsonb,
 }
 
 /// The advisory-lock members of [`StringFunc`] — the calls that answer only as a
@@ -2586,6 +2597,7 @@ pub const fn string_fn_result_type(func: StringFunc) -> TypeOid {
         // The `text` overload's type; a `bytea` argument's is `substring_result_type`'s,
         // which the type walkers read through `shared_leaf_cell_type`.
         StringFunc::Substr => TypeOid::Text,
+        StringFunc::ToJsonb => TypeOid::Jsonb,
     }
 }
 
@@ -3385,6 +3397,16 @@ fn dispatch_call(
         "pg_advisory_unlock_all" => string_call(StringFunc::AdvisoryUnlockAll, args, 0..=0),
         "quote_ident" => string_call(StringFunc::QuoteIdent, args, 1..=1),
         "to_regclass" => string_call(StringFunc::ToRegclass, args, 1..=1),
+        // `to_jsonb(anyelement)`: an argument with no type — a bare string literal or
+        // `NULL` — leaves 18.6's polymorphic resolution nothing to bind `anyelement` to.
+        "to_jsonb" => {
+            if let [Expr::Literal(Literal::String(_) | Literal::Null)] = args.as_slice() {
+                return Err(Error::Type(
+                    "could not determine polymorphic type because input has type unknown".into(),
+                ));
+            }
+            string_call(StringFunc::ToJsonb, args, 1..=1)
+        }
         "md5" => string_call(StringFunc::Md5, args, 1..=1),
         "left" => string_call(StringFunc::Left, int4_positions(args), 2..=2),
         "right" => string_call(StringFunc::Right, int4_positions(args), 2..=2),
@@ -5781,6 +5803,7 @@ mod postcard_layout {
                 (32, StringFunc::SetConfigLockTimeout),
                 (33, StringFunc::AdvisoryXactLockShared),
                 (34, StringFunc::ToRegclass),
+                (35, StringFunc::ToJsonb),
             ],
         );
         pin_tags(
@@ -6024,7 +6047,8 @@ mod postcard_layout {
                 | StringFunc::AdvisoryUnlockAll
                 | StringFunc::SetConfigLockTimeout
                 | StringFunc::AdvisoryXactLockShared
-                | StringFunc::ToRegclass => (),
+                | StringFunc::ToRegclass
+                | StringFunc::ToJsonb => (),
             }
         }
         fn _variadic_func(v: VariadicFunc) {

@@ -1,0 +1,11 @@
+{
+  "rows": [
+    {
+      "to_jsonb": "{\"id\": \"b\", \"data\": null, \"note\": \"y\"}"
+    },
+    {
+      "to_jsonb": "{\"id\": \"c\", \"data\": \"<1 bytes>\", \"note\": \"z\"}"
+    }
+  ],
+  "rowCount": 2
+}

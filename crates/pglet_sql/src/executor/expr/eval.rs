@@ -774,7 +774,19 @@ fn eval_expr_rest<R: ColumnResolver>(
             for e in args {
                 values.push(eval_expr_full(e, resolver, row, sub, env)?);
             }
-            build_jsonb_object(values)
+            // A value's JSON form can follow its declared type, which the value alone
+            // does not carry for a timestamp (`jsonb_value_needs_type`).
+            let scope = EvalLeafScope { resolver, env };
+            let types = values
+                .iter()
+                .zip(args)
+                .map(|(v, a)| {
+                    jsonb_value_needs_type(v)
+                        .then(|| declared_type_oid(a, &scope))
+                        .flatten()
+                })
+                .collect::<Vec<_>>();
+            build_jsonb_object(values, &types)
         }
         // `unnest(arr)` is a set-returning function: it row-expands and is only
         // legal inside a projection (lowered to `Plan::ProjectUnnest`, which
@@ -858,6 +870,19 @@ fn eval_expr_rest<R: ColumnResolver>(
                 return eval_enum_in(value, name, |label| {
                     crate::planner::enum_in_holds(labels, label)
                 });
+            }
+            // `to_jsonb` converts by its argument's declared type, which a timestamp's
+            // value alone does not carry.
+            if let (StringFunc::ToJsonb, [arg]) = (func, args.as_slice()) {
+                let value = eval_expr_full(arg, resolver, row, sub, env)?;
+                if value.is_null() {
+                    return Ok(Value::Null);
+                }
+                let scope = EvalLeafScope { resolver, env };
+                let declared = jsonb_value_needs_type(&value)
+                    .then(|| declared_type_oid(arg, &scope))
+                    .flatten();
+                return Ok(Value::Jsonb(value_to_jsonb(&value, declared).canonical()));
             }
             let vals = args
                 .iter()
@@ -1061,7 +1086,7 @@ fn build_array_value(elements: Vec<Value>) -> Result<Value> {
 /// not be null"); each value is mapped to a `JsonbValue` via `value_to_jsonb`,
 /// with a NULL value kept as a `JsonbValue::Null` member (matching PG). Keys are
 /// inserted in argument order.
-fn build_jsonb_object(values: Vec<Value>) -> Result<Value> {
+fn build_jsonb_object(values: Vec<Value>, types: &[Option<TypeOid>]) -> Result<Value> {
     let mut pairs: Vec<(String, JsonbValue)> = Vec::with_capacity(values.len() / 2);
     let mut iter = values.into_iter();
     let mut arg_index = 1;
@@ -1085,7 +1110,10 @@ fn build_jsonb_object(values: Vec<Value>) -> Result<Value> {
         let value = iter
             .next()
             .ok_or_else(|| Error::Execution("jsonb_build_object: odd argument count".into()))?;
-        pairs.push((key_str, value_to_jsonb(&value)));
+        pairs.push((
+            key_str,
+            value_to_jsonb(&value, types.get(arg_index).copied().flatten()),
+        ));
         arg_index += 2;
     }
     // Canonicalized like every other jsonb producer: `jsonb_build_object` returns
@@ -1098,15 +1126,18 @@ fn build_jsonb_object(values: Vec<Value>) -> Result<Value> {
     Ok(Value::Jsonb(JsonbValue::Object(pairs).canonical()))
 }
 
-/// Map a scalar `Value` to a `JsonbValue` per Postgres `to_jsonb` semantics.
+/// Map a `Value` to a `JsonbValue` per 18.6's `datum_to_jsonb` — what `to_jsonb` and
+/// `jsonb_build_object`'s values answer.
 ///
 /// The load-bearing case is text: a text value becomes a JSON *string* (so
 /// `jsonb_build_object('kind', 'doc')` is `{"kind": "doc"}`, value quoted), it is
 /// **not** parsed as JSON. An existing `Value::Jsonb` passes through unchanged.
-/// Booleans and numbers map to their JSON kinds; `Null` is a JSON null. Other
-/// scalars (uuid/timestamp/bytea) render through their text-output form as a JSON
-/// string, matching PG's `to_jsonb` text rendering — the spine only needs
-/// text/null, but this keeps the rest correct rather than lossy.
+/// Booleans and numbers map to their JSON kinds; `Null` is a JSON null. An array is a
+/// JSON array of its elements, each converted by the array's element type. A timestamp
+/// is ISO 8601 with a `T` (`JsonEncodeDateTime`), with `+00:00` where `declared` says
+/// `timestamptz` — the one type a value does not carry itself, which the caller reads
+/// off the argument when [`jsonb_value_needs_type`] asks. Every other scalar (uuid,
+/// bytea, date, time, interval) is a JSON string of its text output.
 ///
 /// Numbers store as an exact [`PgNumeric`] (Postgres `datum_to_jsonb`), so a big
 /// integer or scale-carrying decimal round-trips without loss — `1.5::numeric`
@@ -1114,7 +1145,7 @@ fn build_jsonb_object(values: Vec<Value>) -> Result<Value> {
 /// produced. A non-finite float/numeric (`NaN`/`±Infinity`) has no JSON number
 /// form, so Postgres emits it as a JSON *string* (`"NaN"`/`"Infinity"`); pglet
 /// matches via [`float_to_jsonb`].
-fn value_to_jsonb(value: &Value) -> JsonbValue {
+pub(super) fn value_to_jsonb(value: &Value, declared: Option<TypeOid>) -> JsonbValue {
     match value {
         Value::Null => JsonbValue::Null,
         Value::Bool(b) => JsonbValue::Bool(*b),
@@ -1130,11 +1161,58 @@ fn value_to_jsonb(value: &Value) -> JsonbValue {
         Value::Numeric(n) => JsonbValue::Number(n.clone()),
         Value::Text(s) => JsonbValue::String(s.clone()),
         Value::Jsonb(j) => j.clone(),
-        // uuid / timestamp / bytea / array → PG renders these to_jsonb as a JSON
-        // string of their text output. `value_to_text` is None only for Null,
-        // already handled above, so the fallback is defensive.
+        Value::Array(arr) => {
+            // A `timestamptz[]`'s elements, like the scalar, may say so only in the
+            // declared type.
+            let element = declared
+                .and_then(TypeOid::array_element)
+                .or(Some(arr.element_type));
+            JsonbValue::Array(
+                arr.elements
+                    .iter()
+                    .map(|e| value_to_jsonb(e, element))
+                    .collect(),
+            )
+        }
+        Value::Timestamp(_) => {
+            let tz = declared == Some(TypeOid::Timestamptz);
+            let oid = if tz {
+                TypeOid::Timestamptz
+            } else {
+                TypeOid::Timestamp
+            };
+            let text = crate::types::value_to_text_with_oid(value, oid).unwrap_or_default();
+            JsonbValue::String(iso_timestamp_text(text, tz))
+        }
+        // uuid / bytea / date / time / interval → a JSON string of their text output.
+        // `value_to_text` is None only for Null, already handled above, so the
+        // fallback is defensive.
         other => JsonbValue::String(crate::types::value_to_text(other).unwrap_or_default()),
     }
+}
+
+/// Whether [`value_to_jsonb`] needs `value`'s declared type: a timestamp, whose value
+/// is the same for `timestamp` and `timestamptz`, scalar or an array's element.
+pub(super) const fn jsonb_value_needs_type(value: &Value) -> bool {
+    match value {
+        Value::Timestamp(_) => true,
+        Value::Array(arr) => matches!(arr.element_type, TypeOid::Timestamp | TypeOid::Timestamptz),
+        _ => false,
+    }
+}
+
+/// A timestamp's text output in the ISO 8601 form `JsonEncodeDateTime` writes: the date
+/// and time joined by `T`, and a `timestamptz`'s `+00` offset written out as `+00:00`.
+/// `infinity` and `-infinity` are unchanged.
+fn iso_timestamp_text(text: String, tz: bool) -> String {
+    if text.ends_with("infinity") {
+        return text;
+    }
+    let mut iso = text.replacen(' ', "T", 1);
+    if tz {
+        iso.push_str(":00");
+    }
+    iso
 }
 
 /// Map an `f64` to a `JsonbValue` per Postgres `datum_to_jsonb`: a finite float is
