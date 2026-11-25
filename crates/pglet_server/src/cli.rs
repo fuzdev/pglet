@@ -12,6 +12,10 @@ use pglet_server::StorageKind;
 
 /// What the command line asks for.
 #[derive(Debug, Default, PartialEq, Eq)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "each is an independent switch of the command line, not a state"
+)]
 pub struct Args {
     /// `--help` / `-h`.
     pub help: bool,
@@ -27,6 +31,8 @@ pub struct Args {
     pub coerce_unknown_types: bool,
     /// `--lock-timeout`, in milliseconds, read as a `lock_timeout` setting value is.
     pub lock_timeout_ms: Option<u64>,
+    /// `--exit-on-stdin-close`.
+    pub exit_on_stdin_close: bool,
 }
 
 /// Parse the arguments after the program name.
@@ -87,6 +93,12 @@ pub fn parse_args<I: IntoIterator<Item = String>>(args: I) -> Result<Args, Strin
                 }
                 out.coerce_unknown_types = true;
             }
+            "--exit-on-stdin-close" => {
+                if out.exit_on_stdin_close {
+                    return Err("--exit-on-stdin-close given twice".into());
+                }
+                out.exit_on_stdin_close = true;
+            }
             _ => return Err(format!("unknown argument {arg:?} (see --help)")),
         }
     }
@@ -97,7 +109,8 @@ pub fn parse_args<I: IntoIterator<Item = String>>(args: I) -> Result<Args, Strin
         && (out.port.is_some()
             || out.storage.is_some()
             || out.coerce_unknown_types
-            || out.lock_timeout_ms.is_some())
+            || out.lock_timeout_ms.is_some()
+            || out.exit_on_stdin_close)
     {
         return Err("dump takes only --data-dir".into());
     }
@@ -140,6 +153,7 @@ mod tests {
             "--lock-timeout",
             "500ms",
             "--coerce-unknown-types",
+            "--exit-on-stdin-close",
         ])
         .unwrap();
         assert_eq!(args.port, Some(0));
@@ -147,6 +161,7 @@ mod tests {
         assert_eq!(args.data_dir, Some(PathBuf::from("/tmp/x")));
         assert_eq!(args.lock_timeout_ms, Some(500));
         assert!(args.coerce_unknown_types);
+        assert!(args.exit_on_stdin_close);
         assert!(!args.dump && !args.help);
     }
 
@@ -199,6 +214,7 @@ mod tests {
                 .contains("twice")
         );
         assert!(parse(&["--coerce-unknown-types", "--coerce-unknown-types"]).is_err());
+        assert!(parse(&["--exit-on-stdin-close", "--exit-on-stdin-close"]).is_err());
     }
 
     #[test]
@@ -224,6 +240,7 @@ mod tests {
         assert!(args.dump);
         assert_eq!(args.data_dir, Some(PathBuf::from("/tmp/x")));
         assert!(parse(&["dump", "--port", "1"]).is_err());
+        assert!(parse(&["dump", "--data-dir", "/tmp/x", "--exit-on-stdin-close"]).is_err());
         assert!(parse(&["--port", "1", "dump"]).is_err());
         assert!(
             parse(&["dump"])

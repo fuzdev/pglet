@@ -38,6 +38,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("                       connection whose transaction block may write)");
         println!("                       before 55P03, as a lock_timeout value: 1000, 1s,");
         println!("                       500ms; 0 waits without a bound (default: 1s)");
+        println!("  --exit-on-stdin-close  Exit (status 0) once standard input reaches its");
+        println!("                       end, so a parent that dies, killed or not, takes");
+        println!("                       the server with it; the parent holds a pipe open");
+        println!("                       for the server's life (an empty or closed stdin");
+        println!("                       exits at once)");
         println!("  --help               Show this help message");
         println!();
         println!("An unknown argument, a repeated flag or an unparsable value is an error.");
@@ -102,7 +107,37 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // port, and this line is where a harness reads it.
     println!("pglet listening on {}", listener.local_addr()?);
 
+    if args.exit_on_stdin_close {
+        exit_on_stdin_close();
+    }
+
     server.serve(&listener);
 
     Ok(())
+}
+
+/// Watch standard input on a thread of its own and end the process once it reaches its
+/// end — `--exit-on-stdin-close`, the test-runner idiom: a parent holds the write end of
+/// a pipe for the server's life, and the kernel closes it however the parent ends, so a
+/// killed runner leaves no server behind. The exit is immediate, as a `kill` is: a
+/// statement in flight is lost, an open block rolls back with the process, and a
+/// persistent store keeps its last commit (the double-meta commit point).
+fn exit_on_stdin_close() {
+    use std::io::Read;
+    std::thread::spawn(|| {
+        let mut stdin = std::io::stdin().lock();
+        let mut sink = [0_u8; 4096];
+        loop {
+            match stdin.read(&mut sink) {
+                Ok(0) => break,
+                Ok(_) => {}
+                Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {}
+                // An unreadable stdin can no more say the parent is alive than a closed one.
+                Err(_) => break,
+            }
+        }
+        // Nothing is written on the way out: the parent this watches is gone, and a pipe
+        // it read the server's output through is gone with it, where a write would fail.
+        std::process::exit(0);
+    });
 }

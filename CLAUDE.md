@@ -557,6 +557,8 @@ cargo run -p pglet_server -- --storage memory   # MemoryStorage: no MVCC, no per
 cargo run -p pglet_server -- --data-dir <dir>   # persistent
 cargo run -p pglet_server -- --lock-timeout 5s  # how long a write waits for the writer before 55P03
                                                 # (a lock_timeout value; default 1s, 0 = no bound)
+cargo run -p pglet_server -- --exit-on-stdin-close  # exit once stdin ends: a test runner holding
+                                                # a pipe open takes the server with it
 cargo run -p pglet_server -- --help             # every flag; an unknown, repeated or unparsable one is refused
 npm run server                    # dev server on :5433: rebuilt and restarted on a .rs change under crates/, which
 #                                   stops it first, so a failed build leaves none until a build passes; a change
