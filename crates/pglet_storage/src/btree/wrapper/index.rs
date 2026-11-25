@@ -33,7 +33,7 @@ pub struct IndexDef {
     /// The shared row→key-bytes / row-in-index / parse logic, identical across both
     /// storage backends (positions, key expressions, partial predicate, NULL
     /// distinctness, column names).
-    pub keying: IndexKeying,
+    pub keying: std::sync::Arc<IndexKeying>,
 }
 
 impl IndexDef {
@@ -51,7 +51,7 @@ impl IndexDef {
     }
 
     /// `NULLS NOT DISTINCT` for this index (shared keying field).
-    pub(super) const fn nulls_not_distinct(&self) -> bool {
+    pub(super) fn nulls_not_distinct(&self) -> bool {
         self.keying.nulls_not_distinct
     }
 }
@@ -68,7 +68,7 @@ pub(super) fn index_def_from_spec(table_id: u32, spec: &IndexSpec) -> Result<Ind
     Ok(IndexDef {
         table_id,
         table_name: spec.table.clone(),
-        keying: IndexKeying::from_spec(spec)?,
+        keying: std::sync::Arc::new(IndexKeying::from_spec(spec)?),
     })
 }
 
