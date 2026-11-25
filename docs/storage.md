@@ -455,6 +455,18 @@ pending `DROP TABLE` hides a committed table and its rows (`42P01`), and a pendi
 seed-once/fork-per-test caller would get well-formed, empty fixtures. The fork itself
 starts with no active transaction.
 
+**The server's fork** is `pglet_server`'s `ServerHandle::fork`, for a test suite that runs
+the server in its process: migrate one spawned server, then fork it per test and spawn
+each fork on a loopback port of its own. The server has no single session to be `Idle`,
+so it asks the writer instead: every catalog or row change, sequence draw and session-level
+advisory lock holds the writer, and an open block holds it from its first write to its end.
+The fork takes the writer as a write does — waiting for the server's `lock_timeout`, `55P03`
+past it — clones the catalog and branches the store while it holds both locks, then gives
+the writer back. The fork is a new in-memory server carrying the base's
+`--coerce-unknown-types` and `--lock-timeout` and nothing of any connection: no session
+state, advisory lock, prepared statement or cached plan. A data-dir or `MemoryStorage`
+server has no branch to give and refuses (`Unsupported`).
+
 ## Vacuum (Garbage Collection)
 
 ### When Pages Become Garbage

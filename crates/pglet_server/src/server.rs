@@ -42,6 +42,24 @@ use pglet_core::file_lock::FileLock;
 
 use crate::connection::{self, SharedState};
 
+/// The ids [`Server::fork`] takes the writer as, one per fork, counting down from `-1`:
+/// no connection's, which count up from `1` ([`NEXT_PID`]), and no other fork's, since
+/// the writer answers a caller that already holds it at once.
+static NEXT_FORK_WRITER: AtomicI32 = AtomicI32::new(-1);
+
+/// The writer held by a fork, given back when it drops — after the copy, or on the way
+/// out of a failed one.
+struct ForkWriter<'a> {
+    state: &'a SharedState,
+    id: i32,
+}
+
+impl Drop for ForkWriter<'_> {
+    fn drop(&mut self) {
+        self.state.writer.release(self.id);
+    }
+}
+
 /// Opens the store a state is built over — the file-backed server's
 /// `Database::open(data_dir)`, run on a connection thread's stack.
 pub type Reopen = Box<dyn Fn() -> io::Result<Database> + Send + Sync>;
@@ -189,14 +207,75 @@ impl Server {
         let local_addr = listener.local_addr()?;
         let stop = Arc::new(Stop::default());
         let accept_stop = Arc::clone(&stop);
+        let server = Arc::new(self);
+        let accept_server = Arc::clone(&server);
         let accept = std::thread::Builder::new()
             .name("pglet_server accept".into())
-            .spawn(move || serve(&listener, &self, Some(&accept_stop)))?;
+            .spawn(move || serve(&listener, &accept_server, Some(&accept_stop)))?;
         Ok(ServerHandle {
             local_addr,
             stop,
             accept: Some(accept),
+            server,
         })
+    }
+
+    /// A new in-memory server over a copy-on-write branch of this one's committed state
+    /// ([`ServerHandle::fork`]'s body).
+    ///
+    /// Committed is what the writer says: every catalog or row change, a sequence draw
+    /// and a session-level advisory lock hold it, and an open block changes the shared
+    /// catalog in place from its first write to its end. So the fork takes the writer —
+    /// waiting for it as a write does, for the server's `lock_timeout` — copies the
+    /// catalog and branches the store while it holds both locks, and gives the writer
+    /// back. A connection's open read-only block, and what it holds in its own session
+    /// (`SET`s, prepared statements, `currval`), stay with it.
+    fn fork(&self) -> io::Result<Self> {
+        let unsupported = || {
+            io::Error::new(
+                io::ErrorKind::Unsupported,
+                "fork requires an in-memory B+tree server; a data-dir or memory-storage \
+                 server can't be forked",
+            )
+        };
+        let state = self.connection_state();
+        // Refused before any wait: a server with nothing to branch has nothing to wait for.
+        if self.reopen.is_some()
+            || matches!(*state.lock_storage(), pglet::StorageBackend::Memory(_))
+        {
+            return Err(unsupported());
+        }
+        let id = NEXT_FORK_WRITER.fetch_sub(1, Ordering::Relaxed);
+        let store_failed = || state.write_failure_reason().map(str::to_owned);
+        state
+            .writer
+            .acquire(
+                id,
+                crate::writer::deadline_after(self.default_lock_timeout_ms),
+                store_failed,
+            )
+            .map_err(io::Error::other)?;
+        let held = ForkWriter { state: &state, id };
+        let forked = {
+            let (schema, storage) = state.lock_both();
+            match &*storage {
+                pglet::StorageBackend::Btree(wrapper) => wrapper
+                    .fork()
+                    .map(|branch| (schema.clone(), pglet::StorageBackend::Btree(branch))),
+                pglet::StorageBackend::Memory(_) => None,
+            }
+        };
+        drop(held);
+        let Some((schema, storage)) = forked else {
+            return Err(unsupported());
+        };
+        Ok(Self::new(
+            SharedState::from_database(Database::with_storage(storage, schema))
+                .with_coerce_unknown_types(self.coerce_unknown_types)
+                .with_default_lock_timeout(self.default_lock_timeout_ms),
+            None,
+            None,
+        ))
     }
 
     /// [`Server::spawn`] on a listener bound to `127.0.0.1` at a port the kernel picks,
@@ -301,9 +380,35 @@ pub struct ServerHandle {
     local_addr: SocketAddr,
     stop: Arc<Stop>,
     accept: Option<JoinHandle<()>>,
+    /// The server the accept loop serves, which [`Self::fork`] branches.
+    server: Arc<Server>,
 }
 
 impl ServerHandle {
+    /// A new, independent server over a copy-on-write branch of this one's **committed**
+    /// state — the migrate-once, fork-per-test primitive: migrate one server, then fork
+    /// it for each test, which [`Server::spawn_loopback`]s the fork on a port of its own.
+    ///
+    /// The fork sees every committed table, row, index, constraint and sequence value
+    /// (a sequence resumes where the base left it); writes on either side are invisible
+    /// to the other. Nothing of a connection carries: no session state, no advisory lock,
+    /// no prepared statement or cached plan. It is an in-memory server whatever it is
+    /// branched from in time, carrying the base's `--coerce-unknown-types` and
+    /// `--lock-timeout`. A block open on the base when the fork is asked for is waited
+    /// for, as a write waits for the writer, for the base's `lock_timeout`: an open block
+    /// changes the catalog in place, so its state is not committed state.
+    ///
+    /// # Errors
+    ///
+    /// The writer not free within the base's `lock_timeout`, carrying a
+    /// [`pglet::Error`] whose `sqlstate()` is `55P03` (read it through
+    /// [`io::Error::get_ref`]); a store that failed a durable write, carrying `57P02`;
+    /// and a server over a data dir or `MemoryStorage`, which has no copy-on-write
+    /// branch ([`io::ErrorKind::Unsupported`]).
+    pub fn fork(&self) -> io::Result<Server> {
+        self.server.fork()
+    }
+
     /// The address the server listens on — under [`Server::spawn_loopback`], the port the
     /// kernel picked.
     #[must_use]
@@ -624,6 +729,197 @@ mod tests {
         fn is_closed(&mut self) -> bool {
             self.frame().is_none()
         }
+    }
+
+    /// A spawned in-memory server with `lock_timeout_ms`, holding `t (id SERIAL, v TEXT)`
+    /// with two committed rows.
+    fn seeded_base(lock_timeout_ms: u64) -> super::ServerHandle {
+        let options = ServerOptions {
+            lock_timeout_ms,
+            ..ServerOptions::default()
+        };
+        let base = Server::open(&options)
+            .expect("open")
+            .spawn_loopback()
+            .expect("spawn");
+        let mut c = Client::connect(base.local_addr()).expect("connect");
+        c.query("CREATE TABLE t (id SERIAL PRIMARY KEY, v TEXT)")
+            .expect("create");
+        c.query("INSERT INTO t (v) VALUES ('a'), ('b')")
+            .expect("seed");
+        base
+    }
+
+    #[test]
+    fn a_fork_starts_from_the_committed_rows_and_sequences_and_shares_no_write() {
+        let base = seeded_base(1000);
+        let fork = base
+            .fork()
+            .expect("fork")
+            .spawn_loopback()
+            .expect("spawn the fork");
+        let mut on_base = Client::connect(base.local_addr()).expect("connect base");
+        let mut on_fork = Client::connect(fork.local_addr()).expect("connect fork");
+        assert_eq!(ids(&mut on_fork), Ok(vec!["1".into(), "2".into()]));
+        // The sequence resumes where the base left it, on each side independently.
+        on_fork
+            .query("INSERT INTO t (v) VALUES ('fork')")
+            .expect("fork insert");
+        on_base
+            .query("INSERT INTO t (v) VALUES ('base')")
+            .expect("base insert");
+        assert_eq!(
+            on_fork.query("SELECT id, v FROM t WHERE id = 3"),
+            Ok(vec![vec![Some("3".into()), Some("fork".into())]])
+        );
+        assert_eq!(
+            on_base.query("SELECT id, v FROM t WHERE id = 3"),
+            Ok(vec![vec![Some("3".into()), Some("base".into())]])
+        );
+        // DDL on one side is the other's `42P01`.
+        on_fork
+            .query("CREATE TABLE only_fork (x INT)")
+            .expect("ddl");
+        assert_eq!(
+            on_base.query("SELECT * FROM only_fork").map(|_| ()),
+            Err(("42P01".into(), false))
+        );
+        // A fork of a fork is a third independent lineage.
+        let again = fork
+            .fork()
+            .expect("fork the fork")
+            .spawn_loopback()
+            .expect("spawn");
+        let mut on_again = Client::connect(again.local_addr()).expect("connect");
+        assert_eq!(
+            ids(&mut on_again),
+            Ok(vec!["1".into(), "2".into(), "3".into()])
+        );
+    }
+
+    #[test]
+    fn a_fork_waits_for_an_open_block_and_sees_what_it_committed() {
+        let base = seeded_base(60_000);
+        let mut holder = Client::connect(base.local_addr()).expect("connect");
+        holder.query("BEGIN").expect("begin");
+        holder
+            .query("INSERT INTO t (v) VALUES ('in the block')")
+            .expect("insert takes the writer");
+        let base = Arc::new(base);
+        let forking = {
+            let base = Arc::clone(&base);
+            std::thread::spawn(move || base.fork())
+        };
+        std::thread::sleep(Duration::from_millis(200));
+        // The precondition: the fork is waiting on the block, not done.
+        assert!(!forking.is_finished(), "the fork waits for the open block");
+        holder.query("COMMIT").expect("commit");
+        let fork = forking
+            .join()
+            .expect("fork thread")
+            .expect("the fork succeeds once the block ends")
+            .spawn_loopback()
+            .expect("spawn");
+        let mut on_fork = Client::connect(fork.local_addr()).expect("connect");
+        assert_eq!(
+            ids(&mut on_fork),
+            Ok(vec!["1".into(), "2".into(), "3".into()])
+        );
+    }
+
+    #[test]
+    fn concurrent_forks_each_wait_for_the_writer_and_copy_committed_state() {
+        let base = Arc::new(seeded_base(60_000));
+        let mut holder = Client::connect(base.local_addr()).expect("connect");
+        holder.query("BEGIN").expect("begin");
+        holder
+            .query("CREATE TABLE pending (x INT)")
+            .expect("ddl takes the writer");
+        let forks: Vec<_> = (0..4)
+            .map(|_| {
+                let base = Arc::clone(&base);
+                std::thread::spawn(move || base.fork())
+            })
+            .collect();
+        std::thread::sleep(Duration::from_millis(200));
+        assert!(
+            forks.iter().all(|f| !f.is_finished()),
+            "every fork waits for the open block"
+        );
+        // A second block queued beside the forks, on a thread of its own: whichever wins
+        // the writer next, the forks wait out its block too, and none copies its table.
+        let second = {
+            let addr = base.local_addr();
+            std::thread::spawn(move || {
+                let mut second = Client::connect(addr).expect("connect");
+                second.query("BEGIN").expect("begin");
+                second
+                    .query("CREATE TABLE later (x INT)")
+                    .expect("ddl takes the writer");
+                std::thread::sleep(Duration::from_millis(50));
+                second.query("ROLLBACK").expect("rollback");
+            })
+        };
+        std::thread::sleep(Duration::from_millis(50));
+        holder.query("ROLLBACK").expect("rollback");
+        for fork in forks {
+            let fork = fork
+                .join()
+                .expect("fork thread")
+                .expect("the fork succeeds")
+                .spawn_loopback()
+                .expect("spawn");
+            let mut on_fork = Client::connect(fork.local_addr()).expect("connect");
+            assert_eq!(ids(&mut on_fork), Ok(vec!["1".into(), "2".into()]));
+            // Neither block's uncommitted table reached a fork.
+            for table in ["pending", "later"] {
+                assert_eq!(
+                    on_fork.query(&format!("SELECT * FROM {table}")).map(|_| ()),
+                    Err(("42P01".into(), false)),
+                    "{table}"
+                );
+            }
+        }
+        second.join().expect("the second block runs to its end");
+    }
+
+    #[test]
+    fn a_fork_past_the_lock_timeout_is_55p03_and_leaves_the_block_alone() {
+        let base = seeded_base(100);
+        let mut holder = Client::connect(base.local_addr()).expect("connect");
+        holder.query("BEGIN").expect("begin");
+        holder
+            .query("INSERT INTO t (v) VALUES ('held')")
+            .expect("insert takes the writer");
+        let err = base
+            .fork()
+            .expect_err("the writer stays held past lock_timeout");
+        let code = err
+            .get_ref()
+            .and_then(|e| e.downcast_ref::<pglet::Error>())
+            .map(pglet::Error::sqlstate);
+        assert_eq!(code, Some("55P03"), "{err}");
+        // The block is untouched and commits.
+        holder.query("COMMIT").expect("commit");
+        let mut reader = Client::connect(base.local_addr()).expect("connect");
+        assert_eq!(
+            ids(&mut reader),
+            Ok(vec!["1".into(), "2".into(), "3".into()])
+        );
+    }
+
+    #[test]
+    fn a_memory_storage_server_has_no_fork() {
+        let options = ServerOptions {
+            storage: StorageKind::Memory,
+            ..ServerOptions::default()
+        };
+        let base = Server::open(&options)
+            .expect("open")
+            .spawn_loopback()
+            .expect("spawn");
+        let err = base.fork().expect_err("no copy-on-write branch");
+        assert_eq!(err.kind(), std::io::ErrorKind::Unsupported, "{err}");
     }
 
     /// The ids `SELECT id FROM t ORDER BY id` answers.

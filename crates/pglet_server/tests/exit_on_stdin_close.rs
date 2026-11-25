@@ -47,7 +47,9 @@ fn the_server_exits_when_its_stdin_closes() {
         .recv_timeout(LIMIT)
         .expect("the server reports its port in time")
         .expect("a port");
-    reader.join().expect("the reader ends, closing stdout's read end");
+    reader
+        .join()
+        .expect("the reader ends, closing stdout's read end");
     // Held open, stdin keeps the server serving.
     std::net::TcpStream::connect(("127.0.0.1", port)).expect("the server accepts");
     assert!(

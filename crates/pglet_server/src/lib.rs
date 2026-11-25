@@ -5,7 +5,8 @@
 //! suite runs the server in its own process: [`Server::open`] builds the state from
 //! [`ServerOptions`], and [`Server::spawn_loopback`] (or [`Server::spawn`] over a caller's
 //! listener) serves it from a thread of its own until the returned [`ServerHandle`] is
-//! dropped.
+//! dropped. [`ServerHandle::fork`] branches a migrated server's committed state into a new
+//! one, for a suite that migrates once and forks per test.
 //!
 //! ```no_run
 //! let server = pglet_server::Server::open(&pglet_server::ServerOptions::default())?;
