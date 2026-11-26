@@ -7,11 +7,11 @@
 //! They share their plumbing ([`crate::runner`]) and nothing else.
 //!
 //! Its Postgres address is `127.0.0.1:5432` as the `postgres` superuser, written
-//! here rather than read from the harness's `PGLET_PG_URL` knob — this step
-//! *creates and drops* its own scratch database, which is an administrative
-//! connection rather than the oracle, and `xtask` depends on `pglet_core` alone,
-//! so reading that knob here would mean a second copy of its parse rather than
-//! one reader of one rule.
+//! here rather than read from the harness's `PGLET_PG_URL` knob — the exit-proof
+//! step names a scratch database of its own, which the bench creates and this
+//! drops, so this is an administrative connection rather than the oracle, and
+//! `xtask` depends on `pglet_core` alone, so reading that knob here would mean a
+//! second copy of its parse rather than one reader of one rule.
 //!
 //! ```sh
 //! cargo xtask measure                        # the whole set
@@ -75,15 +75,14 @@
 //!
 //! # The pg leg's prerequisite
 //!
-//! `PGLET_EXITPROOF_PG_URL`'s database is dropped and recreated before every
-//! pass, which is *not* what makes the pg leg work. `create_pg_factory` hands
-//! every test file one persistent database and its `create()` drops only
-//! `schema_version`, so under vitest's `isolate: false` an earlier file's DDL is
-//! still standing when the next file's suite runs — and fuz_app's whole-schema
-//! assertions then read tables their own suite never created. Only a
-//! per-`create()` schema reset fixes that and it lives in fuz_app's fixtures.
-//! The preflight below checks for it, because the alternative is discovering it
-//! mid-run — which happened four times back when the run took twenty minutes.
+//! The bench passes `PGLET_EXITPROOF_PG_URL` to fuz_app as
+//! `FUZ_TEST_POSTGRES_URL`, which fuz_app reads as an admin connection: its
+//! `create_pg_factory` creates a database of its own per `create()` and drops it
+//! on `close()`, so the scratch database this step names holds no test state,
+//! and the `postgres` superuser has the `CREATEDB` it needs. A fuz_app checkout
+//! that predates the variable reads another one, and its pg leg skips every
+//! suite and fails late; the preflight below checks for the variable, because
+//! the alternative is discovering it at the end of a long run.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
@@ -284,23 +283,16 @@ fn preflight(root: &Path, selected: &[&Step]) -> Result<(), String> {
                 fuz_app.display()
             ));
         }
-        // A warning and not an error: the fixture could reasonably be spelled
-        // another way, and a missing reset fails the whole run late. The suites
-        // import `db_fixture.ts`, which builds its factories through
-        // `create_db_fixture.ts`; the reset may sit in either.
-        let fixtures = [
-            fuz_app.join("src/test/db_fixture.ts"),
-            fuz_app.join("src/test/create_db_fixture.ts"),
-        ];
-        let reset = fixtures.iter().any(|fixture| {
-            std::fs::read_to_string(fixture).is_ok_and(|text| text.contains("drop_auth_schema"))
-        });
-        if !reset {
+        // A warning and not an error: the pg leg may not be selected, and the
+        // variable could move; a checkout without it fails the pg leg late.
+        let db = fuz_app.join("src/lib/testing/db.ts");
+        let reads_url =
+            std::fs::read_to_string(&db).is_ok_and(|text| text.contains("FUZ_TEST_POSTGRES_URL"));
+        if !reads_url {
             println!(
-                "  ⚠ neither {} nor {} references drop_auth_schema — the pg leg will fail\n    \
-                 on fuz_app's whole-schema assertions (see this module's docs)",
-                fixtures[0].display(),
-                fixtures[1].display()
+                "  ⚠ {} doesn't name FUZ_TEST_POSTGRES_URL — the pg leg will skip every\n    \
+                 suite and fail (see this module's docs)",
+                db.display()
             );
         }
     }
@@ -489,11 +481,14 @@ fn cpu_times(stat: &str) -> Option<(u64, u64)> {
     Some((total - idle, total))
 }
 
-/// Drop the scratch database, unless it is worth keeping.
+/// Drop the scratch database after a successful exit-proof step, unless --keep-scratch.
 ///
-/// It is disposable by construction — the exit-proof bench drops and recreates
-/// it before every pass — so the only time its contents are worth anything is
-/// when that step failed and left the state the failure happened in.
+/// The exit-proof bench creates it when missing and fuz_app only connects
+/// through it, so it holds no test state: a failed run's state is in fuz_app's
+/// `fuz_testing_*` databases, which drop themselves on `close()` and are listed
+/// by [`print_leftover_scratch_dbs`] when a killed run left them. A failed step
+/// leaves it in place for [`print_leftover_scratch_dbs`] to list; it holds
+/// nothing, so that costs one empty database.
 fn teardown(opts: &Opts, outcomes: &[StepRun]) {
     let exit_proof_ok = outcomes
         .iter()
@@ -542,7 +537,7 @@ fn print_leftover_scratch_dbs() {
             "-U",
             "postgres",
             "-Atc",
-            "select datname from pg_database where datname ~ '(exitproof|pglet.*scratch|scratch.*pglet)'",
+            "select datname from pg_database where datname ~ '(exitproof|pglet.*scratch|scratch.*pglet|^fuz_testing_)'",
         ])
         .output();
     let Ok(out) = out else { return };
