@@ -100,14 +100,16 @@ rather than generalizing over "the harness":
 - **Deliberately not routed.** The pglet servers the tests spawn — a dynamically
   chosen loopback port, any credentials accepted; pointing them elsewhere would
   compare the oracle against someone else's server. And `cargo xtask measure`,
-  whose quiet-box measurement set creates and drops its own scratch database
-  against `127.0.0.1:5432`: `xtask` depends on `pglet_core` alone, so routing it
-  would mean a second copy of the parse rather than one reader.
+  whose quiet-box measurement set names a scratch database of its own on
+  `127.0.0.1:5432`, which the exit-proof bench creates and `measure` drops:
+  `xtask` depends on `pglet_core` alone, so routing it would mean a second copy
+  of the parse rather than one reader.
 - **A second URL knob, and not the oracle's.** `benches/exit_proof.ts` reads
   `PGLET_EXITPROOF_PG_URL` — opt-in, naming the real Postgres its
-  production-ceiling leg runs against, whose database it drops and creates. Its
-  one other appearance is `cargo xtask measure`, which *sets* it to that run's own
-  scratch database for the exit-proof step; no Rust code reads it (`measure.rs`
+  production-ceiling leg runs against (passed to fuz_app as
+  `FUZ_TEST_POSTGRES_URL`), and a database it creates when missing. Its one other
+  appearance is `cargo xtask measure`, which *sets* it to that run's own scratch
+  database for the exit-proof step; no Rust code reads it (`measure.rs`
   only writes it), and the two knobs never resolve each other.
 - **Not reached at all, and not the harness's.** The spy proxy's forward target
   (`src/lib/spy_proxy/`), the second positional argument of the `spy:*` scripts,

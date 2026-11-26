@@ -74,10 +74,11 @@ against it need one running:
 oracle reads it. What does not read it, by name: the pglet servers the tests spawn (a
 dynamically chosen loopback port, any credentials accepted); `cargo xtask measure`, whose
 quiet-box measurement set makes an administrative connection to `127.0.0.1:5432` from its
-own constant to create and drop its own scratch database; and `benches/exit_proof.ts`,
-which has a **second** URL knob of its own, `PGLET_EXITPROOF_PG_URL` — opt-in, naming the
-real Postgres its production-ceiling leg runs against and whose database it drops and
-creates, and set by `cargo xtask measure` to that run's own scratch database.
+own constant to drop the scratch database its exit-proof step names; and
+`benches/exit_proof.ts`, which has a **second** URL knob of its own,
+`PGLET_EXITPROOF_PG_URL` — opt-in, naming the real Postgres its production-ceiling leg
+runs against (passed to fuz_app as `FUZ_TEST_POSTGRES_URL`) and a database it creates when
+missing, and set by `cargo xtask measure` to that run's own scratch database.
 
 No shell-out call site sets `PGPASSWORD` itself: a password lives in one place, the
 conninfo the config renders. If your oracle authenticates by password rather than by

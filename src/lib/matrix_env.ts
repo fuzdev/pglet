@@ -91,7 +91,7 @@ export const run_matrix_env_command = async (deps: MatrixEnvCommandDeps): Promis
 
 	print('# pglet artifacts for the fuz_app `db` matrix — export these (bash), then run');
 	print(
-		'#   npx vitest run --project db        (in your fuz_app checkout; add TEST_DATABASE_URL for the pg leg)'
+		'#   npx vitest run --project db        (in your fuz_app checkout; for the pg leg add FUZ_TEST_POSTGRES_URL=postgres://127.0.0.1:5432/postgres, a CREATEDB role)'
 	);
 	print(`export PGLET_SERVER_BIN=${server}`);
 	print('# the wasm leg imports @fuzdev/pglet-wasm; to run this build, in your fuz_app checkout:');

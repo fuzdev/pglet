@@ -52,26 +52,22 @@
  * PGLET_EXITPROOF_WARMUP (1), PGLET_EXITPROOF_LEGS (comma-separated subset; default all
  * four), PGLET_FUZ_APP_DIR (default the `fuz_app` beside this checkout),
  * PGLET_SERVER_BIN (default the built release server), PGLET_EXITPROOF_PG_URL (opt-in pg
- * leg — the named database is DROPPED and recreated before every pass; point it at a
- * dedicated scratch database, never at one you keep). Paths are found from this file,
- * never the working directory.
+ * leg, passed to fuz_app as `FUZ_TEST_POSTGRES_URL` — its role needs `CREATEDB`, since each
+ * suite creates and drops a database of its own; the named database is created when it is
+ * missing and this bench never drops it, so it may be `postgres` or any database you keep).
+ * Paths are found from this file, never the working directory.
  *
  * The children's environments are explicit: each vitest run gets `PATH`, `HOME`, its
  * leg's variables (the pg leg's include the `PG*` variables) and the report path, and nothing
  * else of this process's (`run_leg_once`); `psql` gets `PATH`, `HOME` and the `PG*` variables.
  *
- * That per-pass reset is defense in depth, not the load-bearing part, and the
- * distinction cost this leg several runs. The contamination it was written for
- * is *within* a pass: `create_pg_factory` hands every file one persistent
- * database and its `create()` drops only `schema_version`, so under
- * `isolate: false` one file's DDL is still standing when the next file's suite
- * runs — and `auth/account_schema.db.test.ts` asserts over the whole `public`
- * schema, so it reads the cell/fact tables and fails on the *first* pass. Only
- * a per-`create()` schema reset fixes that, and it lives in fuz_app's fixtures:
- * `src/test/create_db_fixture.ts`, through which `db_fixture.ts` and its
- * sibling four-leg fixtures are built, wraps the pg leg's `init_schema` in
- * `drop_auth_schema` as that helper's own guidance prescribes. Without that fix
- * this leg cannot go green no matter what this harness does between passes.
+ * The pg leg's named database holds no test state. fuz_app's pg leg treats
+ * `FUZ_TEST_POSTGRES_URL` as an admin connection: `create_pg_factory` creates a database of its
+ * own per `create()`, from `template0`, and drops it on `close()`, so no file sees another's DDL
+ * and nothing in the named database reaches a test. The bench only makes sure that database
+ * exists (`ensure_pg_database`): `cargo xtask measure` names a scratch one it never creates
+ * itself, and drops it after. A pass killed before fuz_app's `close()` leaves `fuz_testing_*`
+ * databases on the server; drop them by that prefix.
  */
 import {spawn} from 'node:child_process';
 import {mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statSync} from 'node:fs';
@@ -332,30 +328,30 @@ interface Leg {
 	skip?: string;
 }
 
-// Start every pass from an empty database. This is the coarse half of the
-// isolation and by itself it is not enough — the assertions that read the whole
-// `public` schema are tripped by DDL from an *earlier file in the same pass*,
-// which only fuz_app's per-`create()` schema reset can prevent (see the module
-// doc). Kept because it costs nothing: it runs outside the timed window (timing
-// is read from vitest's own report — the Duration line's total and the file-times
-// reporter's per-file times), and it means a pass cannot inherit
-// whatever a previous run, or a hand-run query, left in the scratch database.
-const reset_pg_database = async (): Promise<void> => {
+// Create the database the URL names when it is missing, once, before any pass. fuz_app only
+// connects through it (each suite creates and drops a database of its own — see the module
+// doc), so this bench never drops or empties it, and the URL may name `postgres` or any database
+// you keep. It runs outside the timed window.
+const ensure_pg_database = async (): Promise<void> => {
 	if (!PG_URL) return;
-	const url = new URL(PG_URL);
-	const dbname = decodeURIComponent(url.pathname.slice(1));
+	const dbname = decodeURIComponent(new URL(PG_URL).pathname.slice(1));
+	if (!dbname) return; // no name: libpq's default, the role's own — not this bench's to create
 	const admin = new URL(PG_URL);
 	admin.pathname = '/postgres';
-	for (const sql of [`DROP DATABASE IF EXISTS "${dbname}"`, `CREATE DATABASE "${dbname}"`]) {
-		const {code, stderr} = await run_child(
-			'psql',
-			[admin.toString(), '-v', 'ON_ERROR_STOP=1', '-Atc', sql],
-			{env: {PATH: ENV.PATH, HOME: ENV.HOME, ...ENV.PG}, stdout: 'ignore'},
-		);
-		if (code !== 0) {
-			console.error(`error: pg-leg database reset failed: ${stderr}`);
-			process.exit(1);
-		}
+	const psql = (sql: string) =>
+		run_child('psql', [admin.toString(), '-v', 'ON_ERROR_STOP=1', '-Atc', sql], {
+			env: {PATH: ENV.PATH, HOME: ENV.HOME, ...ENV.PG},
+		});
+	const found = await psql(
+		`SELECT 1 FROM pg_database WHERE datname = '${dbname.replaceAll("'", "''")}'`,
+	);
+	const missing = found.code === 0 && found.stdout.trim() === '';
+	const created = missing
+		? await psql(`CREATE DATABASE "${dbname.replaceAll('"', '""')}"`)
+		: found;
+	if (created.code !== 0) {
+		console.error(`error: pg-leg database check failed: ${created.stderr}`);
+		process.exit(1);
 	}
 };
 
@@ -367,7 +363,7 @@ const legs: Leg[] = [
 		name: 'pg',
 		tier: 'L2',
 		driver: 'pg',
-		env: PG_URL ? {...ENV.PG, TEST_DATABASE_URL: PG_URL} : {},
+		env: PG_URL ? {...ENV.PG, FUZ_TEST_POSTGRES_URL: PG_URL} : {},
 		skip: PG_URL ? undefined : 'PGLET_EXITPROOF_PG_URL not set',
 	},
 ];
@@ -628,6 +624,7 @@ interface LegState {
 }
 const samples: Record<string, LegState> = {};
 for (const leg of active_legs) samples[leg.name] = {total: [], tests: [], last: null, failed: false};
+if (active_legs.some((l) => l.name === 'pg')) await ensure_pg_database();
 
 for (let rep = 0; rep < WARMUP + REPS; rep++) {
 	const phase = rep < WARMUP ? `warmup ${rep + 1}/${WARMUP}` : `rep ${rep - WARMUP + 1}/${REPS}`;
@@ -638,7 +635,6 @@ for (let rep = 0; rep < WARMUP + REPS; rep++) {
 			continue;
 		}
 		log_err(`  [${phase}] ${leg.name} … `);
-		if (leg.name === 'pg') await reset_pg_database();
 		const {r, out} = await run_leg_once(leg, shared_files);
 		// A leg with any failure (or zero passes) isn't comparable — mark it and
 		// stop repeating it (saves grinding a broken leg through every rep). Nor is a run
